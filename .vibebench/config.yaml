@@ -1,0 +1,15 @@
+project:
+  name: vibebench-project
+checks:
+  test:
+  - pytest -q
+  lint:
+  - ruff check .
+risk_rules:
+  forbidden_paths:
+  - .env
+  - .env.*
+  - secrets/
+  warn_if_tests_deleted: true
+  warn_if_lockfiles_changed: true
+  large_patch_lines: 500
