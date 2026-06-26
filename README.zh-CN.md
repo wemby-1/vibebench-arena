@@ -34,6 +34,7 @@ VibeBench v0.1.0 已经支持：
 - 计算 VibeScore 和风险等级
 - 分析未提交改动的 Git diff 风险
 - 生成适合本地 review 和截图的静态 HTML 报告
+- 生成可粘贴到 PR / issue / code review 的 Markdown 摘要
 
 Git diff 风险分析会标记：
 
@@ -51,6 +52,7 @@ python -m pip install -e ".[dev]"
 python -m vibebench init
 python -m vibebench check
 python -m vibebench report
+python -m vibebench pr-comment
 ```
 
 默认配置示例：
@@ -86,6 +88,9 @@ python -m vibebench check
 
 # 生成静态 HTML 报告
 python -m vibebench report
+
+# 生成可粘贴到 PR 或 review 里的 Markdown 摘要
+python -m vibebench pr-comment
 ```
 
 `vibebench check` 会写入：
@@ -101,6 +106,12 @@ python -m vibebench report
 .vibebench/runs/<timestamp>/report/index.html
 ```
 
+`vibebench pr-comment` 会写入：
+
+```text
+.vibebench/runs/<timestamp>/pr-comment.md
+```
+
 ## HTML 报告展示什么？
 
 静态 HTML 报告不需要前端构建工具，适合本地查看、截图和 README 展示。它包含：
@@ -114,11 +125,23 @@ python -m vibebench report
 
 `.vibebench/runs/` 下的报告是本地运行产物，不应该提交到仓库。`docs/assets/report-preview.svg` 是专门用于 README 的静态预览图。
 
+## PR Comment 摘要
+
+`vibebench pr-comment` 会生成一份简洁的 Markdown 检查摘要，可以粘贴到 GitHub Pull Request、issue 或 code review 讨论里。它包含：
+
+- overall status、VibeScore、risk level、项目名和运行时间
+- 配置命令的执行结果
+- Git diff 风险摘要计数
+- 最多 10 条风险发现和相关路径
+- 与 HTML 报告一致的 review / ship 建议
+
+自动发布 GitHub PR comment 会在后续实现；当前命令只在本地生成文件，不调用 GitHub API。
+
 ## Roadmap
 
 后续计划：
 
-- PR comment generation
+- 自动发布 GitHub PR comment
 - GitHub Action integration
 - multi-agent arena workflows
 - AI 生成改动的 replay timeline

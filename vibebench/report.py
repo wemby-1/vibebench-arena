@@ -46,7 +46,9 @@ def recommendation_for(metrics: dict[str, Any]) -> str:
     """Return a short recommendation for a metrics payload."""
     score = int(metrics.get("score", 0))
     status = str(metrics.get("overall_status", "failed"))
-    if score >= 85 and status == "passed":
+    if status == "failed":
+        return "Do not ship until failures are resolved."
+    if score >= 85:
         return "Looks safe to review and ship, assuming the behavior is correct."
     if score >= 65:
         return "Review carefully before shipping."

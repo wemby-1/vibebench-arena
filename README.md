@@ -39,6 +39,7 @@ VibeBench v0.1.0 already supports:
 - VibeScore and risk level calculation
 - Git diff risk analysis for uncommitted changes
 - static HTML reports for local review and screenshots
+- PR-ready Markdown summaries for pasteable code review comments
 
 Git diff risk analysis flags:
 
@@ -56,6 +57,7 @@ python -m pip install -e ".[dev]"
 python -m vibebench init
 python -m vibebench check
 python -m vibebench report
+python -m vibebench pr-comment
 ```
 
 The default config looks like this:
@@ -91,6 +93,9 @@ python -m vibebench check
 
 # Generate a static local report
 python -m vibebench report
+
+# Generate a Markdown summary for a PR or review thread
+python -m vibebench pr-comment
 ```
 
 `vibebench check` writes:
@@ -104,6 +109,12 @@ python -m vibebench report
 
 ```text
 .vibebench/runs/<timestamp>/report/index.html
+```
+
+`vibebench pr-comment` writes:
+
+```text
+.vibebench/runs/<timestamp>/pr-comment.md
 ```
 
 ## What The HTML Report Shows
@@ -122,11 +133,25 @@ Generated reports under `.vibebench/runs/` are local artifacts and should not be
 committed. The image at `docs/assets/report-preview.svg` is a static README
 preview asset.
 
+## PR Comment Summary
+
+`vibebench pr-comment` generates a concise Markdown summary that can be pasted
+into a GitHub Pull Request, issue, or code review. It includes:
+
+- overall status, VibeScore, risk level, project name, and timestamp
+- command results for configured checks
+- Git diff risk summary counts
+- up to 10 risk findings with affected paths
+- the same recommendation used by the HTML report
+
+Automatic GitHub PR posting is planned later; the current command is local and
+does not call the GitHub API.
+
 ## Roadmap
 
 Planned next milestones:
 
-- PR comment generation
+- automatic GitHub PR comment posting
 - GitHub Action integration
 - multi-agent arena workflows
 - replay timeline for AI-generated changes

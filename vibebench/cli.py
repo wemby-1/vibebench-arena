@@ -10,6 +10,7 @@ from rich.table import Table
 from vibebench import __version__
 from vibebench.config import ConfigError, default_config_yaml, load_config
 from vibebench.paths import config_file
+from vibebench.pr_comment import generate_pr_comment
 from vibebench.report import (
     ReportError,
     generate_report,
@@ -122,6 +123,39 @@ def report(
     console.print("[green]Report generated.[/]")
     console.print(f"Run directory: {report_path.parent.parent}")
     console.print(f"Report path: {report_path}")
+    console.print(f"Recommendation: {recommendation}")
+
+
+@app.command("pr-comment")
+def pr_comment(
+    project_root: ProjectRootOption = Path("."),
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            help="Specific .vibebench/runs/<timestamp> directory to summarize.",
+        ),
+    ] = None,
+) -> None:
+    """Generate a PR-ready Markdown summary for a VibeBench run."""
+    root = project_root.resolve()
+    selected_run_dir = None
+    if run_dir:
+        selected_run_dir = (
+            run_dir if run_dir.is_absolute() else root / run_dir
+        ).resolve()
+
+    try:
+        comment_path = generate_pr_comment(root, selected_run_dir)
+        metrics = load_metrics(comment_path.parent)
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    recommendation = recommendation_for(metrics)
+    console.print("[green]PR comment generated.[/]")
+    console.print(f"Run directory: {comment_path.parent}")
+    console.print(f"Output path: {comment_path}")
     console.print(f"Recommendation: {recommendation}")
 
 
