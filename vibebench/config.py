@@ -38,7 +38,7 @@ class ProjectConfig(BaseModel):
 
 
 class ChecksConfig(BaseModel):
-    """Commands VibeBench will run in later milestones."""
+    """Commands VibeBench runs during checks."""
 
     model_config = ConfigDict(extra="forbid")
 

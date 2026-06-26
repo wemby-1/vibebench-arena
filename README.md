@@ -32,6 +32,7 @@ The project aims to be:
 python -m pip install -e ".[dev]"
 python -m vibebench --help
 python -m vibebench init
+python -m vibebench check
 ```
 
 The `init` command creates:
@@ -39,6 +40,33 @@ The `init` command creates:
 ```text
 .vibebench/config.yaml
 ```
+
+The `check` command loads `.vibebench/config.yaml`, runs the configured
+`checks.test` and `checks.lint` commands, prints a Rich terminal summary, and
+writes run artifacts under `.vibebench/runs/<timestamp>/`:
+
+```text
+.vibebench/runs/<timestamp>/metrics.json
+.vibebench/runs/<timestamp>/check.log
+```
+
+Example summary:
+
+```text
+VibeBench check: vibebench-project
+Status: passed
+Score: 100
+Risk: low
+
+Group   Command        Status   Exit   Duration
+test    pytest -q      passed   0      0.420s
+lint    ruff check .   passed   0      0.120s
+
+Metrics: .vibebench/runs/20260626_120000/metrics.json
+```
+
+Git diff risk analysis and HTML reports are planned for later milestones.
+
 
 Default configuration:
 
@@ -71,6 +99,9 @@ This first milestone includes:
 - Rich terminal output
 - Pydantic config models
 - YAML config loading with beginner-friendly errors
+- configured test and lint command execution
+- JSON metrics and readable check logs
+- simple VibeScore and risk level calculation
 - pytest tests
 - ruff lint configuration
 - GitHub Actions CI
@@ -81,6 +112,7 @@ Available commands:
 vibebench --help
 vibebench version
 vibebench init
+vibebench check
 ```
 
 ## Built with a Codex-First Workflow
@@ -97,7 +129,6 @@ better first pass before review begins.
 
 Planned next steps:
 
-- run configured test and lint commands
 - add basic git working-tree and patch awareness
 - flag risky file changes such as secrets and deleted tests
 - produce a simple terminal verification summary
