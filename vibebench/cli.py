@@ -10,6 +10,12 @@ from rich.table import Table
 from vibebench import __version__
 from vibebench.config import ConfigError, default_config_yaml, load_config
 from vibebench.paths import config_file
+from vibebench.report import (
+    ReportError,
+    generate_report,
+    load_metrics,
+    recommendation_for,
+)
 from vibebench.runner import CheckRunResult, run_checks
 
 app = typer.Typer(
@@ -84,6 +90,39 @@ def check(project_root: ProjectRootOption = Path(".")) -> None:
 
     if result.overall_status == "failed":
         raise typer.Exit(code=1)
+
+
+@app.command()
+def report(
+    project_root: ProjectRootOption = Path("."),
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            help="Specific .vibebench/runs/<timestamp> directory to render.",
+        ),
+    ] = None,
+) -> None:
+    """Generate a static HTML report for a VibeBench run."""
+    root = project_root.resolve()
+    selected_run_dir = None
+    if run_dir:
+        selected_run_dir = (
+            run_dir if run_dir.is_absolute() else root / run_dir
+        ).resolve()
+
+    try:
+        report_path = generate_report(root, selected_run_dir)
+        metrics = load_metrics(report_path.parent.parent)
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    recommendation = recommendation_for(metrics)
+    console.print("[green]Report generated.[/]")
+    console.print(f"Run directory: {report_path.parent.parent}")
+    console.print(f"Report path: {report_path}")
+    console.print(f"Recommendation: {recommendation}")
 
 
 def render_check_summary(result: CheckRunResult) -> None:

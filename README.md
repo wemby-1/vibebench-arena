@@ -33,6 +33,7 @@ python -m pip install -e ".[dev]"
 python -m vibebench --help
 python -m vibebench init
 python -m vibebench check
+python -m vibebench report
 ```
 
 The `init` command creates:
@@ -68,6 +69,23 @@ lint    ruff check .   passed   0      0.120s
 Metrics: .vibebench/runs/20260626_120000/metrics.json
 ```
 
+The `report` command turns the latest run into a static HTML report:
+
+```bash
+python -m vibebench check
+python -m vibebench report
+```
+
+It writes:
+
+```text
+.vibebench/runs/<timestamp>/report/index.html
+```
+
+The report is a local, dependency-light HTML file suitable for screenshots,
+sharing in review, and inspecting the command results, VibeScore, risk findings,
+and Git diff summary. PR comment generation is planned for a later milestone.
+
 Git diff risk analysis currently flags issues such as:
 
 - deleted test files
@@ -78,8 +96,7 @@ Git diff risk analysis currently flags issues such as:
 - large patches over the configured line threshold
 - changes touching more than 20 files
 
-HTML reports and PR comments are planned for later milestones.
-
+PR comments are planned for later milestones.
 
 Default configuration:
 
@@ -114,7 +131,7 @@ This first milestone includes:
 - YAML config loading with beginner-friendly errors
 - configured test and lint command execution
 - Git diff risk analysis for uncommitted changes
-- JSON metrics and readable check logs
+- JSON metrics, readable check logs, and static HTML reports
 - VibeScore and risk level calculation
 - pytest tests
 - ruff lint configuration
@@ -143,13 +160,11 @@ better first pass before review begins.
 
 Planned next steps:
 
-- produce a simple terminal verification summary
 - add machine-readable output for CI integrations
-- explore richer reports after the local CLI is useful
+- add PR comment generation after local reports are useful
 
 Not in v0.1.0:
 
-- HTML reports
 - PR comments
 - benchmark leaderboards
 - multi-agent arena workflows

@@ -27,6 +27,7 @@ python -m pip install -e ".[dev]"
 python -m vibebench --help
 python -m vibebench init
 python -m vibebench check
+python -m vibebench report
 ```
 
 `init` 命令会创建：
@@ -61,6 +62,22 @@ lint    ruff check .   passed   0      0.120s
 Metrics: .vibebench/runs/20260626_120000/metrics.json
 ```
 
+`report` 命令会把最近一次 run 转成静态 HTML 报告：
+
+```bash
+python -m vibebench check
+python -m vibebench report
+```
+
+输出文件：
+
+```text
+.vibebench/runs/<timestamp>/report/index.html
+```
+
+这是一个本地、轻依赖的 HTML 文件，适合截图、代码审查和查看 command results、
+VibeScore、risk findings、Git diff summary。PR comment generation 会在后续里程碑中实现。
+
 当前 Git diff 风险分析会标记这些情况：
 
 - 删除测试文件
@@ -71,8 +88,7 @@ Metrics: .vibebench/runs/20260626_120000/metrics.json
 - patch 行数超过配置阈值
 - 一次修改超过 20 个文件
 
-HTML 报告和 PR comments 会在后续里程碑中实现。
-
+PR comments 会在后续里程碑中实现。
 
 ## 当前 v0.1.0 范围
 
@@ -85,7 +101,7 @@ HTML 报告和 PR comments 会在后续里程碑中实现。
 - YAML 配置加载和易读错误信息
 - 执行配置中的 test 和 lint 命令
 - 对未提交变更进行 Git diff 风险分析
-- JSON metrics 和可读 check 日志
+- JSON metrics、可读 check 日志和静态 HTML 报告
 - VibeScore 与风险等级计算
 - pytest 测试
 - ruff lint 配置
@@ -112,13 +128,11 @@ VibeBench Arena 围绕一个简单理念构建：
 
 后续计划：
 
-- 输出简单的终端验证摘要
 - 增加适合 CI 的机器可读输出
-- 在 CLI 足够有用后，再探索更丰富的报告形式
+- 在本地报告足够有用后，增加 PR comment generation
 
 v0.1.0 不包含：
 
-- HTML 报告
 - PR comments
 - benchmark 排行榜
 - multi-agent arena 工作流
