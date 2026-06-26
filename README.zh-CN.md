@@ -137,6 +137,24 @@ python -m vibebench pr-comment
 
 自动发布 GitHub PR comment 会在后续实现；当前命令只在本地生成文件，不调用 GitHub API。
 
+## 试运行风险检测 Demo
+
+一个干净的 100/100 报告很适合展示基础能力，但 VibeBench 的核心价值还包括：在 AI 生成代码进入交付前，发现那些看起来危险的改动。这个 demo 会创建一个临时仓库，先提交干净基线，然后故意制造几类未提交风险改动，让 VibeBench 去检测。
+
+```bash
+python examples/risk-demo/create_risky_repo.py
+cd /tmp/vibebench-risk-demo
+python -m vibebench check
+python -m vibebench report
+python -m vibebench pr-comment
+```
+
+这个 demo 会故意制造 `.env.local`、`secrets/`、删除测试、修改 lockfile、大 patch 等改动，用来证明 VibeBench 不只是跑测试，还能发现 AI 生成代码中的交付风险。因为包含 critical finding，`vibebench check` 预期会失败。
+
+![VibeBench risk demo preview](docs/assets/risk-demo-preview.svg)
+
+更多细节见 [examples/risk-demo/README.md](examples/risk-demo/README.md)。
+
 ## Roadmap
 
 后续计划：

@@ -147,6 +147,24 @@ into a GitHub Pull Request, issue, or code review. It includes:
 Automatic GitHub PR posting is planned later; the current command is local and
 does not call the GitHub API.
 
+## Try The Risk Demo
+
+A clean 100/100 run is useful, but VibeBench is meant to catch risky generated changes before they ship. The risk demo creates a temporary repository with a clean baseline commit, then intentionally leaves suspicious uncommitted changes for VibeBench to analyze.
+
+```bash
+python examples/risk-demo/create_risky_repo.py
+cd /tmp/vibebench-risk-demo
+python -m vibebench check
+python -m vibebench report
+python -m vibebench pr-comment
+```
+
+The demo intentionally touches `.env.local` and `secrets/`, deletes a test file, changes a lockfile, and creates a large patch. `vibebench check` is expected to fail because critical findings are present.
+
+![VibeBench risk demo preview](docs/assets/risk-demo-preview.svg)
+
+See [examples/risk-demo/README.md](examples/risk-demo/README.md) for details.
+
 ## Roadmap
 
 Planned next milestones:

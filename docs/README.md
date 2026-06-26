@@ -3,6 +3,9 @@
 `docs/assets/report-preview.svg` is a static README preview asset. It is
 intended to show the shape of a clean VibeBench HTML report on GitHub.
 
+`docs/assets/risk-demo-preview.svg` is a static README preview asset for the
+risk demo. It illustrates VibeBench catching dangerous generated-code changes.
+
 Real reports are generated locally by running:
 
 ```bash
