@@ -36,7 +36,8 @@ python -m vibebench check
 ```
 
 `check` 命令会读取 `.vibebench/config.yaml`，运行配置里的
-`checks.test` 和 `checks.lint` 命令，打印 Rich 终端摘要，并把本次运行结果写入：
+`checks.test` 和 `checks.lint` 命令，分析当前 Git 工作区相对 `HEAD` 的 diff，
+打印 Rich 终端摘要，并把本次运行结果写入：
 
 ```text
 .vibebench/runs/<timestamp>/metrics.json
@@ -50,6 +51,8 @@ VibeBench check: vibebench-project
 Status: passed
 Score: 100
 Risk: low
+Diff: 0 files, 0 patch lines
+Findings: 0 critical, 0 high, 0 warning, 0 info
 
 Group   Command        Status   Exit   Duration
 test    pytest -q      passed   0      0.420s
@@ -58,7 +61,17 @@ lint    ruff check .   passed   0      0.120s
 Metrics: .vibebench/runs/20260626_120000/metrics.json
 ```
 
-Git diff 风险分析和 HTML 报告会在后续里程碑中实现。
+当前 Git diff 风险分析会标记这些情况：
+
+- 删除测试文件
+- 修改或新增 `.env`、`.env.*`
+- 修改或新增 `secrets/` 目录下的文件
+- 路径中包含 `token`、`api_key`、`password` 等 secret-like 关键词
+- 修改 `package-lock.json`、`poetry.lock` 等 lockfile
+- patch 行数超过配置阈值
+- 一次修改超过 20 个文件
+
+HTML 报告和 PR comments 会在后续里程碑中实现。
 
 
 ## 当前 v0.1.0 范围
@@ -71,8 +84,9 @@ Git diff 风险分析和 HTML 报告会在后续里程碑中实现。
 - Pydantic 配置模型
 - YAML 配置加载和易读错误信息
 - 执行配置中的 test 和 lint 命令
+- 对未提交变更进行 Git diff 风险分析
 - JSON metrics 和可读 check 日志
-- 简单 VibeScore 与风险等级计算
+- VibeScore 与风险等级计算
 - pytest 测试
 - ruff lint 配置
 - GitHub Actions CI
@@ -98,15 +112,13 @@ VibeBench Arena 围绕一个简单理念构建：
 
 后续计划：
 
-- 增加基础 git 工作区和 patch 感知能力
-- 标记 secrets、测试删除等高风险变更
 - 输出简单的终端验证摘要
 - 增加适合 CI 的机器可读输出
 - 在 CLI 足够有用后，再探索更丰富的报告形式
 
 v0.1.0 不包含：
 
-- git diff 分析
 - HTML 报告
+- PR comments
 - benchmark 排行榜
 - multi-agent arena 工作流

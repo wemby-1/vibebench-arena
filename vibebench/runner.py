@@ -12,6 +12,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from vibebench.config import VibeBenchConfig
+from vibebench.gitdiff import DiffAnalysis, RiskFinding, analyze_git_diff
 from vibebench.paths import config_dir
 
 CommandStatus = Literal["passed", "failed"]
@@ -34,13 +35,18 @@ class CommandResult(BaseModel):
 
 
 class CheckSummary(BaseModel):
-    """Aggregate command counts for a check run."""
+    """Aggregate command and finding counts for a check run."""
 
     model_config = ConfigDict(extra="forbid")
 
     total_commands: int
     passed_commands: int
     failed_commands: int
+    total_findings: int = 0
+    critical_findings: int = 0
+    high_findings: int = 0
+    warning_findings: int = 0
+    info_findings: int = 0
 
 
 class CheckRunResult(BaseModel):
@@ -55,15 +61,28 @@ class CheckRunResult(BaseModel):
     score: int
     risk_level: RiskLevel
     command_results: list[CommandResult]
+    diff_analysis: DiffAnalysis
+    risk_findings: list[RiskFinding]
     summary: CheckSummary
     run_dir: Path
     metrics_path: Path
     log_path: Path
 
 
-def score_from_failures(failed_commands: int) -> int:
-    """Calculate the milestone-2 VibeScore."""
-    return max(0, min(100, 100 - (failed_commands * 40)))
+def score_from_failures(
+    failed_commands: int,
+    risk_findings: list[RiskFinding] | None = None,
+) -> int:
+    """Calculate the VibeScore from commands and risk findings."""
+    score = 100 - (failed_commands * 40)
+    for finding in risk_findings or []:
+        if finding.severity == "critical":
+            score -= 30
+        elif finding.severity == "high":
+            score -= 20
+        elif finding.severity == "warning":
+            score -= 8
+    return max(0, min(100, score))
 
 
 def risk_level_for_score(score: int) -> RiskLevel:
@@ -144,14 +163,22 @@ def create_run_dir(project_root: Path, created_at: datetime) -> Path:
 def build_result(
     config: VibeBenchConfig,
     command_results: list[CommandResult],
+    diff_analysis: DiffAnalysis,
+    risk_findings: list[RiskFinding],
     run_dir: Path,
     created_at: datetime,
 ) -> CheckRunResult:
-    """Build structured metrics from command results."""
+    """Build structured metrics from command and diff results."""
     passed_commands = sum(1 for result in command_results if result.status == "passed")
     failed_commands = len(command_results) - passed_commands
-    score = score_from_failures(failed_commands)
-    overall_status: OverallStatus = "passed" if failed_commands == 0 else "failed"
+    critical_findings = count_findings(risk_findings, "critical")
+    high_findings = count_findings(risk_findings, "high")
+    warning_findings = count_findings(risk_findings, "warning")
+    info_findings = count_findings(risk_findings, "info")
+    score = score_from_failures(failed_commands, risk_findings)
+    overall_status: OverallStatus = (
+        "failed" if failed_commands > 0 or critical_findings > 0 else "passed"
+    )
 
     return CheckRunResult(
         project_name=config.project.name,
@@ -160,15 +187,27 @@ def build_result(
         score=score,
         risk_level=risk_level_for_score(score),
         command_results=command_results,
+        diff_analysis=diff_analysis,
+        risk_findings=risk_findings,
         summary=CheckSummary(
             total_commands=len(command_results),
             passed_commands=passed_commands,
             failed_commands=failed_commands,
+            total_findings=len(risk_findings),
+            critical_findings=critical_findings,
+            high_findings=high_findings,
+            warning_findings=warning_findings,
+            info_findings=info_findings,
         ),
         run_dir=run_dir,
         metrics_path=run_dir / "metrics.json",
         log_path=run_dir / "check.log",
     )
+
+
+def count_findings(findings: list[RiskFinding], severity: str) -> int:
+    """Count findings by severity."""
+    return sum(1 for finding in findings if finding.severity == severity)
 
 
 def write_metrics(result: CheckRunResult) -> None:
@@ -189,7 +228,31 @@ def write_log(result: CheckRunResult) -> None:
         f"Score: {result.score}",
         f"Risk level: {result.risk_level}",
         "",
+        "Git diff analysis:",
+        f"Git available: {result.diff_analysis.git_available}",
+        f"Changed files: {result.diff_analysis.changed_file_count}",
+        f"Total added lines: {result.diff_analysis.total_added_lines}",
+        f"Total deleted lines: {result.diff_analysis.total_deleted_lines}",
+        f"Total patch lines: {result.diff_analysis.total_patch_lines}",
+        "Warnings:",
+        *(result.diff_analysis.warnings or ["(none)"]),
+        "",
+        "Risk findings:",
     ]
+
+    if result.risk_findings:
+        for finding in result.risk_findings:
+            paths = ", ".join(finding.paths) if finding.paths else "(none)"
+            lines.extend(
+                [
+                    f"- {finding.severity.upper()} {finding.code}: {finding.message}",
+                    f"  Paths: {paths}",
+                ]
+            )
+    else:
+        lines.append("(none)")
+
+    lines.append("")
 
     for index, command in enumerate(result.command_results, start=1):
         lines.extend(
@@ -218,11 +281,19 @@ def run_checks(
     root = project_root.resolve()
     created_at = datetime.now(UTC)
     run_dir = create_run_dir(root, created_at)
-    results = [
+    command_results = [
         run_command(group, command, root, timeout_seconds)
         for group, command in configured_commands(config)
     ]
-    check_result = build_result(config, results, run_dir, created_at)
+    diff_analysis, risk_findings = analyze_git_diff(root, config.risk_rules)
+    check_result = build_result(
+        config,
+        command_results,
+        diff_analysis,
+        risk_findings,
+        run_dir,
+        created_at,
+    )
     write_metrics(check_result)
     write_log(check_result)
     return check_result

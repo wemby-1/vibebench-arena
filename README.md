@@ -42,8 +42,9 @@ The `init` command creates:
 ```
 
 The `check` command loads `.vibebench/config.yaml`, runs the configured
-`checks.test` and `checks.lint` commands, prints a Rich terminal summary, and
-writes run artifacts under `.vibebench/runs/<timestamp>/`:
+`checks.test` and `checks.lint` commands, analyzes the current Git working-tree
+diff against `HEAD`, prints a Rich terminal summary, and writes run artifacts
+under `.vibebench/runs/<timestamp>/`:
 
 ```text
 .vibebench/runs/<timestamp>/metrics.json
@@ -57,6 +58,8 @@ VibeBench check: vibebench-project
 Status: passed
 Score: 100
 Risk: low
+Diff: 0 files, 0 patch lines
+Findings: 0 critical, 0 high, 0 warning, 0 info
 
 Group   Command        Status   Exit   Duration
 test    pytest -q      passed   0      0.420s
@@ -65,7 +68,17 @@ lint    ruff check .   passed   0      0.120s
 Metrics: .vibebench/runs/20260626_120000/metrics.json
 ```
 
-Git diff risk analysis and HTML reports are planned for later milestones.
+Git diff risk analysis currently flags issues such as:
+
+- deleted test files
+- touched `.env` or `.env.*` files
+- files under `secrets/`
+- secret-like paths containing words such as `token`, `api_key`, or `password`
+- changed lockfiles such as `package-lock.json` or `poetry.lock`
+- large patches over the configured line threshold
+- changes touching more than 20 files
+
+HTML reports and PR comments are planned for later milestones.
 
 
 Default configuration:
@@ -100,8 +113,9 @@ This first milestone includes:
 - Pydantic config models
 - YAML config loading with beginner-friendly errors
 - configured test and lint command execution
+- Git diff risk analysis for uncommitted changes
 - JSON metrics and readable check logs
-- simple VibeScore and risk level calculation
+- VibeScore and risk level calculation
 - pytest tests
 - ruff lint configuration
 - GitHub Actions CI
@@ -129,15 +143,13 @@ better first pass before review begins.
 
 Planned next steps:
 
-- add basic git working-tree and patch awareness
-- flag risky file changes such as secrets and deleted tests
 - produce a simple terminal verification summary
 - add machine-readable output for CI integrations
 - explore richer reports after the local CLI is useful
 
 Not in v0.1.0:
 
-- git diff analysis
 - HTML reports
+- PR comments
 - benchmark leaderboards
 - multi-agent arena workflows

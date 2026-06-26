@@ -101,6 +101,18 @@ def render_check_summary(result: CheckRunResult) -> None:
     console.print(f"Status: [{status_style}]{result.overall_status}[/]")
     console.print(f"Score: [bold]{result.score}[/]")
     console.print(f"Risk: [{risk_style}]{result.risk_level}[/]")
+    console.print(
+        "Diff: "
+        f"{result.diff_analysis.changed_file_count} files, "
+        f"{result.diff_analysis.total_patch_lines} patch lines"
+    )
+    console.print(
+        "Findings: "
+        f"{result.summary.critical_findings} critical, "
+        f"{result.summary.high_findings} high, "
+        f"{result.summary.warning_findings} warning, "
+        f"{result.summary.info_findings} info"
+    )
 
     table = Table(show_header=True, header_style="bold")
     table.add_column("Group")
@@ -120,7 +132,39 @@ def render_check_summary(result: CheckRunResult) -> None:
         )
 
     console.print(table)
+    render_findings(result)
     console.print(f"Metrics: {result.metrics_path}")
+
+
+def render_findings(result: CheckRunResult) -> None:
+    """Render concise risk findings."""
+    visible_findings = [
+        finding
+        for finding in result.risk_findings
+        if finding.severity in {"critical", "high", "warning"}
+    ]
+    if not visible_findings:
+        return
+
+    table = Table(show_header=True, header_style="bold", title="Risk Findings")
+    table.add_column("Severity")
+    table.add_column("Code")
+    table.add_column("Message")
+    table.add_column("Paths")
+
+    severity_style = {"critical": "red", "high": "magenta", "warning": "yellow"}
+    for finding in visible_findings:
+        paths = ", ".join(finding.paths[:3]) if finding.paths else ""
+        if len(finding.paths) > 3:
+            paths = f"{paths}, +{len(finding.paths) - 3} more"
+        table.add_row(
+            f"[{severity_style[finding.severity]}]{finding.severity}[/]",
+            finding.code,
+            finding.message,
+            paths,
+        )
+
+    console.print(table)
 
 
 def main() -> None:
