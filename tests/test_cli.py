@@ -16,11 +16,10 @@ def test_cli_help_works() -> None:
     assert "init" in result.output
 
 
-def test_init_creates_config() -> None:
-    with runner.isolated_filesystem():
-        result = runner.invoke(app, ["init"])
+def test_init_creates_config(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["init", "--project-root", str(tmp_path)])
 
-        config_path = Path(".vibebench/config.yaml")
-        assert result.exit_code == 0
-        assert config_path.exists()
-        assert "vibebench-project" in config_path.read_text(encoding="utf-8")
+    config_path = tmp_path / ".vibebench" / "config.yaml"
+    assert result.exit_code == 0
+    assert config_path.exists()
+    assert "vibebench-project" in config_path.read_text(encoding="utf-8")
