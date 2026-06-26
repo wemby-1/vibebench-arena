@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">VibeBench Arena report preview</title>
+  <desc id="desc">A static preview of a VibeBench report showing status passed, VibeScore 100, low risk, two passed commands, no changed files, no patch lines, and no risk findings.</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#101828" flood-opacity="0.18"/>
+    </filter>
+    <style>
+      .bg { fill: #f6f7f9; }
+      .ink { fill: #17202a; }
+      .muted { fill: #667085; }
+      .panel { fill: #ffffff; stroke: #d9dee7; stroke-width: 1; }
+      .hero { fill: #101828; }
+      .hero-muted { fill: #c8d2e2; }
+      .white { fill: #ffffff; }
+      .green { fill: #127c56; }
+      .green-bg { fill: #dcfae6; }
+      .blue-bg { fill: #e8f0ff; }
+      .line { stroke: #d9dee7; stroke-width: 1; }
+      .title { font: 800 42px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 0; }
+      .h2 { font: 750 24px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 0; }
+      .h3 { font: 750 18px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 0; }
+      .body { font: 500 16px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 0; }
+      .small { font: 650 13px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 0; }
+      .mono { font: 600 15px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0; }
+      .number { font: 850 34px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 0; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1200" height="760" rx="0"/>
+  <rect x="42" y="34" width="1116" height="692" rx="14" class="panel" filter="url(#shadow)"/>
+
+  <rect x="72" y="64" width="1056" height="230" rx="10" class="hero"/>
+  <text x="108" y="111" class="small hero-muted">VIBEBENCH ARENA</text>
+  <text x="108" y="160" class="title white">Codex-first quality gate for vibe coding projects.</text>
+  <text x="108" y="201" class="body hero-muted">vibebench-project · generated after a clean check run</text>
+
+  <rect x="108" y="230" width="265" height="92" rx="8" fill="#ffffff"/>
+  <text x="130" y="263" class="small muted">Overall Status</text>
+  <rect x="130" y="276" width="92" height="30" rx="15" class="green-bg"/>
+  <text x="150" y="297" class="small green">passed</text>
+
+  <rect x="401" y="230" width="265" height="92" rx="8" fill="#ffffff"/>
+  <text x="423" y="263" class="small muted">VibeScore</text>
+  <text x="423" y="304" class="number ink">100</text>
+
+  <rect x="694" y="230" width="265" height="92" rx="8" fill="#ffffff"/>
+  <text x="716" y="263" class="small muted">Risk Level</text>
+  <rect x="716" y="276" width="70" height="30" rx="15" class="green-bg"/>
+  <text x="737" y="297" class="small green">low</text>
+
+  <g transform="translate(72 326)">
+    <rect width="120" height="94" rx="8" class="panel"/>
+    <text x="18" y="34" class="small muted">Commands</text>
+    <text x="18" y="72" class="number ink">2/2</text>
+  </g>
+  <g transform="translate(210 326)">
+    <rect width="120" height="94" rx="8" class="panel"/>
+    <text x="18" y="34" class="small muted">Changed</text>
+    <text x="18" y="72" class="number ink">0</text>
+  </g>
+  <g transform="translate(348 326)">
+    <rect width="120" height="94" rx="8" class="panel"/>
+    <text x="18" y="34" class="small muted">Patch</text>
+    <text x="18" y="72" class="number ink">0</text>
+  </g>
+  <g transform="translate(486 326)">
+    <rect width="120" height="94" rx="8" class="panel"/>
+    <text x="18" y="34" class="small muted">Findings</text>
+    <text x="18" y="72" class="number ink">0</text>
+  </g>
+  <g transform="translate(624 326)">
+    <rect width="504" height="94" rx="8" class="panel"/>
+    <text x="22" y="35" class="small muted">Recommendation</text>
+    <text x="22" y="68" class="body ink">Looks safe to review and ship, assuming behavior is correct.</text>
+  </g>
+
+  <g transform="translate(72 454)">
+    <rect width="670" height="174" rx="10" class="panel"/>
+    <text x="24" y="39" class="h2 ink">Command Results</text>
+    <line x1="24" y1="62" x2="646" y2="62" class="line"/>
+    <text x="24" y="91" class="small muted">Group</text>
+    <text x="155" y="91" class="small muted">Command</text>
+    <text x="438" y="91" class="small muted">Status</text>
+    <text x="554" y="91" class="small muted">Exit</text>
+    <line x1="24" y1="108" x2="646" y2="108" class="line"/>
+    <text x="24" y="137" class="body ink">test</text>
+    <text x="155" y="137" class="mono ink">pytest -q</text>
+    <rect x="438" y="117" width="80" height="28" rx="14" class="green-bg"/>
+    <text x="457" y="136" class="small green">passed</text>
+    <text x="554" y="137" class="body ink">0</text>
+    <line x1="24" y1="151" x2="646" y2="151" class="line"/>
+    <text x="24" y="178" class="body ink">lint</text>
+    <text x="155" y="178" class="mono ink">ruff check .</text>
+    <rect x="438" y="158" width="80" height="28" rx="14" class="green-bg"/>
+    <text x="457" y="177" class="small green">passed</text>
+    <text x="554" y="178" class="body ink">0</text>
+  </g>
+
+  <g transform="translate(770 454)">
+    <rect width="358" height="174" rx="10" class="panel"/>
+    <text x="24" y="39" class="h2 ink">Risk Findings</text>
+    <rect x="24" y="65" width="310" height="74" rx="8" class="blue-bg"/>
+    <circle cx="52" cy="102" r="13" class="green-bg"/>
+    <path d="M45 102l5 5 10-13" fill="none" stroke="#127c56" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="78" y="98" class="h3 ink">No risk findings detected</text>
+    <text x="78" y="123" class="small muted">Git diff is clean against HEAD.</text>
+  </g>
+
+  <g transform="translate(72 660)">
+    <text x="0" y="0" class="body muted">Codex writes code. VibeBench verifies it.</text>
+    <text x="740" y="0" class="body muted">Static HTML report · local quality gate</text>
+  </g>
+</svg>

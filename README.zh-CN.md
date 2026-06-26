@@ -1,138 +1,138 @@
 # VibeBench Arena
 
-Codex-first quality gate for vibe coding projects.
+**AI 生成代码提交前的本地质量门禁。**
 
-> Codex writes code. VibeBench verifies it.
+> Codex 负责写代码，VibeBench 负责验收。
 
-VibeBench Arena 是一个面向 Codex-first 和 AI 辅助开发流程的本地质量门禁工具。
-AI coding agent 可以很快生成代码，但开发者仍然需要一个本地工具来判断这些代码是否适合进入交付流程。
+[![CI](https://github.com/wemby-1/vibebench-arena/actions/workflows/ci.yml/badge.svg)](https://github.com/wemby-1/vibebench-arena/actions/workflows/ci.yml)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
+![License Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-green)
 
-v0.1.0 的目标很小：建立干净的 Python CLI 脚手架、配置模型和基础测试。它暂时不是大型 benchmark 平台。
+![VibeBench report preview](docs/assets/report-preview.svg)
 
-## 为什么需要它
+VibeBench Arena 是一个面向 Codex-first 和 AI 辅助开发流程的本地验证工具。AI coding agent 可以很快生成代码，但开发者仍然需要一个清晰的本地质量门禁，判断这些改动是否适合进入 review、commit 和交付流程。
 
-Vibe coding 提升了开发速度，也提高了代码审查压力。VibeBench Arena 希望在 AI 生成代码和最终交付之间，提供一个轻量、清晰、可本地运行的验证步骤。
+当前 v0.1.0 仍然保持小而清晰：CLI、配置初始化、命令检查、Git diff 风险分析、VibeScore，以及静态 HTML 报告。
 
-项目原则：
+## 为什么需要 VibeBench？
 
-- 优先本地运行
-- 对新手友好
-- 适合 Codex-first 工作流
-- 每个里程碑只增加一个明确能力
+AI 生成代码提升了速度，也增加了审查压力。VibeBench 的目标是在“代码生成”和“准备提交”之间增加一个本地验收步骤，让开发者更快看见明显风险。
+
+它的设计取向是：
+
+- 本地优先，可以直接在现有仓库里运行
+- 输出清晰，对 Python 工具链新手也友好
+- 适合 Codex-first 工作流，但不替代人工 review
+- 小步迭代，每个里程碑只增加一个明确能力
+
+## 现在会检查什么？
+
+VibeBench v0.1.0 已经支持：
+
+- 通过 `.vibebench/config.yaml` 初始化项目配置
+- 运行配置中的 test 和 lint 命令
+- 计算 VibeScore 和风险等级
+- 分析未提交改动的 Git diff 风险
+- 生成适合本地 review 和截图的静态 HTML 报告
+
+Git diff 风险分析会标记：
+
+- 删除测试文件
+- 修改或新增 `.env`、`.env.*`、`secrets/` 路径
+- 路径中包含 `token`、`api_key`、`password` 等疑似密钥关键词
+- 修改 `package-lock.json`、`poetry.lock`、`uv.lock` 等 lockfile
+- patch 行数超过配置阈值
+- 一次改动超过 20 个文件
 
 ## 快速开始
 
 ```bash
 python -m pip install -e ".[dev]"
-python -m vibebench --help
 python -m vibebench init
 python -m vibebench check
 python -m vibebench report
 ```
 
-`init` 命令会创建：
+默认配置示例：
 
-```text
-.vibebench/config.yaml
+```yaml
+project:
+  name: vibebench-project
+
+checks:
+  test:
+    - pytest -q
+  lint:
+    - ruff check .
+
+risk_rules:
+  forbidden_paths:
+    - .env
+    - .env.*
+    - secrets/
+  warn_if_tests_deleted: true
+  warn_if_lockfiles_changed: true
+  large_patch_lines: 500
 ```
 
-`check` 命令会读取 `.vibebench/config.yaml`，运行配置里的
-`checks.test` 和 `checks.lint` 命令，分析当前 Git 工作区相对 `HEAD` 的 diff，
-打印 Rich 终端摘要，并把本次运行结果写入：
+## 示例流程
+
+```bash
+# 第一次使用时创建配置
+python -m vibebench init
+
+# 提交前运行本地质量门禁
+python -m vibebench check
+
+# 生成静态 HTML 报告
+python -m vibebench report
+```
+
+`vibebench check` 会写入：
 
 ```text
 .vibebench/runs/<timestamp>/metrics.json
 .vibebench/runs/<timestamp>/check.log
 ```
 
-示例输出：
-
-```text
-VibeBench check: vibebench-project
-Status: passed
-Score: 100
-Risk: low
-Diff: 0 files, 0 patch lines
-Findings: 0 critical, 0 high, 0 warning, 0 info
-
-Group   Command        Status   Exit   Duration
-test    pytest -q      passed   0      0.420s
-lint    ruff check .   passed   0      0.120s
-
-Metrics: .vibebench/runs/20260626_120000/metrics.json
-```
-
-`report` 命令会把最近一次 run 转成静态 HTML 报告：
-
-```bash
-python -m vibebench check
-python -m vibebench report
-```
-
-输出文件：
+`vibebench report` 会写入：
 
 ```text
 .vibebench/runs/<timestamp>/report/index.html
 ```
 
-这是一个本地、轻依赖的 HTML 文件，适合截图、代码审查和查看 command results、
-VibeScore、risk findings、Git diff summary。PR comment generation 会在后续里程碑中实现。
+## HTML 报告展示什么？
 
-当前 Git diff 风险分析会标记这些情况：
+静态 HTML 报告不需要前端构建工具，适合本地查看、截图和 README 展示。它包含：
 
-- 删除测试文件
-- 修改或新增 `.env`、`.env.*`
-- 修改或新增 `secrets/` 目录下的文件
-- 路径中包含 `token`、`api_key`、`password` 等 secret-like 关键词
-- 修改 `package-lock.json`、`poetry.lock` 等 lockfile
-- patch 行数超过配置阈值
-- 一次修改超过 20 个文件
+- 项目名和运行时间
+- overall status、VibeScore、risk level
+- test 和 lint 命令结果
+- Git diff 风险发现
+- changed files 和 patch lines 摘要
+- 简短的 review / ship 建议
 
-PR comments 会在后续里程碑中实现。
-
-## 当前 v0.1.0 范围
-
-本版本包含：
-
-- Python 3.11+ 包结构
-- 基于 Typer 的 CLI
-- Rich 终端输出
-- Pydantic 配置模型
-- YAML 配置加载和易读错误信息
-- 执行配置中的 test 和 lint 命令
-- 对未提交变更进行 Git diff 风险分析
-- JSON metrics、可读 check 日志和静态 HTML 报告
-- VibeScore 与风险等级计算
-- pytest 测试
-- ruff lint 配置
-- GitHub Actions CI
-
-可用命令：
-
-```bash
-vibebench --help
-vibebench version
-vibebench init
-vibebench check
-```
-
-## Built with a Codex-First Workflow
-
-VibeBench Arena 围绕一个简单理念构建：
-
-> Codex writes code. VibeBench verifies it.
-
-项目会优先保持小步迭代、测试清晰、实现可读，并把本地验证自然接入 AI 辅助开发流程。
+`.vibebench/runs/` 下的报告是本地运行产物，不应该提交到仓库。`docs/assets/report-preview.svg` 是专门用于 README 的静态预览图。
 
 ## Roadmap
 
 后续计划：
 
-- 增加适合 CI 的机器可读输出
-- 在本地报告足够有用后，增加 PR comment generation
+- PR comment generation
+- GitHub Action integration
+- multi-agent arena workflows
+- AI 生成改动的 replay timeline
 
 v0.1.0 不包含：
 
-- PR comments
-- benchmark 排行榜
-- multi-agent arena 工作流
+- 托管式 benchmark 排行榜
+- 浏览器应用或 dashboard server
+- multi-agent tournament system
+
+## Built With A Codex-First Workflow
+
+VibeBench Arena 围绕一个简单原则构建：
+
+> Codex 负责写代码，VibeBench 负责验收。
+
+这意味着小步迭代、测试清晰、实现可读，并把本地验证自然接入 AI 辅助开发流程。VibeBench 不替代人工 review，它让 review 有一个更可靠的起点。

@@ -1,104 +1,64 @@
 # VibeBench Arena
 
-Codex-first quality gate for vibe coding projects.
+**Codex-first quality gate for vibe coding projects.**
 
 > Codex writes code. VibeBench verifies it.
 
-VibeBench Arena is a local quality gate for teams using Codex-first or
-AI-assisted development workflows. AI coding agents can produce changes quickly,
-but developers still need a clear, local way to check whether generated code is
-reasonable to ship.
+[![CI](https://github.com/wemby-1/vibebench-arena/actions/workflows/ci.yml/badge.svg)](https://github.com/wemby-1/vibebench-arena/actions/workflows/ci.yml)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
+![License Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-green)
 
-This repository is intentionally starting small. The v0.1.0 milestone provides
-a clean Python CLI scaffold, typed configuration, and test coverage for the
-foundation. It does not try to be a benchmark platform yet.
+![VibeBench report preview](docs/assets/report-preview.svg)
 
-## Why This Exists
+VibeBench Arena is a local verification tool for Codex-first and AI-assisted
+coding workflows. It helps developers check whether AI-generated code is safe to
+review, commit, and ship.
 
-Vibe coding can be fast and useful, but speed creates review pressure. VibeBench
-Arena exists to help developers put lightweight verification between generated
-code and shipping decisions.
+The project is intentionally small today. v0.1.0 focuses on a clean CLI, local
+checks, Git diff risk analysis, VibeScore, and a static HTML report.
 
-The project aims to be:
+## Why VibeBench?
 
-- local-first and easy to run in a normal repository
+AI coding agents can produce useful changes quickly, but speed creates review
+pressure. VibeBench adds a local quality gate between generated code and shipping
+decisions.
+
+It is designed to be:
+
+- local-first and easy to run inside an existing repository
 - readable for developers who are new to Python tooling
-- practical for Codex-first workflows
-- incremental, with each milestone adding one focused capability
+- useful in Codex-first workflows without replacing human review
+- incremental, with focused milestones instead of a large benchmark platform
 
-## Quickstart
+## What It Checks Today
+
+VibeBench v0.1.0 already supports:
+
+- config initialization with `.vibebench/config.yaml`
+- configured test and lint commands
+- VibeScore and risk level calculation
+- Git diff risk analysis for uncommitted changes
+- static HTML reports for local review and screenshots
+
+Git diff risk analysis flags:
+
+- deleted test files
+- touched `.env`, `.env.*`, or `secrets/` paths
+- secret-like paths containing words such as `token`, `api_key`, or `password`
+- changed lockfiles such as `package-lock.json`, `poetry.lock`, or `uv.lock`
+- large patches over the configured threshold
+- changes touching more than 20 files
+
+## Quick Start
 
 ```bash
 python -m pip install -e ".[dev]"
-python -m vibebench --help
 python -m vibebench init
 python -m vibebench check
 python -m vibebench report
 ```
 
-The `init` command creates:
-
-```text
-.vibebench/config.yaml
-```
-
-The `check` command loads `.vibebench/config.yaml`, runs the configured
-`checks.test` and `checks.lint` commands, analyzes the current Git working-tree
-diff against `HEAD`, prints a Rich terminal summary, and writes run artifacts
-under `.vibebench/runs/<timestamp>/`:
-
-```text
-.vibebench/runs/<timestamp>/metrics.json
-.vibebench/runs/<timestamp>/check.log
-```
-
-Example summary:
-
-```text
-VibeBench check: vibebench-project
-Status: passed
-Score: 100
-Risk: low
-Diff: 0 files, 0 patch lines
-Findings: 0 critical, 0 high, 0 warning, 0 info
-
-Group   Command        Status   Exit   Duration
-test    pytest -q      passed   0      0.420s
-lint    ruff check .   passed   0      0.120s
-
-Metrics: .vibebench/runs/20260626_120000/metrics.json
-```
-
-The `report` command turns the latest run into a static HTML report:
-
-```bash
-python -m vibebench check
-python -m vibebench report
-```
-
-It writes:
-
-```text
-.vibebench/runs/<timestamp>/report/index.html
-```
-
-The report is a local, dependency-light HTML file suitable for screenshots,
-sharing in review, and inspecting the command results, VibeScore, risk findings,
-and Git diff summary. PR comment generation is planned for a later milestone.
-
-Git diff risk analysis currently flags issues such as:
-
-- deleted test files
-- touched `.env` or `.env.*` files
-- files under `secrets/`
-- secret-like paths containing words such as `token`, `api_key`, or `password`
-- changed lockfiles such as `package-lock.json` or `poetry.lock`
-- large patches over the configured line threshold
-- changes touching more than 20 files
-
-PR comments are planned for later milestones.
-
-Default configuration:
+The default config looks like this:
 
 ```yaml
 project:
@@ -120,51 +80,69 @@ risk_rules:
   large_patch_lines: 500
 ```
 
-## Current v0.1.0 Scope
-
-This first milestone includes:
-
-- Python 3.11+ package scaffold
-- Typer-based CLI
-- Rich terminal output
-- Pydantic config models
-- YAML config loading with beginner-friendly errors
-- configured test and lint command execution
-- Git diff risk analysis for uncommitted changes
-- JSON metrics, readable check logs, and static HTML reports
-- VibeScore and risk level calculation
-- pytest tests
-- ruff lint configuration
-- GitHub Actions CI
-
-Available commands:
+## Example Workflow
 
 ```bash
-vibebench --help
-vibebench version
-vibebench init
-vibebench check
+# Create project config once
+python -m vibebench init
+
+# Run local quality gate before committing
+python -m vibebench check
+
+# Generate a static local report
+python -m vibebench report
 ```
 
-## Built with a Codex-First Workflow
+`vibebench check` writes:
 
-VibeBench Arena is designed around the idea that Codex writes code and
-VibeBench verifies it. That means the project values small milestones, clear
-tests, readable implementation, and local checks that fit naturally into an
-AI-assisted development loop.
+```text
+.vibebench/runs/<timestamp>/metrics.json
+.vibebench/runs/<timestamp>/check.log
+```
 
-The goal is not to replace human review. The goal is to give developers a
-better first pass before review begins.
+`vibebench report` writes:
+
+```text
+.vibebench/runs/<timestamp>/report/index.html
+```
+
+## What The HTML Report Shows
+
+The static report is a dependency-light HTML file suitable for local review,
+screenshots, and README demos. It includes:
+
+- project name and run timestamp
+- overall status, VibeScore, and risk level
+- command results for test and lint checks
+- risk findings from Git diff analysis
+- changed files and patch line summary
+- a short recommendation for review or shipping
+
+Generated reports under `.vibebench/runs/` are local artifacts and should not be
+committed. The image at `docs/assets/report-preview.svg` is a static README
+preview asset.
 
 ## Roadmap
 
-Planned next steps:
+Planned next milestones:
 
-- add machine-readable output for CI integrations
-- add PR comment generation after local reports are useful
+- PR comment generation
+- GitHub Action integration
+- multi-agent arena workflows
+- replay timeline for AI-generated changes
 
 Not in v0.1.0:
 
-- PR comments
-- benchmark leaderboards
-- multi-agent arena workflows
+- hosted benchmark leaderboards
+- browser app or dashboard server
+- multi-agent tournament system
+
+## Built With A Codex-First Workflow
+
+VibeBench Arena is built around a simple principle:
+
+> Codex writes code. VibeBench verifies it.
+
+That means small milestones, clear tests, readable implementation, and local
+checks that fit naturally into AI-assisted development. VibeBench does not
+replace human review; it gives reviewers a better starting point.
