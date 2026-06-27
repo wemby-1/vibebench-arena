@@ -1,0 +1,72 @@
+name: Bug report
+description: Report a reproducible problem in VibeBench Arena
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please do not paste real secrets, private keys, tokens, or confidential logs.
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: Ubuntu 24.04, macOS 15, Windows 11
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: Python 3.11.9
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: VibeBench version
+      placeholder: 0.1.0 or commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command run
+      description: The exact command that triggered the issue.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Sanitized config
+      description: Paste `.vibebench/config.yaml` with secrets and private paths removed.
+      render: yaml
+  - type: textarea
+    id: output
+    attributes:
+      label: Sanitized output
+      description: Paste relevant terminal output with secrets and private paths removed.
+      render: text
+  - type: dropdown
+    id: secrets
+    attributes:
+      label: Does this involve secrets or sensitive files?
+      options:
+        - "No"
+        - "Yes, but this report is sanitized"
+        - "Unsure"
+    validations:
+      required: true

@@ -165,6 +165,14 @@ The demo intentionally touches `.env.local` and `secrets/`, deletes a test file,
 
 See [examples/risk-demo/README.md](examples/risk-demo/README.md) for details.
 
+## Documentation
+
+- [Quickstart](docs/quickstart.md)
+- [Risk rules](docs/risk-rules.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security](SECURITY.md)
+- [Changelog](CHANGELOG.md)
+
 ## Roadmap
 
 Planned next milestones:

@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest a focused improvement for VibeBench Arena
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: What workflow or problem would this improve?
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Current workaround
+      description: How are you handling this today, if at all?
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest useful version of the feature.
+    validations:
+      required: true
+  - type: checkboxes
+    id: area
+    attributes:
+      label: Related area
+      options:
+        - label: check command
+        - label: HTML report
+        - label: PR comment
+        - label: risk rules
+        - label: config
+        - label: future agent arena
+        - label: documentation or examples

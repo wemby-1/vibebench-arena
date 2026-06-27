@@ -36,6 +36,11 @@ dev = [
   "ruff>=0.5,<1",
 ]
 
+[project.urls]
+Homepage = "https://github.com/wemby-1/vibebench-arena"
+Repository = "https://github.com/wemby-1/vibebench-arena"
+Issues = "https://github.com/wemby-1/vibebench-arena/issues"
+
 [project.scripts]
 vibebench = "vibebench.cli:main"
 

@@ -155,6 +155,14 @@ python -m vibebench pr-comment
 
 更多细节见 [examples/risk-demo/README.md](examples/risk-demo/README.md)。
 
+## 文档
+
+- [Quickstart](docs/quickstart.md)
+- [Risk rules](docs/risk-rules.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security](SECURITY.md)
+- [Changelog](CHANGELOG.md)
+
 ## Roadmap
 
 后续计划：
