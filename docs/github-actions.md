@@ -8,13 +8,13 @@ Copy the example workflow into your repository:
 
 ```bash
 mkdir -p .github/workflows
-cp .github/workflows/vibebench.yml.example .github/workflows/vibebench.yml
+cp docs/examples/github-actions/vibebench.yml .github/workflows/vibebench.yml
 ```
 
 The example lives at:
 
 ```text
-.github/workflows/vibebench.yml.example
+docs/examples/github-actions/vibebench.yml
 ```
 
 ## What The Workflow Does

@@ -146,7 +146,7 @@ python -m vibebench gh-summary
 
 `vibebench gh-summary` 会在 `GITHUB_STEP_SUMMARY` 存在时写入 GitHub Actions step summary。当前它不会通过 GitHub API 自动发布 PR comment。
 
-可以参考 [.github/workflows/vibebench.yml.example](.github/workflows/vibebench.yml.example)：这个示例 workflow 会运行 VibeBench，并用 `if: always()` 生成 report、comment、summary，同时上传 `.vibebench/runs` 作为 artifacts。更多说明见 [docs/github-actions.md](docs/github-actions.md)。
+可以参考 [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml)：这个示例 workflow 会运行 VibeBench，并用 `if: always()` 生成 report、comment、summary，同时上传 `.vibebench/runs` 作为 artifacts。更多说明见 [docs/github-actions.md](docs/github-actions.md)。
 
 ## 试运行风险检测 Demo
 

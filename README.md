@@ -156,7 +156,7 @@ does not call the GitHub API.
 
 `vibebench gh-summary` writes a concise Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is set. It does not post PR comments through the GitHub API yet.
 
-See [.github/workflows/vibebench.yml.example](.github/workflows/vibebench.yml.example) for a copyable workflow that runs VibeBench, generates reports/comments/summaries with `if: always()`, and uploads `.vibebench/runs` as artifacts. More details are in [docs/github-actions.md](docs/github-actions.md).
+See [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) for a copyable workflow that runs VibeBench, generates reports/comments/summaries with `if: always()`, and uploads `.vibebench/runs` as artifacts. More details are in [docs/github-actions.md](docs/github-actions.md).
 
 ## Try The Risk Demo
 
