@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Upgraded active GitHub Actions to Node 24-compatible action majors.
 - Active GitHub Actions CI now dogfoods VibeBench and uploads `.vibebench/runs` artifacts.
 - `vibebench gh-summary` for GitHub Actions step summaries without GitHub API posting.
 - Example GitHub Actions workflow and setup documentation.
