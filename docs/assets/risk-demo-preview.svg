@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
   <title id="title">VibeBench Arena risky check preview</title>
   <desc id="desc">Static preview of a VibeBench risk demo report showing critical findings.</desc>
-  <rect width="1200" height="720" fill="#f6f7f9"/>
+  <rect width="1200" height="800" fill="#f6f7f9"/>
   <rect x="48" y="42" width="1104" height="190" rx="8" fill="#101828"/>
   <text x="86" y="92" fill="#b9c5d8" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" font-weight="700">VIBEBENCH ARENA</text>
   <text x="86" y="136" fill="#ffffff" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="38" font-weight="800">Risk demo: dangerous AI-generated changes caught</text>
@@ -29,29 +29,35 @@
   <text x="974" y="300" fill="#667085" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" font-weight="700">Findings</text>
   <text x="974" y="350" fill="#b42318" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="34" font-weight="850">5</text>
 
-  <rect x="86" y="410" width="1028" height="218" rx="8" fill="#ffffff" stroke="#d9dee7"/>
+  <rect x="86" y="410" width="1028" height="292" rx="8" fill="#ffffff" stroke="#d9dee7"/>
   <text x="118" y="456" fill="#17202a" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="26" font-weight="800">Risk findings</text>
+  <text x="118" y="486" fill="#667085" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16">Suspicious uncommitted changes detected before shipping.</text>
 
-  <rect x="118" y="486" width="144" height="30" rx="15" fill="#fee4e2"/>
-  <text x="140" y="507" fill="#b42318" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="800">critical</text>
-  <text x="286" y="507" fill="#17202a" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" font-weight="700">forbidden_paths_touched</text>
-  <text x="548" y="507" fill="#667085" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18">.env.local, secrets/config.json</text>
+  <rect x="118" y="512" width="132" height="30" rx="15" fill="#fee4e2"/>
+  <text x="140" y="533" fill="#b42318" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="800">critical</text>
+  <text x="286" y="533" fill="#17202a" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" font-weight="700">forbidden path</text>
+  <text x="500" y="533" fill="#667085" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18">.env.local, secrets/config.json</text>
 
-  <rect x="118" y="528" width="144" height="30" rx="15" fill="#fce7f3"/>
-  <text x="158" y="549" fill="#9f1f63" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="800">high</text>
-  <text x="286" y="549" fill="#17202a" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" font-weight="700">tests_deleted</text>
-  <text x="548" y="549" fill="#667085" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18">tests/test_app.py</text>
+  <rect x="118" y="556" width="132" height="30" rx="15" fill="#fce7f3"/>
+  <text x="158" y="577" fill="#9f1f63" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="800">high</text>
+  <text x="286" y="577" fill="#17202a" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" font-weight="700">secret-like file</text>
+  <text x="500" y="577" fill="#667085" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18">secrets/config.json</text>
 
-  <rect x="118" y="570" width="144" height="30" rx="15" fill="#fef0c7"/>
-  <text x="146" y="591" fill="#a15c07" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="800">warning</text>
-  <text x="286" y="591" fill="#17202a" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" font-weight="700">lockfiles_changed</text>
-  <text x="548" y="591" fill="#667085" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18">package-lock.json</text>
+  <rect x="118" y="600" width="132" height="30" rx="15" fill="#fce7f3"/>
+  <text x="158" y="621" fill="#9f1f63" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="800">high</text>
+  <text x="286" y="621" fill="#17202a" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" font-weight="700">test deleted</text>
+  <text x="500" y="621" fill="#667085" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18">tests/test_app.py</text>
 
-  <rect x="118" y="612" width="144" height="30" rx="15" fill="#fef0c7"/>
-  <text x="146" y="633" fill="#a15c07" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="800">warning</text>
-  <text x="286" y="633" fill="#17202a" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" font-weight="700">large_patch</text>
-  <text x="548" y="633" fill="#667085" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18">patch exceeds configured threshold</text>
+  <rect x="118" y="644" width="132" height="30" rx="15" fill="#fef0c7"/>
+  <text x="140" y="665" fill="#a15c07" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="800">warning</text>
+  <text x="286" y="665" fill="#17202a" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" font-weight="700">lockfile changed</text>
+  <text x="500" y="665" fill="#667085" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18">package-lock.json</text>
 
-  <text x="86" y="680" fill="#667085" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18">Generated by VibeBench Arena</text>
-  <text x="810" y="680" fill="#667085" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18">Codex writes code. VibeBench verifies it.</text>
+  <rect x="118" y="688" width="132" height="30" rx="15" fill="#fef0c7"/>
+  <text x="140" y="709" fill="#a15c07" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="800">warning</text>
+  <text x="286" y="709" fill="#17202a" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" font-weight="700">large patch</text>
+  <text x="500" y="709" fill="#667085" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18">patch exceeds threshold</text>
+
+  <text x="86" y="760" fill="#667085" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18">Generated by VibeBench Arena</text>
+  <text x="810" y="760" fill="#667085" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18">Codex writes code. VibeBench verifies it.</text>
 </svg>
