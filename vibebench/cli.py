@@ -8,6 +8,7 @@ from rich.console import Console
 from rich.table import Table
 
 from vibebench import __version__
+from vibebench.clean import CleanResult, clean_runs
 from vibebench.compare import CompareResult, compare_runs
 from vibebench.config import ConfigError, default_config_yaml, load_config
 from vibebench.doctor import DoctorResult, run_doctor
@@ -204,6 +205,33 @@ def doctor(
 
 
 @app.command()
+def clean(
+    project_root: ProjectRootOption = Path("."),
+    keep: Annotated[
+        int,
+        typer.Option("--keep", help="Number of newest valid runs to preserve."),
+    ] = 20,
+    runs_dir: Annotated[
+        Path | None,
+        typer.Option("--runs-dir", help="Directory containing VibeBench runs."),
+    ] = None,
+    yes: Annotated[
+        bool,
+        typer.Option("--yes", help="Actually delete cleanup candidates."),
+    ] = False,
+) -> None:
+    """Safely clean old VibeBench run directories."""
+    root = project_root.resolve()
+    try:
+        result = clean_runs(root, runs_dir=runs_dir, keep=keep, yes=yes)
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    render_clean_summary(result)
+
+
+@app.command()
 def history(
     project_root: ProjectRootOption = Path("."),
     limit: Annotated[
@@ -330,6 +358,59 @@ def render_doctor_summary(result: DoctorResult) -> None:
         )
     console.print(table)
 
+
+
+def render_clean_summary(result: CleanResult) -> None:
+    """Render a safe cleanup summary."""
+    console.print()
+    console.print("[bold]VibeBench clean[/]")
+    console.print(f"Runs directory: {result.runs_dir}")
+    console.print(f"Mode: {'dry-run' if result.dry_run else 'delete'}")
+    console.print(f"Keep count: {result.keep}")
+    console.print(f"Total valid runs: {result.total_valid_runs}")
+    console.print(f"Preserved count: {result.preserved_count}")
+    console.print(f"Cleanup candidates: {len(result.candidates)}")
+    console.print(
+        f"Approximate candidate size: "
+        f"{format_bytes(result.total_candidate_size_bytes)}"
+    )
+
+    if not result.candidates:
+        console.print("[green]Nothing to clean.[/]")
+        return
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Run", no_wrap=True)
+    table.add_column("Size")
+    table.add_column("Path")
+    for candidate in result.candidates:
+        table.add_row(
+            candidate.run_id,
+            format_bytes(candidate.size_bytes),
+            str(candidate.path),
+        )
+    console.print(table)
+
+    if result.dry_run:
+        console.print(
+            "[yellow]Dry run only. "
+            "Re-run with --yes to delete these runs.[/]"
+        )
+    else:
+        console.print(f"[green]Deleted {result.deleted_count} run(s).[/]")
+
+
+def format_bytes(value: int) -> str:
+    """Format a byte count for terminal output."""
+    units = ["B", "KiB", "MiB", "GiB"]
+    size = float(value)
+    for unit in units:
+        if size < 1024 or unit == units[-1]:
+            if unit == "B":
+                return f"{int(size)} B"
+            return f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{value} B"
 
 def render_history_summary(result: HistoryResult) -> None:
     """Render a concise Rich table for recent run history."""

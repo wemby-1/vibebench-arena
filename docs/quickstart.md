@@ -43,6 +43,16 @@ python -m vibebench history --limit 5
 python -m vibebench history --runs-dir .vibebench/runs
 ```
 
+## Clean Old Local Runs
+
+```bash
+python -m vibebench clean
+python -m vibebench clean --keep 5
+python -m vibebench clean --keep 5 --yes
+```
+
+`vibebench clean` is dry-run by default. It preserves the newest runs, only considers direct run directories containing `metrics.json`, and deletes nothing unless `--yes` is provided.
+
 ## Run Checks
 
 ```bash
