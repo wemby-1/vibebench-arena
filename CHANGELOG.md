@@ -11,7 +11,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 - Release-readiness documentation for contributors, security reporting, risk rules, and quickstart usage.
 - GitHub issue and pull request templates for focused open-source collaboration.
 
-## [0.1.0] - Planned
+## [0.1.0] - 2026-06-27
 
 ### Added
 
