@@ -126,7 +126,11 @@ def test_gh_summary_writes_to_github_step_summary_env(
     assert "forbidden_paths_touched" in content
 
 
-def test_gh_summary_writes_to_run_dir_when_env_absent(tmp_path: Path) -> None:
+def test_gh_summary_writes_to_run_dir_when_env_absent(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
     run_dir = write_run(tmp_path, "20260627_120000")
 
     output_path = generate_github_summary(tmp_path, run_dir)
@@ -135,7 +139,11 @@ def test_gh_summary_writes_to_run_dir_when_env_absent(tmp_path: Path) -> None:
     assert output_path.exists()
 
 
-def test_run_dir_option_works(tmp_path: Path) -> None:
+def test_run_dir_option_works(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
     first = write_run(tmp_path, "20260627_120000", sample_metrics("first-project"))
     second = write_run(tmp_path, "20260627_130000", sample_metrics("second-project"))
 
@@ -165,7 +173,11 @@ def test_missing_runs_helpful_failure(tmp_path: Path) -> None:
     assert "No VibeBench runs found. Run 'vibebench check' first." in result.output
 
 
-def test_summary_contains_key_sections_and_artifacts(tmp_path: Path) -> None:
+def test_summary_contains_key_sections_and_artifacts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
     run_dir = write_run(tmp_path, "20260627_120000")
 
     output_path = generate_github_summary(tmp_path, run_dir)
