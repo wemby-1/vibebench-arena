@@ -12,6 +12,7 @@ from vibebench.compare import CompareResult, compare_runs
 from vibebench.config import ConfigError, default_config_yaml, load_config
 from vibebench.doctor import DoctorResult, run_doctor
 from vibebench.gh_summary import generate_github_summary
+from vibebench.history import HistoryResult, HistoryRun, get_history
 from vibebench.paths import config_file
 from vibebench.pr_comment import generate_pr_comment
 from vibebench.report import (
@@ -203,6 +204,35 @@ def doctor(
 
 
 @app.command()
+def history(
+    project_root: ProjectRootOption = Path("."),
+    limit: Annotated[
+        int,
+        typer.Option(
+            "--limit",
+            help="Maximum number of recent runs to show.",
+        ),
+    ] = 10,
+    runs_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--runs-dir",
+            help="Specific directory containing VibeBench run directories.",
+        ),
+    ] = None,
+) -> None:
+    """Show recent VibeBench run history."""
+    root = project_root.resolve()
+    try:
+        result = get_history(root, runs_dir=runs_dir, limit=limit)
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    render_history_summary(result)
+
+
+@app.command()
 def compare(
     project_root: ProjectRootOption = Path("."),
     current_run: Annotated[
@@ -299,6 +329,71 @@ def render_doctor_summary(result: DoctorResult) -> None:
             check.message,
         )
     console.print(table)
+
+
+def render_history_summary(result: HistoryResult) -> None:
+    """Render a concise Rich table for recent run history."""
+    console.print()
+    console.print("[bold]VibeBench history[/]")
+    console.print(f"Runs directory: {result.runs_dir}")
+
+    if not result.runs:
+        console.print(
+            "[yellow]No VibeBench runs found. "
+            "Run 'vibebench check' first.[/]"
+        )
+        return
+
+    for warning in result.warnings:
+        console.print(f"[yellow]Warning:[/] {warning}")
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Run", no_wrap=True)
+    table.add_column("Status", no_wrap=True)
+    table.add_column("Score")
+    table.add_column("Risk", no_wrap=True)
+    table.add_column("Files")
+    table.add_column("Patch")
+    table.add_column("Find")
+    table.add_column("Artifacts")
+
+    status_style = {"passed": "green", "failed": "red"}
+    risk_style = {
+        "low": "green",
+        "medium": "yellow",
+        "high": "magenta",
+        "critical": "red",
+    }
+    for run in result.runs:
+        table.add_row(
+            run.run_id,
+            f"[{status_style.get(run.overall_status, 'white')}]"
+            f"{run.overall_status}[/]",
+            str(run.score),
+            f"[{risk_style.get(run.risk_level, 'white')}]{run.risk_level}[/]",
+            str(run.changed_files),
+            str(run.patch_lines),
+            str(run.risk_findings_count),
+            artifact_flags(run),
+        )
+    console.print(table)
+
+
+def artifact_flags(run: HistoryRun) -> str:
+    """Format generated artifact markers."""
+    return " ".join(
+        [
+            f"report:{plain_yes_no(run.has_report)}",
+            f"pr:{plain_yes_no(run.has_pr_comment)}",
+            f"gh:{plain_yes_no(run.has_github_summary)}",
+            f"cmp:{plain_yes_no(run.has_compare)}",
+        ]
+    )
+
+
+def plain_yes_no(value: bool) -> str:
+    """Format a boolean artifact marker."""
+    return "yes" if value else "no"
 
 
 def render_compare_summary(result: CompareResult) -> None:

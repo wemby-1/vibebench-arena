@@ -30,6 +30,19 @@ python -m vibebench doctor
 
 `vibebench doctor` checks Python, Git, `.vibebench/config.yaml`, configured command executables, and whether `.vibebench/runs/` is writable. It does not run your configured checks.
 
+## Show Run History
+
+```bash
+python -m vibebench history
+```
+
+By default this shows the 10 newest runs with `metrics.json`. You can change the limit or inspect another runs directory:
+
+```bash
+python -m vibebench history --limit 5
+python -m vibebench history --runs-dir .vibebench/runs
+```
+
 ## Run Checks
 
 ```bash
