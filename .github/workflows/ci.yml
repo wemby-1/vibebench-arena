@@ -29,3 +29,26 @@ jobs:
 
       - name: Test
         run: python -m pytest -q
+
+      - name: Run VibeBench check
+        run: vibebench check
+
+      - name: Generate VibeBench HTML report
+        if: always()
+        run: vibebench report
+
+      - name: Generate VibeBench PR comment
+        if: always()
+        run: vibebench pr-comment
+
+      - name: Write VibeBench GitHub summary
+        if: always()
+        run: vibebench gh-summary
+
+      - name: Upload VibeBench artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibebench-runs
+          path: .vibebench/runs
+          if-no-files-found: ignore

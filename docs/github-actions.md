@@ -2,6 +2,11 @@
 
 VibeBench can run inside GitHub Actions without using the GitHub API or requiring a GitHub token. The `gh-summary` command writes a Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is available.
 
+
+## VibeBench Dogfoods Itself
+
+This repository's active CI runs direct `ruff` and `pytest` checks first, then runs VibeBench itself. CI also generates the HTML report, PR-ready Markdown comment, GitHub step summary, and uploads `.vibebench/runs` as artifacts.
+
 ## Copy The Example Workflow
 
 Copy the example workflow into your repository:

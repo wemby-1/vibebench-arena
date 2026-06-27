@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Active GitHub Actions CI now dogfoods VibeBench and uploads `.vibebench/runs` artifacts.
 - `vibebench gh-summary` for GitHub Actions step summaries without GitHub API posting.
 - Example GitHub Actions workflow and setup documentation.
 - Release-readiness documentation for contributors, security reporting, risk rules, and quickstart usage.

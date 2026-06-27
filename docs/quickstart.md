@@ -95,6 +95,11 @@ python -m vibebench pr-comment
 
 The risk demo intentionally creates critical findings, so `vibebench check` is expected to exit non-zero.
 
+
+## CI Artifacts
+
+VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench check`, writes the GitHub Actions job summary with `vibebench gh-summary`, and uploads `.vibebench/runs` as artifacts for review.
+
 ## Generated Files
 
 Generated run artifacts are local outputs and should not be committed:
