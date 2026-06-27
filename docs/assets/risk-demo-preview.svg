@@ -23,7 +23,8 @@
 
   <rect x="734" y="262" width="190" height="112" rx="8" fill="#ffffff" stroke="#d9dee7"/>
   <text x="758" y="300" fill="#667085" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" font-weight="700">Commands</text>
-  <text x="758" y="350" fill="#127c56" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="34" font-weight="850">2/2 passed</text>
+  <text x="758" y="342" fill="#127c56" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="38" font-weight="850">2/2</text>
+  <text x="758" y="364" fill="#127c56" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" font-weight="750">passed</text>
 
   <rect x="950" y="262" width="164" height="112" rx="8" fill="#ffffff" stroke="#d9dee7"/>
   <text x="974" y="300" fill="#667085" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" font-weight="700">Findings</text>

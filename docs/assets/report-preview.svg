@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="860" viewBox="0 0 1200 860" role="img" aria-labelledby="title desc">
   <title id="title">VibeBench Arena report preview</title>
   <desc id="desc">A static preview of a VibeBench report showing status passed, VibeScore 100, low risk, two passed commands, no changed files, no patch lines, and no risk findings.</desc>
   <defs>
@@ -27,8 +27,8 @@
     </style>
   </defs>
 
-  <rect class="bg" width="1200" height="820" rx="0"/>
-  <rect x="42" y="34" width="1116" height="752" rx="14" class="panel" filter="url(#shadow)"/>
+  <rect class="bg" width="1200" height="860" rx="0"/>
+  <rect x="42" y="34" width="1116" height="792" rx="14" class="panel" filter="url(#shadow)"/>
 
   <rect x="72" y="64" width="1056" height="230" rx="10" class="hero"/>
   <text x="108" y="111" class="small hero-muted">VIBEBENCH ARENA</text>
@@ -76,7 +76,7 @@
   </g>
 
   <g transform="translate(72 454)">
-    <rect width="670" height="216" rx="10" class="panel"/>
+    <rect width="670" height="246" rx="10" class="panel"/>
     <text x="24" y="39" class="h2 ink">Command Results</text>
     <line x1="24" y1="62" x2="646" y2="62" class="line"/>
     <text x="24" y="91" class="small muted">Group</text>
@@ -84,21 +84,21 @@
     <text x="438" y="91" class="small muted">Status</text>
     <text x="554" y="91" class="small muted">Exit</text>
     <line x1="24" y1="108" x2="646" y2="108" class="line"/>
-    <text x="24" y="137" class="body ink">test</text>
-    <text x="155" y="137" class="mono ink">pytest -q</text>
-    <rect x="438" y="117" width="80" height="28" rx="14" class="green-bg"/>
-    <text x="457" y="136" class="small green">passed</text>
-    <text x="554" y="137" class="body ink">0</text>
-    <line x1="24" y1="151" x2="646" y2="151" class="line"/>
-    <text x="24" y="184" class="body ink">lint</text>
-    <text x="155" y="184" class="mono ink">ruff check .</text>
-    <rect x="438" y="164" width="80" height="28" rx="14" class="green-bg"/>
-    <text x="457" y="183" class="small green">passed</text>
-    <text x="554" y="184" class="body ink">0</text>
+    <text x="24" y="140" class="body ink">test</text>
+    <text x="155" y="140" class="mono ink">pytest -q</text>
+    <rect x="438" y="120" width="80" height="28" rx="14" class="green-bg"/>
+    <text x="457" y="139" class="small green">passed</text>
+    <text x="554" y="140" class="body ink">0</text>
+    <line x1="24" y1="162" x2="646" y2="162" class="line"/>
+    <text x="24" y="200" class="body ink">lint</text>
+    <text x="155" y="200" class="mono ink">ruff check .</text>
+    <rect x="438" y="180" width="80" height="28" rx="14" class="green-bg"/>
+    <text x="457" y="199" class="small green">passed</text>
+    <text x="554" y="200" class="body ink">0</text>
   </g>
 
   <g transform="translate(770 454)">
-    <rect width="358" height="216" rx="10" class="panel"/>
+    <rect width="358" height="246" rx="10" class="panel"/>
     <text x="24" y="39" class="h2 ink">Risk Findings</text>
     <rect x="24" y="65" width="310" height="74" rx="8" class="blue-bg"/>
     <circle cx="52" cy="102" r="13" class="green-bg"/>
@@ -107,7 +107,7 @@
     <text x="78" y="123" class="small muted">Git diff is clean against HEAD.</text>
   </g>
 
-  <g transform="translate(72 740)">
+  <g transform="translate(72 790)">
     <text x="0" y="0" class="body muted">Codex writes code. VibeBench verifies it.</text>
     <text x="740" y="0" class="body muted">Static HTML report · local quality gate</text>
   </g>
