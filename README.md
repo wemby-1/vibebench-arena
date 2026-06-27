@@ -32,7 +32,7 @@ It is designed to be:
 
 ## What It Checks Today
 
-VibeBench v0.1.0 already supports:
+Current VibeBench supports:
 
 - config initialization with `.vibebench/config.yaml`
 - configured test and lint commands
@@ -40,6 +40,7 @@ VibeBench v0.1.0 already supports:
 - Git diff risk analysis for uncommitted changes
 - static HTML reports for local review and screenshots
 - PR-ready Markdown summaries for pasteable code review comments
+- GitHub Actions step summaries without GitHub API posting
 
 Git diff risk analysis flags:
 
@@ -58,6 +59,7 @@ python -m vibebench init
 python -m vibebench check
 python -m vibebench report
 python -m vibebench pr-comment
+python -m vibebench gh-summary
 ```
 
 The default config looks like this:
@@ -96,6 +98,9 @@ python -m vibebench report
 
 # Generate a Markdown summary for a PR or review thread
 python -m vibebench pr-comment
+
+# Write a GitHub Actions step summary or local summary file
+python -m vibebench gh-summary
 ```
 
 `vibebench check` writes:
@@ -147,6 +152,12 @@ into a GitHub Pull Request, issue, or code review. It includes:
 Automatic GitHub PR posting is planned later; the current command is local and
 does not call the GitHub API.
 
+## GitHub Actions
+
+`vibebench gh-summary` writes a concise Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is set. It does not post PR comments through the GitHub API yet.
+
+See [.github/workflows/vibebench.yml.example](.github/workflows/vibebench.yml.example) for a copyable workflow that runs VibeBench, generates reports/comments/summaries with `if: always()`, and uploads `.vibebench/runs` as artifacts. More details are in [docs/github-actions.md](docs/github-actions.md).
+
 ## Try The Risk Demo
 
 A clean 100/100 run is useful, but VibeBench is meant to catch risky generated changes before they ship. The risk demo creates a temporary repository with a clean baseline commit, then intentionally leaves suspicious uncommitted changes for VibeBench to analyze.
@@ -169,6 +180,7 @@ See [examples/risk-demo/README.md](examples/risk-demo/README.md) for details.
 
 - [Quickstart](docs/quickstart.md)
 - [Risk rules](docs/risk-rules.md)
+- [GitHub Actions](docs/github-actions.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)
 - [Changelog](CHANGELOG.md)
@@ -178,7 +190,7 @@ See [examples/risk-demo/README.md](examples/risk-demo/README.md) for details.
 Planned next milestones:
 
 - automatic GitHub PR comment posting
-- GitHub Action integration
+- richer GitHub Action integration
 - multi-agent arena workflows
 - replay timeline for AI-generated changes
 

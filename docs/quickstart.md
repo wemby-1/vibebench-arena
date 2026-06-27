@@ -68,6 +68,19 @@ This writes:
 
 The Markdown is designed to paste into a pull request, issue, or review thread.
 
+
+## Generate A GitHub Actions Summary
+
+```bash
+python -m vibebench gh-summary
+```
+
+In GitHub Actions, this appends to `GITHUB_STEP_SUMMARY`. Locally, it writes:
+
+```text
+.vibebench/runs/<timestamp>/github-step-summary.md
+```
+
 ## Try The Risk Demo
 
 From the VibeBench repository:

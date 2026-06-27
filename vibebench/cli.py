@@ -9,6 +9,7 @@ from rich.table import Table
 
 from vibebench import __version__
 from vibebench.config import ConfigError, default_config_yaml, load_config
+from vibebench.gh_summary import generate_github_summary
 from vibebench.paths import config_file
 from vibebench.pr_comment import generate_pr_comment
 from vibebench.report import (
@@ -157,6 +158,35 @@ def pr_comment(
     console.print(f"Run directory: {comment_path.parent}")
     console.print(f"Output path: {comment_path}")
     console.print(f"Recommendation: {recommendation}")
+
+
+@app.command("gh-summary")
+def gh_summary(
+    project_root: ProjectRootOption = Path("."),
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            help="Specific .vibebench/runs/<timestamp> directory to summarize.",
+        ),
+    ] = None,
+) -> None:
+    """Write a GitHub Actions step summary for a VibeBench run."""
+    root = project_root.resolve()
+    selected_run_dir = None
+    if run_dir:
+        selected_run_dir = (
+            run_dir if run_dir.is_absolute() else root / run_dir
+        ).resolve()
+
+    try:
+        summary_path = generate_github_summary(root, selected_run_dir)
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    console.print("[green]GitHub step summary written.[/]")
+    console.print(f"Output path: {summary_path}")
 
 
 def render_check_summary(result: CheckRunResult) -> None:
