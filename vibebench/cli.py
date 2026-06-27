@@ -8,6 +8,7 @@ from rich.console import Console
 from rich.table import Table
 
 from vibebench import __version__
+from vibebench.compare import CompareResult, compare_runs
 from vibebench.config import ConfigError, default_config_yaml, load_config
 from vibebench.gh_summary import generate_github_summary
 from vibebench.paths import config_file
@@ -189,6 +190,35 @@ def gh_summary(
     console.print(f"Output path: {summary_path}")
 
 
+@app.command()
+def compare(
+    project_root: ProjectRootOption = Path("."),
+    current_run: Annotated[
+        Path | None,
+        typer.Option(
+            "--current-run",
+            help="Current .vibebench/runs/<timestamp> directory.",
+        ),
+    ] = None,
+    base_run: Annotated[
+        Path | None,
+        typer.Option(
+            "--base-run",
+            help="Base .vibebench/runs/<timestamp> directory.",
+        ),
+    ] = None,
+) -> None:
+    """Compare the latest VibeBench run with the previous run."""
+    root = project_root.resolve()
+    try:
+        result = compare_runs(root, current_run=current_run, base_run=base_run)
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    render_compare_summary(result)
+
+
 def render_check_summary(result: CheckRunResult) -> None:
     """Render a concise Rich summary for a check run."""
     status_style = "green" if result.overall_status == "passed" else "red"
@@ -237,6 +267,41 @@ def render_check_summary(result: CheckRunResult) -> None:
     console.print(table)
     render_findings(result)
     console.print(f"Metrics: {result.metrics_path}")
+
+
+def render_compare_summary(result: CompareResult) -> None:
+    """Render a concise Rich summary for a run comparison."""
+    verdict_style = {
+        "improved": "green",
+        "stable": "blue",
+        "regressed": "red",
+    }[result.verdict]
+
+    console.print()
+    console.print("[bold]VibeBench compare[/]")
+    console.print(f"Base run: {result.base_run}")
+    console.print(f"Current run: {result.current_run}")
+    console.print(f"Verdict: [{verdict_style}]{result.verdict}[/]")
+    console.print(f"Score delta: {format_signed(result.score_delta)}")
+    console.print(f"Risk delta: {result.risk_delta}")
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Metric")
+    table.add_column("Base")
+    table.add_column("Current")
+    table.add_column("Delta")
+    for metric in result.metrics:
+        table.add_row(metric.name, metric.base, metric.current, metric.delta)
+    console.print(table)
+    console.print(f"Recommendation: {result.recommendation}")
+    console.print(f"Comparison: {result.output_path}")
+
+
+def format_signed(value: int) -> str:
+    """Format a signed integer for terminal output."""
+    if value > 0:
+        return f"+{value}"
+    return str(value)
 
 
 def render_findings(result: CheckRunResult) -> None:

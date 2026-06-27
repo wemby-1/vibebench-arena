@@ -60,6 +60,7 @@ python -m vibebench check
 python -m vibebench report
 python -m vibebench pr-comment
 python -m vibebench gh-summary
+python -m vibebench compare
 ```
 
 The default config looks like this:
@@ -101,6 +102,9 @@ python -m vibebench pr-comment
 
 # Write a GitHub Actions step summary or local summary file
 python -m vibebench gh-summary
+
+# Compare the latest run with the previous run
+python -m vibebench compare
 ```
 
 `vibebench check` writes:
@@ -121,6 +125,14 @@ python -m vibebench gh-summary
 ```text
 .vibebench/runs/<timestamp>/pr-comment.md
 ```
+
+`vibebench compare` writes:
+
+```text
+.vibebench/runs/<latest-timestamp>/compare.md
+```
+
+It compares the latest run with the previous run, including score, risk level, command counts, diff size, and risk finding count.
 
 ## What The HTML Report Shows
 

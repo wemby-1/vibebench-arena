@@ -81,6 +81,24 @@ In GitHub Actions, this appends to `GITHUB_STEP_SUMMARY`. Locally, it writes:
 .vibebench/runs/<timestamp>/github-step-summary.md
 ```
 
+## Compare Runs
+
+```bash
+python -m vibebench compare
+```
+
+This compares the latest run with the previous run and writes:
+
+```text
+.vibebench/runs/<latest-timestamp>/compare.md
+```
+
+You can also compare explicit run directories:
+
+```bash
+python -m vibebench compare --base-run .vibebench/runs/<base> --current-run .vibebench/runs/<current>
+```
+
 ## Try The Risk Demo
 
 From the VibeBench repository:

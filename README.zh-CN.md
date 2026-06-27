@@ -55,6 +55,7 @@ python -m vibebench check
 python -m vibebench report
 python -m vibebench pr-comment
 python -m vibebench gh-summary
+python -m vibebench compare
 ```
 
 默认配置示例：
@@ -96,6 +97,9 @@ python -m vibebench pr-comment
 
 # 写入 GitHub Actions step summary，或生成本地 summary 文件
 python -m vibebench gh-summary
+
+# 对比最新一次和上一次 VibeBench 运行
+python -m vibebench compare
 ```
 
 `vibebench check` 会写入：
@@ -116,6 +120,14 @@ python -m vibebench gh-summary
 ```text
 .vibebench/runs/<timestamp>/pr-comment.md
 ```
+
+`vibebench compare` 会写入：
+
+```text
+.vibebench/runs/<latest-timestamp>/compare.md
+```
+
+它会对比最新一次和上一次运行，包括分数、风险等级、命令数量、diff 规模和风险发现数量。
 
 ## HTML 报告展示什么？
 
