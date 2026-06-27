@@ -22,6 +22,14 @@ This creates:
 .vibebench/config.yaml
 ```
 
+## Diagnose Project Readiness
+
+```bash
+python -m vibebench doctor
+```
+
+`vibebench doctor` checks Python, Git, `.vibebench/config.yaml`, configured command executables, and whether `.vibebench/runs/` is writable. It does not run your configured checks.
+
 ## Run Checks
 
 ```bash

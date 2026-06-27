@@ -51,6 +51,7 @@ Git diff 风险分析会标记：
 ```bash
 python -m pip install -e ".[dev]"
 python -m vibebench init
+python -m vibebench doctor
 python -m vibebench check
 python -m vibebench report
 python -m vibebench pr-comment
@@ -86,6 +87,9 @@ risk_rules:
 # 第一次使用时创建配置
 python -m vibebench init
 
+# 检查当前项目是否已经准备好运行 VibeBench
+python -m vibebench doctor
+
 # 提交前运行本地质量门禁
 python -m vibebench check
 
@@ -101,6 +105,8 @@ python -m vibebench gh-summary
 # 对比最新一次和上一次 VibeBench 运行
 python -m vibebench compare
 ```
+
+`vibebench doctor` 会检查 Python、Git、配置有效性、配置命令是否可找到，以及 `.vibebench/runs/` 是否可写。它不会真正运行配置里的 test/lint 命令。
 
 `vibebench check` 会写入：
 

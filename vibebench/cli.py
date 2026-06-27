@@ -10,6 +10,7 @@ from rich.table import Table
 from vibebench import __version__
 from vibebench.compare import CompareResult, compare_runs
 from vibebench.config import ConfigError, default_config_yaml, load_config
+from vibebench.doctor import DoctorResult, run_doctor
 from vibebench.gh_summary import generate_github_summary
 from vibebench.paths import config_file
 from vibebench.pr_comment import generate_pr_comment
@@ -191,6 +192,17 @@ def gh_summary(
 
 
 @app.command()
+def doctor(
+    project_root: ProjectRootOption = Path("."),
+) -> None:
+    """Diagnose whether this project is ready to run VibeBench."""
+    result = run_doctor(project_root)
+    render_doctor_summary(result)
+    if result.overall_status == "failed":
+        raise typer.Exit(code=1)
+
+
+@app.command()
 def compare(
     project_root: ProjectRootOption = Path("."),
     current_run: Annotated[
@@ -267,6 +279,26 @@ def render_check_summary(result: CheckRunResult) -> None:
     console.print(table)
     render_findings(result)
     console.print(f"Metrics: {result.metrics_path}")
+
+
+def render_doctor_summary(result: DoctorResult) -> None:
+    """Render a concise Rich summary for doctor diagnostics."""
+    console.print()
+    console.print("[bold]VibeBench Doctor[/]")
+    console.print(f"Project root: {result.project_root}")
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Check")
+    table.add_column("Status")
+    table.add_column("Message")
+    status_style = {"passed": "green", "warning": "yellow", "failed": "red"}
+    for check in result.checks:
+        table.add_row(
+            check.category,
+            f"[{status_style[check.status]}]{check.status}[/]",
+            check.message,
+        )
+    console.print(table)
 
 
 def render_compare_summary(result: CompareResult) -> None:

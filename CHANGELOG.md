@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- `vibebench doctor` for local readiness diagnostics before running checks.
 - `vibebench compare` for comparing the latest run against a previous run and writing `compare.md`.
 - Upgraded active GitHub Actions to Node 24-compatible action majors.
 - Active GitHub Actions CI now dogfoods VibeBench and uploads `.vibebench/runs` artifacts.

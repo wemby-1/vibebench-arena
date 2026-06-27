@@ -56,6 +56,7 @@ Git diff risk analysis flags:
 ```bash
 python -m pip install -e ".[dev]"
 python -m vibebench init
+python -m vibebench doctor
 python -m vibebench check
 python -m vibebench report
 python -m vibebench pr-comment
@@ -91,6 +92,9 @@ risk_rules:
 # Create project config once
 python -m vibebench init
 
+# Diagnose whether the project is ready for VibeBench
+python -m vibebench doctor
+
 # Run local quality gate before committing
 python -m vibebench check
 
@@ -106,6 +110,8 @@ python -m vibebench gh-summary
 # Compare the latest run with the previous run
 python -m vibebench compare
 ```
+
+`vibebench doctor` checks Python, Git, config validity, configured command executables, and whether `.vibebench/runs/` is writable. It does not run the configured checks.
 
 `vibebench check` writes:
 
