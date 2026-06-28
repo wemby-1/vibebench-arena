@@ -285,7 +285,9 @@ def run_checks(
         run_command(group, command, root, timeout_seconds)
         for group, command in configured_commands(config)
     ]
-    diff_analysis, risk_findings = analyze_git_diff(root, config.risk_rules)
+    diff_analysis, risk_findings = analyze_git_diff(
+        root, config.effective_risk(), config.risk_rules
+    )
     check_result = build_result(
         config,
         command_results,

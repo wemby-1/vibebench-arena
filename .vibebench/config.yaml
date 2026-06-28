@@ -13,6 +13,40 @@ risk_rules:
   warn_if_tests_deleted: true
   warn_if_lockfiles_changed: true
   large_patch_lines: 500
+risk:
+  max_changed_files: 20
+  max_patch_lines: 1000
+  forbidden_paths:
+  - .env
+  - .env.*
+  - secrets/
+  secret_like_paths:
+  - "*secret*"
+  - "*token*"
+  - "*credential*"
+  - "*credentials*"
+  - "*private_key*"
+  - "*api_key*"
+  - "*apikey*"
+  - "*password*"
+  - "*passwd*"
+  lockfiles:
+  - package-lock.json
+  - pnpm-lock.yaml
+  - yarn.lock
+  - poetry.lock
+  - uv.lock
+  - Pipfile.lock
+  - requirements.lock
+  test_path_patterns:
+  - tests/
+  - test_*.py
+  - "*_test.py"
+  - __tests__/
+  - "*.test.ts"
+  - "*.test.tsx"
+  - "*.spec.ts"
+  - "*.spec.tsx"
 gate:
   min_score: 80
   max_risk: medium

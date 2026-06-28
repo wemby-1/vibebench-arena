@@ -44,7 +44,9 @@ Git diff 风险分析会标记：
 - 路径中包含 `token`、`api_key`、`password` 等疑似密钥关键词
 - 修改 `package-lock.json`、`poetry.lock`、`uv.lock` 等 lockfile
 - patch 行数超过配置阈值
-- 一次改动超过 20 个文件
+- 一次改动超过配置的文件数量阈值
+
+这些 Git diff 规则可以在 `.vibebench/config.yaml` 的 `risk` 区域配置。
 
 ## 快速开始
 
@@ -83,6 +85,41 @@ risk_rules:
   warn_if_tests_deleted: true
   warn_if_lockfiles_changed: true
   large_patch_lines: 500
+
+risk:
+  max_changed_files: 20
+  max_patch_lines: 500
+  forbidden_paths:
+    - .env
+    - .env.*
+    - secrets/
+  secret_like_paths:
+    - "*secret*"
+    - "*token*"
+    - "*credential*"
+    - "*credentials*"
+    - "*private_key*"
+    - "*api_key*"
+    - "*apikey*"
+    - "*password*"
+    - "*passwd*"
+  lockfiles:
+    - package-lock.json
+    - pnpm-lock.yaml
+    - yarn.lock
+    - poetry.lock
+    - uv.lock
+    - Pipfile.lock
+    - requirements.lock
+  test_path_patterns:
+    - tests/
+    - test_*.py
+    - "*_test.py"
+    - __tests__/
+    - "*.test.ts"
+    - "*.test.tsx"
+    - "*.spec.ts"
+    - "*.spec.tsx"
 
 gate:
   min_score: 80

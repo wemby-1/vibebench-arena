@@ -49,7 +49,9 @@ Git diff risk analysis flags:
 - secret-like paths containing words such as `token`, `api_key`, or `password`
 - changed lockfiles such as `package-lock.json`, `poetry.lock`, or `uv.lock`
 - large patches over the configured threshold
-- changes touching more than 20 files
+- changes touching more files than the configured threshold
+
+These Git diff rules are configurable in `.vibebench/config.yaml` under the `risk` section.
 
 ## Quick Start
 
@@ -88,6 +90,41 @@ risk_rules:
   warn_if_tests_deleted: true
   warn_if_lockfiles_changed: true
   large_patch_lines: 500
+
+risk:
+  max_changed_files: 20
+  max_patch_lines: 500
+  forbidden_paths:
+    - .env
+    - .env.*
+    - secrets/
+  secret_like_paths:
+    - "*secret*"
+    - "*token*"
+    - "*credential*"
+    - "*credentials*"
+    - "*private_key*"
+    - "*api_key*"
+    - "*apikey*"
+    - "*password*"
+    - "*passwd*"
+  lockfiles:
+    - package-lock.json
+    - pnpm-lock.yaml
+    - yarn.lock
+    - poetry.lock
+    - uv.lock
+    - Pipfile.lock
+    - requirements.lock
+  test_path_patterns:
+    - tests/
+    - test_*.py
+    - "*_test.py"
+    - __tests__/
+    - "*.test.ts"
+    - "*.test.tsx"
+    - "*.spec.ts"
+    - "*.spec.tsx"
 
 gate:
   min_score: 80

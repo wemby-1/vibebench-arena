@@ -79,3 +79,95 @@ def test_invalid_gate_require_status_passed_fails_clearly(tmp_path: Path) -> Non
 
     with pytest.raises(ConfigError, match="gate.require_status_passed"):
         load_config(config_path)
+
+def write_risk_config(tmp_path: Path, risk_yaml: str) -> Path:
+    config_dir = tmp_path / ".vibebench"
+    config_dir.mkdir(parents=True)
+    config_path = config_dir / "config.yaml"
+    config_path.write_text(
+        f"""project:
+  name: demo
+checks:
+  test:
+    - pytest -q
+  lint:
+    - ruff check .
+risk:
+{risk_yaml}
+""",
+        encoding="utf-8",
+    )
+    return config_path
+
+def test_config_loader_reads_risk_config(tmp_path: Path) -> None:
+    config_path = write_risk_config(
+        tmp_path,
+        """  max_changed_files: 25
+  max_patch_lines: 600
+  forbidden_paths:
+    - private/
+  secret_like_paths:
+    - "*.pem"
+  lockfiles:
+    - custom.lock
+  test_path_patterns:
+    - specs/
+""",
+    )
+
+    config = load_config(config_path)
+
+    assert config.risk is not None
+    assert config.risk.max_changed_files == 25
+    assert config.risk.max_patch_lines == 600
+    assert config.risk.forbidden_paths == ["private/"]
+    assert config.risk.secret_like_paths == ["*.pem"]
+    assert config.risk.lockfiles == ["custom.lock"]
+    assert config.risk.test_path_patterns == ["specs/"]
+
+def test_invalid_risk_max_changed_files_fails_clearly(tmp_path: Path) -> None:
+    config_path = write_risk_config(tmp_path, "  max_changed_files: 0\n")
+
+    with pytest.raises(ConfigError, match="risk.max_changed_files"):
+        load_config(config_path)
+
+def test_invalid_risk_max_patch_lines_fails_clearly(tmp_path: Path) -> None:
+    config_path = write_risk_config(tmp_path, "  max_patch_lines: 0\n")
+
+    with pytest.raises(ConfigError, match="risk.max_patch_lines"):
+        load_config(config_path)
+
+def test_invalid_risk_forbidden_paths_fails_clearly(tmp_path: Path) -> None:
+    config_path = write_risk_config(tmp_path, "  forbidden_paths: .env\n")
+
+    with pytest.raises(ConfigError, match="risk.forbidden_paths"):
+        load_config(config_path)
+
+def test_invalid_risk_secret_like_paths_fails_clearly(tmp_path: Path) -> None:
+    config_path = write_risk_config(tmp_path, "  secret_like_paths: token\n")
+
+    with pytest.raises(ConfigError, match="risk.secret_like_paths"):
+        load_config(config_path)
+
+def test_invalid_risk_lockfiles_fails_clearly(tmp_path: Path) -> None:
+    config_path = write_risk_config(tmp_path, "  lockfiles: package-lock.json\n")
+
+    with pytest.raises(ConfigError, match="risk.lockfiles"):
+        load_config(config_path)
+
+def test_invalid_risk_test_path_patterns_fails_clearly(tmp_path: Path) -> None:
+    config_path = write_risk_config(tmp_path, "  test_path_patterns: tests/\n")
+
+    with pytest.raises(ConfigError, match="risk.test_path_patterns"):
+        load_config(config_path)
+
+def test_invalid_risk_forbidden_path_item_fails_clearly(tmp_path: Path) -> None:
+    config_path = write_risk_config(
+        tmp_path,
+        """  forbidden_paths:
+    - 123
+""",
+    )
+
+    with pytest.raises(ConfigError, match="risk.forbidden_paths"):
+        load_config(config_path)

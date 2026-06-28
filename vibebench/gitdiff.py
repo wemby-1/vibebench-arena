@@ -9,33 +9,10 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from vibebench.config import RiskRulesConfig
+from vibebench.config import RiskConfig, RiskRulesConfig
 
 FindingSeverity = Literal["info", "warning", "high", "critical"]
 ChangeStatus = Literal["added", "modified", "deleted", "renamed"]
-
-SECRET_KEYWORDS = (
-    "secret",
-    "token",
-    "credential",
-    "credentials",
-    "private_key",
-    "api_key",
-    "apikey",
-    "password",
-    "passwd",
-)
-
-LOCKFILES = {
-    "package-lock.json",
-    "pnpm-lock.yaml",
-    "yarn.lock",
-    "poetry.lock",
-    "uv.lock",
-    "Pipfile.lock",
-    "requirements.lock",
-}
-
 
 class DiffFileChange(BaseModel):
     """One changed file reported by git."""
@@ -86,7 +63,8 @@ class DiffAnalysis(BaseModel):
 
 def analyze_git_diff(
     project_root: Path,
-    rules: RiskRulesConfig,
+    rules: RiskConfig | RiskRulesConfig,
+    legacy_rules: RiskRulesConfig | None = None,
 ) -> tuple[DiffAnalysis, list[RiskFinding]]:
     """Analyze the current working tree diff against HEAD."""
     root = project_root.resolve()
@@ -100,9 +78,10 @@ def analyze_git_diff(
             )
         ]
 
+    policy = as_risk_config(rules)
     changes = collect_file_changes(root)
-    analysis = build_analysis(changes, rules)
-    findings = build_findings(analysis, rules)
+    analysis = build_analysis(changes, policy)
+    findings = build_findings(analysis, policy, legacy_rules or rules)
     return analysis, findings
 
 
@@ -221,7 +200,7 @@ def map_status(status: str) -> ChangeStatus:
 
 def build_analysis(
     changes: list[DiffFileChange],
-    rules: RiskRulesConfig,
+    rules: RiskConfig,
 ) -> DiffAnalysis:
     """Build aggregate diff analysis from file changes."""
     changed_files = sorted({change.path for change in changes})
@@ -235,17 +214,29 @@ def build_analysis(
     renamed_files = sorted(
         change.path for change in changes if change.status == "renamed"
     )
-    test_files_changed = sorted(path for path in changed_files if is_test_file(path))
-    tests_deleted = sorted(path for path in deleted_files if is_test_file(path))
+    test_files_changed = sorted(
+        path
+        for path in changed_files
+        if matches_test_path(path, rules.test_path_patterns)
+    )
+    tests_deleted = sorted(
+        path
+        for path in deleted_files
+        if matches_test_path(path, rules.test_path_patterns)
+    )
     forbidden_paths_touched = sorted(
         path
         for path in changed_files
         if matches_forbidden_path(path, rules.forbidden_paths)
     )
     secret_like_files_touched = sorted(
-        path for path in changed_files if is_secret_like_path(path)
+        path
+        for path in changed_files
+        if matches_secret_like_path(path, rules.secret_like_paths)
     )
-    lockfiles_changed = sorted(path for path in changed_files if is_lockfile(path))
+    lockfiles_changed = sorted(
+        path for path in changed_files if matches_lockfile(path, rules.lockfiles)
+    )
     total_added_lines = sum(change.added_lines for change in changes)
     total_deleted_lines = sum(change.deleted_lines for change in changes)
 
@@ -269,7 +260,11 @@ def build_analysis(
     )
 
 
-def build_findings(analysis: DiffAnalysis, rules: RiskRulesConfig) -> list[RiskFinding]:
+def build_findings(
+    analysis: DiffAnalysis,
+    rules: RiskConfig,
+    legacy_rules: RiskRulesConfig | RiskConfig | None = None,
+) -> list[RiskFinding]:
     """Create risk findings from a diff analysis."""
     findings: list[RiskFinding] = []
 
@@ -291,7 +286,12 @@ def build_findings(analysis: DiffAnalysis, rules: RiskRulesConfig) -> list[RiskF
                 paths=analysis.secret_like_files_touched,
             )
         )
-    if rules.warn_if_tests_deleted and analysis.tests_deleted:
+    warn_if_tests_deleted = getattr(legacy_rules, "warn_if_tests_deleted", True)
+    warn_if_lockfiles_changed = getattr(
+        legacy_rules, "warn_if_lockfiles_changed", True
+    )
+
+    if warn_if_tests_deleted and analysis.tests_deleted:
         findings.append(
             RiskFinding(
                 severity="high",
@@ -309,7 +309,7 @@ def build_findings(analysis: DiffAnalysis, rules: RiskRulesConfig) -> list[RiskF
                 paths=analysis.test_files_changed,
             )
         )
-    if rules.warn_if_lockfiles_changed and analysis.lockfiles_changed:
+    if warn_if_lockfiles_changed and analysis.lockfiles_changed:
         findings.append(
             RiskFinding(
                 severity="warning",
@@ -318,23 +318,26 @@ def build_findings(analysis: DiffAnalysis, rules: RiskRulesConfig) -> list[RiskF
                 paths=analysis.lockfiles_changed,
             )
         )
-    if analysis.total_patch_lines > rules.large_patch_lines:
+    if analysis.total_patch_lines > rules.max_patch_lines:
         findings.append(
             RiskFinding(
                 severity="warning",
                 code="large_patch",
                 message=(
                     "Patch is larger than configured threshold "
-                    f"({analysis.total_patch_lines} > {rules.large_patch_lines})."
+                    f"({analysis.total_patch_lines} > {rules.max_patch_lines})."
                 ),
             )
         )
-    if analysis.changed_file_count > 20:
+    if analysis.changed_file_count > rules.max_changed_files:
         findings.append(
             RiskFinding(
                 severity="warning",
                 code="many_files_changed",
-                message=f"Many files changed ({analysis.changed_file_count} > 20).",
+                message=(
+                    f"Many files changed "
+                    f"({analysis.changed_file_count} > {rules.max_changed_files})."
+                ),
                 paths=analysis.changed_files,
             )
         )
@@ -355,30 +358,56 @@ def matches_forbidden_path(path: str, patterns: list[str]) -> bool:
     return False
 
 
-def is_secret_like_path(path: str) -> bool:
-    """Return whether a path looks like it may contain secrets."""
-    lowered = path.lower()
-    return any(keyword in lowered for keyword in SECRET_KEYWORDS)
+def matches_secret_like_path(path: str, patterns: list[str]) -> bool:
+    """Return whether a path matches configured secret-like patterns."""
+    return matches_any_path_pattern(path, patterns, case_sensitive=False)
 
 
-def is_lockfile(path: str) -> bool:
-    """Return whether a path is a known lockfile."""
-    return Path(path).name in LOCKFILES
+def matches_lockfile(path: str, patterns: list[str]) -> bool:
+    """Return whether a path matches configured lockfile patterns."""
+    return matches_any_path_pattern(path, patterns, case_sensitive=True)
 
 
-def is_test_file(path: str) -> bool:
-    """Return whether path looks like a test file or test fixture."""
+def matches_test_path(path: str, patterns: list[str]) -> bool:
+    """Return whether path matches configured test path patterns."""
+    return matches_any_path_pattern(path, patterns, case_sensitive=True)
+
+
+def matches_any_path_pattern(
+    path: str,
+    patterns: list[str],
+    *,
+    case_sensitive: bool,
+) -> bool:
+    """Match a path against simple directory, glob, name, or substring patterns."""
     normalized = normalize_path(path)
+    path_value = normalized if case_sensitive else normalized.lower()
     name = Path(normalized).name
-    return (
-        normalized.startswith("tests/")
-        or "/tests/" in normalized
-        or normalized.startswith("__tests__/")
-        or "/__tests__/" in normalized
-        or fnmatch.fnmatch(name, "test_*.py")
-        or fnmatch.fnmatch(name, "*_test.py")
-        or fnmatch.fnmatch(name, "*.test.ts")
-        or fnmatch.fnmatch(name, "*.test.tsx")
-        or fnmatch.fnmatch(name, "*.spec.ts")
-        or fnmatch.fnmatch(name, "*.spec.tsx")
+    name_value = name if case_sensitive else name.lower()
+    for raw_pattern in patterns:
+        pattern = normalize_path(raw_pattern)
+        pattern_value = pattern if case_sensitive else pattern.lower()
+        if pattern_value.endswith("/") and (
+            path_value.startswith(pattern_value) or f"/{pattern_value}" in path_value
+        ):
+            return True
+        if any(char in pattern_value for char in "*?["):
+            if fnmatch.fnmatch(path_value, pattern_value):
+                return True
+            if fnmatch.fnmatch(name_value, pattern_value):
+                return True
+        elif path_value == pattern_value or name_value == pattern_value:
+            return True
+        elif pattern_value in path_value:
+            return True
+    return False
+
+
+def as_risk_config(rules: RiskConfig | RiskRulesConfig) -> RiskConfig:
+    """Convert legacy risk rules to the active risk config model."""
+    if isinstance(rules, RiskConfig):
+        return rules
+    return RiskConfig(
+        max_patch_lines=rules.large_patch_lines,
+        forbidden_paths=rules.forbidden_paths,
     )

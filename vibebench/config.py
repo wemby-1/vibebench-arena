@@ -4,9 +4,42 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, StrictStr, ValidationError
 
 from vibebench.paths import config_file
+
+DEFAULT_RISK_FORBIDDEN_PATHS = [".env", ".env.*", "secrets/"]
+DEFAULT_SECRET_LIKE_PATHS = [
+    "*secret*",
+    "*token*",
+    "*credential*",
+    "*credentials*",
+    "*private_key*",
+    "*api_key*",
+    "*apikey*",
+    "*password*",
+    "*passwd*",
+]
+DEFAULT_LOCKFILES = [
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "poetry.lock",
+    "uv.lock",
+    "Pipfile.lock",
+    "requirements.lock",
+]
+DEFAULT_TEST_PATH_PATTERNS = [
+    "tests/",
+    "test_*.py",
+    "*_test.py",
+    "__tests__/",
+    "*.test.ts",
+    "*.test.tsx",
+    "*.spec.ts",
+    "*.spec.tsx",
+]
+
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "project": {
@@ -17,10 +50,18 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "lint": ["ruff check ."],
     },
     "risk_rules": {
-        "forbidden_paths": [".env", ".env.*", "secrets/"],
+        "forbidden_paths": DEFAULT_RISK_FORBIDDEN_PATHS,
         "warn_if_tests_deleted": True,
         "warn_if_lockfiles_changed": True,
         "large_patch_lines": 500,
+    },
+    "risk": {
+        "max_changed_files": 20,
+        "max_patch_lines": 500,
+        "forbidden_paths": DEFAULT_RISK_FORBIDDEN_PATHS,
+        "secret_like_paths": DEFAULT_SECRET_LIKE_PATHS,
+        "lockfiles": DEFAULT_LOCKFILES,
+        "test_path_patterns": DEFAULT_TEST_PATH_PATTERNS,
     },
     "gate": {
         "min_score": 80,
@@ -53,14 +94,35 @@ class ChecksConfig(BaseModel):
 
 
 class RiskRulesConfig(BaseModel):
-    """Risk rules for future code-change checks."""
+    """Legacy risk rules kept for backward compatibility."""
 
     model_config = ConfigDict(extra="forbid")
 
-    forbidden_paths: list[str] = Field(default_factory=list)
+    forbidden_paths: list[StrictStr] = Field(
+        default_factory=lambda: DEFAULT_RISK_FORBIDDEN_PATHS.copy()
+    )
     warn_if_tests_deleted: bool = True
     warn_if_lockfiles_changed: bool = True
     large_patch_lines: int = Field(default=500, gt=0)
+
+
+class RiskConfig(BaseModel):
+    """Configurable Git diff risk detection policy."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    max_changed_files: int = Field(default=20, ge=1)
+    max_patch_lines: int = Field(default=500, ge=1)
+    forbidden_paths: list[StrictStr] = Field(
+        default_factory=lambda: DEFAULT_RISK_FORBIDDEN_PATHS.copy()
+    )
+    secret_like_paths: list[StrictStr] = Field(
+        default_factory=lambda: DEFAULT_SECRET_LIKE_PATHS.copy()
+    )
+    lockfiles: list[StrictStr] = Field(default_factory=lambda: DEFAULT_LOCKFILES.copy())
+    test_path_patterns: list[StrictStr] = Field(
+        default_factory=lambda: DEFAULT_TEST_PATH_PATTERNS.copy()
+    )
 
 
 class GateConfig(BaseModel):
@@ -81,8 +143,18 @@ class VibeBenchConfig(BaseModel):
 
     project: ProjectConfig
     checks: ChecksConfig
-    risk_rules: RiskRulesConfig
+    risk_rules: RiskRulesConfig = Field(default_factory=RiskRulesConfig)
+    risk: RiskConfig | None = None
     gate: GateConfig = Field(default_factory=GateConfig)
+
+    def effective_risk(self) -> RiskConfig:
+        """Return the active Git diff risk policy."""
+        if self.risk is not None:
+            return self.risk
+        return RiskConfig(
+            max_patch_lines=self.risk_rules.large_patch_lines,
+            forbidden_paths=self.risk_rules.forbidden_paths,
+        )
 
 
 def default_config_yaml() -> str:

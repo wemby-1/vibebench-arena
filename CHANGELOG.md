@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Configurable `risk` policy in `.vibebench/config.yaml` for Git diff risk detection.
 - `vibebench gate` for explicit local and CI pass/fail quality thresholds.
 - Configurable `gate` policy in `.vibebench/config.yaml`, with CLI flags as explicit overrides.
 - Active GitHub Actions CI now enforces the VibeBench quality gate from config and writes `gate-summary.md`.

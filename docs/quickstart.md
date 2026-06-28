@@ -84,6 +84,37 @@ ruff check .
 .vibebench/runs/<timestamp>/check.log
 ```
 
+## Configure Risk Rules
+
+`vibebench check` uses the `risk` section in `.vibebench/config.yaml` when present. CLI behavior falls back to built-in defaults when this section is absent.
+
+```yaml
+risk:
+  max_changed_files: 20
+  max_patch_lines: 500
+  forbidden_paths:
+    - .env
+    - .env.*
+    - secrets/
+  secret_like_paths:
+    - "*secret*"
+    - "*token*"
+  lockfiles:
+    - package-lock.json
+    - pnpm-lock.yaml
+    - yarn.lock
+    - poetry.lock
+    - uv.lock
+    - Pipfile.lock
+    - requirements.lock
+  test_path_patterns:
+    - tests/
+    - test_*.py
+    - "*_test.py"
+```
+
+See [risk-rules.md](risk-rules.md) for the full policy reference.
+
 ## Enforce A Quality Gate
 
 ```bash
