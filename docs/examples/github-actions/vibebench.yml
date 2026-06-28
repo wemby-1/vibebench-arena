@@ -1,42 +1,47 @@
 name: VibeBench
 
 on:
-  pull_request:
   push:
+  pull_request:
 
 jobs:
   vibebench:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v6
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
-      - name: Install VibeBench
-        run: python -m pip install git+https://github.com/wemby-1/vibebench-arena.git@main
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
 
-      - name: Initialize config if missing
-        run: test -f .vibebench/config.yaml || vibebench init
+      - name: Install project and VibeBench
+        run: |
+          python -m pip install -e ".[dev]"
+          python -m pip install git+https://github.com/wemby-1/vibebench-arena.git@main
 
       - name: Run VibeBench check
-        run: vibebench check
+        run: python -m vibebench check
 
       - name: Enforce VibeBench gate
-        run: vibebench gate --write-gate-summary
+        run: python -m vibebench gate --write-gate-summary
 
-      - name: Generate HTML report
+      - name: Generate VibeBench HTML report
         if: always()
-        run: vibebench report
+        run: python -m vibebench report
 
-      - name: Generate PR comment
+      - name: Generate VibeBench PR comment
         if: always()
-        run: vibebench pr-comment
+        run: python -m vibebench pr-comment
 
-      - name: Write GitHub step summary
+      - name: Write VibeBench GitHub summary
         if: always()
-        run: vibebench gh-summary
+        run: python -m vibebench gh-summary
 
       - name: Upload VibeBench artifacts
         if: always()
@@ -44,3 +49,4 @@ jobs:
         with:
           name: vibebench-runs
           path: .vibebench/runs
+          if-no-files-found: ignore

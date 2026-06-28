@@ -10,17 +10,20 @@ cd vibebench-arena
 python -m pip install -e ".[dev]"
 ```
 
-## Initialize Config
+## Initialize VibeBench
 
 ```bash
 python -m vibebench init
 ```
 
-This creates:
+This creates local config and a GitHub Actions workflow:
 
 ```text
 .vibebench/config.yaml
+.github/workflows/vibebench.yml
 ```
+
+By default, existing files are skipped. Use `--force` to overwrite generated files, `--no-workflow` to create only config, or `--workflow-only` to create only the workflow.
 
 ## Diagnose Project Readiness
 

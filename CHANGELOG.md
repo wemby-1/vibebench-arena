@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- `vibebench init` now bootstraps `.vibebench/config.yaml` and a GitHub Actions workflow, with safe overwrite controls.
 - Configurable `risk` policy in `.vibebench/config.yaml` for Git diff risk detection.
 - `vibebench gate` for explicit local and CI pass/fail quality thresholds.
 - Configurable `gate` policy in `.vibebench/config.yaml`, with CLI flags as explicit overrides.

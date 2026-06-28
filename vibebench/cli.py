@@ -41,6 +41,62 @@ ProjectRootOption = Annotated[
     ),
 ]
 
+WORKFLOW_RELATIVE_PATH = Path(".github") / "workflows" / "vibebench.yml"
+
+DEFAULT_WORKFLOW = """name: VibeBench
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  vibebench:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install project and VibeBench
+        run: |
+          python -m pip install -e ".[dev]"
+          python -m pip install git+https://github.com/wemby-1/vibebench-arena.git@main
+
+      - name: Run VibeBench check
+        run: python -m vibebench check
+
+      - name: Enforce VibeBench gate
+        run: python -m vibebench gate --write-gate-summary
+
+      - name: Generate VibeBench HTML report
+        if: always()
+        run: python -m vibebench report
+
+      - name: Generate VibeBench PR comment
+        if: always()
+        run: python -m vibebench pr-comment
+
+      - name: Write VibeBench GitHub summary
+        if: always()
+        run: python -m vibebench gh-summary
+
+      - name: Upload VibeBench artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: vibebench-runs
+          path: .vibebench/runs
+          if-no-files-found: ignore
+"""
+
 
 @app.command()
 def version() -> None:
@@ -56,23 +112,89 @@ def init(
         typer.Option(
             "--force",
             "-f",
-            help="Overwrite an existing config file.",
+            help="Overwrite existing generated files.",
+        ),
+    ] = False,
+    no_workflow: Annotated[
+        bool,
+        typer.Option("--no-workflow", help="Create only .vibebench/config.yaml."),
+    ] = False,
+    workflow_only: Annotated[
+        bool,
+        typer.Option(
+            "--workflow-only",
+            help="Create only the GitHub Actions workflow.",
         ),
     ] = False,
 ) -> None:
-    """Create a default .vibebench/config.yaml file."""
-    target = config_file(project_root)
-
-    if target.exists() and not force:
+    """Bootstrap VibeBench config and GitHub Actions workflow."""
+    if no_workflow and workflow_only:
         console.print(
-            f"[yellow]Config already exists:[/] {target}\n"
-            "Use --force to overwrite it."
+            "[red]--no-workflow and --workflow-only cannot be used together.[/]"
         )
-        raise typer.Exit(code=0)
+        raise typer.Exit(code=1)
+
+    root = project_root.resolve()
+    created: list[Path] = []
+    skipped: list[Path] = []
+
+    if not workflow_only:
+        config_target = config_file(root)
+        write_init_file(
+            config_target,
+            default_config_yaml(),
+            force=force,
+            created=created,
+            skipped=skipped,
+        )
+
+    if not no_workflow:
+        workflow_target = root / WORKFLOW_RELATIVE_PATH
+        write_init_file(
+            workflow_target,
+            DEFAULT_WORKFLOW,
+            force=force,
+            created=created,
+            skipped=skipped,
+        )
+
+    render_init_summary(created, skipped)
+
+
+def write_init_file(
+    target: Path,
+    content: str,
+    *,
+    force: bool,
+    created: list[Path],
+    skipped: list[Path],
+) -> None:
+    """Write an init file unless it exists and force is false."""
+    if target.exists() and not force:
+        skipped.append(target)
+        return
 
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(default_config_yaml(), encoding="utf-8")
-    console.print(f"[green]Created VibeBench config:[/] {target}")
+    target.write_text(content, encoding="utf-8")
+    created.append(target)
+
+
+def render_init_summary(created: list[Path], skipped: list[Path]) -> None:
+    """Render init result and next steps."""
+    table = Table(title="VibeBench init")
+    table.add_column("Status")
+    table.add_column("Path")
+    for path in created:
+        table.add_row("created", str(path))
+    for path in skipped:
+        table.add_row("skipped", str(path))
+    if not created and not skipped:
+        table.add_row("none", "No files selected")
+    console.print(table)
+    console.print("Next steps:")
+    console.print("  python -m vibebench doctor")
+    console.print("  python -m vibebench check")
+    console.print("  python -m vibebench gate --write-gate-summary")
 
 
 @app.command()

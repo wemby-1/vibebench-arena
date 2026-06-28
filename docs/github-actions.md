@@ -7,16 +7,15 @@ VibeBench can run inside GitHub Actions without using the GitHub API or requirin
 
 This repository's active CI runs direct `ruff` and `pytest` checks first, then runs VibeBench itself. CI now enforces `vibebench gate --write-gate-summary` using the policy in `.vibebench/config.yaml`; if the gate fails, the job fails. CI still generates the HTML report, PR-ready Markdown comment, GitHub step summary, and uploads `.vibebench/runs` as artifacts.
 
-## Copy The Example Workflow
+## Generate The Workflow
 
-Copy the example workflow into your repository:
+Generate the default VibeBench workflow with:
 
 ```bash
-mkdir -p .github/workflows
-cp docs/examples/github-actions/vibebench.yml .github/workflows/vibebench.yml
+python -m vibebench init
 ```
 
-The example lives at:
+This creates `.github/workflows/vibebench.yml` unless it already exists. Use `python -m vibebench init --workflow-only` to create only the workflow, or `--force` to overwrite generated files. The template also lives at:
 
 ```text
 docs/examples/github-actions/vibebench.yml
@@ -28,10 +27,9 @@ The example workflow:
 
 - checks out your repository
 - sets up Python 3.11
-- installs VibeBench from GitHub until PyPI support exists
-- initializes `.vibebench/config.yaml` if it is missing
-- runs `vibebench check`
-- enforces `vibebench gate` with explicit score, risk, and finding thresholds
+- installs the project with `python -m pip install -e ".[dev]"` and installs VibeBench from GitHub until PyPI support exists
+- runs `python -m vibebench check`
+- enforces `python -m vibebench gate --write-gate-summary` with explicit score, risk, and finding thresholds from config
 - generates the HTML report
 - generates the PR-ready Markdown comment
 - writes the GitHub Actions step summary
@@ -73,4 +71,4 @@ That directory can include:
 
 - VibeBench does not post PR comments through the GitHub API yet.
 - Your project test and lint commands must be installable and runnable in CI.
-- The example installs from `main` while post-v0.1.0 commands are still unreleased. Pin a tag or commit when you need reproducible CI.
+- The generated workflow assumes your project can be installed with `python -m pip install -e ".[dev]"`; adjust that step if your project uses a different install command. Pin the VibeBench install line to a tag or commit when you need reproducible CI.
