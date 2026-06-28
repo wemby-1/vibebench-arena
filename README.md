@@ -198,7 +198,7 @@ does not call the GitHub API.
 
 `vibebench gh-summary` writes a concise Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is set. It does not post PR comments through the GitHub API yet.
 
-This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench check`, generates report/comment/summary artifacts, and uploads `.vibebench/runs`. See [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) for a copyable workflow and [docs/github-actions.md](docs/github-actions.md) for details.
+This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench check`, enforces `vibebench gate --min-score 80 --max-risk medium --allow-findings 0 --write-gate-summary`, generates report/comment/summary artifacts, and uploads `.vibebench/runs`. See [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) for a copyable workflow and [docs/github-actions.md](docs/github-actions.md) for details.
 
 ## Try The Risk Demo
 

@@ -5,7 +5,7 @@ VibeBench can run inside GitHub Actions without using the GitHub API or requirin
 
 ## VibeBench Dogfoods Itself
 
-This repository's active CI runs direct `ruff` and `pytest` checks first, then runs VibeBench itself. CI also generates the HTML report, PR-ready Markdown comment, GitHub step summary, and uploads `.vibebench/runs` as artifacts.
+This repository's active CI runs direct `ruff` and `pytest` checks first, then runs VibeBench itself. CI now enforces `vibebench gate --min-score 80 --max-risk medium --allow-findings 0 --write-gate-summary`; if the gate fails, the job fails. CI still generates the HTML report, PR-ready Markdown comment, GitHub step summary, and uploads `.vibebench/runs` as artifacts.
 
 ## Copy The Example Workflow
 
@@ -31,6 +31,7 @@ The example workflow:
 - installs VibeBench from the GitHub tag until PyPI support exists
 - initializes `.vibebench/config.yaml` if it is missing
 - runs `vibebench check`
+- enforces `vibebench gate` with explicit score, risk, and finding thresholds
 - generates the HTML report
 - generates the PR-ready Markdown comment
 - writes the GitHub Actions step summary
@@ -38,7 +39,7 @@ The example workflow:
 
 ## Add A Quality Gate
 
-Use `vibebench gate` when CI should fail on explicit score, risk, and finding thresholds:
+Use `vibebench gate` when CI should fail on explicit score, risk, and finding thresholds. Put it after `vibebench check` and before the always-on artifact generation steps:
 
 ```yaml
       - name: Enforce VibeBench gate
@@ -49,7 +50,7 @@ Use `vibebench gate` when CI should fail on explicit score, risk, and finding th
 
 ## Why `if: always()` Is Used
 
-`vibebench check` should fail the workflow when configured commands fail or critical risks are found. The later report, comment, summary, and artifact upload steps use `if: always()` so reviewers can still inspect VibeBench output after a failed check.
+`vibebench check` should fail the workflow when configured commands fail or critical risks are found. `vibebench gate` should also fail the workflow when explicit quality thresholds are not met, so it should not use `if: always()`. The later report, comment, summary, and artifact upload steps use `if: always()` so reviewers can still inspect VibeBench output after a failed check or gate.
 
 ## Artifacts
 
@@ -65,6 +66,7 @@ That directory can include:
 - `check.log`
 - `report/index.html`
 - `pr-comment.md`
+- `gate-summary.md`
 - `github-step-summary.md` when not running inside GitHub step summary mode
 
 ## Limitations

@@ -168,7 +168,7 @@ The risk demo intentionally creates critical findings, so `vibebench check` is e
 
 ## CI Artifacts
 
-VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench check`, writes the GitHub Actions job summary with `vibebench gh-summary`, and uploads `.vibebench/runs` as artifacts for review.
+VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench check`, enforces `vibebench gate --min-score 80 --max-risk medium --allow-findings 0 --write-gate-summary`, writes the GitHub Actions job summary with `vibebench gh-summary`, and uploads `.vibebench/runs` as artifacts for review.
 
 ## Generated Files
 
