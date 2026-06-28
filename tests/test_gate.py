@@ -9,7 +9,6 @@ from vibebench.gate import run_gate
 
 runner = CliRunner()
 
-
 def metrics_payload(
     *,
     status: str = "passed",
@@ -63,7 +62,6 @@ def metrics_payload(
         "log_path": "",
     }
 
-
 def write_run(
     project_root: Path,
     name: str,
@@ -81,6 +79,78 @@ def write_run(
     )
     return run_dir
 
+def write_config(
+    project_root: Path,
+    *,
+    min_score: int = 80,
+    max_risk: str = "medium",
+    allow_findings: int = 0,
+    require_status_passed: bool = True,
+) -> Path:
+    config_dir = project_root / ".vibebench"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_path = config_dir / "config.yaml"
+    require_status = "true" if require_status_passed else "false"
+    config_path.write_text(
+        f"""project:
+  name: demo-project
+checks:
+  test:
+    - pytest -q
+  lint:
+    - ruff check .
+risk_rules:
+  forbidden_paths:
+    - .env
+  warn_if_tests_deleted: true
+  warn_if_lockfiles_changed: true
+  large_patch_lines: 500
+gate:
+  min_score: {min_score}
+  max_risk: {max_risk}
+  allow_findings: {allow_findings}
+  require_status_passed: {require_status}
+""",
+        encoding="utf-8",
+    )
+    return config_path
+
+def test_gate_uses_configured_defaults(tmp_path: Path) -> None:
+    write_config(tmp_path, min_score=95, max_risk="low", allow_findings=0)
+    run_dir = write_run(tmp_path, "20260628_120000", metrics_payload(score=90))
+
+    result = run_gate(tmp_path, run_dir=run_dir)
+
+    assert result.passed is False
+    assert result.thresholds.min_score == 95
+    assert any("below minimum 95" in reason for reason in result.reasons)
+
+def test_gate_cli_values_override_config(tmp_path: Path) -> None:
+    write_config(tmp_path, min_score=95, max_risk="low", allow_findings=0)
+    run_dir = write_run(tmp_path, "20260628_120000", metrics_payload(score=90))
+
+    result = run_gate(tmp_path, run_dir=run_dir, min_score=80)
+
+    assert result.passed is True
+    assert result.thresholds.min_score == 80
+
+def test_gate_config_can_disable_required_passed_status(tmp_path: Path) -> None:
+    write_config(tmp_path, require_status_passed=False)
+    run_dir = write_run(tmp_path, "20260628_120000", metrics_payload(status="failed"))
+
+    result = run_gate(tmp_path, run_dir=run_dir)
+
+    assert result.passed is True
+    assert result.thresholds.require_status_passed is False
+
+def test_gate_cli_can_override_configured_status_requirement(tmp_path: Path) -> None:
+    write_config(tmp_path, require_status_passed=False)
+    run_dir = write_run(tmp_path, "20260628_120000", metrics_payload(status="failed"))
+
+    result = run_gate(tmp_path, run_dir=run_dir, require_status_passed=True)
+
+    assert result.passed is False
+    assert any("overall status" in reason for reason in result.reasons)
 
 def test_gate_passes_good_run_with_defaults(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260628_120000")
@@ -90,7 +160,6 @@ def test_gate_passes_good_run_with_defaults(tmp_path: Path) -> None:
     assert result.passed is True
     assert result.reasons == []
 
-
 def test_gate_fails_when_score_below_default(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260628_120000", metrics_payload(score=79))
 
@@ -99,12 +168,10 @@ def test_gate_fails_when_score_below_default(tmp_path: Path) -> None:
     assert result.passed is False
     assert any("below minimum" in reason for reason in result.reasons)
 
-
 def test_gate_passes_when_min_score_lowered(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260628_120000", metrics_payload(score=79))
 
     assert run_gate(tmp_path, run_dir=run_dir, min_score=70).passed is True
-
 
 def test_gate_fails_when_risk_above_max(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260628_120000", metrics_payload(risk="high"))
@@ -114,12 +181,10 @@ def test_gate_fails_when_risk_above_max(tmp_path: Path) -> None:
     assert result.passed is False
     assert any("risk high" in reason for reason in result.reasons)
 
-
 def test_gate_passes_when_max_risk_allows_it(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260628_120000", metrics_payload(risk="high"))
 
     assert run_gate(tmp_path, run_dir=run_dir, max_risk="high").passed is True
-
 
 def test_gate_fails_when_findings_exceed_allowed(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260628_120000", metrics_payload(findings=1))
@@ -129,12 +194,10 @@ def test_gate_fails_when_findings_exceed_allowed(tmp_path: Path) -> None:
     assert result.passed is False
     assert any("risk findings" in reason for reason in result.reasons)
 
-
 def test_gate_passes_when_allow_findings_allows_them(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260628_120000", metrics_payload(findings=1))
 
     assert run_gate(tmp_path, run_dir=run_dir, allow_findings=1).passed is True
-
 
 def test_gate_fails_when_status_failed(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260628_120000", metrics_payload(status="failed"))
@@ -144,14 +207,12 @@ def test_gate_fails_when_status_failed(tmp_path: Path) -> None:
     assert result.passed is False
     assert any("overall status" in reason for reason in result.reasons)
 
-
 def test_gate_can_ignore_failed_status(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260628_120000", metrics_payload(status="failed"))
 
     assert (
         run_gate(tmp_path, run_dir=run_dir, require_status_passed=False).passed is True
     )
-
 
 def test_gate_run_dir_option_works(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260628_120000")
@@ -164,7 +225,6 @@ def test_gate_run_dir_option_works(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert "Result: passed" in result.output
 
-
 def test_gate_missing_run_dir_fails_clearly(tmp_path: Path) -> None:
     result = runner.invoke(
         app,
@@ -173,7 +233,6 @@ def test_gate_missing_run_dir_fails_clearly(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "Run directory does not exist" in result.output
-
 
 def test_gate_corrupt_metrics_fails_clearly(tmp_path: Path) -> None:
     run_dir = tmp_path / ".vibebench" / "runs" / "20260628_120000"
@@ -188,7 +247,6 @@ def test_gate_corrupt_metrics_fails_clearly(tmp_path: Path) -> None:
     assert result.exit_code == 1
     assert "Could not parse metrics.json" in result.output
 
-
 def test_gate_baseline_passes_when_not_worse(tmp_path: Path) -> None:
     base = write_run(tmp_path, "20260628_120000", metrics_payload(score=90))
     current = write_run(tmp_path, "20260628_130000", metrics_payload(score=100))
@@ -197,7 +255,6 @@ def test_gate_baseline_passes_when_not_worse(tmp_path: Path) -> None:
     result = run_gate(tmp_path, run_dir=current, use_baseline=True)
 
     assert result.passed is True
-
 
 def test_gate_baseline_fails_when_score_regresses(tmp_path: Path) -> None:
     base = write_run(tmp_path, "20260628_120000", metrics_payload(score=100))
@@ -209,7 +266,6 @@ def test_gate_baseline_fails_when_score_regresses(tmp_path: Path) -> None:
     assert result.passed is False
     assert any("score regressed" in reason for reason in result.reasons)
 
-
 def test_gate_baseline_fails_when_risk_worsens(tmp_path: Path) -> None:
     base = write_run(tmp_path, "20260628_120000", metrics_payload(risk="low"))
     current = write_run(tmp_path, "20260628_130000", metrics_payload(risk="medium"))
@@ -219,7 +275,6 @@ def test_gate_baseline_fails_when_risk_worsens(tmp_path: Path) -> None:
 
     assert result.passed is False
     assert any("risk worsened" in reason for reason in result.reasons)
-
 
 def test_gate_baseline_fails_when_findings_increase(tmp_path: Path) -> None:
     base = write_run(tmp_path, "20260628_120000", metrics_payload(findings=0))
@@ -236,7 +291,6 @@ def test_gate_baseline_fails_when_findings_increase(tmp_path: Path) -> None:
     assert result.passed is False
     assert any("risk findings increased" in reason for reason in result.reasons)
 
-
 def test_gate_baseline_without_saved_baseline_fails_clearly(tmp_path: Path) -> None:
     write_run(tmp_path, "20260628_120000")
 
@@ -244,7 +298,6 @@ def test_gate_baseline_without_saved_baseline_fails_clearly(tmp_path: Path) -> N
 
     assert result.exit_code == 1
     assert "baseline --set latest" in result.output
-
 
 def test_gate_summary_is_written(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260628_120000")

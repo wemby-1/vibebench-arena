@@ -88,6 +88,12 @@ risk_rules:
   warn_if_tests_deleted: true
   warn_if_lockfiles_changed: true
   large_patch_lines: 500
+
+gate:
+  min_score: 80
+  max_risk: medium
+  allow_findings: 0
+  require_status_passed: true
 ```
 
 ## Example Workflow
@@ -135,7 +141,7 @@ python -m vibebench compare
 
 `vibebench clean` safely previews cleanup of old local runs. It is dry-run by default and only deletes with `--yes`.
 
-`vibebench gate` turns an existing run into an explicit pass/fail decision for local use or CI. Use `--baseline` to also fail on regressions against the saved baseline.
+`vibebench gate` turns an existing run into an explicit pass/fail decision for local use or CI. Gate thresholds can live in `.vibebench/config.yaml`; CLI flags such as `--min-score` and `--max-risk` override config values for one run. Use `--baseline` to also fail on regressions against the saved baseline.
 
 `vibebench check` writes:
 
@@ -198,7 +204,7 @@ does not call the GitHub API.
 
 `vibebench gh-summary` writes a concise Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is set. It does not post PR comments through the GitHub API yet.
 
-This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench check`, enforces `vibebench gate --min-score 80 --max-risk medium --allow-findings 0 --write-gate-summary`, generates report/comment/summary artifacts, and uploads `.vibebench/runs`. See [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) for a copyable workflow and [docs/github-actions.md](docs/github-actions.md) for details.
+This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench check`, enforces `vibebench gate --write-gate-summary` using the policy in `.vibebench/config.yaml`, generates report/comment/summary artifacts, and uploads `.vibebench/runs`. See [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) for a copyable workflow and [docs/github-actions.md](docs/github-actions.md) for details.
 
 ## Try The Risk Demo
 

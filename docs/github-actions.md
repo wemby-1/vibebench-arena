@@ -5,7 +5,7 @@ VibeBench can run inside GitHub Actions without using the GitHub API or requirin
 
 ## VibeBench Dogfoods Itself
 
-This repository's active CI runs direct `ruff` and `pytest` checks first, then runs VibeBench itself. CI now enforces `vibebench gate --min-score 80 --max-risk medium --allow-findings 0 --write-gate-summary`; if the gate fails, the job fails. CI still generates the HTML report, PR-ready Markdown comment, GitHub step summary, and uploads `.vibebench/runs` as artifacts.
+This repository's active CI runs direct `ruff` and `pytest` checks first, then runs VibeBench itself. CI now enforces `vibebench gate --write-gate-summary` using the policy in `.vibebench/config.yaml`; if the gate fails, the job fails. CI still generates the HTML report, PR-ready Markdown comment, GitHub step summary, and uploads `.vibebench/runs` as artifacts.
 
 ## Copy The Example Workflow
 
@@ -28,7 +28,7 @@ The example workflow:
 
 - checks out your repository
 - sets up Python 3.11
-- installs VibeBench from the GitHub tag until PyPI support exists
+- installs VibeBench from GitHub until PyPI support exists
 - initializes `.vibebench/config.yaml` if it is missing
 - runs `vibebench check`
 - enforces `vibebench gate` with explicit score, risk, and finding thresholds
@@ -39,14 +39,14 @@ The example workflow:
 
 ## Add A Quality Gate
 
-Use `vibebench gate` when CI should fail on explicit score, risk, and finding thresholds. Put it after `vibebench check` and before the always-on artifact generation steps:
+Use `vibebench gate` when CI should fail on explicit score, risk, and finding thresholds. Put the policy in `.vibebench/config.yaml`, then run the gate after `vibebench check` and before the always-on artifact generation steps:
 
 ```yaml
       - name: Enforce VibeBench gate
-        run: python -m vibebench gate --min-score 80 --max-risk medium --allow-findings 0 --write-gate-summary
+        run: python -m vibebench gate --write-gate-summary
 ```
 
-`--write-gate-summary` writes `.vibebench/runs/<timestamp>/gate-summary.md`, which can be uploaded with the rest of the run artifacts.
+`--write-gate-summary` writes `.vibebench/runs/<timestamp>/gate-summary.md`, which can be uploaded with the rest of the run artifacts. CLI threshold flags still work as explicit one-run overrides.
 
 ## Why `if: always()` Is Used
 
@@ -73,5 +73,4 @@ That directory can include:
 
 - VibeBench does not post PR comments through the GitHub API yet.
 - Your project test and lint commands must be installable and runnable in CI.
-- v0.1.0 is installed from the GitHub tag until PyPI support exists.
-- If you use unreleased commands from `main`, update the install line to point at the branch or commit you want to test.
+- The example installs from `main` while post-v0.1.0 commands are still unreleased. Pin a tag or commit when you need reproducible CI.

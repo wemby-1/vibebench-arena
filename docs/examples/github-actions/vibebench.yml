@@ -8,20 +8,23 @@ jobs:
   vibebench:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
       - name: Install VibeBench
-        run: python -m pip install git+https://github.com/wemby-1/vibebench-arena.git@v0.1.0
+        run: python -m pip install git+https://github.com/wemby-1/vibebench-arena.git@main
 
       - name: Initialize config if missing
         run: test -f .vibebench/config.yaml || vibebench init
 
       - name: Run VibeBench check
         run: vibebench check
+
+      - name: Enforce VibeBench gate
+        run: vibebench gate --write-gate-summary
 
       - name: Generate HTML report
         if: always()
@@ -37,7 +40,7 @@ jobs:
 
       - name: Upload VibeBench artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vibebench-runs
           path: .vibebench/runs

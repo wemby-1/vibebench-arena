@@ -9,7 +9,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 ### Added
 
 - `vibebench gate` for explicit local and CI pass/fail quality thresholds.
-- Active GitHub Actions CI now enforces the VibeBench quality gate and writes `gate-summary.md`.
+- Configurable `gate` policy in `.vibebench/config.yaml`, with CLI flags as explicit overrides.
+- Active GitHub Actions CI now enforces the VibeBench quality gate from config and writes `gate-summary.md`.
 - `vibebench baseline` for saving a project baseline run and comparing against it.
 - `vibebench clean` for safe dry-run cleanup of old local run directories.
 - `vibebench history` for inspecting recent local run metrics and generated artifacts.

@@ -13,3 +13,8 @@ risk_rules:
   warn_if_tests_deleted: true
   warn_if_lockfiles_changed: true
   large_patch_lines: 500
+gate:
+  min_score: 80
+  max_risk: medium
+  allow_findings: 0
+  require_status_passed: true

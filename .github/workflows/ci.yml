@@ -34,7 +34,7 @@ jobs:
         run: vibebench check
 
       - name: Enforce VibeBench quality gate
-        run: vibebench gate --min-score 80 --max-risk medium --allow-findings 0 --write-gate-summary
+        run: vibebench gate --write-gate-summary
 
       - name: Generate VibeBench HTML report
         if: always()

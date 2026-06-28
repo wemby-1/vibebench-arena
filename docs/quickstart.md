@@ -88,11 +88,12 @@ ruff check .
 
 ```bash
 python -m vibebench gate
-python -m vibebench gate --min-score 80 --max-risk medium --allow-findings 0
+python -m vibebench gate --write-gate-summary
+python -m vibebench gate --min-score 90 --max-risk low
 python -m vibebench gate --baseline --write-gate-summary
 ```
 
-`vibebench gate` evaluates an existing run, exits nonzero on failure, and can write `.vibebench/runs/<timestamp>/gate-summary.md`.
+`vibebench gate` evaluates an existing run, exits nonzero on failure, and can write `.vibebench/runs/<timestamp>/gate-summary.md`. By default, it reads thresholds from `.vibebench/config.yaml` when a `gate` section is present; CLI flags override config values for one run.
 
 ## Generate A Static HTML Report
 
@@ -168,7 +169,7 @@ The risk demo intentionally creates critical findings, so `vibebench check` is e
 
 ## CI Artifacts
 
-VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench check`, enforces `vibebench gate --min-score 80 --max-risk medium --allow-findings 0 --write-gate-summary`, writes the GitHub Actions job summary with `vibebench gh-summary`, and uploads `.vibebench/runs` as artifacts for review.
+VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench check`, enforces `vibebench gate --write-gate-summary` using the policy in `.vibebench/config.yaml`, writes the GitHub Actions job summary with `vibebench gh-summary`, and uploads `.vibebench/runs` as artifacts for review.
 
 ## Generated Files
 

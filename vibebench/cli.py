@@ -214,21 +214,21 @@ def gate(
         typer.Option("--run-dir", help="Specific run directory to evaluate."),
     ] = None,
     min_score: Annotated[
-        int,
-        typer.Option("--min-score", help="Minimum acceptable VibeScore."),
-    ] = 80,
+        int | None,
+        typer.Option("--min-score", help="Override minimum acceptable VibeScore."),
+    ] = None,
     max_risk: Annotated[
-        str,
-        typer.Option("--max-risk", help="Maximum acceptable risk level."),
-    ] = "medium",
+        str | None,
+        typer.Option("--max-risk", help="Override maximum acceptable risk level."),
+    ] = None,
     allow_findings: Annotated[
-        int,
-        typer.Option("--allow-findings", help="Allowed risk finding count."),
-    ] = 0,
+        int | None,
+        typer.Option("--allow-findings", help="Override allowed risk finding count."),
+    ] = None,
     require_status_passed: Annotated[
-        bool,
+        bool | None,
         typer.Option("--require-status-passed/--no-require-status-passed"),
-    ] = True,
+    ] = None,
     baseline: Annotated[
         bool,
         typer.Option("--baseline", help="Fail on regression against saved baseline."),

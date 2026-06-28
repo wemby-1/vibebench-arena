@@ -6,10 +6,12 @@ import json
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from vibebench.baseline import show_baseline
 from vibebench.compare import find_comparable_runs, resolve_run
+from vibebench.config import ConfigError, load_config
+from vibebench.paths import config_file
 from vibebench.report import ReportError
 
 RiskLevel = Literal["low", "medium", "high", "critical"]
@@ -39,9 +41,9 @@ class GateThresholds(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    min_score: int = 80
+    min_score: int = Field(default=80, ge=0, le=100)
     max_risk: RiskLevel = "medium"
-    allow_findings: int = 0
+    allow_findings: int = Field(default=0, ge=0)
     require_status_passed: bool = True
 
 
@@ -63,22 +65,17 @@ class GateResult(BaseModel):
 def run_gate(
     project_root: Path,
     run_dir: Path | None = None,
-    min_score: int = 80,
-    max_risk: RiskLevel = "medium",
-    allow_findings: int = 0,
-    require_status_passed: bool = True,
+    min_score: int | None = None,
+    max_risk: str | None = None,
+    allow_findings: int | None = None,
+    require_status_passed: bool | None = None,
     use_baseline: bool = False,
     write_gate_summary: bool = False,
 ) -> GateResult:
     """Evaluate a VibeBench run against threshold and baseline rules."""
     root = project_root.resolve()
-    if max_risk not in RISK_ORDER:
-        raise ReportError(
-            "--max-risk must be one of: low, medium, high, critical."
-        )
-    if allow_findings < 0:
-        raise ReportError("--allow-findings must be 0 or greater.")
-    thresholds = GateThresholds(
+    thresholds = resolve_gate_thresholds(
+        root,
         min_score=min_score,
         max_risk=max_risk,
         allow_findings=allow_findings,
@@ -117,6 +114,39 @@ def run_gate(
         result = result.model_copy(update={"summary_path": summary_path})
 
     return result
+
+
+def resolve_gate_thresholds(
+    project_root: Path,
+    *,
+    min_score: int | None = None,
+    max_risk: str | None = None,
+    allow_findings: int | None = None,
+    require_status_passed: bool | None = None,
+) -> GateThresholds:
+    """Resolve gate thresholds from defaults, config, and CLI overrides."""
+    values: dict[str, object] = GateThresholds().model_dump()
+    config_path = config_file(project_root)
+    if config_path.exists():
+        try:
+            config = load_config(config_path)
+        except ConfigError as exc:
+            raise ReportError(str(exc)) from exc
+        values.update(config.gate.model_dump())
+
+    if min_score is not None:
+        values["min_score"] = min_score
+    if max_risk is not None:
+        values["max_risk"] = max_risk
+    if allow_findings is not None:
+        values["allow_findings"] = allow_findings
+    if require_status_passed is not None:
+        values["require_status_passed"] = require_status_passed
+
+    try:
+        return GateThresholds.model_validate(values)
+    except ValueError as exc:
+        raise ReportError(f"Invalid gate policy: {exc}") from exc
 
 
 def select_gate_run(project_root: Path, run_dir: Path | None) -> Path:

@@ -83,6 +83,12 @@ risk_rules:
   warn_if_tests_deleted: true
   warn_if_lockfiles_changed: true
   large_patch_lines: 500
+
+gate:
+  min_score: 80
+  max_risk: medium
+  allow_findings: 0
+  require_status_passed: true
 ```
 
 ## 示例流程
@@ -130,7 +136,7 @@ python -m vibebench compare
 
 `vibebench clean` 会安全预览旧运行记录的清理计划。默认只是 dry-run，只有显式传入 `--yes` 才会删除。
 
-`vibebench gate` 会把已有运行结果转换成明确的通过/失败决策，适合本地或 CI 使用。加上 `--baseline` 后，还会阻止相对 baseline 的退化。
+`vibebench gate` 会把已有运行结果转换成明确的通过/失败决策，适合本地或 CI 使用。门禁阈值可以写在 `.vibebench/config.yaml` 里；`--min-score`、`--max-risk` 等 CLI 参数会覆盖配置，只影响本次运行。加上 `--baseline` 后，还会阻止相对 baseline 的退化。
 
 `vibebench check` 会写入：
 
@@ -188,7 +194,7 @@ python -m vibebench compare
 
 `vibebench gh-summary` 会在 `GITHUB_STEP_SUMMARY` 存在时写入 GitHub Actions step summary。当前它不会通过 GitHub API 自动发布 PR comment。
 
-这个仓库已经在自己的 CI 里 dogfood VibeBench：直接运行 Ruff 和 pytest 后，CI 会继续运行 `vibebench check`，并用 `vibebench gate --min-score 80 --max-risk medium --allow-findings 0 --write-gate-summary` 执行明确门禁，然后生成 report/comment/summary，并上传 `.vibebench/runs` artifacts。可以参考 [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml)，更多说明见 [docs/github-actions.md](docs/github-actions.md)。
+这个仓库已经在自己的 CI 里 dogfood VibeBench：直接运行 Ruff 和 pytest 后，CI 会继续运行 `vibebench check`，并用 `vibebench gate --write-gate-summary` 按 `.vibebench/config.yaml` 中的策略执行明确门禁，然后生成 report/comment/summary，并上传 `.vibebench/runs` artifacts。可以参考 [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml)，更多说明见 [docs/github-actions.md](docs/github-actions.md)。
 
 ## 试运行风险检测 Demo
 

@@ -1,7 +1,7 @@
 """Configuration models and loader for VibeBench Arena."""
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -21,6 +21,12 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "warn_if_tests_deleted": True,
         "warn_if_lockfiles_changed": True,
         "large_patch_lines": 500,
+    },
+    "gate": {
+        "min_score": 80,
+        "max_risk": "medium",
+        "allow_findings": 0,
+        "require_status_passed": True,
     },
 }
 
@@ -57,6 +63,17 @@ class RiskRulesConfig(BaseModel):
     large_patch_lines: int = Field(default=500, gt=0)
 
 
+class GateConfig(BaseModel):
+    """Quality gate policy defaults."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    min_score: int = Field(default=80, ge=0, le=100)
+    max_risk: Literal["low", "medium", "high", "critical"] = "medium"
+    allow_findings: int = Field(default=0, ge=0)
+    require_status_passed: bool = True
+
+
 class VibeBenchConfig(BaseModel):
     """Top-level VibeBench configuration."""
 
@@ -65,6 +82,7 @@ class VibeBenchConfig(BaseModel):
     project: ProjectConfig
     checks: ChecksConfig
     risk_rules: RiskRulesConfig
+    gate: GateConfig = Field(default_factory=GateConfig)
 
 
 def default_config_yaml() -> str:
