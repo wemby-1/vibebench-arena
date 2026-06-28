@@ -58,6 +58,7 @@ python -m pip install -e ".[dev]"
 python -m vibebench init
 python -m vibebench doctor
 python -m vibebench history
+python -m vibebench baseline --set latest
 python -m vibebench clean
 python -m vibebench check
 python -m vibebench report
@@ -100,6 +101,9 @@ python -m vibebench doctor
 # Show recent VibeBench runs
 python -m vibebench history
 
+# Mark the latest run as the project baseline
+python -m vibebench baseline --set latest
+
 # Preview cleanup of old local runs
 python -m vibebench clean
 
@@ -122,6 +126,8 @@ python -m vibebench compare
 `vibebench doctor` checks Python, Git, config validity, configured command executables, and whether `.vibebench/runs/` is writable. It does not run the configured checks.
 
 `vibebench history` shows recent runs from `.vibebench/runs/`, including score, risk level, diff size, finding count, and generated artifact status.
+
+`vibebench baseline --set latest` saves a baseline run in `.vibebench/baseline.json`. `vibebench compare --baseline` compares that saved baseline against the latest run.
 
 `vibebench clean` safely previews cleanup of old local runs. It is dry-run by default and only deletes with `--yes`.
 

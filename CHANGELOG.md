@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- `vibebench baseline` for saving a project baseline run and comparing against it.
 - `vibebench clean` for safe dry-run cleanup of old local run directories.
 - `vibebench history` for inspecting recent local run metrics and generated artifacts.
 - `vibebench doctor` for local readiness diagnostics before running checks.

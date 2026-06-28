@@ -8,6 +8,7 @@ from rich.console import Console
 from rich.table import Table
 
 from vibebench import __version__
+from vibebench.baseline import BaselineStatus, set_baseline, show_baseline
 from vibebench.clean import CleanResult, clean_runs
 from vibebench.compare import CompareResult, compare_runs
 from vibebench.config import ConfigError, default_config_yaml, load_config
@@ -205,6 +206,38 @@ def doctor(
 
 
 @app.command()
+def baseline(
+    project_root: ProjectRootOption = Path("."),
+    set_run: Annotated[
+        str | None,
+        typer.Option(
+            "--set",
+            help="Save baseline to 'latest' or a specific run id.",
+        ),
+    ] = None,
+    runs_dir: Annotated[
+        Path | None,
+        typer.Option("--runs-dir", help="Directory containing VibeBench runs."),
+    ] = None,
+) -> None:
+    """Show or set the project baseline run."""
+    root = project_root.resolve()
+    try:
+        result = (
+            set_baseline(root, set_run, runs_dir=runs_dir)
+            if set_run is not None
+            else show_baseline(root)
+        )
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    render_baseline_summary(result)
+    if result.metadata is not None and not result.is_valid:
+        raise typer.Exit(code=1)
+
+
+@app.command()
 def clean(
     project_root: ProjectRootOption = Path("."),
     keep: Annotated[
@@ -277,11 +310,23 @@ def compare(
             help="Base .vibebench/runs/<timestamp> directory.",
         ),
     ] = None,
+    baseline: Annotated[
+        bool,
+        typer.Option(
+            "--baseline",
+            help="Compare the saved baseline against the latest or current run.",
+        ),
+    ] = False,
 ) -> None:
-    """Compare the latest VibeBench run with the previous run."""
+    """Compare VibeBench runs."""
     root = project_root.resolve()
     try:
-        result = compare_runs(root, current_run=current_run, base_run=base_run)
+        result = compare_runs(
+            root,
+            current_run=current_run,
+            base_run=base_run,
+            use_baseline=baseline,
+        )
     except ReportError as exc:
         console.print(f"[red]{exc}[/]")
         raise typer.Exit(code=1) from exc
@@ -358,6 +403,35 @@ def render_doctor_summary(result: DoctorResult) -> None:
         )
     console.print(table)
 
+
+
+def render_baseline_summary(result: BaselineStatus) -> None:
+    """Render saved baseline metadata."""
+    console.print()
+    console.print("[bold]VibeBench baseline[/]")
+    console.print(f"Baseline file: {result.baseline_path}")
+
+    if result.metadata is None:
+        console.print(f"[yellow]{result.message}[/]")
+        return
+
+    status_style = "green" if result.is_valid else "red"
+    console.print(f"Status: [{status_style}]{result.message}[/]")
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Field")
+    table.add_column("Value")
+    metadata = result.metadata
+    table.add_row("Run", metadata.run_id)
+    table.add_row("Run path", metadata.run_path)
+    table.add_row("Metrics", metadata.metrics_path)
+    table.add_row("Project", metadata.project or "")
+    table.add_row("Created at", metadata.created_at or "")
+    table.add_row("Overall status", metadata.status)
+    table.add_row("Score", str(metadata.score))
+    table.add_row("Risk", metadata.risk_level)
+    table.add_row("Saved at", metadata.saved_at)
+    console.print(table)
 
 
 def render_clean_summary(result: CleanResult) -> None:

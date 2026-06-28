@@ -8,6 +8,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from vibebench.baseline import show_baseline
 from vibebench.paths import config_dir
 from vibebench.report import ReportError
 
@@ -121,10 +122,16 @@ def compare_runs(
     project_root: Path,
     current_run: Path | None = None,
     base_run: Path | None = None,
+    use_baseline: bool = False,
 ) -> CompareResult:
     """Compare two runs, write compare.md, and return the result."""
     root = project_root.resolve()
-    selected_base, selected_current = select_runs(root, current_run, base_run)
+    selected_base, selected_current = select_runs(
+        root,
+        current_run,
+        base_run,
+        use_baseline=use_baseline,
+    )
     base = load_run_snapshot(selected_base)
     current = load_run_snapshot(selected_current)
     verdict = verdict_for(base, current)
@@ -150,8 +157,28 @@ def select_runs(
     project_root: Path,
     current_run: Path | None,
     base_run: Path | None,
+    use_baseline: bool = False,
 ) -> tuple[Path, Path]:
     """Select base and current run directories."""
+    if use_baseline:
+        if base_run is not None:
+            raise ReportError("Use either --baseline or --base-run, not both.")
+        baseline = show_baseline(project_root)
+        if baseline.metadata is None:
+            raise ReportError(
+                "No baseline found. Run 'python -m vibebench baseline --set latest' "
+                "first."
+            )
+        if not baseline.is_valid or baseline.run_dir is None:
+            raise ReportError(baseline.message)
+        if current_run is not None:
+            return baseline.run_dir, resolve_run(project_root, current_run)
+
+        runs = find_comparable_runs(project_root)
+        if not runs:
+            raise ReportError("No VibeBench runs found. Run 'vibebench check' first.")
+        return baseline.run_dir, runs[-1]
+
     if current_run is not None or base_run is not None:
         if current_run is None or base_run is None:
             raise ReportError(

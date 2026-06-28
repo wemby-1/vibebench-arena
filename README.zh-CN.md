@@ -53,6 +53,7 @@ python -m pip install -e ".[dev]"
 python -m vibebench init
 python -m vibebench doctor
 python -m vibebench history
+python -m vibebench baseline --set latest
 python -m vibebench clean
 python -m vibebench check
 python -m vibebench report
@@ -95,6 +96,9 @@ python -m vibebench doctor
 # 查看最近的 VibeBench 运行记录
 python -m vibebench history
 
+# 将最新运行标记为项目 baseline
+python -m vibebench baseline --set latest
+
 # 预览清理旧的本地运行记录
 python -m vibebench clean
 
@@ -117,6 +121,8 @@ python -m vibebench compare
 `vibebench doctor` 会检查 Python、Git、配置有效性、配置命令是否可找到，以及 `.vibebench/runs/` 是否可写。它不会真正运行配置里的 test/lint 命令。
 
 `vibebench history` 会显示 `.vibebench/runs/` 下最近的运行记录，包括分数、风险等级、diff 规模、风险发现数量和产物生成状态。
+
+`vibebench baseline --set latest` 会把某次运行保存为 `.vibebench/baseline.json` 中的 baseline。`vibebench compare --baseline` 会用这个 baseline 和最新运行对比。
 
 `vibebench clean` 会安全预览旧运行记录的清理计划。默认只是 dry-run，只有显式传入 `--yes` 才会删除。
 

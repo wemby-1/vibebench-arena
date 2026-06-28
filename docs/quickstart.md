@@ -43,6 +43,17 @@ python -m vibebench history --limit 5
 python -m vibebench history --runs-dir .vibebench/runs
 ```
 
+## Save A Baseline Run
+
+```bash
+python -m vibebench baseline
+python -m vibebench baseline --set latest
+python -m vibebench baseline --set <run-id>
+python -m vibebench compare --baseline
+```
+
+The baseline command stores metadata in `.vibebench/baseline.json` and validates that the referenced run and `metrics.json` still exist.
+
 ## Clean Old Local Runs
 
 ```bash
