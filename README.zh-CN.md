@@ -56,6 +56,7 @@ python -m vibebench history
 python -m vibebench baseline --set latest
 python -m vibebench clean
 python -m vibebench check
+python -m vibebench gate
 python -m vibebench report
 python -m vibebench pr-comment
 python -m vibebench gh-summary
@@ -105,6 +106,9 @@ python -m vibebench clean
 # 提交前运行本地质量门禁
 python -m vibebench check
 
+# 执行明确的通过/失败门禁阈值
+python -m vibebench gate
+
 # 生成静态 HTML 报告
 python -m vibebench report
 
@@ -125,6 +129,8 @@ python -m vibebench compare
 `vibebench baseline --set latest` 会把某次运行保存为 `.vibebench/baseline.json` 中的 baseline。`vibebench compare --baseline` 会用这个 baseline 和最新运行对比。
 
 `vibebench clean` 会安全预览旧运行记录的清理计划。默认只是 dry-run，只有显式传入 `--yes` 才会删除。
+
+`vibebench gate` 会把已有运行结果转换成明确的通过/失败决策，适合本地或 CI 使用。加上 `--baseline` 后，还会阻止相对 baseline 的退化。
 
 `vibebench check` 会写入：
 
@@ -192,6 +198,7 @@ python -m vibebench compare
 python examples/risk-demo/create_risky_repo.py
 cd /tmp/vibebench-risk-demo
 python -m vibebench check
+python -m vibebench gate
 python -m vibebench report
 python -m vibebench pr-comment
 ```

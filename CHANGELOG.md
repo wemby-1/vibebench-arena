@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- `vibebench gate` for explicit local and CI pass/fail quality thresholds.
 - `vibebench baseline` for saving a project baseline run and comparing against it.
 - `vibebench clean` for safe dry-run cleanup of old local run directories.
 - `vibebench history` for inspecting recent local run metrics and generated artifacts.

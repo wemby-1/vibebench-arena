@@ -13,6 +13,7 @@ from vibebench.clean import CleanResult, clean_runs
 from vibebench.compare import CompareResult, compare_runs
 from vibebench.config import ConfigError, default_config_yaml, load_config
 from vibebench.doctor import DoctorResult, run_doctor
+from vibebench.gate import GateResult, run_gate
 from vibebench.gh_summary import generate_github_summary
 from vibebench.history import HistoryResult, HistoryRun, get_history
 from vibebench.paths import config_file
@@ -202,6 +203,63 @@ def doctor(
     result = run_doctor(project_root)
     render_doctor_summary(result)
     if result.overall_status == "failed":
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def gate(
+    project_root: ProjectRootOption = Path("."),
+    run_dir: Annotated[
+        Path | None,
+        typer.Option("--run-dir", help="Specific run directory to evaluate."),
+    ] = None,
+    min_score: Annotated[
+        int,
+        typer.Option("--min-score", help="Minimum acceptable VibeScore."),
+    ] = 80,
+    max_risk: Annotated[
+        str,
+        typer.Option("--max-risk", help="Maximum acceptable risk level."),
+    ] = "medium",
+    allow_findings: Annotated[
+        int,
+        typer.Option("--allow-findings", help="Allowed risk finding count."),
+    ] = 0,
+    require_status_passed: Annotated[
+        bool,
+        typer.Option("--require-status-passed/--no-require-status-passed"),
+    ] = True,
+    baseline: Annotated[
+        bool,
+        typer.Option("--baseline", help="Fail on regression against saved baseline."),
+    ] = False,
+    write_gate_summary: Annotated[
+        bool,
+        typer.Option("--write-gate-summary", help="Write gate-summary.md."),
+    ] = False,
+) -> None:
+    """Evaluate a run against an explicit quality gate."""
+    root = project_root.resolve()
+    try:
+        result = run_gate(
+            root,
+            run_dir=run_dir,
+            min_score=min_score,
+            max_risk=max_risk,
+            allow_findings=allow_findings,
+            require_status_passed=require_status_passed,
+            use_baseline=baseline,
+            write_gate_summary=write_gate_summary,
+        )
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    render_gate_summary(result)
+    if not result.passed:
         raise typer.Exit(code=1)
 
 
@@ -403,6 +461,60 @@ def render_doctor_summary(result: DoctorResult) -> None:
         )
     console.print(table)
 
+
+
+def render_gate_summary(result: GateResult) -> None:
+    """Render a concise quality gate summary."""
+    status_style = "green" if result.passed else "red"
+    console.print()
+    console.print("[bold]VibeBench gate[/]")
+    console.print(f"Run directory: {result.run_dir}")
+    gate_status = "passed" if result.passed else "failed"
+    console.print(f"Result: [{status_style}]{gate_status}[/]")
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Field")
+    table.add_column("Actual")
+    table.add_column("Gate")
+    table.add_row("Status", result.snapshot.overall_status, "passed")
+    table.add_row(
+        "Score",
+        str(result.snapshot.score),
+        f">= {result.thresholds.min_score}",
+    )
+    table.add_row(
+        "Risk",
+        result.snapshot.risk_level,
+        f"<= {result.thresholds.max_risk}",
+    )
+    table.add_row(
+        "Findings",
+        str(result.snapshot.risk_findings_count),
+        f"<= {result.thresholds.allow_findings}",
+    )
+    console.print(table)
+
+    if result.baseline_used and result.baseline_snapshot is not None:
+        baseline = result.baseline_snapshot
+        console.print(
+            "Baseline: "
+            f"score {baseline.score}, risk {baseline.risk_level}, "
+            f"findings {baseline.risk_findings_count}"
+        )
+
+    if result.reasons:
+        reason_table = Table(
+            show_header=True,
+            header_style="bold",
+            title="Gate Failures",
+        )
+        reason_table.add_column("Reason")
+        for reason in result.reasons:
+            reason_table.add_row(reason)
+        console.print(reason_table)
+
+    if result.summary_path is not None:
+        console.print(f"Gate summary: {result.summary_path}")
 
 
 def render_baseline_summary(result: BaselineStatus) -> None:

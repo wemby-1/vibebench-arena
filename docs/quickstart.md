@@ -84,6 +84,16 @@ ruff check .
 .vibebench/runs/<timestamp>/check.log
 ```
 
+## Enforce A Quality Gate
+
+```bash
+python -m vibebench gate
+python -m vibebench gate --min-score 80 --max-risk medium --allow-findings 0
+python -m vibebench gate --baseline --write-gate-summary
+```
+
+`vibebench gate` evaluates an existing run, exits nonzero on failure, and can write `.vibebench/runs/<timestamp>/gate-summary.md`.
+
 ## Generate A Static HTML Report
 
 ```bash

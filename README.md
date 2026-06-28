@@ -61,6 +61,7 @@ python -m vibebench history
 python -m vibebench baseline --set latest
 python -m vibebench clean
 python -m vibebench check
+python -m vibebench gate
 python -m vibebench report
 python -m vibebench pr-comment
 python -m vibebench gh-summary
@@ -110,6 +111,9 @@ python -m vibebench clean
 # Run local quality gate before committing
 python -m vibebench check
 
+# Enforce explicit pass/fail thresholds
+python -m vibebench gate
+
 # Generate a static local report
 python -m vibebench report
 
@@ -130,6 +134,8 @@ python -m vibebench compare
 `vibebench baseline --set latest` saves a baseline run in `.vibebench/baseline.json`. `vibebench compare --baseline` compares that saved baseline against the latest run.
 
 `vibebench clean` safely previews cleanup of old local runs. It is dry-run by default and only deletes with `--yes`.
+
+`vibebench gate` turns an existing run into an explicit pass/fail decision for local use or CI. Use `--baseline` to also fail on regressions against the saved baseline.
 
 `vibebench check` writes:
 
@@ -202,6 +208,7 @@ A clean 100/100 run is useful, but VibeBench is meant to catch risky generated c
 python examples/risk-demo/create_risky_repo.py
 cd /tmp/vibebench-risk-demo
 python -m vibebench check
+python -m vibebench gate
 python -m vibebench report
 python -m vibebench pr-comment
 ```

@@ -36,6 +36,17 @@ The example workflow:
 - writes the GitHub Actions step summary
 - uploads `.vibebench/runs` as a workflow artifact
 
+## Add A Quality Gate
+
+Use `vibebench gate` when CI should fail on explicit score, risk, and finding thresholds:
+
+```yaml
+      - name: Enforce VibeBench gate
+        run: python -m vibebench gate --min-score 80 --max-risk medium --allow-findings 0 --write-gate-summary
+```
+
+`--write-gate-summary` writes `.vibebench/runs/<timestamp>/gate-summary.md`, which can be uploaded with the rest of the run artifacts.
+
 ## Why `if: always()` Is Used
 
 `vibebench check` should fail the workflow when configured commands fail or critical risks are found. The later report, comment, summary, and artifact upload steps use `if: always()` so reviewers can still inspect VibeBench output after a failed check.
