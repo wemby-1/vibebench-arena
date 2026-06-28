@@ -67,6 +67,7 @@ python -m vibebench check
 python -m vibebench gate
 python -m vibebench report
 python -m vibebench pr-comment
+python -m vibebench explain
 python -m vibebench gh-summary
 python -m vibebench compare
 ```
@@ -171,6 +172,9 @@ python -m vibebench report
 # Generate a Markdown summary for a PR or review thread
 python -m vibebench pr-comment
 
+# Explain the latest run in human-readable Markdown
+python -m vibebench explain
+
 # Write a GitHub Actions step summary or local summary file
 python -m vibebench gh-summary
 
@@ -206,6 +210,14 @@ python -m vibebench compare
 ```text
 .vibebench/runs/<timestamp>/pr-comment.md
 ```
+
+`vibebench explain` writes:
+
+```text
+.vibebench/runs/<timestamp>/explain.md
+```
+
+It explains command failures, Git diff risk signals, risk findings, and suggested next actions. Use `--run-dir`, `--output`, or `--no-write` for targeted local review.
 
 `vibebench compare` writes:
 
@@ -245,11 +257,15 @@ into a GitHub Pull Request, issue, or code review. It includes:
 Automatic GitHub PR posting is planned later; the current command is local and
 does not call the GitHub API.
 
+## Run Explanation
+
+`vibebench explain` generates a human-readable Markdown explanation for the latest run. It is meant for local review and CI artifacts: what passed, what failed, what Git diff risks were found, and what to do next.
+
 ## GitHub Actions
 
 `vibebench gh-summary` writes a concise Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is set. It does not post PR comments through the GitHub API yet.
 
-This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench check`, enforces `vibebench gate --write-gate-summary` using the policy in `.vibebench/config.yaml`, generates report/comment/summary artifacts, and uploads `.vibebench/runs`. `vibebench init` can generate a starter workflow at `.github/workflows/vibebench.yml`; see [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) and [docs/github-actions.md](docs/github-actions.md) for details.
+This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench check`, enforces `vibebench gate --write-gate-summary` using the policy in `.vibebench/config.yaml`, generates report/comment/explanation/summary artifacts, and uploads `.vibebench/runs`. `vibebench init` can generate a starter workflow at `.github/workflows/vibebench.yml`; see [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) and [docs/github-actions.md](docs/github-actions.md) for details.
 
 ## Try The Risk Demo
 
@@ -262,6 +278,7 @@ python -m vibebench check
 python -m vibebench gate
 python -m vibebench report
 python -m vibebench pr-comment
+python -m vibebench explain
 ```
 
 The demo intentionally touches `.env.local` and `secrets/`, deletes a test file, changes a lockfile, and creates a large patch. `vibebench check` is expected to fail because critical findings are present.

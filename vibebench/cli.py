@@ -21,6 +21,7 @@ from vibebench.config import (
     load_effective_config,
 )
 from vibebench.doctor import DoctorResult, run_doctor
+from vibebench.explain import ExplainResult, generate_explanation
 from vibebench.gate import GateResult, run_gate
 from vibebench.gh_summary import generate_github_summary
 from vibebench.history import HistoryResult, HistoryRun, get_history
@@ -91,6 +92,10 @@ jobs:
       - name: Generate VibeBench PR comment
         if: always()
         run: python -m vibebench pr-comment
+
+      - name: Generate VibeBench explanation
+        if: always()
+        run: python -m vibebench explain
 
       - name: Write VibeBench GitHub summary
         if: always()
@@ -396,6 +401,53 @@ def gh_summary(
 
     console.print("[green]GitHub step summary written.[/]")
     console.print(f"Output path: {summary_path}")
+
+
+@app.command()
+def explain(
+    project_root: ProjectRootOption = Path("."),
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            help="Specific .vibebench/runs/<timestamp> directory to explain.",
+        ),
+    ] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Custom Markdown output path."),
+    ] = None,
+    no_write: Annotated[
+        bool,
+        typer.Option(
+            "--no-write",
+            help="Print explanation without writing explain.md.",
+        ),
+    ] = False,
+) -> None:
+    """Explain a VibeBench run in human-readable Markdown."""
+    root = project_root.resolve()
+    selected_run_dir = None
+    if run_dir:
+        selected_run_dir = (
+            run_dir if run_dir.is_absolute() else root / run_dir
+        ).resolve()
+    selected_output = None
+    if output:
+        selected_output = (output if output.is_absolute() else root / output).resolve()
+
+    try:
+        result = generate_explanation(
+            root,
+            selected_run_dir,
+            selected_output,
+            write=not no_write,
+        )
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    render_explain_summary(result, write=not no_write)
 
 
 @app.command()
@@ -718,6 +770,20 @@ def render_gate_summary(result: GateResult) -> None:
 
     if result.summary_path is not None:
         console.print(f"Gate summary: {result.summary_path}")
+
+
+def render_explain_summary(result: ExplainResult, *, write: bool) -> None:
+    """Render a concise explanation command summary."""
+    console.print()
+    console.print("[bold]VibeBench explain[/]")
+    console.print(f"Run directory: {result.run_dir}")
+    if write and result.output_path is not None:
+        console.print(f"Explanation: {result.output_path}")
+    else:
+        console.print("[yellow]Explanation was not written (--no-write).[/]")
+        console.print()
+        console.print(result.markdown)
+    console.print(f"Recommendation: {result.recommendation}")
 
 
 def render_baseline_summary(result: BaselineStatus) -> None:

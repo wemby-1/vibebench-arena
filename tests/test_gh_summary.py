@@ -104,6 +104,7 @@ def write_run(
         report_dir.mkdir()
         (report_dir / "index.html").write_text("<html></html>\n", encoding="utf-8")
         (run_dir / "pr-comment.md").write_text("comment\n", encoding="utf-8")
+        (run_dir / "explain.md").write_text("explain\n", encoding="utf-8")
         (run_dir / "gate-summary.md").write_text("gate\n", encoding="utf-8")
     return run_dir
 
@@ -196,5 +197,6 @@ def test_summary_contains_key_sections_and_artifacts(
     assert "`check.log` (available)" in markdown
     assert "`report/index.html` (available)" in markdown
     assert "`pr-comment.md` (available)" in markdown
+    assert "`explain.md` (available)" in markdown
     assert "`gate-summary.md` (available)" in markdown
     assert "Codex writes code. VibeBench verifies it." in markdown

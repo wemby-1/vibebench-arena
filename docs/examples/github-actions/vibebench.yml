@@ -39,6 +39,10 @@ jobs:
         if: always()
         run: python -m vibebench pr-comment
 
+      - name: Generate VibeBench explanation
+        if: always()
+        run: python -m vibebench explain
+
       - name: Write VibeBench GitHub summary
         if: always()
         run: python -m vibebench gh-summary

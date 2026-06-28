@@ -133,6 +133,7 @@ def artifacts_section(run_dir: Path) -> str:
         run_dir / "check.log",
         run_dir / "report" / "index.html",
         run_dir / "pr-comment.md",
+        run_dir / "explain.md",
         run_dir / "gate-summary.md",
     ]
     lines = []

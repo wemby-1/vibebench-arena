@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- `vibebench explain` for human-readable run explanations and `explain.md` artifacts.
 - `vibebench config` for inspecting, validating, and exporting the effective configuration.
 - `vibebench init` now bootstraps `.vibebench/config.yaml` and a GitHub Actions workflow, with safe overwrite controls.
 - Configurable `risk` policy in `.vibebench/config.yaml` for Git diff risk detection.
