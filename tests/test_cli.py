@@ -1,3 +1,5 @@
+import json
+import subprocess
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -128,3 +130,97 @@ def test_init_conflicting_workflow_options_fail_clearly(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "cannot be used together" in result.output
+
+
+
+def test_config_command_without_file_prints_defaults(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["config", "--project-root", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert "built-in defaults" in result.output
+    assert "project" in result.output
+    assert "checks" in result.output
+    assert "gate" in result.output
+    assert "risk" in result.output
+
+
+def test_config_command_with_valid_config(tmp_path: Path) -> None:
+    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+
+    result = runner.invoke(app, ["config", "--project-root", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert "vibebench-project" in result.output
+    assert "pytest -q" in result.output
+    assert "max_patch_lines" in result.output
+
+
+def test_config_command_json_is_valid(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--json"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert sorted(payload) == ["checks", "gate", "project", "risk"]
+    assert payload["project"]["name"] == "vibebench-project"
+    assert payload["checks"]["test"] == ["pytest -q"]
+    assert payload["gate"]["min_score"] == 80
+    assert payload["risk"]["max_patch_lines"] == 500
+
+
+def test_config_command_validate_succeeds_for_valid_config(tmp_path: Path) -> None:
+    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+
+    result = runner.invoke(
+        app, ["config", "--project-root", str(tmp_path), "--validate"]
+    )
+
+    assert result.exit_code == 0
+    assert "VibeBench config is valid" in result.output
+
+
+def test_config_command_invalid_config_fails_clearly(tmp_path: Path) -> None:
+    config_path(tmp_path).parent.mkdir(parents=True)
+    config_path(tmp_path).write_text("project:\n  name: ''\n", encoding="utf-8")
+
+    result = runner.invoke(app, ["config", "--project-root", str(tmp_path)])
+
+    assert result.exit_code == 1
+    assert "invalid" in result.output
+    assert "project.name" in result.output
+
+
+def test_config_command_show_source_includes_sources(tmp_path: Path) -> None:
+    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+
+    result = runner.invoke(
+        app, ["config", "--project-root", str(tmp_path), "--show-source"]
+    )
+
+    assert result.exit_code == 0
+    assert "Source" in result.output
+    assert "config file" in result.output
+
+
+def test_config_command_does_not_break_existing_check_and_gate(tmp_path: Path) -> None:
+    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+    config = config_path(tmp_path).read_text(encoding="utf-8")
+    config = config.replace("pytest -q", "python -c \"print('test ok')\"")
+    config = config.replace("ruff check .", "python -c \"print('lint ok')\"")
+    config_path(tmp_path).write_text(config, encoding="utf-8")
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "config", "user.name", "Test User"], cwd=tmp_path, check=True
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=tmp_path,
+        check=True,
+    )
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-m", "initial"], cwd=tmp_path, check=True)
+
+    check = runner.invoke(app, ["check", "--project-root", str(tmp_path)])
+    gate = runner.invoke(app, ["gate", "--project-root", str(tmp_path)])
+
+    assert check.exit_code == 0
+    assert gate.exit_code == 0

@@ -1,5 +1,6 @@
 """Configuration models and loader for VibeBench Arena."""
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
@@ -74,6 +75,16 @@ DEFAULT_CONFIG: dict[str, Any] = {
 
 class ConfigError(Exception):
     """User-readable configuration error."""
+
+
+@dataclass(frozen=True)
+class EffectiveConfigResult:
+    """Loaded effective config and source metadata."""
+
+    config: "VibeBenchConfig"
+    sources: dict[str, str]
+    config_path: Path
+    config_exists: bool
 
 
 class ProjectConfig(BaseModel):
@@ -191,3 +202,53 @@ def load_config(path: Path | None = None) -> VibeBenchConfig:
         raise ConfigError(
             f"VibeBench config at {config_path} is invalid.\n{details}"
         ) from exc
+
+
+def default_config_model() -> VibeBenchConfig:
+    """Return the built-in default config as a validated model."""
+    return VibeBenchConfig.model_validate(DEFAULT_CONFIG)
+
+
+def load_effective_config(path: Path | None = None) -> EffectiveConfigResult:
+    """Load config if present, otherwise return built-in defaults with sources."""
+    config_path = path or config_file()
+    if not config_path.exists():
+        return EffectiveConfigResult(
+            config=default_config_model(),
+            sources={
+                "project": "built-in defaults",
+                "checks": "built-in defaults",
+                "gate": "built-in defaults",
+                "risk": "built-in defaults",
+            },
+            config_path=config_path,
+            config_exists=False,
+        )
+
+    config = load_config(config_path)
+    raw_config = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    if not isinstance(raw_config, dict):
+        raw_config = {}
+    sources = {
+        "project": "config file" if "project" in raw_config else "built-in defaults",
+        "checks": "config file" if "checks" in raw_config else "built-in defaults",
+        "gate": "config file" if "gate" in raw_config else "built-in defaults",
+        "risk": "config file" if "risk" in raw_config else "built-in defaults",
+    }
+    return EffectiveConfigResult(
+        config=config,
+        sources=sources,
+        config_path=config_path,
+        config_exists=True,
+    )
+
+
+def effective_config_payload(result: EffectiveConfigResult) -> dict[str, Any]:
+    """Return stable serializable effective config payload."""
+    payload: dict[str, Any] = {
+        "project": result.config.project.model_dump(),
+        "checks": result.config.checks.model_dump(),
+        "gate": result.config.gate.model_dump(),
+        "risk": result.config.effective_risk().model_dump(),
+    }
+    return payload

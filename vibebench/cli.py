@@ -1,5 +1,6 @@
 """Command-line interface for VibeBench Arena."""
 
+import json
 from pathlib import Path
 from typing import Annotated
 
@@ -11,7 +12,14 @@ from vibebench import __version__
 from vibebench.baseline import BaselineStatus, set_baseline, show_baseline
 from vibebench.clean import CleanResult, clean_runs
 from vibebench.compare import CompareResult, compare_runs
-from vibebench.config import ConfigError, default_config_yaml, load_config
+from vibebench.config import (
+    ConfigError,
+    EffectiveConfigResult,
+    default_config_yaml,
+    effective_config_payload,
+    load_config,
+    load_effective_config,
+)
 from vibebench.doctor import DoctorResult, run_doctor
 from vibebench.gate import GateResult, run_gate
 from vibebench.gh_summary import generate_github_summary
@@ -195,6 +203,79 @@ def render_init_summary(created: list[Path], skipped: list[Path]) -> None:
     console.print("  python -m vibebench doctor")
     console.print("  python -m vibebench check")
     console.print("  python -m vibebench gate --write-gate-summary")
+
+
+@app.command("config")
+def config_command(
+    project_root: ProjectRootOption = Path("."),
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print effective configuration as JSON."),
+    ] = False,
+    validate_only: Annotated[
+        bool,
+        typer.Option("--validate", help="Only validate config and print a result."),
+    ] = False,
+    show_source: Annotated[
+        bool,
+        typer.Option("--show-source", help="Show config file/default sources."),
+    ] = False,
+) -> None:
+    """Inspect and validate the effective VibeBench configuration."""
+    root = project_root.resolve()
+    target = config_file(root)
+    try:
+        result = load_effective_config(target)
+    except ConfigError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if validate_only:
+        source = result.config_path if result.config_exists else "built-in defaults"
+        console.print(f"[green]VibeBench config is valid.[/] Source: {source}")
+        return
+
+    payload = effective_config_payload(result)
+    if show_source:
+        payload["sources"] = result.sources
+
+    if as_json:
+        console.print(json.dumps(payload, indent=2, sort_keys=True))
+        return
+
+    render_config_summary(result, show_source=show_source)
+
+
+def render_config_summary(
+    result: EffectiveConfigResult,
+    *,
+    show_source: bool,
+) -> None:
+    """Render the effective VibeBench config as Rich tables."""
+    source = str(result.config_path) if result.config_exists else "built-in defaults"
+    console.print(f"[bold]VibeBench config[/] ({source})")
+
+    payload = effective_config_payload(result)
+    for section_name in ["project", "checks", "gate", "risk"]:
+        table = Table(title=section_name)
+        table.add_column("Key")
+        table.add_column("Value")
+        if show_source:
+            table.add_column("Source")
+        section = payload[section_name]
+        for key, value in section.items():
+            row = [key, format_config_value(value)]
+            if show_source:
+                row.append(result.sources[section_name])
+            table.add_row(*row)
+        console.print(table)
+
+
+def format_config_value(value: object) -> str:
+    """Format config values for terminal display."""
+    if isinstance(value, list):
+        return "\n".join(str(item) for item in value)
+    return str(value)
 
 
 @app.command()

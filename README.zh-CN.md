@@ -53,6 +53,7 @@ Git diff 风险分析会标记：
 ```bash
 python -m pip install -e ".[dev]"
 python -m vibebench init
+python -m vibebench config
 python -m vibebench doctor
 python -m vibebench history
 python -m vibebench baseline --set latest
@@ -66,6 +67,8 @@ python -m vibebench compare
 ```
 
 `vibebench init` 会创建 `.vibebench/config.yaml` 和 `.github/workflows/vibebench.yml`。已有文件默认会跳过，只有传入 `--force` 才会覆盖；`--no-workflow` 和 `--workflow-only` 可用于只生成其中一部分。
+
+`vibebench config` 会输出最终生效的 project、checks、gate 和 risk 配置。`--json` 可输出机器可读 JSON，`--validate` 只做校验，`--show-source` 会显示主要配置区域来自配置文件还是内置默认值。
 
 默认配置示例：
 
@@ -135,6 +138,9 @@ gate:
 ```bash
 # 第一次使用时创建配置
 python -m vibebench init
+
+# 查看并验证最终生效的配置
+python -m vibebench config --show-source
 
 # 检查当前项目是否已经准备好运行 VibeBench
 python -m vibebench doctor

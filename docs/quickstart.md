@@ -25,6 +25,17 @@ This creates local config and a GitHub Actions workflow:
 
 By default, existing files are skipped. Use `--force` to overwrite generated files, `--no-workflow` to create only config, or `--workflow-only` to create only the workflow.
 
+## Inspect Effective Config
+
+```bash
+python -m vibebench config
+python -m vibebench config --json
+python -m vibebench config --validate
+python -m vibebench config --show-source
+```
+
+`vibebench config` shows the effective project, checks, gate, and risk settings. It uses `.vibebench/config.yaml` when present and falls back to built-in defaults when no config file exists.
+
 ## Diagnose Project Readiness
 
 ```bash

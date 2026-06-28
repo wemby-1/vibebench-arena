@@ -2,7 +2,7 @@
 
 VibeBench analyzes the current uncommitted Git diff against `HEAD`. It is designed as a local pre-commit or pre-push quality gate.
 
-Risk detection is configurable in `.vibebench/config.yaml` with the `risk` section. If `risk` is absent, VibeBench falls back to the built-in defaults. The older `risk_rules` section remains supported for backward compatibility.
+Risk detection is configurable in `.vibebench/config.yaml` with the `risk` section. If `risk` is absent, VibeBench falls back to the built-in defaults. The older `risk_rules` section remains supported for backward compatibility. Use `python -m vibebench config --show-source` to inspect the effective risk policy and see where it came from.
 
 ```yaml
 risk:

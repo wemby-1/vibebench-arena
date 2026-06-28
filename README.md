@@ -58,6 +58,7 @@ These Git diff rules are configurable in `.vibebench/config.yaml` under the `ris
 ```bash
 python -m pip install -e ".[dev]"
 python -m vibebench init
+python -m vibebench config
 python -m vibebench doctor
 python -m vibebench history
 python -m vibebench baseline --set latest
@@ -71,6 +72,8 @@ python -m vibebench compare
 ```
 
 `vibebench init` creates `.vibebench/config.yaml` and `.github/workflows/vibebench.yml`. Existing files are skipped unless `--force` is used; `--no-workflow` and `--workflow-only` support partial bootstrap.
+
+`vibebench config` prints the effective project, checks, gate, and risk configuration. Use `--json` for machine-readable output, `--validate` for a short validation result, and `--show-source` to see whether major sections came from the config file or built-in defaults.
 
 The default config looks like this:
 
@@ -140,6 +143,9 @@ gate:
 ```bash
 # Create project config once
 python -m vibebench init
+
+# Inspect and validate the effective configuration
+python -m vibebench config --show-source
 
 # Diagnose whether the project is ready for VibeBench
 python -m vibebench doctor
