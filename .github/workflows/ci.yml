@@ -48,6 +48,10 @@ jobs:
         if: always()
         run: python -m vibebench explain
 
+      - name: Bundle VibeBench artifacts
+        if: always()
+        run: python -m vibebench bundle
+
       - name: Write VibeBench GitHub summary
         if: always()
         run: vibebench gh-summary

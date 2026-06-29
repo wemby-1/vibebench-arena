@@ -63,6 +63,7 @@ def test_init_generated_workflow_contains_required_commands(tmp_path: Path) -> N
     assert "python -m vibebench report" in workflow
     assert "python -m vibebench pr-comment" in workflow
     assert "python -m vibebench explain" in workflow
+    assert "python -m vibebench bundle" in workflow
     assert "python -m vibebench gh-summary" in workflow
     assert "actions/upload-artifact@v7" in workflow
     assert workflow.count("if: always()") >= 4

@@ -10,6 +10,7 @@ from rich.table import Table
 
 from vibebench import __version__
 from vibebench.baseline import BaselineStatus, set_baseline, show_baseline
+from vibebench.bundle import BundleResult, create_bundle
 from vibebench.clean import CleanResult, clean_runs
 from vibebench.compare import CompareResult, compare_runs
 from vibebench.config import (
@@ -96,6 +97,10 @@ jobs:
       - name: Generate VibeBench explanation
         if: always()
         run: python -m vibebench explain
+
+      - name: Bundle VibeBench artifacts
+        if: always()
+        run: python -m vibebench bundle
 
       - name: Write VibeBench GitHub summary
         if: always()
@@ -451,6 +456,58 @@ def explain(
 
 
 @app.command()
+def bundle(
+    project_root: ProjectRootOption = Path("."),
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            help="Specific .vibebench/runs/<timestamp> directory to bundle.",
+        ),
+    ] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Custom zip output path."),
+    ] = None,
+    include_report_assets: Annotated[
+        bool,
+        typer.Option(
+            "--include-report-assets",
+            help="Include the whole report directory recursively.",
+        ),
+    ] = False,
+    strict: Annotated[
+        bool,
+        typer.Option("--strict", help="Fail if any standard artifact is missing."),
+    ] = False,
+) -> None:
+    """Package a VibeBench run's artifacts into a zip file."""
+    root = project_root.resolve()
+    selected_run_dir = None
+    if run_dir:
+        selected_run_dir = (
+            run_dir if run_dir.is_absolute() else root / run_dir
+        ).resolve()
+    selected_output = None
+    if output:
+        selected_output = (output if output.is_absolute() else root / output).resolve()
+
+    try:
+        result = create_bundle(
+            root,
+            selected_run_dir,
+            selected_output,
+            include_report_assets=include_report_assets,
+            strict=strict,
+        )
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    render_bundle_summary(result)
+
+
+@app.command()
 def doctor(
     project_root: ProjectRootOption = Path("."),
 ) -> None:
@@ -784,6 +841,33 @@ def render_explain_summary(result: ExplainResult, *, write: bool) -> None:
         console.print()
         console.print(result.markdown)
     console.print(f"Recommendation: {result.recommendation}")
+
+
+def render_bundle_summary(result: BundleResult) -> None:
+    """Render a concise bundle command summary."""
+    console.print()
+    console.print("[bold]VibeBench bundle[/]")
+    console.print(f"Run: {result.run_id}")
+    console.print(f"Output: {result.output_path}")
+    console.print(f"Size: {format_bytes(result.size_bytes)}")
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Included files")
+    if result.included_files:
+        for relative_path in result.included_files:
+            table.add_row(str(relative_path))
+    else:
+        table.add_row("none")
+    console.print(table)
+
+    skipped_table = Table(show_header=True, header_style="bold")
+    skipped_table.add_column("Skipped missing optional files")
+    if result.skipped_files:
+        for relative_path in result.skipped_files:
+            skipped_table.add_row(str(relative_path))
+    else:
+        skipped_table.add_row("none")
+    console.print(skipped_table)
 
 
 def render_baseline_summary(result: BaselineStatus) -> None:

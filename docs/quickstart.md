@@ -181,6 +181,20 @@ This writes:
 
 The explanation describes command failures, Git diff risk signals, known risk findings, and suggested next actions. Use `--run-dir` for a specific run, `--output` for a custom path, or `--no-write` to print only.
 
+## Bundle Run Artifacts
+
+```bash
+python -m vibebench bundle
+```
+
+This writes:
+
+```text
+.vibebench/runs/<timestamp>/vibebench-bundle.zip
+```
+
+Use `--run-dir` to bundle a specific run, `--output` for a custom zip path, `--include-report-assets` to include the full `report/` directory recursively, and `--strict` to fail if any standard artifact is missing.
+
 ## Generate A GitHub Actions Summary
 
 ```bash
@@ -222,6 +236,7 @@ python -m vibebench check
 python -m vibebench report
 python -m vibebench pr-comment
 python -m vibebench explain
+python -m vibebench bundle
 ```
 
 The risk demo intentionally creates critical findings, so `vibebench check` is expected to exit non-zero.
@@ -229,7 +244,7 @@ The risk demo intentionally creates critical findings, so `vibebench check` is e
 
 ## CI Artifacts
 
-VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench check`, enforces `vibebench gate --write-gate-summary` using the policy in `.vibebench/config.yaml`, generates `explain.md`, writes the GitHub Actions job summary with `vibebench gh-summary`, and uploads `.vibebench/runs` as artifacts for review.
+VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench check`, enforces `vibebench gate --write-gate-summary` using the policy in `.vibebench/config.yaml`, generates `explain.md`, bundles run artifacts with `vibebench bundle`, writes the GitHub Actions job summary with `vibebench gh-summary`, and uploads `.vibebench/runs` as artifacts for review.
 
 ## Generated Files
 

@@ -63,6 +63,7 @@ python -m vibebench gate
 python -m vibebench report
 python -m vibebench pr-comment
 python -m vibebench explain
+python -m vibebench bundle
 python -m vibebench gh-summary
 python -m vibebench compare
 ```
@@ -170,6 +171,9 @@ python -m vibebench pr-comment
 # 生成一份解释本次运行结果的 Markdown
 python -m vibebench explain
 
+# 将某次运行的产物打包成 zip
+python -m vibebench bundle
+
 # 写入 GitHub Actions step summary，或生成本地 summary 文件
 python -m vibebench gh-summary
 
@@ -214,6 +218,14 @@ python -m vibebench compare
 
 它会解释命令失败、Git diff 风险信号、风险发现，以及下一步建议。可以配合 `--run-dir`、`--output` 或 `--no-write` 做本地审阅。
 
+`vibebench bundle` 会写入：
+
+```text
+.vibebench/runs/<timestamp>/vibebench-bundle.zip
+```
+
+它会把一次运行的标准产物打包，方便分享、下载或在 CI artifact 中查看。`--run-dir` 可指定运行目录，`--output` 可指定 zip 路径，`--include-report-assets` 会递归包含完整 report 目录，`--strict` 会在任何标准产物缺失时失败。
+
 `vibebench compare` 会写入：
 
 ```text
@@ -255,7 +267,7 @@ python -m vibebench compare
 
 `vibebench gh-summary` 会在 `GITHUB_STEP_SUMMARY` 存在时写入 GitHub Actions step summary。当前它不会通过 GitHub API 自动发布 PR comment。
 
-这个仓库已经在自己的 CI 里 dogfood VibeBench：直接运行 Ruff 和 pytest 后，CI 会继续运行 `vibebench check`，并用 `vibebench gate --write-gate-summary` 按 `.vibebench/config.yaml` 中的策略执行明确门禁，然后生成 report/comment/explanation/summary，并上传 `.vibebench/runs` artifacts。`vibebench init` 可以生成 `.github/workflows/vibebench.yml` starter workflow；可参考 [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml)，更多说明见 [docs/github-actions.md](docs/github-actions.md)。
+这个仓库已经在自己的 CI 里 dogfood VibeBench：直接运行 Ruff 和 pytest 后，CI 会继续运行 `vibebench check`，并用 `vibebench gate --write-gate-summary` 按 `.vibebench/config.yaml` 中的策略执行明确门禁，然后生成 report/comment/explanation/bundle/summary，并上传 `.vibebench/runs` artifacts。`vibebench init` 可以生成 `.github/workflows/vibebench.yml` starter workflow；可参考 [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml)，更多说明见 [docs/github-actions.md](docs/github-actions.md)。
 
 ## 试运行风险检测 Demo
 
@@ -269,6 +281,7 @@ python -m vibebench gate
 python -m vibebench report
 python -m vibebench pr-comment
 python -m vibebench explain
+python -m vibebench bundle
 ```
 
 这个 demo 会故意制造 `.env.local`、`secrets/`、删除测试、修改 lockfile、大 patch 等改动，用来证明 VibeBench 不只是跑测试，还能发现 AI 生成代码中的交付风险。因为包含 critical finding，`vibebench check` 预期会失败。

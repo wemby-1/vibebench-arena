@@ -68,6 +68,7 @@ python -m vibebench gate
 python -m vibebench report
 python -m vibebench pr-comment
 python -m vibebench explain
+python -m vibebench bundle
 python -m vibebench gh-summary
 python -m vibebench compare
 ```
@@ -175,6 +176,9 @@ python -m vibebench pr-comment
 # Explain the latest run in human-readable Markdown
 python -m vibebench explain
 
+# Package one run's artifacts into a zip file
+python -m vibebench bundle
+
 # Write a GitHub Actions step summary or local summary file
 python -m vibebench gh-summary
 
@@ -218,6 +222,14 @@ python -m vibebench compare
 ```
 
 It explains command failures, Git diff risk signals, risk findings, and suggested next actions. Use `--run-dir`, `--output`, or `--no-write` for targeted local review.
+
+`vibebench bundle` writes:
+
+```text
+.vibebench/runs/<timestamp>/vibebench-bundle.zip
+```
+
+It packages standard run artifacts for sharing or CI download. Use `--run-dir` for a specific run, `--output` for a custom zip path, `--include-report-assets` to include the full report directory, and `--strict` to fail when any standard artifact is missing.
 
 `vibebench compare` writes:
 
@@ -265,7 +277,7 @@ does not call the GitHub API.
 
 `vibebench gh-summary` writes a concise Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is set. It does not post PR comments through the GitHub API yet.
 
-This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench check`, enforces `vibebench gate --write-gate-summary` using the policy in `.vibebench/config.yaml`, generates report/comment/explanation/summary artifacts, and uploads `.vibebench/runs`. `vibebench init` can generate a starter workflow at `.github/workflows/vibebench.yml`; see [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) and [docs/github-actions.md](docs/github-actions.md) for details.
+This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench check`, enforces `vibebench gate --write-gate-summary` using the policy in `.vibebench/config.yaml`, generates report/comment/explanation/bundle/summary artifacts, and uploads `.vibebench/runs`. `vibebench init` can generate a starter workflow at `.github/workflows/vibebench.yml`; see [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) and [docs/github-actions.md](docs/github-actions.md) for details.
 
 ## Try The Risk Demo
 
@@ -279,6 +291,7 @@ python -m vibebench gate
 python -m vibebench report
 python -m vibebench pr-comment
 python -m vibebench explain
+python -m vibebench bundle
 ```
 
 The demo intentionally touches `.env.local` and `secrets/`, deletes a test file, changes a lockfile, and creates a large patch. `vibebench check` is expected to fail because critical findings are present.
