@@ -25,6 +25,7 @@ from vibebench.config import (
 )
 from vibebench.doctor import DoctorResult, run_doctor
 from vibebench.explain import ExplainResult, generate_explanation
+from vibebench.export import ExportResult, export_run
 from vibebench.gate import GateResult, run_gate
 from vibebench.gh_summary import generate_github_summary
 from vibebench.history import HistoryResult, HistoryRun, get_history
@@ -492,6 +493,55 @@ def bundle(
     render_bundle_summary(result)
 
 
+@app.command("export")
+def export_command(
+    project_root: ProjectRootOption = Path("."),
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            help="Specific .vibebench/runs/<timestamp> directory to export.",
+        ),
+    ] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Write export output to this file."),
+    ] = None,
+    export_format: Annotated[
+        str,
+        typer.Option("--format", help="Export format: json or markdown."),
+    ] = "json",
+    pretty: Annotated[
+        bool,
+        typer.Option("--pretty", help="Pretty-print JSON output."),
+    ] = False,
+) -> None:
+    """Export a machine-readable VibeBench run summary."""
+    root = project_root.resolve()
+    selected_run_dir = None
+    if run_dir:
+        selected_run_dir = (
+            run_dir if run_dir.is_absolute() else root / run_dir
+        ).resolve()
+    selected_output = None
+    if output:
+        selected_output = (output if output.is_absolute() else root / output).resolve()
+
+    try:
+        result = export_run(
+            root,
+            selected_run_dir,
+            selected_output,
+            export_format=export_format,
+            pretty=pretty,
+        )
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    render_export_summary(result)
+
+
 @app.command()
 def annotate(
     project_root: ProjectRootOption = Path("."),
@@ -562,6 +612,10 @@ def ci_command(
         bool,
         typer.Option("--skip-bundle", help="Skip artifact bundle generation."),
     ] = False,
+    skip_export: Annotated[
+        bool,
+        typer.Option("--skip-export", help="Skip machine-readable export generation."),
+    ] = False,
     skip_annotate: Annotated[
         bool,
         typer.Option("--skip-annotate", help="Skip GitHub annotation output."),
@@ -614,6 +668,7 @@ def ci_command(
             skip_pr_comment=skip_pr_comment,
             skip_explain=skip_explain,
             skip_bundle=skip_bundle,
+            skip_export=skip_export,
             skip_annotate=skip_annotate,
             skip_gh_summary=skip_gh_summary,
             bundle_include_report_assets=bundle_include_report_assets,
@@ -877,6 +932,16 @@ def render_check_summary(result: CheckRunResult) -> None:
     console.print(table)
     render_findings(result)
     console.print(f"Metrics: {result.metrics_path}")
+
+
+def render_export_summary(result: ExportResult) -> None:
+    """Render export output or a concise write summary."""
+    if result.output_path is None:
+        print(result.content, end="")
+        return
+    console.print("Export written.")
+    console.print(f"Run directory: {result.run_dir}")
+    console.print(f"Output path: {result.output_path}")
 
 
 def render_annotation_summary(result: AnnotationResult) -> None:

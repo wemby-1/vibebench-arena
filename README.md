@@ -40,6 +40,7 @@ Current VibeBench supports:
 - Git diff risk analysis for uncommitted changes
 - static HTML reports for local review and screenshots
 - PR-ready Markdown summaries for pasteable code review comments
+- machine-readable JSON/Markdown exports for dashboards and external tools
 - GitHub Actions annotations and step summaries without GitHub API posting
 
 Git diff risk analysis flags:
@@ -70,6 +71,7 @@ python -m vibebench report
 python -m vibebench pr-comment
 python -m vibebench explain
 python -m vibebench bundle
+python -m vibebench export
 python -m vibebench annotate
 python -m vibebench gh-summary
 python -m vibebench compare
@@ -184,6 +186,10 @@ python -m vibebench explain
 # Package one run's artifacts into a zip file
 python -m vibebench bundle
 
+# Export JSON for dashboards or Markdown for lightweight sharing
+python -m vibebench export
+python -m vibebench export --format markdown
+
 # Emit GitHub Actions annotations for findings and command failures
 python -m vibebench annotate
 
@@ -239,6 +245,8 @@ It explains command failures, Git diff risk signals, risk findings, and suggeste
 
 It packages standard run artifacts for sharing or CI download. Use `--run-dir` for a specific run, `--output` for a custom zip path, `--include-report-assets` to include the full report directory, and `--strict` to fail when any standard artifact is missing.
 
+`vibebench export` prints a stable machine-readable JSON summary by default. Use `--pretty` for indented JSON, `--format markdown` for lightweight sharing, and `--output` to write the export to a file. `vibebench ci` writes `.vibebench/runs/<timestamp>/export.json` by default.
+
 `vibebench annotate` emits GitHub Actions annotations for command failures and risk findings from the latest run. Use `--no-github-actions` for readable plain text output. It is reporting-only and exits 0 when annotations are emitted; `vibebench gate` remains responsible for pass/fail decisions.
 
 `vibebench compare` writes:
@@ -251,9 +259,9 @@ It compares the latest run with the previous run, including score, risk level, c
 
 ## One-Shot CI Pipeline
 
-`vibebench ci` is the recommended CI entrypoint. It runs check, gate, report, PR comment, explanation, bundle, GitHub annotations, and GitHub summary in order. The check and gate steps decide the final pass/fail verdict, while artifact steps are still attempted even when the quality gate fails.
+`vibebench ci` is the recommended CI entrypoint. It runs check, gate, report, PR comment, explanation, bundle, export, GitHub annotations, and GitHub summary in order. The check and gate steps decide the final pass/fail verdict, while artifact steps are still attempted even when the quality gate fails.
 
-Useful options include `--skip-report`, `--skip-pr-comment`, `--skip-explain`, `--skip-bundle`, `--skip-annotate`, `--skip-gh-summary`, `--bundle-include-report-assets`, and `--bundle-strict`. Gate overrides such as `--min-score`, `--max-risk`, `--allow-findings`, and `--no-require-status-passed` are passed through to the gate step. Use `--run-dir .vibebench/runs/<run-id>` to generate artifacts and enforce the gate against an existing run without creating a fresh check run.
+Useful options include `--skip-report`, `--skip-pr-comment`, `--skip-explain`, `--skip-bundle`, `--skip-export`, `--skip-annotate`, `--skip-gh-summary`, `--bundle-include-report-assets`, and `--bundle-strict`. Gate overrides such as `--min-score`, `--max-risk`, `--allow-findings`, and `--no-require-status-passed` are passed through to the gate step. Use `--run-dir .vibebench/runs/<run-id>` to generate artifacts and enforce the gate against an existing run without creating a fresh check run.
 
 ## What The HTML Report Shows
 
@@ -293,7 +301,7 @@ does not call the GitHub API.
 
 `vibebench annotate` emits GitHub Actions annotations for visible risk findings and command failures. `vibebench gh-summary` writes a concise Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is set. It does not post PR comments through the GitHub API yet.
 
-This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml` and generates report/comment/explanation/bundle output, emits annotations, writes summaries, and uploads `.vibebench/runs`. `vibebench init` can generate a starter workflow at `.github/workflows/vibebench.yml`; see [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) and [docs/github-actions.md](docs/github-actions.md) for details.
+This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml` and generates report/comment/explanation/bundle/export output, emits annotations, writes summaries, and uploads `.vibebench/runs`. `vibebench init` can generate a starter workflow at `.github/workflows/vibebench.yml`; see [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) and [docs/github-actions.md](docs/github-actions.md) for details.
 
 ## Try The Risk Demo
 

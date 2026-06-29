@@ -63,6 +63,7 @@ def write_run(
         )
         (run_dir / "gate-summary.md").write_text("gate\n", encoding="utf-8")
         (run_dir / "explain.md").write_text("explain\n", encoding="utf-8")
+        (run_dir / "export.json").write_text("{}\n", encoding="utf-8")
         (run_dir / "compare.md").write_text("compare\n", encoding="utf-8")
     return run_dir
 
@@ -84,6 +85,7 @@ def test_latest_run_bundle_is_created(tmp_path: Path) -> None:
     assert "metrics.json" in names
     assert "check.log" in names
     assert "report/index.html" in names
+    assert "export.json" in names
     assert "vibebench-bundle.zip" not in names
 
 

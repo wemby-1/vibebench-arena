@@ -20,6 +20,7 @@ STANDARD_ARTIFACTS = [
     Path("github-step-summary.md"),
     Path("gate-summary.md"),
     Path("explain.md"),
+    Path("export.json"),
     Path("compare.md"),
 ]
 

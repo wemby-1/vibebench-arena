@@ -11,6 +11,7 @@ from vibebench.annotate import generate_annotations
 from vibebench.bundle import create_bundle
 from vibebench.config import ConfigError, load_config
 from vibebench.explain import generate_explanation
+from vibebench.export import export_json_for_ci
 from vibebench.gate import run_gate
 from vibebench.gh_summary import generate_github_summary
 from vibebench.paths import config_file
@@ -49,6 +50,7 @@ def run_ci_pipeline(
     skip_pr_comment: bool = False,
     skip_explain: bool = False,
     skip_bundle: bool = False,
+    skip_export: bool = False,
     skip_annotate: bool = False,
     skip_gh_summary: bool = False,
     bundle_include_report_assets: bool = False,
@@ -85,6 +87,7 @@ def run_ci_pipeline(
             skip_pr_comment=skip_pr_comment,
             skip_explain=skip_explain,
             skip_bundle=skip_bundle,
+            skip_export=skip_export,
             skip_annotate=skip_annotate,
             skip_gh_summary=skip_gh_summary,
         )
@@ -123,6 +126,11 @@ def run_ci_pipeline(
             ).output_path,
         ),
         (
+            "export",
+            skip_export,
+            lambda: export_json_for_ci(root, selected_run_dir),
+        ),
+        (
             "annotate",
             skip_annotate,
             lambda: generated_annotations(root, selected_run_dir),
@@ -150,6 +158,7 @@ def append_unavailable_artifact_steps(
     skip_pr_comment: bool,
     skip_explain: bool,
     skip_bundle: bool,
+    skip_export: bool,
     skip_annotate: bool,
     skip_gh_summary: bool,
 ) -> None:
@@ -159,6 +168,7 @@ def append_unavailable_artifact_steps(
         ("pr-comment", skip_pr_comment),
         ("explain", skip_explain),
         ("bundle", skip_bundle),
+        ("export", skip_export),
         ("annotate", skip_annotate),
         ("gh-summary", skip_gh_summary),
     ]
