@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Literal
 
 from vibebench.annotate import generate_annotations
+from vibebench.badge import generate_badge
 from vibebench.bundle import create_bundle
 from vibebench.config import ConfigError, load_config
 from vibebench.explain import generate_explanation
@@ -51,6 +52,7 @@ def run_ci_pipeline(
     skip_explain: bool = False,
     skip_bundle: bool = False,
     skip_export: bool = False,
+    skip_badge: bool = False,
     skip_annotate: bool = False,
     skip_gh_summary: bool = False,
     bundle_include_report_assets: bool = False,
@@ -88,6 +90,7 @@ def run_ci_pipeline(
             skip_explain=skip_explain,
             skip_bundle=skip_bundle,
             skip_export=skip_export,
+            skip_badge=skip_badge,
             skip_annotate=skip_annotate,
             skip_gh_summary=skip_gh_summary,
         )
@@ -116,6 +119,16 @@ def run_ci_pipeline(
             lambda: generated_explanation_path(root, selected_run_dir),
         ),
         (
+            "export",
+            skip_export,
+            lambda: export_json_for_ci(root, selected_run_dir),
+        ),
+        (
+            "badge",
+            skip_badge,
+            lambda: generate_badge(root, selected_run_dir).output_path,
+        ),
+        (
             "bundle",
             skip_bundle,
             lambda: create_bundle(
@@ -124,11 +137,6 @@ def run_ci_pipeline(
                 include_report_assets=bundle_include_report_assets,
                 strict=bundle_strict,
             ).output_path,
-        ),
-        (
-            "export",
-            skip_export,
-            lambda: export_json_for_ci(root, selected_run_dir),
         ),
         (
             "annotate",
@@ -159,6 +167,7 @@ def append_unavailable_artifact_steps(
     skip_explain: bool,
     skip_bundle: bool,
     skip_export: bool,
+    skip_badge: bool,
     skip_annotate: bool,
     skip_gh_summary: bool,
 ) -> None:
@@ -167,8 +176,9 @@ def append_unavailable_artifact_steps(
         ("report", skip_report),
         ("pr-comment", skip_pr_comment),
         ("explain", skip_explain),
-        ("bundle", skip_bundle),
         ("export", skip_export),
+        ("badge", skip_badge),
+        ("bundle", skip_bundle),
         ("annotate", skip_annotate),
         ("gh-summary", skip_gh_summary),
     ]

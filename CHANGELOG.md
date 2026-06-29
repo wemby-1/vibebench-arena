@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- `vibebench badge` for Shields.io-compatible `badge.json` run status artifacts.
 - `vibebench export` for stable JSON and Markdown run exports for dashboards, external tools, and CI aggregation.
 - `vibebench annotate` for emitting GitHub Actions annotations from command failures and risk findings.
 - `vibebench ci` for running the complete check, gate, and artifact pipeline in one command.

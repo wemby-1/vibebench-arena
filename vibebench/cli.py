@@ -10,6 +10,7 @@ from rich.table import Table
 
 from vibebench import __version__
 from vibebench.annotate import AnnotationResult, generate_annotations
+from vibebench.badge import DEFAULT_BADGE_LABEL, BadgeResult, generate_badge
 from vibebench.baseline import BaselineStatus, set_baseline, show_baseline
 from vibebench.bundle import BundleResult, create_bundle
 from vibebench.ci import CiResult, run_ci_pipeline
@@ -493,6 +494,50 @@ def bundle(
     render_bundle_summary(result)
 
 
+@app.command()
+def badge(
+    project_root: ProjectRootOption = Path("."),
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            help="Specific .vibebench/runs/<timestamp> directory to badge.",
+        ),
+    ] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Write badge JSON to this file."),
+    ] = None,
+    label: Annotated[
+        str,
+        typer.Option("--label", help="Badge label text."),
+    ] = DEFAULT_BADGE_LABEL,
+) -> None:
+    """Generate a Shields.io-compatible badge JSON artifact."""
+    root = project_root.resolve()
+    selected_run_dir = None
+    if run_dir:
+        selected_run_dir = (
+            run_dir if run_dir.is_absolute() else root / run_dir
+        ).resolve()
+    selected_output = None
+    if output:
+        selected_output = (output if output.is_absolute() else root / output).resolve()
+
+    try:
+        result = generate_badge(
+            root,
+            selected_run_dir,
+            selected_output,
+            label=label,
+        )
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    render_badge_summary(result)
+
+
 @app.command("export")
 def export_command(
     project_root: ProjectRootOption = Path("."),
@@ -616,6 +661,10 @@ def ci_command(
         bool,
         typer.Option("--skip-export", help="Skip machine-readable export generation."),
     ] = False,
+    skip_badge: Annotated[
+        bool,
+        typer.Option("--skip-badge", help="Skip badge artifact generation."),
+    ] = False,
     skip_annotate: Annotated[
         bool,
         typer.Option("--skip-annotate", help="Skip GitHub annotation output."),
@@ -669,6 +718,7 @@ def ci_command(
             skip_explain=skip_explain,
             skip_bundle=skip_bundle,
             skip_export=skip_export,
+            skip_badge=skip_badge,
             skip_annotate=skip_annotate,
             skip_gh_summary=skip_gh_summary,
             bundle_include_report_assets=bundle_include_report_assets,
@@ -932,6 +982,17 @@ def render_check_summary(result: CheckRunResult) -> None:
     console.print(table)
     render_findings(result)
     console.print(f"Metrics: {result.metrics_path}")
+
+
+def render_badge_summary(result: BadgeResult) -> None:
+    """Render a concise badge command summary."""
+    console.print("Badge generated.")
+    console.print(f"Run directory: {result.run_dir}")
+    console.print(f"Output path: {result.output_path}")
+    console.print(
+        "Badge: "
+        f"{result.label} | {result.message} | {result.color}"
+    )
 
 
 def render_export_summary(result: ExportResult) -> None:

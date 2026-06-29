@@ -21,6 +21,7 @@ STANDARD_ARTIFACTS = [
     Path("gate-summary.md"),
     Path("explain.md"),
     Path("export.json"),
+    Path("badge.json"),
     Path("compare.md"),
 ]
 
