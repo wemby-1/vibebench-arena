@@ -60,6 +60,7 @@ python -m vibebench baseline --set latest
 python -m vibebench clean
 python -m vibebench check
 python -m vibebench gate
+python -m vibebench ci
 python -m vibebench report
 python -m vibebench pr-comment
 python -m vibebench explain
@@ -162,6 +163,9 @@ python -m vibebench check
 # 执行明确的通过/失败门禁阈值
 python -m vibebench gate
 
+# 运行完整本地 / CI 流水线
+python -m vibebench ci
+
 # 生成静态 HTML 报告
 python -m vibebench report
 
@@ -234,6 +238,12 @@ python -m vibebench compare
 
 它会对比最新一次和上一次运行，包括分数、风险等级、命令数量、diff 规模和风险发现数量。
 
+## 一键 CI 流水线
+
+`vibebench ci` 是推荐的 CI 入口。它会按顺序运行 check、gate、report、PR comment、explain、bundle 和 GitHub summary。最终通过/失败由 check 和 gate 决定；即使门禁失败，后续产物步骤也会尽量继续生成，方便排查。
+
+常用选项包括 `--skip-report`、`--skip-pr-comment`、`--skip-explain`、`--skip-bundle`、`--skip-gh-summary`、`--bundle-include-report-assets` 和 `--bundle-strict`。`--min-score`、`--max-risk`、`--allow-findings`、`--no-require-status-passed` 会传递给 gate。使用 `--run-dir .vibebench/runs/<run-id>` 可以针对已有运行生成产物并执行门禁，不再创建新的 check run。
+
 ## HTML 报告展示什么？
 
 静态 HTML 报告不需要前端构建工具，适合本地查看、截图和 README 展示。它包含：
@@ -267,7 +277,7 @@ python -m vibebench compare
 
 `vibebench gh-summary` 会在 `GITHUB_STEP_SUMMARY` 存在时写入 GitHub Actions step summary。当前它不会通过 GitHub API 自动发布 PR comment。
 
-这个仓库已经在自己的 CI 里 dogfood VibeBench：直接运行 Ruff 和 pytest 后，CI 会继续运行 `vibebench check`，并用 `vibebench gate --write-gate-summary` 按 `.vibebench/config.yaml` 中的策略执行明确门禁，然后生成 report/comment/explanation/bundle/summary，并上传 `.vibebench/runs` artifacts。`vibebench init` 可以生成 `.github/workflows/vibebench.yml` starter workflow；可参考 [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml)，更多说明见 [docs/github-actions.md](docs/github-actions.md)。
+这个仓库已经在自己的 CI 里 dogfood VibeBench：直接运行 Ruff 和 pytest 后，CI 会继续运行 `vibebench ci`，按 `.vibebench/config.yaml` 中的策略执行明确门禁，并生成 report/comment/explanation/bundle/summary，并上传 `.vibebench/runs` artifacts。`vibebench init` 可以生成 `.github/workflows/vibebench.yml` starter workflow；可参考 [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml)，更多说明见 [docs/github-actions.md](docs/github-actions.md)。
 
 ## 试运行风险检测 Demo
 
@@ -278,6 +288,7 @@ python examples/risk-demo/create_risky_repo.py
 cd /tmp/vibebench-risk-demo
 python -m vibebench check
 python -m vibebench gate
+python -m vibebench ci
 python -m vibebench report
 python -m vibebench pr-comment
 python -m vibebench explain

@@ -25,31 +25,14 @@ jobs:
           python -m pip install -e ".[dev]"
           python -m pip install git+https://github.com/wemby-1/vibebench-arena.git@main
 
-      - name: Run VibeBench check
-        run: python -m vibebench check
+      - name: Lint
+        run: python -m ruff check .
 
-      - name: Enforce VibeBench gate
-        run: python -m vibebench gate --write-gate-summary
+      - name: Test
+        run: python -m pytest -q
 
-      - name: Generate VibeBench HTML report
-        if: always()
-        run: python -m vibebench report
-
-      - name: Generate VibeBench PR comment
-        if: always()
-        run: python -m vibebench pr-comment
-
-      - name: Generate VibeBench explanation
-        if: always()
-        run: python -m vibebench explain
-
-      - name: Bundle VibeBench artifacts
-        if: always()
-        run: python -m vibebench bundle
-
-      - name: Write VibeBench GitHub summary
-        if: always()
-        run: python -m vibebench gh-summary
+      - name: Run VibeBench CI pipeline
+        run: python -m vibebench ci
 
       - name: Upload VibeBench artifacts
         if: always()

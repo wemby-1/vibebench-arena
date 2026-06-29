@@ -65,6 +65,7 @@ python -m vibebench baseline --set latest
 python -m vibebench clean
 python -m vibebench check
 python -m vibebench gate
+python -m vibebench ci
 python -m vibebench report
 python -m vibebench pr-comment
 python -m vibebench explain
@@ -167,6 +168,9 @@ python -m vibebench check
 # Enforce explicit pass/fail thresholds
 python -m vibebench gate
 
+# Run the complete local/CI pipeline
+python -m vibebench ci
+
 # Generate a static local report
 python -m vibebench report
 
@@ -239,6 +243,12 @@ It packages standard run artifacts for sharing or CI download. Use `--run-dir` f
 
 It compares the latest run with the previous run, including score, risk level, command counts, diff size, and risk finding count.
 
+## One-Shot CI Pipeline
+
+`vibebench ci` is the recommended CI entrypoint. It runs check, gate, report, PR comment, explanation, bundle, and GitHub summary in order. The check and gate steps decide the final pass/fail verdict, while artifact steps are still attempted even when the quality gate fails.
+
+Useful options include `--skip-report`, `--skip-pr-comment`, `--skip-explain`, `--skip-bundle`, `--skip-gh-summary`, `--bundle-include-report-assets`, and `--bundle-strict`. Gate overrides such as `--min-score`, `--max-risk`, `--allow-findings`, and `--no-require-status-passed` are passed through to the gate step. Use `--run-dir .vibebench/runs/<run-id>` to generate artifacts and enforce the gate against an existing run without creating a fresh check run.
+
 ## What The HTML Report Shows
 
 The static report is a dependency-light HTML file suitable for local review,
@@ -277,7 +287,7 @@ does not call the GitHub API.
 
 `vibebench gh-summary` writes a concise Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is set. It does not post PR comments through the GitHub API yet.
 
-This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench check`, enforces `vibebench gate --write-gate-summary` using the policy in `.vibebench/config.yaml`, generates report/comment/explanation/bundle/summary artifacts, and uploads `.vibebench/runs`. `vibebench init` can generate a starter workflow at `.github/workflows/vibebench.yml`; see [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) and [docs/github-actions.md](docs/github-actions.md) for details.
+This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml` and generates report/comment/explanation/bundle/summary artifacts, and uploads `.vibebench/runs`. `vibebench init` can generate a starter workflow at `.github/workflows/vibebench.yml`; see [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) and [docs/github-actions.md](docs/github-actions.md) for details.
 
 ## Try The Risk Demo
 
@@ -288,6 +298,7 @@ python examples/risk-demo/create_risky_repo.py
 cd /tmp/vibebench-risk-demo
 python -m vibebench check
 python -m vibebench gate
+python -m vibebench ci
 python -m vibebench report
 python -m vibebench pr-comment
 python -m vibebench explain

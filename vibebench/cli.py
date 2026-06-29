@@ -11,6 +11,7 @@ from rich.table import Table
 from vibebench import __version__
 from vibebench.baseline import BaselineStatus, set_baseline, show_baseline
 from vibebench.bundle import BundleResult, create_bundle
+from vibebench.ci import CiResult, run_ci_pipeline
 from vibebench.clean import CleanResult, clean_runs
 from vibebench.compare import CompareResult, compare_runs
 from vibebench.config import (
@@ -80,31 +81,14 @@ jobs:
           python -m pip install -e ".[dev]"
           python -m pip install git+https://github.com/wemby-1/vibebench-arena.git@main
 
-      - name: Run VibeBench check
-        run: python -m vibebench check
+      - name: Lint
+        run: python -m ruff check .
 
-      - name: Enforce VibeBench gate
-        run: python -m vibebench gate --write-gate-summary
+      - name: Test
+        run: python -m pytest -q
 
-      - name: Generate VibeBench HTML report
-        if: always()
-        run: python -m vibebench report
-
-      - name: Generate VibeBench PR comment
-        if: always()
-        run: python -m vibebench pr-comment
-
-      - name: Generate VibeBench explanation
-        if: always()
-        run: python -m vibebench explain
-
-      - name: Bundle VibeBench artifacts
-        if: always()
-        run: python -m vibebench bundle
-
-      - name: Write VibeBench GitHub summary
-        if: always()
-        run: python -m vibebench gh-summary
+      - name: Run VibeBench CI pipeline
+        run: python -m vibebench ci
 
       - name: Upload VibeBench artifacts
         if: always()
@@ -507,6 +491,97 @@ def bundle(
     render_bundle_summary(result)
 
 
+@app.command("ci")
+def ci_command(
+    project_root: ProjectRootOption = Path("."),
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            help="Existing .vibebench/runs/<timestamp> directory to process.",
+        ),
+    ] = None,
+    skip_report: Annotated[
+        bool,
+        typer.Option("--skip-report", help="Skip HTML report generation."),
+    ] = False,
+    skip_pr_comment: Annotated[
+        bool,
+        typer.Option("--skip-pr-comment", help="Skip PR comment generation."),
+    ] = False,
+    skip_explain: Annotated[
+        bool,
+        typer.Option("--skip-explain", help="Skip run explanation generation."),
+    ] = False,
+    skip_bundle: Annotated[
+        bool,
+        typer.Option("--skip-bundle", help="Skip artifact bundle generation."),
+    ] = False,
+    skip_gh_summary: Annotated[
+        bool,
+        typer.Option("--skip-gh-summary", help="Skip GitHub summary generation."),
+    ] = False,
+    bundle_include_report_assets: Annotated[
+        bool,
+        typer.Option(
+            "--bundle-include-report-assets",
+            help="Include report assets recursively in the bundle.",
+        ),
+    ] = False,
+    bundle_strict: Annotated[
+        bool,
+        typer.Option("--bundle-strict", help="Fail bundle on missing artifacts."),
+    ] = False,
+    min_score: Annotated[
+        int | None,
+        typer.Option("--min-score", help="Override minimum acceptable VibeScore."),
+    ] = None,
+    max_risk: Annotated[
+        str | None,
+        typer.Option("--max-risk", help="Override maximum acceptable risk level."),
+    ] = None,
+    allow_findings: Annotated[
+        int | None,
+        typer.Option("--allow-findings", help="Override allowed finding count."),
+    ] = None,
+    require_status_passed: Annotated[
+        bool | None,
+        typer.Option("--require-status-passed/--no-require-status-passed"),
+    ] = None,
+) -> None:
+    """Run the full VibeBench CI pipeline."""
+    root = project_root.resolve()
+    selected_run_dir = None
+    if run_dir:
+        selected_run_dir = (
+            run_dir if run_dir.is_absolute() else root / run_dir
+        ).resolve()
+
+    try:
+        result = run_ci_pipeline(
+            root,
+            run_dir=selected_run_dir,
+            skip_report=skip_report,
+            skip_pr_comment=skip_pr_comment,
+            skip_explain=skip_explain,
+            skip_bundle=skip_bundle,
+            skip_gh_summary=skip_gh_summary,
+            bundle_include_report_assets=bundle_include_report_assets,
+            bundle_strict=bundle_strict,
+            min_score=min_score,
+            max_risk=max_risk,
+            allow_findings=allow_findings,
+            require_status_passed=require_status_passed,
+        )
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    render_ci_summary(result)
+    if not result.passed:
+        raise typer.Exit(code=1)
+
+
 @app.command()
 def doctor(
     project_root: ProjectRootOption = Path("."),
@@ -752,6 +827,35 @@ def render_check_summary(result: CheckRunResult) -> None:
     console.print(table)
     render_findings(result)
     console.print(f"Metrics: {result.metrics_path}")
+
+
+def render_ci_summary(result: CiResult) -> None:
+    """Render a concise CI pipeline summary."""
+    console.print()
+    console.print("[bold]VibeBench CI[/]")
+    if result.run_dir is not None:
+        console.print(f"Run directory: {result.run_dir}")
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Step")
+    table.add_column("Status")
+    table.add_column("Exit")
+    table.add_column("Artifact")
+    table.add_column("Message")
+    status_style = {"passed": "green", "failed": "red", "skipped": "yellow"}
+    for step in result.steps:
+        table.add_row(
+            step.name,
+            f"[{status_style[step.status]}]{step.status}[/]",
+            str(step.exit_code),
+            str(step.artifact_path) if step.artifact_path else "",
+            step.message,
+        )
+    console.print(table)
+
+    verdict = "passed" if result.passed else "failed"
+    style = "green" if result.passed else "red"
+    console.print(f"Final CI verdict: [{style}]{verdict}[/]")
 
 
 def render_doctor_summary(result: DoctorResult) -> None:

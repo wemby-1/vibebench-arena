@@ -5,7 +5,7 @@ VibeBench can run inside GitHub Actions without using the GitHub API or requirin
 
 ## VibeBench Dogfoods Itself
 
-This repository's active CI runs direct `ruff` and `pytest` checks first, then runs VibeBench itself. CI now enforces `vibebench gate --write-gate-summary` using the policy in `.vibebench/config.yaml`; if the gate fails, the job fails. CI still generates the HTML report, PR-ready Markdown comment, human-readable explanation, zip artifact bundle, GitHub step summary, and uploads `.vibebench/runs` as artifacts.
+This repository's active CI runs direct `ruff` and `pytest` checks first, then runs VibeBench itself. CI now runs `python -m vibebench ci`, which enforces the policy in `.vibebench/config.yaml`; if check or gate fails, the job fails. The command still attempts to generate the HTML report, PR-ready Markdown comment, human-readable explanation, zip artifact bundle, GitHub step summary, and uploads `.vibebench/runs` as artifacts.
 
 ## Generate The Workflow
 
@@ -28,29 +28,26 @@ The example workflow:
 - checks out your repository
 - sets up Python 3.11
 - installs the project with `python -m pip install -e ".[dev]"` and installs VibeBench from GitHub until PyPI support exists
-- runs `python -m vibebench check`
-- enforces `python -m vibebench gate --write-gate-summary` with explicit score, risk, and finding thresholds from config
-- generates the HTML report
-- generates the PR-ready Markdown comment
-- generates a human-readable run explanation
-- bundles run artifacts with `python -m vibebench bundle`
-- writes the GitHub Actions step summary
+- runs direct Ruff and pytest checks
+- runs `python -m vibebench ci` as the recommended VibeBench CI entrypoint
+- uses check and gate as the final VibeBench pass/fail decision
+- still attempts report, PR comment, explanation, bundle, and GitHub summary artifacts on failure
 - uploads `.vibebench/runs` as a workflow artifact
 
 ## Add A Quality Gate
 
-Use `vibebench gate` when CI should fail on explicit score, risk, and finding thresholds. Put the policy in `.vibebench/config.yaml`, then run the gate after `vibebench check` and before the always-on artifact generation steps:
+Use `vibebench ci` when CI should fail on explicit score, risk, and finding thresholds while still producing debugging artifacts:
 
 ```yaml
-      - name: Enforce VibeBench gate
-        run: python -m vibebench gate --write-gate-summary
+      - name: Run VibeBench CI pipeline
+        run: python -m vibebench ci
 ```
 
-`--write-gate-summary` writes `.vibebench/runs/<timestamp>/gate-summary.md`, which can be uploaded with the rest of the run artifacts. CLI threshold flags still work as explicit one-run overrides.
+The command writes `.vibebench/runs/<timestamp>/gate-summary.md` and supports one-run gate overrides such as `--min-score`, `--max-risk`, `--allow-findings`, and `--no-require-status-passed`.
 
 ## Why `if: always()` Is Used
 
-`vibebench check` should fail the workflow when configured commands fail or critical risks are found. `vibebench gate` should also fail the workflow when explicit quality thresholds are not met, so it should not use `if: always()`. The later report, comment, explanation, bundle, summary, and artifact upload steps use `if: always()` so reviewers can still inspect VibeBench output after a failed check or gate.
+`vibebench ci` should fail the workflow when check or gate fails. It internally still attempts report, comment, explanation, bundle, and summary generation so reviewers can inspect VibeBench output after a failed check or gate. The artifact upload step remains `if: always()`.
 
 ## Artifacts
 

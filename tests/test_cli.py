@@ -58,15 +58,11 @@ def test_init_generated_workflow_contains_required_commands(tmp_path: Path) -> N
     assert "actions/setup-python@v6" in workflow
     assert "python -m pip install -e" in workflow
     assert "git+https://github.com/wemby-1/vibebench-arena.git@main" in workflow
-    assert "python -m vibebench check" in workflow
-    assert "python -m vibebench gate --write-gate-summary" in workflow
-    assert "python -m vibebench report" in workflow
-    assert "python -m vibebench pr-comment" in workflow
-    assert "python -m vibebench explain" in workflow
-    assert "python -m vibebench bundle" in workflow
-    assert "python -m vibebench gh-summary" in workflow
+    assert "python -m ruff check ." in workflow
+    assert "python -m pytest -q" in workflow
+    assert "python -m vibebench ci" in workflow
     assert "actions/upload-artifact@v7" in workflow
-    assert workflow.count("if: always()") >= 4
+    assert workflow.count("if: always()") >= 1
 
 
 def test_init_does_not_overwrite_existing_files_by_default(tmp_path: Path) -> None:
@@ -93,7 +89,7 @@ def test_init_force_overwrites_existing_files(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert "vibebench-project" in config_path(tmp_path).read_text(encoding="utf-8")
-    assert "python -m vibebench check" in workflow_path(tmp_path).read_text(
+    assert "python -m vibebench ci" in workflow_path(tmp_path).read_text(
         encoding="utf-8"
     )
 
