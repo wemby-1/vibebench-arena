@@ -137,6 +137,7 @@ def artifacts_section(run_dir: Path) -> str:
         run_dir / "vibebench-bundle.zip",
         run_dir / "export.json",
         run_dir / "badge.json",
+        run_dir / "badge.md",
         run_dir / "gate-summary.md",
     ]
     lines = []

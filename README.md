@@ -74,6 +74,8 @@ python -m vibebench explain
 python -m vibebench bundle
 python -m vibebench export
 python -m vibebench badge
+python -m vibebench badge --format markdown
+python -m vibebench badge --format url
 python -m vibebench annotate
 python -m vibebench gh-summary
 python -m vibebench compare
@@ -192,8 +194,11 @@ python -m vibebench bundle
 python -m vibebench export
 python -m vibebench export --format markdown
 
-# Generate a Shields.io-compatible badge artifact
+# Generate Shields.io-compatible badge artifacts
 python -m vibebench badge
+python -m vibebench badge --format markdown
+python -m vibebench badge --format url
+python -m vibebench badge --format markdown --label "VibeScore"
 
 # Emit GitHub Actions annotations for findings and command failures
 python -m vibebench annotate
@@ -252,7 +257,7 @@ It packages standard run artifacts for sharing or CI download. Use `--run-dir` f
 
 `vibebench export` prints a stable machine-readable JSON summary by default. Use `--pretty` for indented JSON, `--format markdown` for lightweight sharing, and `--output` to write the export to a file. `vibebench ci` writes `.vibebench/runs/<timestamp>/export.json` by default.
 
-`vibebench badge` writes a Shields.io-compatible endpoint JSON artifact at `.vibebench/runs/<timestamp>/badge.json` by default. Use `--label` to customize the label or `--output` to write to a different path.
+`vibebench badge` writes a Shields.io-compatible endpoint JSON artifact at `.vibebench/runs/<timestamp>/badge.json` by default. Use `--format markdown` to write a copy-pasteable README image badge to `badge.md`, or `--format url` to write the static Shields URL to `badge-url.txt`. `--label` customizes all formats, and `--output` writes the selected format to a custom path. `vibebench ci` writes both `badge.json` and `badge.md` by default.
 
 `vibebench annotate` emits GitHub Actions annotations for command failures and risk findings from the latest run. Use `--no-github-actions` for readable plain text output. It is reporting-only and exits 0 when annotations are emitted; `vibebench gate` remains responsible for pass/fail decisions.
 

@@ -3,7 +3,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from vibebench.badge import badge_color, generate_badge
+from vibebench.badge import badge_color, badge_url, generate_badge
 from vibebench.cli import app
 
 runner = CliRunner()
@@ -115,6 +115,142 @@ def test_badge_label_option_works(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert read_json(run_dir / "badge.json")["label"] == "Quality"
 
+
+
+def test_badge_markdown_format_creates_badge_md(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["badge", "--project-root", str(tmp_path), "--format", "markdown"],
+    )
+
+    badge_path = run_dir / "badge.md"
+    assert result.exit_code == 0
+    assert badge_path.exists()
+    assert badge_path.read_text(encoding="utf-8") == (
+        "![VibeBench](https://img.shields.io/badge/VibeBench-100%20low-brightgreen)\n"
+    )
+
+
+def test_badge_url_format_creates_badge_url_txt(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["badge", "--project-root", str(tmp_path), "--format", "url"],
+    )
+
+    badge_path = run_dir / "badge-url.txt"
+    assert result.exit_code == 0
+    assert badge_path.exists()
+    assert badge_path.read_text(encoding="utf-8") == (
+        "https://img.shields.io/badge/VibeBench-100%20low-brightgreen\n"
+    )
+
+
+def test_badge_url_encoding_uses_percent_twenty_for_spaces() -> None:
+    url = badge_url(
+        {
+            "label": "Vibe Score",
+            "message": "failed high",
+            "color": "bright green",
+        }
+    )
+
+    assert url == (
+        "https://img.shields.io/badge/"
+        "Vibe%20Score-failed%20high-bright%20green"
+    )
+    assert "+" not in url
+
+
+def test_badge_label_affects_markdown_and_url(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path)
+
+    markdown = runner.invoke(
+        app,
+        [
+            "badge",
+            "--project-root",
+            str(tmp_path),
+            "--format",
+            "markdown",
+            "--label",
+            "VibeScore",
+        ],
+    )
+    url = runner.invoke(
+        app,
+        [
+            "badge",
+            "--project-root",
+            str(tmp_path),
+            "--format",
+            "url",
+            "--label",
+            "Vibe Score",
+        ],
+    )
+
+    assert markdown.exit_code == 0
+    assert url.exit_code == 0
+    assert run_dir.joinpath("badge.md").read_text(encoding="utf-8").startswith(
+        "![VibeScore]"
+    )
+    assert "Vibe%20Score" in run_dir.joinpath("badge-url.txt").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_badge_output_works_for_markdown_and_url(tmp_path: Path) -> None:
+    write_run(tmp_path)
+    markdown_path = tmp_path / "custom.md"
+    url_path = tmp_path / "custom-url.txt"
+
+    markdown = runner.invoke(
+        app,
+        [
+            "badge",
+            "--project-root",
+            str(tmp_path),
+            "--format",
+            "markdown",
+            "--output",
+            str(markdown_path),
+        ],
+    )
+    url = runner.invoke(
+        app,
+        [
+            "badge",
+            "--project-root",
+            str(tmp_path),
+            "--format",
+            "url",
+            "--output",
+            str(url_path),
+        ],
+    )
+
+    assert markdown.exit_code == 0
+    assert url.exit_code == 0
+    assert markdown_path.read_text(encoding="utf-8").startswith("![VibeBench]")
+    assert url_path.read_text(encoding="utf-8").startswith(
+        "https://img.shields.io/badge/"
+    )
+
+
+def test_invalid_badge_format_fails_clearly(tmp_path: Path) -> None:
+    write_run(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["badge", "--project-root", str(tmp_path), "--format", "svg"],
+    )
+
+    assert result.exit_code == 1
+    assert "Unsupported badge format" in result.output
 
 def test_badge_color_mapping() -> None:
     assert badge_color(status="passed", score=95, risk="low") == "brightgreen"

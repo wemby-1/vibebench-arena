@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Literal
 
 from vibebench.annotate import generate_annotations
-from vibebench.badge import generate_badge
+from vibebench.badge import generate_ci_badges
 from vibebench.bundle import create_bundle
 from vibebench.config import ConfigError, load_config
 from vibebench.explain import generate_explanation
@@ -126,7 +126,7 @@ def run_ci_pipeline(
         (
             "badge",
             skip_badge,
-            lambda: generate_badge(root, selected_run_dir).output_path,
+            lambda: generate_ci_badges(root, selected_run_dir),
         ),
         (
             "bundle",

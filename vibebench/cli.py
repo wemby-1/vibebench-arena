@@ -506,14 +506,18 @@ def badge(
     ] = None,
     output: Annotated[
         Path | None,
-        typer.Option("--output", help="Write badge JSON to this file."),
+        typer.Option("--output", help="Write badge output to this file."),
     ] = None,
+    badge_format: Annotated[
+        str,
+        typer.Option("--format", help="Badge format: json, markdown, or url."),
+    ] = "json",
     label: Annotated[
         str,
         typer.Option("--label", help="Badge label text."),
     ] = DEFAULT_BADGE_LABEL,
 ) -> None:
-    """Generate a Shields.io-compatible badge JSON artifact."""
+    """Generate a Shields.io-compatible badge artifact."""
     root = project_root.resolve()
     selected_run_dir = None
     if run_dir:
@@ -530,6 +534,7 @@ def badge(
             selected_run_dir,
             selected_output,
             label=label,
+            badge_format=badge_format,
         )
     except ReportError as exc:
         console.print(f"[red]{exc}[/]")
@@ -991,7 +996,7 @@ def render_badge_summary(result: BadgeResult) -> None:
     console.print(f"Output path: {result.output_path}")
     console.print(
         "Badge: "
-        f"{result.label} | {result.message} | {result.color}"
+        f"{result.label} | {result.message} | {result.color} | {result.format}"
     )
 
 

@@ -229,10 +229,12 @@ The JSON export is stable machine-readable output for dashboards, badges, extern
 
 ```bash
 python -m vibebench badge
-python -m vibebench badge --label Quality
+python -m vibebench badge --format markdown
+python -m vibebench badge --format url
+python -m vibebench badge --format markdown --label "VibeScore"
 ```
 
-This writes a Shields.io-compatible endpoint JSON file to `.vibebench/runs/<timestamp>/badge.json` by default. Use `--output` to write a custom path.
+This writes a Shields.io-compatible endpoint JSON file to `.vibebench/runs/<timestamp>/badge.json` by default. Markdown output writes `badge.md` for README copy/paste, and URL output writes `badge-url.txt`. Use `--label` to customize the visible label and `--output` to write a custom path for the selected format. `vibebench ci` generates `badge.json` and `badge.md` by default.
 
 ## Emit GitHub Actions Annotations
 
@@ -292,7 +294,7 @@ The risk demo intentionally creates critical findings, so `vibebench check` is e
 
 ## CI Artifacts
 
-VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml`, generates `explain.md`, writes `export.json` and `badge.json`, bundles run artifacts, emits GitHub annotations, writes the GitHub Actions job summary, and uploads `.vibebench/runs` as artifacts for review.
+VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml`, generates `explain.md`, writes `export.json`, `badge.json`, and `badge.md`, bundles run artifacts, emits GitHub annotations, writes the GitHub Actions job summary, and uploads `.vibebench/runs` as artifacts for review.
 
 ## Generated Files
 

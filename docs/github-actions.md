@@ -5,7 +5,7 @@ VibeBench can run inside GitHub Actions without using the GitHub API or requirin
 
 ## VibeBench Dogfoods Itself
 
-This repository's active CI runs direct `ruff` and `pytest` checks first, then runs VibeBench itself. CI now runs `python -m vibebench ci`, which enforces the policy in `.vibebench/config.yaml`; if check or gate fails, the job fails. The command still attempts to generate the HTML report, PR-ready Markdown comment, human-readable explanation, machine-readable export, badge artifact, zip artifact bundle, GitHub annotations, GitHub step summary, and uploads `.vibebench/runs` as artifacts.
+This repository's active CI runs direct `ruff` and `pytest` checks first, then runs VibeBench itself. CI now runs `python -m vibebench ci`, which enforces the policy in `.vibebench/config.yaml`; if check or gate fails, the job fails. The command still attempts to generate the HTML report, PR-ready Markdown comment, human-readable explanation, machine-readable export, badge artifacts, zip artifact bundle, GitHub annotations, GitHub step summary, and uploads `.vibebench/runs` as artifacts.
 
 ## Generate The Workflow
 
@@ -67,6 +67,7 @@ That directory can include:
 - `vibebench-bundle.zip`
 - `export.json`
 - `badge.json`
+- `badge.md`
 - `gate-summary.md`
 - GitHub Actions annotations in the job log when findings or command failures exist
 - `github-step-summary.md` when not running inside GitHub step summary mode

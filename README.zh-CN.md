@@ -69,6 +69,8 @@ python -m vibebench explain
 python -m vibebench bundle
 python -m vibebench export
 python -m vibebench badge
+python -m vibebench badge --format markdown
+python -m vibebench badge --format url
 python -m vibebench annotate
 python -m vibebench gh-summary
 python -m vibebench compare
@@ -189,6 +191,9 @@ python -m vibebench export --format markdown
 
 # 生成兼容 Shields.io 的 badge artifact
 python -m vibebench badge
+python -m vibebench badge --format markdown
+python -m vibebench badge --format url
+python -m vibebench badge --format markdown --label "VibeScore"
 
 # 为风险发现和命令失败输出 GitHub Actions annotations
 python -m vibebench annotate
@@ -247,7 +252,7 @@ python -m vibebench compare
 
 `vibebench export` 默认输出稳定的机器可读 JSON，适合 dashboard、badge 和外部工具读取。`--pretty` 可以输出缩进 JSON，`--format markdown` 可生成轻量 Markdown，`--output` 可写入文件。`vibebench ci` 默认会写入 `.vibebench/runs/<timestamp>/export.json`。
 
-`vibebench badge` 默认写入兼容 Shields.io endpoint 的 `.vibebench/runs/<timestamp>/badge.json`。可以用 `--label` 自定义 label，或用 `--output` 指定输出位置。
+`vibebench badge` 默认写入兼容 Shields.io endpoint 的 `.vibebench/runs/<timestamp>/badge.json`。`--format markdown` 会写入可直接复制到 README 的 `badge.md`，`--format url` 会写入静态 Shields URL 到 `badge-url.txt`。`--label` 会作用于所有格式，`--output` 可指定当前格式的输出位置。`vibebench ci` 默认会生成 `badge.json` 和 `badge.md`。
 
 `vibebench annotate` 会根据最新运行中的命令失败和风险发现输出 GitHub Actions annotations。使用 `--no-github-actions` 可以输出普通文本。它只负责展示，不决定通过/失败；真正的门禁仍由 `vibebench gate` 负责。
 
