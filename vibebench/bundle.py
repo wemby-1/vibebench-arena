@@ -24,6 +24,7 @@ STANDARD_ARTIFACTS = [
     Path("badge.json"),
     Path("badge.md"),
     Path("badge-url.txt"),
+    Path("status-block.md"),
     Path("compare.md"),
 ]
 

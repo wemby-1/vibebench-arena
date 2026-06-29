@@ -76,6 +76,7 @@ python -m vibebench export
 python -m vibebench badge
 python -m vibebench badge --format markdown
 python -m vibebench badge --format url
+python -m vibebench status-block
 python -m vibebench annotate
 python -m vibebench gh-summary
 python -m vibebench compare
@@ -200,6 +201,12 @@ python -m vibebench badge --format markdown
 python -m vibebench badge --format url
 python -m vibebench badge --format markdown --label "VibeScore"
 
+# Generate a copy-pasteable README status block
+python -m vibebench status-block
+python -m vibebench status-block --title "Project Quality"
+python -m vibebench status-block --no-include-artifacts
+python -m vibebench status-block --output README-status.md
+
 # Emit GitHub Actions annotations for findings and command failures
 python -m vibebench annotate
 
@@ -259,6 +266,8 @@ It packages standard run artifacts for sharing or CI download. Use `--run-dir` f
 
 `vibebench badge` writes a Shields.io-compatible endpoint JSON artifact at `.vibebench/runs/<timestamp>/badge.json` by default. Use `--format markdown` to write a copy-pasteable README image badge to `badge.md`, or `--format url` to write the static Shields URL to `badge-url.txt`. `--label` customizes all formats, and `--output` writes the selected format to a custom path. `vibebench ci` writes both `badge.json` and `badge.md` by default.
 
+`vibebench status-block` writes `.vibebench/runs/<timestamp>/status-block.md`, a copy-pasteable README section with status, score, risk, diff size, findings, badge, and generated artifacts. Use `--title`, `--no-include-badge`, `--no-include-artifacts`, or `--output` to customize it.
+
 `vibebench annotate` emits GitHub Actions annotations for command failures and risk findings from the latest run. Use `--no-github-actions` for readable plain text output. It is reporting-only and exits 0 when annotations are emitted; `vibebench gate` remains responsible for pass/fail decisions.
 
 `vibebench compare` writes:
@@ -271,9 +280,9 @@ It compares the latest run with the previous run, including score, risk level, c
 
 ## One-Shot CI Pipeline
 
-`vibebench ci` is the recommended CI entrypoint. It runs check, gate, report, PR comment, explanation, export, badge, bundle, GitHub annotations, and GitHub summary in order. The check and gate steps decide the final pass/fail verdict, while artifact steps are still attempted even when the quality gate fails.
+`vibebench ci` is the recommended CI entrypoint. It runs check, gate, report, PR comment, explanation, export, badge, status block, bundle, GitHub annotations, and GitHub summary in order. The check and gate steps decide the final pass/fail verdict, while artifact steps are still attempted even when the quality gate fails.
 
-Useful options include `--skip-report`, `--skip-pr-comment`, `--skip-explain`, `--skip-export`, `--skip-badge`, `--skip-bundle`, `--skip-annotate`, `--skip-gh-summary`, `--bundle-include-report-assets`, and `--bundle-strict`. Gate overrides such as `--min-score`, `--max-risk`, `--allow-findings`, and `--no-require-status-passed` are passed through to the gate step. Use `--run-dir .vibebench/runs/<run-id>` to generate artifacts and enforce the gate against an existing run without creating a fresh check run.
+Useful options include `--skip-report`, `--skip-pr-comment`, `--skip-explain`, `--skip-export`, `--skip-badge`, `--skip-status-block`, `--skip-bundle`, `--skip-annotate`, `--skip-gh-summary`, `--bundle-include-report-assets`, and `--bundle-strict`. Gate overrides such as `--min-score`, `--max-risk`, `--allow-findings`, and `--no-require-status-passed` are passed through to the gate step. Use `--run-dir .vibebench/runs/<run-id>` to generate artifacts and enforce the gate against an existing run without creating a fresh check run.
 
 ## What The HTML Report Shows
 
@@ -313,7 +322,7 @@ does not call the GitHub API.
 
 `vibebench annotate` emits GitHub Actions annotations for visible risk findings and command failures. `vibebench gh-summary` writes a concise Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is set. It does not post PR comments through the GitHub API yet.
 
-This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml` and generates report/comment/explanation/export/badge/bundle output, emits annotations, writes summaries, and uploads `.vibebench/runs`. `vibebench init` can generate a starter workflow at `.github/workflows/vibebench.yml`; see [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) and [docs/github-actions.md](docs/github-actions.md) for details.
+This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml` and generates report/comment/explanation/export/badge/status-block/bundle output, emits annotations, writes summaries, and uploads `.vibebench/runs`. `vibebench init` can generate a starter workflow at `.github/workflows/vibebench.yml`; see [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) and [docs/github-actions.md](docs/github-actions.md) for details.
 
 ## Try The Risk Demo
 

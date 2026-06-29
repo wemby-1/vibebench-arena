@@ -67,6 +67,7 @@ def write_run(
         (run_dir / "badge.json").write_text("{}\n", encoding="utf-8")
         (run_dir / "badge.md").write_text("![badge](url)\n", encoding="utf-8")
         (run_dir / "badge-url.txt").write_text("url\n", encoding="utf-8")
+        (run_dir / "status-block.md").write_text("status\n", encoding="utf-8")
         (run_dir / "compare.md").write_text("compare\n", encoding="utf-8")
     return run_dir
 
@@ -92,6 +93,7 @@ def test_latest_run_bundle_is_created(tmp_path: Path) -> None:
     assert "badge.json" in names
     assert "badge.md" in names
     assert "badge-url.txt" in names
+    assert "status-block.md" in names
     assert "vibebench-bundle.zip" not in names
 
 

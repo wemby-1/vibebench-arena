@@ -39,6 +39,11 @@ from vibebench.report import (
     recommendation_for,
 )
 from vibebench.runner import CheckRunResult, run_checks
+from vibebench.status_block import (
+    DEFAULT_STATUS_TITLE,
+    StatusBlockResult,
+    generate_status_block,
+)
 
 app = typer.Typer(
     help="Codex-first quality gate for vibe coding projects.",
@@ -543,6 +548,58 @@ def badge(
     render_badge_summary(result)
 
 
+@app.command("status-block")
+def status_block(
+    project_root: ProjectRootOption = Path("."),
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            help="Specific .vibebench/runs/<timestamp> directory to summarize.",
+        ),
+    ] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Write status block to this file."),
+    ] = None,
+    title: Annotated[
+        str,
+        typer.Option("--title", help="Markdown heading text."),
+    ] = DEFAULT_STATUS_TITLE,
+    include_badge: Annotated[
+        bool,
+        typer.Option("--include-badge/--no-include-badge"),
+    ] = True,
+    include_artifacts: Annotated[
+        bool,
+        typer.Option("--include-artifacts/--no-include-artifacts"),
+    ] = True,
+) -> None:
+    """Generate a copy-pasteable README status block."""
+    root = project_root.resolve()
+    selected_run_dir = None
+    if run_dir:
+        selected_run_dir = run_dir if run_dir.is_absolute() else root / run_dir
+    selected_output = None
+    if output:
+        selected_output = (output if output.is_absolute() else root / output).resolve()
+
+    try:
+        result = generate_status_block(
+            root,
+            selected_run_dir,
+            selected_output,
+            title=title,
+            include_badge=include_badge,
+            include_artifacts=include_artifacts,
+        )
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    render_status_block_summary(result)
+
+
 @app.command("export")
 def export_command(
     project_root: ProjectRootOption = Path("."),
@@ -670,6 +727,13 @@ def ci_command(
         bool,
         typer.Option("--skip-badge", help="Skip badge artifact generation."),
     ] = False,
+    skip_status_block: Annotated[
+        bool,
+        typer.Option(
+            "--skip-status-block",
+            help="Skip README status block generation.",
+        ),
+    ] = False,
     skip_annotate: Annotated[
         bool,
         typer.Option("--skip-annotate", help="Skip GitHub annotation output."),
@@ -724,6 +788,7 @@ def ci_command(
             skip_bundle=skip_bundle,
             skip_export=skip_export,
             skip_badge=skip_badge,
+            skip_status_block=skip_status_block,
             skip_annotate=skip_annotate,
             skip_gh_summary=skip_gh_summary,
             bundle_include_report_assets=bundle_include_report_assets,
@@ -987,6 +1052,14 @@ def render_check_summary(result: CheckRunResult) -> None:
     console.print(table)
     render_findings(result)
     console.print(f"Metrics: {result.metrics_path}")
+
+
+def render_status_block_summary(result: StatusBlockResult) -> None:
+    """Render a concise status block command summary."""
+    console.print("Status block generated.")
+    console.print(f"Run directory: {result.run_dir}")
+    console.print(f"Output path: {result.output_path}")
+    console.print(f"Title: {result.title}")
 
 
 def render_badge_summary(result: BadgeResult) -> None:

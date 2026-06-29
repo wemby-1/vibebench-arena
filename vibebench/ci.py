@@ -19,6 +19,7 @@ from vibebench.paths import config_file
 from vibebench.pr_comment import generate_pr_comment
 from vibebench.report import ReportError, generate_report, load_metrics
 from vibebench.runner import run_checks
+from vibebench.status_block import generate_status_block
 
 StepStatus = Literal["passed", "failed", "skipped"]
 
@@ -53,6 +54,7 @@ def run_ci_pipeline(
     skip_bundle: bool = False,
     skip_export: bool = False,
     skip_badge: bool = False,
+    skip_status_block: bool = False,
     skip_annotate: bool = False,
     skip_gh_summary: bool = False,
     bundle_include_report_assets: bool = False,
@@ -91,6 +93,7 @@ def run_ci_pipeline(
             skip_bundle=skip_bundle,
             skip_export=skip_export,
             skip_badge=skip_badge,
+            skip_status_block=skip_status_block,
             skip_annotate=skip_annotate,
             skip_gh_summary=skip_gh_summary,
         )
@@ -127,6 +130,11 @@ def run_ci_pipeline(
             "badge",
             skip_badge,
             lambda: generate_ci_badges(root, selected_run_dir),
+        ),
+        (
+            "status-block",
+            skip_status_block,
+            lambda: generate_status_block(root, selected_run_dir).output_path,
         ),
         (
             "bundle",
@@ -168,6 +176,7 @@ def append_unavailable_artifact_steps(
     skip_bundle: bool,
     skip_export: bool,
     skip_badge: bool,
+    skip_status_block: bool,
     skip_annotate: bool,
     skip_gh_summary: bool,
 ) -> None:
@@ -178,6 +187,7 @@ def append_unavailable_artifact_steps(
         ("explain", skip_explain),
         ("export", skip_export),
         ("badge", skip_badge),
+        ("status-block", skip_status_block),
         ("bundle", skip_bundle),
         ("annotate", skip_annotate),
         ("gh-summary", skip_gh_summary),

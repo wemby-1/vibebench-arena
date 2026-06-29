@@ -71,6 +71,7 @@ python -m vibebench export
 python -m vibebench badge
 python -m vibebench badge --format markdown
 python -m vibebench badge --format url
+python -m vibebench status-block
 python -m vibebench annotate
 python -m vibebench gh-summary
 python -m vibebench compare
@@ -195,6 +196,12 @@ python -m vibebench badge --format markdown
 python -m vibebench badge --format url
 python -m vibebench badge --format markdown --label "VibeScore"
 
+# 生成可复制到 README 的状态块
+python -m vibebench status-block
+python -m vibebench status-block --title "Project Quality"
+python -m vibebench status-block --no-include-artifacts
+python -m vibebench status-block --output README-status.md
+
 # 为风险发现和命令失败输出 GitHub Actions annotations
 python -m vibebench annotate
 
@@ -254,6 +261,8 @@ python -m vibebench compare
 
 `vibebench badge` 默认写入兼容 Shields.io endpoint 的 `.vibebench/runs/<timestamp>/badge.json`。`--format markdown` 会写入可直接复制到 README 的 `badge.md`，`--format url` 会写入静态 Shields URL 到 `badge-url.txt`。`--label` 会作用于所有格式，`--output` 可指定当前格式的输出位置。`vibebench ci` 默认会生成 `badge.json` 和 `badge.md`。
 
+`vibebench status-block` 会写入 `.vibebench/runs/<timestamp>/status-block.md`，内容是可直接复制到 README 的状态区块，包含状态、分数、风险等级、diff 规模、风险发现、badge 和已生成产物。可用 `--title`、`--no-include-badge`、`--no-include-artifacts` 或 `--output` 自定义。
+
 `vibebench annotate` 会根据最新运行中的命令失败和风险发现输出 GitHub Actions annotations。使用 `--no-github-actions` 可以输出普通文本。它只负责展示，不决定通过/失败；真正的门禁仍由 `vibebench gate` 负责。
 
 `vibebench compare` 会写入：
@@ -266,9 +275,9 @@ python -m vibebench compare
 
 ## 一键 CI 流水线
 
-`vibebench ci` 是推荐的 CI 入口。它会按顺序运行 check、gate、report、PR comment、explain、export、badge、bundle、GitHub annotations 和 GitHub summary。最终通过/失败由 check 和 gate 决定；即使门禁失败，后续产物步骤也会尽量继续生成，方便排查。
+`vibebench ci` 是推荐的 CI 入口。它会按顺序运行 check、gate、report、PR comment、explain、export、badge、status block、bundle、GitHub annotations 和 GitHub summary。最终通过/失败由 check 和 gate 决定；即使门禁失败，后续产物步骤也会尽量继续生成，方便排查。
 
-常用选项包括 `--skip-report`、`--skip-pr-comment`、`--skip-explain`、`--skip-export`、`--skip-badge`、`--skip-bundle`、`--skip-annotate`、`--skip-gh-summary`、`--bundle-include-report-assets` 和 `--bundle-strict`。`--min-score`、`--max-risk`、`--allow-findings`、`--no-require-status-passed` 会传递给 gate。使用 `--run-dir .vibebench/runs/<run-id>` 可以针对已有运行生成产物并执行门禁，不再创建新的 check run。
+常用选项包括 `--skip-report`、`--skip-pr-comment`、`--skip-explain`、`--skip-export`、`--skip-badge`、`--skip-status-block`、`--skip-bundle`、`--skip-annotate`、`--skip-gh-summary`、`--bundle-include-report-assets` 和 `--bundle-strict`。`--min-score`、`--max-risk`、`--allow-findings`、`--no-require-status-passed` 会传递给 gate。使用 `--run-dir .vibebench/runs/<run-id>` 可以针对已有运行生成产物并执行门禁，不再创建新的 check run。
 
 ## HTML 报告展示什么？
 
@@ -303,7 +312,7 @@ python -m vibebench compare
 
 `vibebench annotate` 会把可见的风险发现和命令失败输出成 GitHub Actions annotations。`vibebench gh-summary` 会在 `GITHUB_STEP_SUMMARY` 存在时写入 GitHub Actions step summary。当前它不会通过 GitHub API 自动发布 PR comment。
 
-这个仓库已经在自己的 CI 里 dogfood VibeBench：直接运行 Ruff 和 pytest 后，CI 会继续运行 `vibebench ci`，按 `.vibebench/config.yaml` 中的策略执行明确门禁，并生成 report/comment/explanation/export/badge/bundle，输出 annotations 和 summary，并上传 `.vibebench/runs` artifacts。`vibebench init` 可以生成 `.github/workflows/vibebench.yml` starter workflow；可参考 [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml)，更多说明见 [docs/github-actions.md](docs/github-actions.md)。
+这个仓库已经在自己的 CI 里 dogfood VibeBench：直接运行 Ruff 和 pytest 后，CI 会继续运行 `vibebench ci`，按 `.vibebench/config.yaml` 中的策略执行明确门禁，并生成 report/comment/explanation/export/badge/status-block/bundle，输出 annotations 和 summary，并上传 `.vibebench/runs` artifacts。`vibebench init` 可以生成 `.github/workflows/vibebench.yml` starter workflow；可参考 [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml)，更多说明见 [docs/github-actions.md](docs/github-actions.md)。
 
 ## 试运行风险检测 Demo
 

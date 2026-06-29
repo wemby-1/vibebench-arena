@@ -146,7 +146,7 @@ python -m vibebench gate --baseline --write-gate-summary
 python -m vibebench ci
 ```
 
-`vibebench ci` runs check, gate, report, PR comment, explain, export, badge, bundle, GitHub annotations, and GitHub summary. Check and gate decide the final exit code, but artifact steps are still attempted on failure so CI logs and artifacts remain useful.
+`vibebench ci` runs check, gate, report, PR comment, explain, export, badge, status block, bundle, GitHub annotations, and GitHub summary. Check and gate decide the final exit code, but artifact steps are still attempted on failure so CI logs and artifacts remain useful.
 
 Useful options:
 
@@ -155,6 +155,7 @@ python -m vibebench ci --min-score 90 --max-risk low
 python -m vibebench ci --skip-report --skip-pr-comment
 python -m vibebench ci --skip-export
 python -m vibebench ci --skip-badge
+python -m vibebench ci --skip-status-block
 python -m vibebench ci --skip-annotate
 python -m vibebench ci --bundle-include-report-assets
 python -m vibebench ci --run-dir .vibebench/runs/<run-id>
@@ -236,6 +237,17 @@ python -m vibebench badge --format markdown --label "VibeScore"
 
 This writes a Shields.io-compatible endpoint JSON file to `.vibebench/runs/<timestamp>/badge.json` by default. Markdown output writes `badge.md` for README copy/paste, and URL output writes `badge-url.txt`. Use `--label` to customize the visible label and `--output` to write a custom path for the selected format. `vibebench ci` generates `badge.json` and `badge.md` by default.
 
+## Generate A README Status Block
+
+```bash
+python -m vibebench status-block
+python -m vibebench status-block --title "Project Quality"
+python -m vibebench status-block --no-include-artifacts
+python -m vibebench status-block --output README-status.md
+```
+
+This writes `.vibebench/runs/<timestamp>/status-block.md`, a copy-pasteable README section with the current status, VibeScore, risk level, diff size, findings, optional badge, and generated artifacts.
+
 ## Emit GitHub Actions Annotations
 
 ```bash
@@ -294,7 +306,7 @@ The risk demo intentionally creates critical findings, so `vibebench check` is e
 
 ## CI Artifacts
 
-VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml`, generates `explain.md`, writes `export.json`, `badge.json`, and `badge.md`, bundles run artifacts, emits GitHub annotations, writes the GitHub Actions job summary, and uploads `.vibebench/runs` as artifacts for review.
+VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml`, generates `explain.md`, writes `export.json`, `badge.json`, `badge.md`, and `status-block.md`, bundles run artifacts, emits GitHub annotations, writes the GitHub Actions job summary, and uploads `.vibebench/runs` as artifacts for review.
 
 ## Generated Files
 
