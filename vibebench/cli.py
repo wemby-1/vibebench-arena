@@ -9,6 +9,7 @@ from rich.console import Console
 from rich.table import Table
 
 from vibebench import __version__
+from vibebench.annotate import AnnotationResult, generate_annotations
 from vibebench.baseline import BaselineStatus, set_baseline, show_baseline
 from vibebench.bundle import BundleResult, create_bundle
 from vibebench.ci import CiResult, run_ci_pipeline
@@ -491,6 +492,50 @@ def bundle(
     render_bundle_summary(result)
 
 
+@app.command()
+def annotate(
+    project_root: ProjectRootOption = Path("."),
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            help="Specific .vibebench/runs/<timestamp> directory to annotate.",
+        ),
+    ] = None,
+    min_severity: Annotated[
+        str,
+        typer.Option("--min-severity", help="Minimum finding severity to emit."),
+    ] = "warning",
+    github_actions: Annotated[
+        bool,
+        typer.Option(
+            "--github-actions/--no-github-actions",
+            help="Emit GitHub workflow commands or plain text.",
+        ),
+    ] = True,
+) -> None:
+    """Emit GitHub Actions annotations for a VibeBench run."""
+    root = project_root.resolve()
+    selected_run_dir = None
+    if run_dir:
+        selected_run_dir = (
+            run_dir if run_dir.is_absolute() else root / run_dir
+        ).resolve()
+
+    try:
+        result = generate_annotations(
+            root,
+            selected_run_dir,
+            min_severity=min_severity,
+            github_actions=github_actions,
+        )
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    render_annotation_summary(result)
+
+
 @app.command("ci")
 def ci_command(
     project_root: ProjectRootOption = Path("."),
@@ -516,6 +561,10 @@ def ci_command(
     skip_bundle: Annotated[
         bool,
         typer.Option("--skip-bundle", help="Skip artifact bundle generation."),
+    ] = False,
+    skip_annotate: Annotated[
+        bool,
+        typer.Option("--skip-annotate", help="Skip GitHub annotation output."),
     ] = False,
     skip_gh_summary: Annotated[
         bool,
@@ -565,6 +614,7 @@ def ci_command(
             skip_pr_comment=skip_pr_comment,
             skip_explain=skip_explain,
             skip_bundle=skip_bundle,
+            skip_annotate=skip_annotate,
             skip_gh_summary=skip_gh_summary,
             bundle_include_report_assets=bundle_include_report_assets,
             bundle_strict=bundle_strict,
@@ -827,6 +877,11 @@ def render_check_summary(result: CheckRunResult) -> None:
     console.print(table)
     render_findings(result)
     console.print(f"Metrics: {result.metrics_path}")
+
+
+def render_annotation_summary(result: AnnotationResult) -> None:
+    """Render annotation output."""
+    console.print(result.output, markup=False)
 
 
 def render_ci_summary(result: CiResult) -> None:

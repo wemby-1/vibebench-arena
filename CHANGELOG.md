@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- `vibebench annotate` for emitting GitHub Actions annotations from command failures and risk findings.
 - `vibebench ci` for running the complete check, gate, and artifact pipeline in one command.
 - `vibebench bundle` for packaging run artifacts into `vibebench-bundle.zip`.
 - `vibebench explain` for human-readable run explanations and `explain.md` artifacts.

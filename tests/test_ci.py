@@ -356,6 +356,77 @@ def test_invalid_run_dir_fails_clearly(tmp_path: Path) -> None:
     assert "Run directory does not exist" in result.output
 
 
+def test_ci_runs_annotations_by_default(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    run_dir = write_run(
+        tmp_path,
+        metrics=sample_metrics(
+            findings=[
+                {
+                    "severity": "warning",
+                    "code": "demo_warning",
+                    "message": "Review this change.",
+                    "paths": ["src/app.py"],
+                }
+            ]
+        ),
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--allow-findings",
+            "1",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "annotate" in result.output
+    assert "::warning" in result.output
+    assert "demo_warning" in result.output
+
+
+def test_ci_skip_annotate_suppresses_annotation_output(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    run_dir = write_run(
+        tmp_path,
+        metrics=sample_metrics(
+            findings=[
+                {
+                    "severity": "warning",
+                    "code": "demo_warning",
+                    "message": "Review this change.",
+                    "paths": ["src/app.py"],
+                }
+            ]
+        ),
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--allow-findings",
+            "1",
+            "--skip-annotate",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "annotate" in result.output
+    assert "skipped" in result.output
+    assert "::warning" not in result.output
+    assert "demo_warning" not in result.output
+
 def test_generated_init_workflow_uses_ci_command(tmp_path: Path) -> None:
     result = runner.invoke(app, ["init", "--project-root", str(tmp_path)])
 

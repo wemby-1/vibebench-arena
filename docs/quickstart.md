@@ -146,13 +146,14 @@ python -m vibebench gate --baseline --write-gate-summary
 python -m vibebench ci
 ```
 
-`vibebench ci` runs check, gate, report, PR comment, explain, bundle, and GitHub summary. Check and gate decide the final exit code, but artifact steps are still attempted on failure so CI logs and artifacts remain useful.
+`vibebench ci` runs check, gate, report, PR comment, explain, bundle, GitHub annotations, and GitHub summary. Check and gate decide the final exit code, but artifact steps are still attempted on failure so CI logs and artifacts remain useful.
 
 Useful options:
 
 ```bash
 python -m vibebench ci --min-score 90 --max-risk low
 python -m vibebench ci --skip-report --skip-pr-comment
+python -m vibebench ci --skip-annotate
 python -m vibebench ci --bundle-include-report-assets
 python -m vibebench ci --run-dir .vibebench/runs/<run-id>
 ```
@@ -212,6 +213,15 @@ This writes:
 
 Use `--run-dir` to bundle a specific run, `--output` for a custom zip path, `--include-report-assets` to include the full `report/` directory recursively, and `--strict` to fail if any standard artifact is missing.
 
+## Emit GitHub Actions Annotations
+
+```bash
+python -m vibebench annotate
+python -m vibebench annotate --no-github-actions
+```
+
+Annotations surface command failures and risk findings in GitHub Actions logs. They are reporting-only and exit 0 when annotations are emitted; use `vibebench gate` for pass/fail decisions.
+
 ## Generate A GitHub Actions Summary
 
 ```bash
@@ -261,7 +271,7 @@ The risk demo intentionally creates critical findings, so `vibebench check` is e
 
 ## CI Artifacts
 
-VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml`, generates `explain.md`, bundles run artifacts, writes the GitHub Actions job summary, and uploads `.vibebench/runs` as artifacts for review.
+VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml`, generates `explain.md`, bundles run artifacts, emits GitHub annotations, writes the GitHub Actions job summary, and uploads `.vibebench/runs` as artifacts for review.
 
 ## Generated Files
 

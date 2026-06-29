@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from vibebench.annotate import generate_annotations
 from vibebench.bundle import create_bundle
 from vibebench.config import ConfigError, load_config
 from vibebench.explain import generate_explanation
@@ -48,6 +49,7 @@ def run_ci_pipeline(
     skip_pr_comment: bool = False,
     skip_explain: bool = False,
     skip_bundle: bool = False,
+    skip_annotate: bool = False,
     skip_gh_summary: bool = False,
     bundle_include_report_assets: bool = False,
     bundle_strict: bool = False,
@@ -83,6 +85,7 @@ def run_ci_pipeline(
             skip_pr_comment=skip_pr_comment,
             skip_explain=skip_explain,
             skip_bundle=skip_bundle,
+            skip_annotate=skip_annotate,
             skip_gh_summary=skip_gh_summary,
         )
         return CiResult(run_dir=None, steps=steps, passed=False)
@@ -120,6 +123,11 @@ def run_ci_pipeline(
             ).output_path,
         ),
         (
+            "annotate",
+            skip_annotate,
+            lambda: generated_annotations(root, selected_run_dir),
+        ),
+        (
             "gh-summary",
             skip_gh_summary,
             lambda: generate_github_summary(root, selected_run_dir),
@@ -142,6 +150,7 @@ def append_unavailable_artifact_steps(
     skip_pr_comment: bool,
     skip_explain: bool,
     skip_bundle: bool,
+    skip_annotate: bool,
     skip_gh_summary: bool,
 ) -> None:
     """Append artifact steps when no run directory exists."""
@@ -150,6 +159,7 @@ def append_unavailable_artifact_steps(
         ("pr-comment", skip_pr_comment),
         ("explain", skip_explain),
         ("bundle", skip_bundle),
+        ("annotate", skip_annotate),
         ("gh-summary", skip_gh_summary),
     ]
     for name, skipped in flags:
@@ -231,6 +241,14 @@ def run_artifact_step(name: str, callback: object) -> CiStepResult:
     except Exception as exc:
         return CiStepResult(name, "failed", 1, message=str(exc))
     return CiStepResult(name, "passed", 0, artifact_path=artifact_path)
+
+
+def generated_annotations(project_root: Path, run_dir: Path | None) -> None:
+    """Generate annotations and print their output."""
+    result = generate_annotations(project_root, run_dir)
+    if result.output:
+        print(result.output)
+    return None
 
 
 def generated_explanation_path(project_root: Path, run_dir: Path | None) -> Path | None:

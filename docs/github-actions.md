@@ -1,11 +1,11 @@
 # GitHub Actions
 
-VibeBench can run inside GitHub Actions without using the GitHub API or requiring a GitHub token. The `gh-summary` command writes a Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is available.
+VibeBench can run inside GitHub Actions without using the GitHub API or requiring a GitHub token. The `annotate` command emits GitHub Actions annotations for command failures and risk findings, and the `gh-summary` command writes a Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is available.
 
 
 ## VibeBench Dogfoods Itself
 
-This repository's active CI runs direct `ruff` and `pytest` checks first, then runs VibeBench itself. CI now runs `python -m vibebench ci`, which enforces the policy in `.vibebench/config.yaml`; if check or gate fails, the job fails. The command still attempts to generate the HTML report, PR-ready Markdown comment, human-readable explanation, zip artifact bundle, GitHub step summary, and uploads `.vibebench/runs` as artifacts.
+This repository's active CI runs direct `ruff` and `pytest` checks first, then runs VibeBench itself. CI now runs `python -m vibebench ci`, which enforces the policy in `.vibebench/config.yaml`; if check or gate fails, the job fails. The command still attempts to generate the HTML report, PR-ready Markdown comment, human-readable explanation, zip artifact bundle, GitHub annotations, GitHub step summary, and uploads `.vibebench/runs` as artifacts.
 
 ## Generate The Workflow
 
@@ -31,7 +31,7 @@ The example workflow:
 - runs direct Ruff and pytest checks
 - runs `python -m vibebench ci` as the recommended VibeBench CI entrypoint
 - uses check and gate as the final VibeBench pass/fail decision
-- still attempts report, PR comment, explanation, bundle, and GitHub summary artifacts on failure
+- still attempts report, PR comment, explanation, bundle, GitHub annotations, and GitHub summary artifacts on failure
 - uploads `.vibebench/runs` as a workflow artifact
 
 ## Add A Quality Gate
@@ -47,7 +47,7 @@ The command writes `.vibebench/runs/<timestamp>/gate-summary.md` and supports on
 
 ## Why `if: always()` Is Used
 
-`vibebench ci` should fail the workflow when check or gate fails. It internally still attempts report, comment, explanation, bundle, and summary generation so reviewers can inspect VibeBench output after a failed check or gate. The artifact upload step remains `if: always()`.
+`vibebench ci` should fail the workflow when check or gate fails. It internally still attempts report, comment, explanation, bundle, annotation output, and summary generation so reviewers can inspect VibeBench output after a failed check or gate. The artifact upload step remains `if: always()`.
 
 ## Artifacts
 
@@ -66,6 +66,7 @@ That directory can include:
 - `explain.md`
 - `vibebench-bundle.zip`
 - `gate-summary.md`
+- GitHub Actions annotations in the job log when findings or command failures exist
 - `github-step-summary.md` when not running inside GitHub step summary mode
 
 ## Limitations
