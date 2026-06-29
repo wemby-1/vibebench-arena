@@ -3,12 +3,19 @@ import subprocess
 import zipfile
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from vibebench.cli import app
 from vibebench.config import default_config_yaml
 
 runner = CliRunner()
+
+
+@pytest.fixture(autouse=True)
+def isolate_github_step_summary(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Prevent CI tests from writing to a real GitHub Actions summary."""
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
 
 
 def config_path(root: Path) -> Path:
@@ -317,6 +324,26 @@ def test_run_dir_mode_does_not_create_fresh_check_run(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert run_dirs == [run_dir]
     assert "using --run-dir" in result.output
+
+
+def test_ci_writes_only_to_explicit_github_summary_env(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    write_config(tmp_path)
+    run_dir = write_run(tmp_path)
+    summary_file = tmp_path / "step-summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary_file))
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--run-dir", str(run_dir)],
+    )
+
+    assert result.exit_code == 0
+    assert summary_file.exists()
+    assert "# VibeBench Summary" in summary_file.read_text(encoding="utf-8")
+    assert not run_dir.joinpath("github-step-summary.md").exists()
 
 
 def test_invalid_run_dir_fails_clearly(tmp_path: Path) -> None:
