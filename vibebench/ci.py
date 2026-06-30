@@ -20,6 +20,7 @@ from vibebench.pr_comment import generate_pr_comment
 from vibebench.report import ReportError, generate_report, load_metrics
 from vibebench.runner import run_checks
 from vibebench.status_block import generate_status_block
+from vibebench.trend import analyze_trend, write_trend_summary
 
 StepStatus = Literal["passed", "failed", "skipped"]
 
@@ -55,6 +56,7 @@ def run_ci_pipeline(
     skip_export: bool = False,
     skip_badge: bool = False,
     skip_status_block: bool = False,
+    skip_trend: bool = False,
     skip_annotate: bool = False,
     skip_gh_summary: bool = False,
     bundle_include_report_assets: bool = False,
@@ -94,6 +96,7 @@ def run_ci_pipeline(
             skip_export=skip_export,
             skip_badge=skip_badge,
             skip_status_block=skip_status_block,
+            skip_trend=skip_trend,
             skip_annotate=skip_annotate,
             skip_gh_summary=skip_gh_summary,
         )
@@ -137,6 +140,16 @@ def run_ci_pipeline(
             lambda: generate_status_block(root, selected_run_dir).output_path,
         ),
         (
+            "trend",
+            skip_trend,
+            lambda: generated_trend_path(root, selected_run_dir),
+        ),
+        (
+            "annotate",
+            skip_annotate,
+            lambda: generated_annotations(root, selected_run_dir),
+        ),
+        (
             "bundle",
             skip_bundle,
             lambda: create_bundle(
@@ -145,11 +158,6 @@ def run_ci_pipeline(
                 include_report_assets=bundle_include_report_assets,
                 strict=bundle_strict,
             ).output_path,
-        ),
-        (
-            "annotate",
-            skip_annotate,
-            lambda: generated_annotations(root, selected_run_dir),
         ),
         (
             "gh-summary",
@@ -177,6 +185,7 @@ def append_unavailable_artifact_steps(
     skip_export: bool,
     skip_badge: bool,
     skip_status_block: bool,
+    skip_trend: bool,
     skip_annotate: bool,
     skip_gh_summary: bool,
 ) -> None:
@@ -188,6 +197,7 @@ def append_unavailable_artifact_steps(
         ("export", skip_export),
         ("badge", skip_badge),
         ("status-block", skip_status_block),
+        ("trend", skip_trend),
         ("bundle", skip_bundle),
         ("annotate", skip_annotate),
         ("gh-summary", skip_gh_summary),
@@ -284,6 +294,13 @@ def generated_annotations(project_root: Path, run_dir: Path | None) -> None:
 def generated_explanation_path(project_root: Path, run_dir: Path | None) -> Path | None:
     """Generate explanation and return its path."""
     return generate_explanation(project_root, run_dir).output_path
+
+
+def generated_trend_path(project_root: Path, run_dir: Path | None) -> Path | None:
+    """Generate trend summary and return its path."""
+    result = analyze_trend(project_root)
+    output_path = run_dir / "trend.md" if run_dir is not None else None
+    return write_trend_summary(result, output_path)
 
 
 def validate_explicit_run(run_dir: Path) -> None:

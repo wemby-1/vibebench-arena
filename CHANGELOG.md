@@ -8,13 +8,13 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
-- `vibebench trend` for summarizing recent run quality movement across scores, risks, and findings.
+- `vibebench trend` for summarizing recent run quality movement across scores, risks, and findings, with optional `trend.md` artifact output.
 - `vibebench artifacts` for listing known run artifacts, availability, and file sizes.
 - `vibebench status-block` for copy-pasteable README status summaries, plus marker-based README update and check modes.
 - `vibebench badge` for Shields.io-compatible `badge.json`, `badge.md`, and badge URL run status artifacts.
 - `vibebench export` for stable JSON and Markdown run exports for dashboards, external tools, and CI aggregation.
 - `vibebench annotate` for emitting GitHub Actions annotations from command failures and risk findings.
-- `vibebench ci` for running the complete check, gate, and artifact pipeline in one command.
+- `vibebench ci` for running the complete check, gate, and artifact pipeline in one command, including trend summary generation.
 - `vibebench bundle` for packaging run artifacts into `vibebench-bundle.zip`.
 - `vibebench explain` for human-readable run explanations and `explain.md` artifacts.
 - `vibebench config` for inspecting, validating, and exporting the effective configuration.

@@ -51,7 +51,7 @@ from vibebench.status_block import (
     generate_status_block,
     update_readme_status_block,
 )
-from vibebench.trend import TrendResult, analyze_trend, trend_json
+from vibebench.trend import TrendResult, analyze_trend, trend_json, write_trend_summary
 
 app = typer.Typer(
     help="Codex-first quality gate for vibe coding projects.",
@@ -660,6 +660,14 @@ def trend_command(
         bool,
         typer.Option("--json", help="Print trend summary as JSON."),
     ] = False,
+    write_summary: Annotated[
+        bool,
+        typer.Option("--write-summary", help="Write trend.md Markdown summary."),
+    ] = False,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Write trend summary Markdown to this path."),
+    ] = None,
 ) -> None:
     """Show quality trend across recent VibeBench runs."""
     root = project_root.resolve()
@@ -668,9 +676,15 @@ def trend_command(
         selected_runs_dir = (
             runs_dir if runs_dir.is_absolute() else root / runs_dir
         ).resolve()
+    selected_output = None
+    if output:
+        selected_output = (output if output.is_absolute() else root / output).resolve()
 
     try:
         result = analyze_trend(root, selected_runs_dir, limit=limit)
+        summary_path = (
+            write_trend_summary(result, selected_output) if write_summary else None
+        )
     except ReportError as exc:
         console.print(f"[red]{exc}[/]")
         raise typer.Exit(code=1) from exc
@@ -680,6 +694,8 @@ def trend_command(
         return
 
     render_trend_summary(result)
+    if summary_path is not None:
+        console.print(f"Trend summary: {summary_path}")
 
 @app.command("artifacts")
 def artifacts_command(
@@ -863,6 +879,10 @@ def ci_command(
             help="Skip README status block generation.",
         ),
     ] = False,
+    skip_trend: Annotated[
+        bool,
+        typer.Option("--skip-trend", help="Skip trend summary generation."),
+    ] = False,
     skip_annotate: Annotated[
         bool,
         typer.Option("--skip-annotate", help="Skip GitHub annotation output."),
@@ -918,6 +938,7 @@ def ci_command(
             skip_export=skip_export,
             skip_badge=skip_badge,
             skip_status_block=skip_status_block,
+            skip_trend=skip_trend,
             skip_annotate=skip_annotate,
             skip_gh_summary=skip_gh_summary,
             bundle_include_report_assets=bundle_include_report_assets,

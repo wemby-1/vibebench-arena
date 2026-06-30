@@ -51,13 +51,14 @@ python -m vibebench history
 python -m vibebench trend
 ```
 
-By default history and trend use the 10 newest valid runs with `metrics.json`. You can change the limit, inspect another runs directory, or export trend data as JSON:
+By default history and trend use the 10 newest valid runs with `metrics.json`. You can change the limit, inspect another runs directory, export trend data as JSON, or write `.vibebench/runs/<timestamp>/trend.md`:
 
 ```bash
 python -m vibebench history --limit 5
 python -m vibebench history --runs-dir .vibebench/runs
 python -m vibebench trend --limit 3
 python -m vibebench trend --json
+python -m vibebench trend --write-summary
 ```
 
 ## Save A Baseline Run
@@ -149,7 +150,7 @@ python -m vibebench gate --baseline --write-gate-summary
 python -m vibebench ci
 ```
 
-`vibebench ci` runs check, gate, report, PR comment, explain, export, badge, status block, bundle, GitHub annotations, and GitHub summary. Check and gate decide the final exit code, but artifact steps are still attempted on failure so CI logs and artifacts remain useful.
+`vibebench ci` runs check, gate, report, PR comment, explain, export, badge, status block, trend summary, GitHub annotations, bundle, and GitHub summary. Check and gate decide the final exit code, but artifact steps are still attempted on failure so CI logs and artifacts remain useful.
 
 Useful options:
 
@@ -159,6 +160,7 @@ python -m vibebench ci --skip-report --skip-pr-comment
 python -m vibebench ci --skip-export
 python -m vibebench ci --skip-badge
 python -m vibebench ci --skip-status-block
+python -m vibebench ci --skip-trend
 python -m vibebench ci --skip-annotate
 python -m vibebench ci --bundle-include-report-assets
 python -m vibebench ci --run-dir .vibebench/runs/<run-id>
@@ -322,7 +324,7 @@ The risk demo intentionally creates critical findings, so `vibebench check` is e
 
 ## CI Artifacts
 
-VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml`, generates `explain.md`, writes `export.json`, `badge.json`, `badge.md`, and `status-block.md`, bundles run artifacts, emits GitHub annotations, writes the GitHub Actions job summary, and uploads `.vibebench/runs` as artifacts for review.
+VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml`, generates `explain.md`, writes `export.json`, `badge.json`, `badge.md`, `status-block.md`, and `trend.md`, bundles run artifacts, emits GitHub annotations, writes the GitHub Actions job summary, and uploads `.vibebench/runs` as artifacts for review.
 
 ## Generated Files
 

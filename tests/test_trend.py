@@ -253,3 +253,112 @@ def test_invalid_limit_fails_clearly(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "--limit must be greater than 0" in result.output
+
+
+
+def test_write_summary_writes_latest_run_trend_md(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260630_110000", metrics(score=90))
+    latest = write_run(tmp_path, "20260630_120000", metrics(score=95))
+
+    result = runner.invoke(
+        app,
+        ["trend", "--project-root", str(tmp_path), "--write-summary"],
+    )
+
+    output = latest / "trend.md"
+    assert result.exit_code == 0
+    assert output.exists()
+    content = output.read_text(encoding="utf-8")
+    assert "# VibeBench Trend Summary" in content
+    assert "- Valid run count: 2" in content
+    assert "- Verdict: **improved**" in content
+    assert "| 20260630_120000 | passed | 95 | low |" in content
+    assert "Trend summary:" in result.output
+
+
+def test_write_summary_output_path_is_used(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260630_120000", metrics(score=88))
+    output = tmp_path / "trend-summary.md"
+
+    result = runner.invoke(
+        app,
+        [
+            "trend",
+            "--project-root",
+            str(tmp_path),
+            "--write-summary",
+            "--output",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert output.exists()
+    assert "Trend needs at least two valid runs" in output.read_text(encoding="utf-8")
+
+
+def test_json_does_not_write_summary_without_write_summary(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260630_120000", metrics(score=88))
+
+    result = runner.invoke(
+        app,
+        ["trend", "--project-root", str(tmp_path), "--json"],
+    )
+
+    assert result.exit_code == 0
+    assert not run_dir.joinpath("trend.md").exists()
+    assert parse_json_output(result.output)["valid_run_count"] == 1
+
+
+def test_json_can_write_summary_without_contaminating_stdout(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260630_120000", metrics(score=88))
+
+    result = runner.invoke(
+        app,
+        ["trend", "--project-root", str(tmp_path), "--json", "--write-summary"],
+    )
+
+    assert result.exit_code == 0
+    assert run_dir.joinpath("trend.md").exists()
+    assert parse_json_output(result.output)["valid_run_count"] == 1
+
+
+def test_empty_runs_write_summary_with_output_path(tmp_path: Path) -> None:
+    runs_dir = tmp_path / ".vibebench" / "runs"
+    runs_dir.mkdir(parents=True)
+    output = tmp_path / "empty-trend.md"
+
+    result = runner.invoke(
+        app,
+        [
+            "trend",
+            "--project-root",
+            str(tmp_path),
+            "--write-summary",
+            "--output",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert output.exists()
+    assert "No valid VibeBench runs found" in output.read_text(encoding="utf-8")
+
+
+def test_write_summary_invalid_output_parent_fails(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260630_120000")
+
+    result = runner.invoke(
+        app,
+        [
+            "trend",
+            "--project-root",
+            str(tmp_path),
+            "--write-summary",
+            "--output",
+            str(tmp_path / "missing" / "trend.md"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "Output parent directory does not exist" in result.output

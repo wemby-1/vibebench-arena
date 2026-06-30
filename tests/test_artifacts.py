@@ -58,6 +58,7 @@ def test_default_latest_run_artifact_listing(tmp_path: Path) -> None:
     assert artifacts["metrics.json"]["available"] is True
     assert artifacts["check.log"]["available"] is True
     assert artifacts["pr-comment.md"]["available"] is False
+    assert "trend.md" in artifacts
 
 
 def test_explicit_run_dir_is_used(tmp_path: Path) -> None:

@@ -164,6 +164,7 @@ def test_ci_command_creates_standard_artifacts(tmp_path: Path) -> None:
     assert run_dir.joinpath("badge.json").exists()
     assert run_dir.joinpath("badge.md").exists()
     assert run_dir.joinpath("status-block.md").exists()
+    assert run_dir.joinpath("trend.md").exists()
     assert run_dir.joinpath("gate-summary.md").exists()
     assert run_dir.joinpath("github-step-summary.md").exists()
 
@@ -188,6 +189,7 @@ def test_ci_attempts_artifacts_when_gate_fails(tmp_path: Path) -> None:
     assert run_dir.joinpath("badge.json").exists()
     assert run_dir.joinpath("badge.md").exists()
     assert run_dir.joinpath("status-block.md").exists()
+    assert run_dir.joinpath("trend.md").exists()
     assert run_dir.joinpath("github-step-summary.md").exists()
 
 
@@ -210,6 +212,7 @@ def test_skip_flags_skip_artifact_generation(tmp_path: Path) -> None:
             "--skip-export",
             "--skip-badge",
             "--skip-status-block",
+            "--skip-trend",
             "--skip-gh-summary",
         ],
     )
@@ -223,6 +226,7 @@ def test_skip_flags_skip_artifact_generation(tmp_path: Path) -> None:
     assert not run_dir.joinpath("badge.json").exists()
     assert not run_dir.joinpath("badge.md").exists()
     assert not run_dir.joinpath("status-block.md").exists()
+    assert not run_dir.joinpath("trend.md").exists()
     assert not run_dir.joinpath("github-step-summary.md").exists()
     assert "skipped" in result.output
 
@@ -267,6 +271,7 @@ def test_bundle_strict_passes_through(tmp_path: Path) -> None:
             "--skip-export",
             "--skip-badge",
             "--skip-status-block",
+            "--skip-trend",
             "--skip-gh-summary",
             "--bundle-strict",
         ],
@@ -389,16 +394,19 @@ def test_ci_runs_export_and_badge_before_bundle_and_summary(tmp_path: Path) -> N
     assert run_dir.joinpath("badge.json").exists()
     assert run_dir.joinpath("badge.md").exists()
     assert run_dir.joinpath("status-block.md").exists()
+    assert run_dir.joinpath("trend.md").exists()
     names = zip_names(run_dir / "vibebench-bundle.zip")
     assert "export.json" in names
     assert "badge.json" in names
     assert "badge.md" in names
     assert "status-block.md" in names
+    assert "trend.md" in names
     summary = run_dir.joinpath("github-step-summary.md").read_text(encoding="utf-8")
     assert "`export.json` (available)" in summary
     assert "`badge.json` (available)" in summary
     assert "`badge.md` (available)" in summary
     assert "`status-block.md` (available)" in summary
+    assert "`trend.md` (available)" in summary
 
 
 def test_ci_skip_export_skips_export_generation(tmp_path: Path) -> None:
@@ -465,6 +473,28 @@ def test_ci_skip_status_block_skips_status_block_generation(tmp_path: Path) -> N
     assert result.exit_code == 0
     assert not run_dir.joinpath("status-block.md").exists()
     assert "status-block" in result.output
+    assert "skipped" in result.output
+
+
+def test_ci_skip_trend_skips_trend_generation(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    run_dir = write_run(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--skip-trend",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert not run_dir.joinpath("trend.md").exists()
+    assert "trend" in result.output
     assert "skipped" in result.output
 
 def test_ci_runs_annotations_by_default(tmp_path: Path) -> None:

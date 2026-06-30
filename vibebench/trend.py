@@ -13,6 +13,7 @@ from vibebench.paths import config_dir
 from vibebench.report import ReportError
 
 TrendVerdict = Literal["improved", "stable", "regressed"]
+TREND_SUMMARY_FILENAME = "trend.md"
 
 
 class TrendRun(BaseModel):
@@ -241,6 +242,105 @@ def summary_message(run_count: int, verdict: TrendVerdict) -> str:
     if verdict == "regressed":
         return "Recent VibeBench quality is regressing; review before shipping."
     return "Recent VibeBench quality is stable."
+
+
+def write_trend_summary(
+    result: TrendResult,
+    output_path: Path | None = None,
+) -> Path | None:
+    """Write a Markdown trend summary artifact."""
+    selected_output = output_path
+    if selected_output is None:
+        if not result.runs:
+            return None
+        selected_output = result.runs[0].run_dir / TREND_SUMMARY_FILENAME
+    selected_output = selected_output.resolve()
+    validate_output_path(selected_output)
+    selected_output.write_text(render_markdown(result), encoding="utf-8")
+    return selected_output
+
+
+def validate_output_path(output_path: Path) -> None:
+    """Validate a requested trend summary output path."""
+    if output_path.exists() and output_path.is_dir():
+        raise ReportError(f"Output path is a directory: {output_path}")
+    if not output_path.parent.exists():
+        raise ReportError(
+            f"Output parent directory does not exist: {output_path.parent}"
+        )
+
+
+def render_markdown(result: TrendResult) -> str:
+    """Render a human-readable Markdown trend summary."""
+    summary = result.summary
+    lines = [
+        "# VibeBench Trend Summary",
+        "",
+        f"- Runs directory: `{result.runs_dir}`",
+        f"- Valid run count: {summary.valid_run_count}",
+        f"- Skipped run count: {len(result.skipped_runs)}",
+        f"- Pass rate: {summary.pass_rate * 100:.1f}%",
+        f"- Latest score: {optional_markdown(summary.latest_score)}",
+        f"- Oldest score: {optional_markdown(summary.oldest_score)}",
+        f"- Score delta: {optional_delta(summary.score_delta)}",
+        f"- Best score: {optional_markdown(summary.best_score)}",
+        f"- Worst score: {optional_markdown(summary.worst_score)}",
+        f"- Highest risk: {optional_markdown(summary.highest_risk_level)}",
+        f"- Latest finding count: {optional_markdown(summary.latest_finding_count)}",
+        f"- Oldest finding count: {optional_markdown(summary.oldest_finding_count)}",
+        f"- Finding count delta: {optional_delta(summary.finding_count_delta)}",
+        f"- Verdict: **{summary.verdict}**",
+        "",
+        summary.message,
+        "",
+    ]
+    if result.skipped_runs:
+        lines.extend(["## Skipped Runs", ""])
+        lines.extend(f"- {escape_markdown(warning)}" for warning in result.skipped_runs)
+        lines.append("")
+    lines.extend(
+        [
+            "## Recent Runs",
+            "",
+            "| Run | Status | Score | Risk | Findings | Changed Files | Patch Lines |",
+            "| --- | --- | ---: | --- | ---: | ---: | ---: |",
+        ]
+    )
+    if not result.runs:
+        lines.append("| - | - | - | - | - | - | - |")
+    else:
+        for run in result.runs:
+            lines.append(
+                "| "
+                f"{escape_markdown(run.run_id)} | "
+                f"{escape_markdown(run.overall_status)} | "
+                f"{run.score} | "
+                f"{escape_markdown(run.risk_level)} | "
+                f"{run.risk_findings_count} | "
+                f"{run.changed_files} | "
+                f"{run.patch_lines} |"
+            )
+    lines.append("")
+    return "\n".join(lines)
+
+
+def optional_markdown(value: object) -> str:
+    """Render an optional Markdown scalar."""
+    return "n/a" if value is None else escape_markdown(str(value))
+
+
+def optional_delta(value: int | None) -> str:
+    """Render an optional signed delta."""
+    if value is None:
+        return "n/a"
+    if value > 0:
+        return f"+{value}"
+    return str(value)
+
+
+def escape_markdown(value: str) -> str:
+    """Escape Markdown table-sensitive text."""
+    return value.replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ")
 
 
 def trend_json(result: TrendResult) -> dict[str, object]:
