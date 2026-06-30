@@ -73,6 +73,15 @@ That directory can include:
 - GitHub Actions annotations in the job log when findings or command failures exist
 - `github-step-summary.md` when not running inside GitHub step summary mode
 
+CI should keep generating `status-block.md` as an artifact, but it should not mutate README files. If a project wants read-only README drift detection, add a separate step such as:
+
+```yaml
+- name: Check README VibeBench status block
+  run: python -m vibebench status-block --readme README.md --check-readme
+```
+
+For local updates, run `python -m vibebench status-block --readme README.md --write-readme` after a fresh VibeBench run.
+
 ## Limitations
 
 - VibeBench does not post PR comments through the GitHub API yet.

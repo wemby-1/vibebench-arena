@@ -238,3 +238,268 @@ def test_symlink_run_directory_is_rejected(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "must not be a symlink" in result.output
+
+
+STATUS_START = "<!-- VIBEBENCH_STATUS_START -->"
+STATUS_END = "<!-- VIBEBENCH_STATUS_END -->"
+
+
+def write_readme(path: Path, block: str = "old block\n") -> None:
+    path.write_text(
+        f"# Demo\n\nBefore\n\n{STATUS_START}\n{block}{STATUS_END}\n\nAfter\n",
+        encoding="utf-8",
+    )
+
+
+def test_write_readme_replaces_only_content_between_markers(tmp_path: Path) -> None:
+    write_run(tmp_path)
+    readme = tmp_path / "README.md"
+    write_readme(readme)
+
+    result = runner.invoke(
+        app,
+        [
+            "status-block",
+            "--project-root",
+            str(tmp_path),
+            "--readme",
+            str(readme),
+            "--write-readme",
+        ],
+    )
+
+    content = readme.read_text(encoding="utf-8")
+    assert result.exit_code == 0
+    assert content.startswith("# Demo\n\nBefore\n\n")
+    assert content.endswith("\nAfter\n")
+    assert STATUS_START in content
+    assert STATUS_END in content
+    assert "old block" not in content
+    assert "## VibeBench Status" in content
+    assert "- VibeScore: 100" in content
+
+
+def test_write_readme_is_idempotent(tmp_path: Path) -> None:
+    write_run(tmp_path)
+    readme = tmp_path / "README.md"
+    write_readme(readme)
+    args = [
+        "status-block",
+        "--project-root",
+        str(tmp_path),
+        "--readme",
+        str(readme),
+        "--write-readme",
+    ]
+
+    first = runner.invoke(app, args)
+    first_content = readme.read_text(encoding="utf-8")
+    second = runner.invoke(app, args)
+    second_content = readme.read_text(encoding="utf-8")
+
+    assert first.exit_code == 0
+    assert second.exit_code == 0
+    assert first_content == second_content
+    assert "already current" in second.output
+
+
+def test_check_readme_passes_when_block_is_current(tmp_path: Path) -> None:
+    write_run(tmp_path)
+    readme = tmp_path / "README.md"
+    write_readme(readme)
+    write_result = runner.invoke(
+        app,
+        [
+            "status-block",
+            "--project-root",
+            str(tmp_path),
+            "--readme",
+            str(readme),
+            "--write-readme",
+        ],
+    )
+
+    check_result = runner.invoke(
+        app,
+        [
+            "status-block",
+            "--project-root",
+            str(tmp_path),
+            "--readme",
+            str(readme),
+            "--check-readme",
+        ],
+    )
+
+    assert write_result.exit_code == 0
+    assert check_result.exit_code == 0
+    assert "current" in check_result.output
+
+
+def test_check_readme_fails_when_block_is_stale(tmp_path: Path) -> None:
+    write_run(tmp_path)
+    readme = tmp_path / "README.md"
+    write_readme(readme, block="stale\n")
+
+    result = runner.invoke(
+        app,
+        [
+            "status-block",
+            "--project-root",
+            str(tmp_path),
+            "--readme",
+            str(readme),
+            "--check-readme",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "stale" in result.output
+    assert "stale\n" in readme.read_text(encoding="utf-8")
+
+
+def test_missing_readme_file_fails_clearly(tmp_path: Path) -> None:
+    write_run(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "status-block",
+            "--project-root",
+            str(tmp_path),
+            "--readme",
+            str(tmp_path / "README.md"),
+            "--write-readme",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "README file does not exist" in result.output
+
+
+def test_missing_start_marker_fails_clearly(tmp_path: Path) -> None:
+    write_run(tmp_path)
+    readme = tmp_path / "README.md"
+    readme.write_text(f"# Demo\n\n{STATUS_END}\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "status-block",
+            "--project-root",
+            str(tmp_path),
+            "--readme",
+            str(readme),
+            "--write-readme",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "Missing <!-- VIBEBENCH_STATUS_START -->" in result.output
+
+
+def test_missing_end_marker_fails_clearly(tmp_path: Path) -> None:
+    write_run(tmp_path)
+    readme = tmp_path / "README.md"
+    readme.write_text(f"# Demo\n\n{STATUS_START}\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "status-block",
+            "--project-root",
+            str(tmp_path),
+            "--readme",
+            str(readme),
+            "--write-readme",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "Missing <!-- VIBEBENCH_STATUS_END -->" in result.output
+
+
+def test_end_marker_before_start_marker_fails_clearly(tmp_path: Path) -> None:
+    write_run(tmp_path)
+    readme = tmp_path / "README.md"
+    readme.write_text(f"# Demo\n\n{STATUS_END}\n{STATUS_START}\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "status-block",
+            "--project-root",
+            str(tmp_path),
+            "--readme",
+            str(readme),
+            "--write-readme",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "appears before" in result.output
+
+
+def test_write_and_check_readme_together_fail_clearly(tmp_path: Path) -> None:
+    write_run(tmp_path)
+    readme = tmp_path / "README.md"
+    write_readme(readme)
+
+    result = runner.invoke(
+        app,
+        [
+            "status-block",
+            "--project-root",
+            str(tmp_path),
+            "--readme",
+            str(readme),
+            "--write-readme",
+            "--check-readme",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "cannot be used together" in result.output
+
+
+def test_readme_action_without_readme_fails_clearly(tmp_path: Path) -> None:
+    write_run(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "status-block",
+            "--project-root",
+            str(tmp_path),
+            "--write-readme",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "--readme is required" in result.output
+
+
+def test_multiple_readme_paths_are_updated(tmp_path: Path) -> None:
+    write_run(tmp_path)
+    readme = tmp_path / "README.md"
+    readme_cn = tmp_path / "README.zh-CN.md"
+    write_readme(readme)
+    write_readme(readme_cn)
+
+    result = runner.invoke(
+        app,
+        [
+            "status-block",
+            "--project-root",
+            str(tmp_path),
+            "--readme",
+            str(readme),
+            "--readme",
+            str(readme_cn),
+            "--write-readme",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "## VibeBench Status" in readme.read_text(encoding="utf-8")
+    assert "## VibeBench Status" in readme_cn.read_text(encoding="utf-8")

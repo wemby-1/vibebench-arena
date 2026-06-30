@@ -41,8 +41,10 @@ from vibebench.report import (
 from vibebench.runner import CheckRunResult, run_checks
 from vibebench.status_block import (
     DEFAULT_STATUS_TITLE,
+    ReadmeStatusBlockResult,
     StatusBlockResult,
     generate_status_block,
+    update_readme_status_block,
 )
 
 app = typer.Typer(
@@ -562,6 +564,21 @@ def status_block(
         Path | None,
         typer.Option("--output", help="Write status block to this file."),
     ] = None,
+    readme: Annotated[
+        list[Path] | None,
+        typer.Option(
+            "--readme",
+            help="README file containing VibeBench status markers.",
+        ),
+    ] = None,
+    write_readme: Annotated[
+        bool,
+        typer.Option("--write-readme", help="Update README content between markers."),
+    ] = False,
+    check_readme: Annotated[
+        bool,
+        typer.Option("--check-readme", help="Check README marker content is current."),
+    ] = False,
     title: Annotated[
         str,
         typer.Option("--title", help="Markdown heading text."),
@@ -575,7 +592,19 @@ def status_block(
         typer.Option("--include-artifacts/--no-include-artifacts"),
     ] = True,
 ) -> None:
-    """Generate a copy-pasteable README status block."""
+    """Generate or update a README status block."""
+    if write_readme and check_readme:
+        console.print(
+            "[red]--write-readme and --check-readme cannot be used together.[/]"
+        )
+        raise typer.Exit(code=1)
+    readme_paths = readme or []
+    if (write_readme or check_readme) and not readme_paths:
+        console.print(
+            "[red]--readme is required with --write-readme or --check-readme.[/]"
+        )
+        raise typer.Exit(code=1)
+
     root = project_root.resolve()
     selected_run_dir = None
     if run_dir:
@@ -593,12 +622,22 @@ def status_block(
             include_badge=include_badge,
             include_artifacts=include_artifacts,
         )
+        readme_results = update_status_block_readmes(
+            root,
+            readme_paths,
+            result.content,
+            write=write_readme,
+            check=check_readme,
+        )
     except ReportError as exc:
         console.print(f"[red]{exc}[/]")
         raise typer.Exit(code=1) from exc
 
     render_status_block_summary(result)
-
+    if readme_results:
+        render_status_block_readme_summary(readme_results, check=check_readme)
+        if check_readme and not all(item.current for item in readme_results):
+            raise typer.Exit(code=1)
 
 @app.command("export")
 def export_command(
@@ -1060,6 +1099,51 @@ def render_status_block_summary(result: StatusBlockResult) -> None:
     console.print(f"Run directory: {result.run_dir}")
     console.print(f"Output path: {result.output_path}")
     console.print(f"Title: {result.title}")
+
+
+def update_status_block_readmes(
+    project_root: Path,
+    readme_paths: list[Path],
+    status_content: str,
+    *,
+    write: bool,
+    check: bool,
+) -> list[ReadmeStatusBlockResult]:
+    """Update or check requested README status blocks."""
+    if not write and not check:
+        return []
+
+    results = []
+    for readme_path in readme_paths:
+        selected_path = (
+            readme_path if readme_path.is_absolute() else project_root / readme_path
+        ).resolve()
+        results.append(
+            update_readme_status_block(
+                selected_path,
+                status_content,
+                write=write,
+            )
+        )
+    return results
+
+
+def render_status_block_readme_summary(
+    results: list[ReadmeStatusBlockResult],
+    *,
+    check: bool,
+) -> None:
+    """Render README update/check results."""
+    table = Table(title="README status block")
+    table.add_column("README")
+    table.add_column("Status")
+    for result in results:
+        if check:
+            status = "current" if result.current else "stale"
+        else:
+            status = "updated" if result.changed else "already current"
+        table.add_row(str(result.readme_path), status)
+    console.print(table)
 
 
 def render_badge_summary(result: BadgeResult) -> None:

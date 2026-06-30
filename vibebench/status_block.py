@@ -13,6 +13,8 @@ from vibebench.report import ReportError, load_metrics
 
 STATUS_BLOCK_FILENAME = "status-block.md"
 DEFAULT_STATUS_TITLE = "VibeBench Status"
+STATUS_START_MARKER = "<!-- VIBEBENCH_STATUS_START -->"
+STATUS_END_MARKER = "<!-- VIBEBENCH_STATUS_END -->"
 
 STATUS_ARTIFACTS = [
     Path("report") / "index.html",
@@ -37,6 +39,16 @@ class StatusBlockResult:
     title: str
     include_badge: bool
     include_artifacts: bool
+    content: str
+
+
+@dataclass(frozen=True)
+class ReadmeStatusBlockResult:
+    """Result of checking or updating a README status block."""
+
+    readme_path: Path
+    changed: bool
+    current: bool
 
 
 def generate_status_block(
@@ -65,16 +77,14 @@ def generate_status_block(
         output_path or selected_run_dir / STATUS_BLOCK_FILENAME
     ).resolve()
     validate_output_path(selected_output)
-    selected_output.write_text(
-        render_status_block(
-            metrics,
-            selected_run_dir,
-            title=title,
-            include_badge=include_badge,
-            include_artifacts=include_artifacts,
-        ),
-        encoding="utf-8",
+    content = render_status_block(
+        metrics,
+        selected_run_dir,
+        title=title,
+        include_badge=include_badge,
+        include_artifacts=include_artifacts,
     )
+    selected_output.write_text(content, encoding="utf-8")
     return StatusBlockResult(
         run_dir=selected_run_dir,
         run_id=selected_run_dir.name,
@@ -82,7 +92,67 @@ def generate_status_block(
         title=title,
         include_badge=include_badge,
         include_artifacts=include_artifacts,
+        content=content,
     )
+
+
+def update_readme_status_block(
+    readme_path: Path,
+    status_content: str,
+    *,
+    write: bool,
+) -> ReadmeStatusBlockResult:
+    """Update or check a README status block between stable markers."""
+    if not readme_path.exists():
+        raise ReportError(f"README file does not exist: {readme_path}")
+    if not readme_path.is_file():
+        raise ReportError(f"README path is not a file: {readme_path}")
+
+    readme_text = readme_path.read_text(encoding="utf-8")
+    content_start, content_end = marker_content_bounds(readme_text, readme_path)
+    replacement = status_content.rstrip() + "\n"
+    current_block = readme_text[content_start:content_end]
+    is_current = current_block == replacement
+
+    if write and not is_current:
+        updated_text = (
+            readme_text[:content_start] + replacement + readme_text[content_end:]
+        )
+        readme_path.write_text(updated_text, encoding="utf-8")
+
+    return ReadmeStatusBlockResult(
+        readme_path=readme_path,
+        changed=write and not is_current,
+        current=is_current or write,
+    )
+
+
+def marker_content_bounds(readme_text: str, readme_path: Path) -> tuple[int, int]:
+    """Return the text bounds between status block marker lines."""
+    start_index = readme_text.find(STATUS_START_MARKER)
+    end_index = readme_text.find(STATUS_END_MARKER)
+    if start_index == -1:
+        raise ReportError(f"Missing {STATUS_START_MARKER} in {readme_path}")
+    if end_index == -1:
+        raise ReportError(f"Missing {STATUS_END_MARKER} in {readme_path}")
+    if end_index < start_index:
+        raise ReportError(
+            f"{STATUS_END_MARKER} appears before {STATUS_START_MARKER} in {readme_path}"
+        )
+
+    start_line_end = readme_text.find("\n", start_index)
+    if start_line_end == -1 or start_line_end > end_index:
+        raise ReportError(
+            f"{STATUS_START_MARKER} must be on its own line in {readme_path}"
+        )
+
+    end_line_start = readme_text.rfind("\n", 0, end_index)
+    if end_line_start == -1 or end_line_start < start_line_end:
+        content_end = end_index
+    else:
+        content_end = end_line_start + 1
+
+    return start_line_end + 1, content_end
 
 
 def validate_run_dir(run_dir: Path) -> None:

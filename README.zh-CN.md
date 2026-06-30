@@ -10,6 +10,18 @@
 
 ![VibeBench report preview](docs/assets/report-preview.svg)
 
+<!-- VIBEBENCH_STATUS_START -->
+## VibeBench Status
+
+- Overall status: passed
+- VibeScore: 100
+- Risk level: low
+- Changed files: 0
+- Patch lines: 0
+- Risk findings: 0
+
+<!-- VIBEBENCH_STATUS_END -->
+
 VibeBench Arena 是一个面向 Codex-first 和 AI 辅助开发流程的本地验证工具。AI coding agent 可以很快生成代码，但开发者仍然需要一个清晰的本地质量门禁，判断这些改动是否适合进入 review、commit 和交付流程。
 
 当前 v0.1.0 仍然保持小而清晰：CLI、配置初始化、命令检查、Git diff 风险分析、VibeScore，以及静态 HTML 报告。
@@ -196,11 +208,13 @@ python -m vibebench badge --format markdown
 python -m vibebench badge --format url
 python -m vibebench badge --format markdown --label "VibeScore"
 
-# 生成可复制到 README 的状态块
+# 生成或更新 README 状态块
 python -m vibebench status-block
 python -m vibebench status-block --title "Project Quality"
 python -m vibebench status-block --no-include-artifacts
 python -m vibebench status-block --output README-status.md
+python -m vibebench status-block --readme README.md --write-readme
+python -m vibebench status-block --readme README.md --check-readme
 
 # 为风险发现和命令失败输出 GitHub Actions annotations
 python -m vibebench annotate
@@ -261,7 +275,7 @@ python -m vibebench compare
 
 `vibebench badge` 默认写入兼容 Shields.io endpoint 的 `.vibebench/runs/<timestamp>/badge.json`。`--format markdown` 会写入可直接复制到 README 的 `badge.md`，`--format url` 会写入静态 Shields URL 到 `badge-url.txt`。`--label` 会作用于所有格式，`--output` 可指定当前格式的输出位置。`vibebench ci` 默认会生成 `badge.json` 和 `badge.md`。
 
-`vibebench status-block` 会写入 `.vibebench/runs/<timestamp>/status-block.md`，内容是可直接复制到 README 的状态区块，包含状态、分数、风险等级、diff 规模、风险发现、badge 和已生成产物。可用 `--title`、`--no-include-badge`、`--no-include-artifacts` 或 `--output` 自定义。
+`vibebench status-block` 会写入 `.vibebench/runs/<timestamp>/status-block.md`，内容是可直接复制到 README 的状态区块，包含状态、分数、风险等级、diff 规模、风险发现、badge 和已生成产物。可用 `--title`、`--no-include-badge`、`--no-include-artifacts` 或 `--output` 自定义。也可以在 README 中加入 `<!-- VIBEBENCH_STATUS_START -->` 和 `<!-- VIBEBENCH_STATUS_END -->` 标记，然后运行 `python -m vibebench status-block --readme README.md --write-readme` 只更新标记之间的内容；在只读校验场景中可用 `--check-readme` 检查状态块是否过期。
 
 `vibebench annotate` 会根据最新运行中的命令失败和风险发现输出 GitHub Actions annotations。使用 `--no-github-actions` 可以输出普通文本。它只负责展示，不决定通过/失败；真正的门禁仍由 `vibebench gate` 负责。
 

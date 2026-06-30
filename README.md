@@ -10,6 +10,18 @@
 
 ![VibeBench report preview](docs/assets/report-preview.svg)
 
+<!-- VIBEBENCH_STATUS_START -->
+## VibeBench Status
+
+- Overall status: passed
+- VibeScore: 100
+- Risk level: low
+- Changed files: 0
+- Patch lines: 0
+- Risk findings: 0
+
+<!-- VIBEBENCH_STATUS_END -->
+
 VibeBench Arena is a local verification tool for Codex-first and AI-assisted
 coding workflows. It helps developers check whether AI-generated code is safe to
 review, commit, and ship.
@@ -201,11 +213,13 @@ python -m vibebench badge --format markdown
 python -m vibebench badge --format url
 python -m vibebench badge --format markdown --label "VibeScore"
 
-# Generate a copy-pasteable README status block
+# Generate or update a README status block
 python -m vibebench status-block
 python -m vibebench status-block --title "Project Quality"
 python -m vibebench status-block --no-include-artifacts
 python -m vibebench status-block --output README-status.md
+python -m vibebench status-block --readme README.md --write-readme
+python -m vibebench status-block --readme README.md --check-readme
 
 # Emit GitHub Actions annotations for findings and command failures
 python -m vibebench annotate
@@ -266,7 +280,7 @@ It packages standard run artifacts for sharing or CI download. Use `--run-dir` f
 
 `vibebench badge` writes a Shields.io-compatible endpoint JSON artifact at `.vibebench/runs/<timestamp>/badge.json` by default. Use `--format markdown` to write a copy-pasteable README image badge to `badge.md`, or `--format url` to write the static Shields URL to `badge-url.txt`. `--label` customizes all formats, and `--output` writes the selected format to a custom path. `vibebench ci` writes both `badge.json` and `badge.md` by default.
 
-`vibebench status-block` writes `.vibebench/runs/<timestamp>/status-block.md`, a copy-pasteable README section with status, score, risk, diff size, findings, badge, and generated artifacts. Use `--title`, `--no-include-badge`, `--no-include-artifacts`, or `--output` to customize it.
+`vibebench status-block` writes `.vibebench/runs/<timestamp>/status-block.md`, a copy-pasteable README section with status, score, risk, diff size, findings, badge, and generated artifacts. Use `--title`, `--no-include-badge`, `--no-include-artifacts`, or `--output` to customize it. Add `<!-- VIBEBENCH_STATUS_START -->` and `<!-- VIBEBENCH_STATUS_END -->` markers to a README, then run `python -m vibebench status-block --readme README.md --write-readme` to update only the marked region. Use `--check-readme` in read-only workflows to fail when the committed block is stale.
 
 `vibebench annotate` emits GitHub Actions annotations for command failures and risk findings from the latest run. Use `--no-github-actions` for readable plain text output. It is reporting-only and exits 0 when annotations are emitted; `vibebench gate` remains responsible for pass/fail decisions.
 
