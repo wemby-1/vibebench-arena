@@ -70,6 +70,7 @@ python -m vibebench init
 python -m vibebench config
 python -m vibebench doctor
 python -m vibebench history
+python -m vibebench trend
 python -m vibebench baseline --set latest
 python -m vibebench clean
 python -m vibebench check
@@ -169,8 +170,11 @@ python -m vibebench config --show-source
 # 检查当前项目是否已经准备好运行 VibeBench
 python -m vibebench doctor
 
-# 查看最近的 VibeBench 运行记录
+# 查看最近的 VibeBench 运行记录和质量趋势
 python -m vibebench history
+python -m vibebench trend
+python -m vibebench trend --json
+python -m vibebench trend --limit 3
 
 # 将最新运行标记为项目 baseline
 python -m vibebench baseline --set latest
@@ -236,6 +240,8 @@ python -m vibebench compare
 `vibebench doctor` 会检查 Python、Git、配置有效性、配置命令是否可找到，以及 `.vibebench/runs/` 是否可写。它不会真正运行配置里的 test/lint 命令。
 
 `vibebench history` 会显示 `.vibebench/runs/` 下最近的运行记录，包括分数、风险等级、diff 规模、风险发现数量和产物生成状态。
+
+`vibebench trend` 会按最新优先汇总最近多次运行，并判断选定窗口内的质量趋势是 `improved`、`stable` 还是 `regressed`。它会比较最新与最旧运行的分数、风险等级和风险发现数量。`--json`、`--limit N` 和 `--runs-dir PATH` 适合自动化和分析归档运行。
 
 `vibebench baseline --set latest` 会把某次运行保存为 `.vibebench/baseline.json` 中的 baseline。`vibebench compare --baseline` 会用这个 baseline 和最新运行对比。
 

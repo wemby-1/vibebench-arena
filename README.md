@@ -75,6 +75,7 @@ python -m vibebench init
 python -m vibebench config
 python -m vibebench doctor
 python -m vibebench history
+python -m vibebench trend
 python -m vibebench baseline --set latest
 python -m vibebench clean
 python -m vibebench check
@@ -174,8 +175,11 @@ python -m vibebench config --show-source
 # Diagnose whether the project is ready for VibeBench
 python -m vibebench doctor
 
-# Show recent VibeBench runs
+# Show recent VibeBench runs and quality trend
 python -m vibebench history
+python -m vibebench trend
+python -m vibebench trend --json
+python -m vibebench trend --limit 3
 
 # Mark the latest run as the project baseline
 python -m vibebench baseline --set latest
@@ -241,6 +245,8 @@ python -m vibebench compare
 `vibebench doctor` checks Python, Git, config validity, configured command executables, and whether `.vibebench/runs/` is writable. It does not run the configured checks.
 
 `vibebench history` shows recent runs from `.vibebench/runs/`, including score, risk level, diff size, finding count, and generated artifact status.
+
+`vibebench trend` summarizes recent runs newest first and reports whether quality is `improved`, `stable`, or `regressed` across the selected window. The verdict compares latest vs oldest score, risk level, and finding count. Use `--json`, `--limit N`, or `--runs-dir PATH` for automation and archived run directories.
 
 `vibebench baseline --set latest` saves a baseline run in `.vibebench/baseline.json`. `vibebench compare --baseline` compares that saved baseline against the latest run.
 

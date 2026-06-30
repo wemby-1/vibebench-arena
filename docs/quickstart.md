@@ -48,13 +48,16 @@ python -m vibebench doctor
 
 ```bash
 python -m vibebench history
+python -m vibebench trend
 ```
 
-By default this shows the 10 newest runs with `metrics.json`. You can change the limit or inspect another runs directory:
+By default history and trend use the 10 newest valid runs with `metrics.json`. You can change the limit, inspect another runs directory, or export trend data as JSON:
 
 ```bash
 python -m vibebench history --limit 5
 python -m vibebench history --runs-dir .vibebench/runs
+python -m vibebench trend --limit 3
+python -m vibebench trend --json
 ```
 
 ## Save A Baseline Run

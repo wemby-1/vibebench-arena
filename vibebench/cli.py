@@ -51,6 +51,7 @@ from vibebench.status_block import (
     generate_status_block,
     update_readme_status_block,
 )
+from vibebench.trend import TrendResult, analyze_trend, trend_json
 
 app = typer.Typer(
     help="Codex-first quality gate for vibe coding projects.",
@@ -644,6 +645,42 @@ def status_block(
         if check_readme and not all(item.current for item in readme_results):
             raise typer.Exit(code=1)
 
+@app.command("trend")
+def trend_command(
+    project_root: ProjectRootOption = Path("."),
+    limit: Annotated[
+        int,
+        typer.Option("--limit", help="Maximum number of recent valid runs to show."),
+    ] = 10,
+    runs_dir: Annotated[
+        Path | None,
+        typer.Option("--runs-dir", help="Directory containing VibeBench run dirs."),
+    ] = None,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print trend summary as JSON."),
+    ] = False,
+) -> None:
+    """Show quality trend across recent VibeBench runs."""
+    root = project_root.resolve()
+    selected_runs_dir = None
+    if runs_dir:
+        selected_runs_dir = (
+            runs_dir if runs_dir.is_absolute() else root / runs_dir
+        ).resolve()
+
+    try:
+        result = analyze_trend(root, selected_runs_dir, limit=limit)
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if as_json:
+        print(json.dumps(trend_json(result), indent=2))
+        return
+
+    render_trend_summary(result)
+
 @app.command("artifacts")
 def artifacts_command(
     project_root: ProjectRootOption = Path("."),
@@ -1197,6 +1234,76 @@ def render_status_block_readme_summary(
             status = "updated" if result.changed else "already current"
         table.add_row(str(result.readme_path), status)
     console.print(table)
+
+
+def render_trend_summary(result: TrendResult) -> None:
+    """Render trend runs and aggregate summary."""
+    console.print(f"Runs directory: {result.runs_dir}")
+    if result.skipped_runs:
+        for warning in result.skipped_runs:
+            console.print(f"[yellow]{warning}[/]")
+    if not result.runs:
+        console.print("No valid VibeBench runs found.")
+        return
+
+    table = Table(title="VibeBench trend")
+    table.add_column("Run")
+    table.add_column("Status")
+    table.add_column("Score", justify="right")
+    table.add_column("Risk")
+    table.add_column("Findings", justify="right")
+    table.add_column("Files", justify="right")
+    table.add_column("Patch", justify="right")
+    for run in result.runs:
+        table.add_row(
+            run.run_id,
+            run.overall_status,
+            str(run.score),
+            run.risk_level,
+            str(run.risk_findings_count),
+            str(run.changed_files),
+            str(run.patch_lines),
+        )
+    console.print(table)
+
+    summary = result.summary
+    summary_table = Table(title="Trend summary")
+    summary_table.add_column("Field")
+    summary_table.add_column("Value")
+    summary_table.add_row("Valid runs", str(summary.valid_run_count))
+    summary_table.add_row("Pass rate", f"{summary.pass_rate * 100:.1f}%")
+    summary_table.add_row("Latest score", optional_text(summary.latest_score))
+    summary_table.add_row("Oldest score", optional_text(summary.oldest_score))
+    summary_table.add_row("Score delta", optional_delta(summary.score_delta))
+    summary_table.add_row("Best score", optional_text(summary.best_score))
+    summary_table.add_row("Worst score", optional_text(summary.worst_score))
+    summary_table.add_row("Highest risk", optional_text(summary.highest_risk_level))
+    summary_table.add_row(
+        "Latest findings", optional_text(summary.latest_finding_count)
+    )
+    summary_table.add_row(
+        "Oldest findings", optional_text(summary.oldest_finding_count)
+    )
+    summary_table.add_row(
+        "Finding delta", optional_delta(summary.finding_count_delta)
+    )
+    summary_table.add_row("Verdict", summary.verdict)
+    console.print(summary_table)
+    console.print(summary.message)
+
+
+def optional_text(value: object) -> str:
+    """Render an optional summary value."""
+    return "n/a" if value is None else str(value)
+
+
+def optional_delta(value: int | None) -> str:
+    """Render an optional signed delta."""
+    if value is None:
+        return "n/a"
+    if value > 0:
+        return f"+{value}"
+    return str(value)
 
 
 def render_artifacts_summary(result: ArtifactInventoryResult) -> None:
