@@ -45,15 +45,19 @@ def test_default_latest_run_artifact_listing(tmp_path: Path) -> None:
     latest_run = write_run(tmp_path, "20260630_120000")
     latest_run.joinpath("check.log").write_text("ok\n", encoding="utf-8")
 
-    result = runner.invoke(app, ["artifacts", "--project-root", str(tmp_path)])
+    result = runner.invoke(
+        app,
+        ["artifacts", "--project-root", str(tmp_path), "--json"],
+    )
 
     assert result.exit_code == 0
-    assert latest_run.name in result.output
-    assert old_run.name not in result.output
-    assert "metrics.json" in result.output
-    assert "check.log" in result.output
-    assert "available" in result.output
-    assert "missing" in result.output
+    payload = json.loads(result.output)
+    assert payload["run_id"] == latest_run.name
+    assert payload["run_id"] != old_run.name
+    artifacts = {item["name"]: item for item in payload["artifacts"]}
+    assert artifacts["metrics.json"]["available"] is True
+    assert artifacts["check.log"]["available"] is True
+    assert artifacts["pr-comment.md"]["available"] is False
 
 
 def test_explicit_run_dir_is_used(tmp_path: Path) -> None:
@@ -68,11 +72,12 @@ def test_explicit_run_dir_is_used(tmp_path: Path) -> None:
             str(tmp_path),
             "--run-dir",
             str(first),
+            "--json",
         ],
     )
 
     assert result.exit_code == 0
-    assert first.name in result.output
+    assert json.loads(result.output)["run_id"] == first.name
 
 
 def test_missing_run_directory_fails_clearly(tmp_path: Path) -> None:
@@ -130,7 +135,7 @@ def test_corrupt_metrics_fails_clearly(tmp_path: Path) -> None:
     assert "not valid JSON" in result.output
 
 
-def test_available_and_missing_artifacts_are_detected(tmp_path: Path) -> None:
+def test_table_output_lists_artifacts(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path)
     report_dir = run_dir / "report"
     report_dir.mkdir()
@@ -139,10 +144,26 @@ def test_available_and_missing_artifacts_are_detected(tmp_path: Path) -> None:
     result = runner.invoke(app, ["artifacts", "--project-root", str(tmp_path)])
 
     assert result.exit_code == 0
-    assert "report/index.html" in result.output
+    assert "VibeBench artifacts" in result.output
+    assert "metrics.json" in result.output
     assert "available" in result.output
-    assert "pr-comment.md" in result.output
-    assert "missing" in result.output
+
+
+def test_available_and_missing_artifacts_are_detected(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path)
+    report_dir = run_dir / "report"
+    report_dir.mkdir()
+    report_dir.joinpath("index.html").write_text("<html></html>\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["artifacts", "--project-root", str(tmp_path), "--json"],
+    )
+
+    assert result.exit_code == 0
+    artifacts = {item["name"]: item for item in json.loads(result.output)["artifacts"]}
+    assert artifacts["report/index.html"]["available"] is True
+    assert artifacts["pr-comment.md"]["available"] is False
 
 
 def test_only_available_hides_missing_artifacts(tmp_path: Path) -> None:
@@ -151,13 +172,20 @@ def test_only_available_hides_missing_artifacts(tmp_path: Path) -> None:
 
     result = runner.invoke(
         app,
-        ["artifacts", "--project-root", str(tmp_path), "--only-available"],
+        [
+            "artifacts",
+            "--project-root",
+            str(tmp_path),
+            "--only-available",
+            "--json",
+        ],
     )
 
     assert result.exit_code == 0
-    assert "metrics.json" in result.output
-    assert "check.log" in result.output
-    assert "pr-comment.md" not in result.output
+    names = {item["name"] for item in json.loads(result.output)["artifacts"]}
+    assert "metrics.json" in names
+    assert "check.log" in names
+    assert "pr-comment.md" not in names
 
 
 def test_strict_fails_when_optional_artifacts_are_missing(tmp_path: Path) -> None:
