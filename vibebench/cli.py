@@ -10,6 +10,11 @@ from rich.table import Table
 
 from vibebench import __version__
 from vibebench.annotate import AnnotationResult, generate_annotations
+from vibebench.artifacts import (
+    ArtifactInventoryResult,
+    collect_artifact_inventory,
+    inventory_json,
+)
 from vibebench.badge import DEFAULT_BADGE_LABEL, BadgeResult, generate_badge
 from vibebench.baseline import BaselineStatus, set_baseline, show_baseline
 from vibebench.bundle import BundleResult, create_bundle
@@ -639,6 +644,54 @@ def status_block(
         if check_readme and not all(item.current for item in readme_results):
             raise typer.Exit(code=1)
 
+@app.command("artifacts")
+def artifacts_command(
+    project_root: ProjectRootOption = Path("."),
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            help="Specific .vibebench/runs/<timestamp> directory to inspect.",
+        ),
+    ] = None,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print artifact inventory as JSON."),
+    ] = False,
+    strict: Annotated[
+        bool,
+        typer.Option("--strict", help="Fail if any known artifact is missing."),
+    ] = False,
+    only_available: Annotated[
+        bool,
+        typer.Option("--only-available", help="Show only available artifacts."),
+    ] = False,
+) -> None:
+    """List known artifacts for a VibeBench run."""
+    root = project_root.resolve()
+    selected_run_dir = None
+    if run_dir:
+        selected_run_dir = (
+            run_dir if run_dir.is_absolute() else root / run_dir
+        ).resolve()
+
+    try:
+        result = collect_artifact_inventory(
+            root,
+            selected_run_dir,
+            only_available=only_available,
+            strict=strict,
+        )
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if as_json:
+        print(json.dumps(inventory_json(result), indent=2))
+        return
+
+    render_artifacts_summary(result)
+
 @app.command("export")
 def export_command(
     project_root: ProjectRootOption = Path("."),
@@ -1144,6 +1197,40 @@ def render_status_block_readme_summary(
             status = "updated" if result.changed else "already current"
         table.add_row(str(result.readme_path), status)
     console.print(table)
+
+
+def render_artifacts_summary(result: ArtifactInventoryResult) -> None:
+    """Render an artifact inventory table."""
+    table = Table(title="VibeBench artifacts")
+    table.add_column("Artifact")
+    table.add_column("Path")
+    table.add_column("Availability")
+    table.add_column("Size")
+    for item in result.artifacts:
+        availability = "available" if item.available else "missing"
+        size = (
+            artifact_size_text(item.size_bytes)
+            if item.size_bytes is not None
+            else ""
+        )
+        table.add_row(
+            item.name,
+            item.display_path.as_posix(),
+            availability,
+            size,
+        )
+    console.print(f"Run directory: {result.run_dir}")
+    console.print(table)
+
+
+def artifact_size_text(size_bytes: int) -> str:
+    """Format an artifact byte count for terminal output."""
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    size_kib = size_bytes / 1024
+    if size_kib < 1024:
+        return f"{size_kib:.1f} KiB"
+    return f"{size_kib / 1024:.1f} MiB"
 
 
 def render_badge_summary(result: BadgeResult) -> None:

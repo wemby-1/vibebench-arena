@@ -89,6 +89,7 @@ python -m vibebench badge
 python -m vibebench badge --format markdown
 python -m vibebench badge --format url
 python -m vibebench status-block
+python -m vibebench artifacts
 python -m vibebench annotate
 python -m vibebench gh-summary
 python -m vibebench compare
@@ -221,6 +222,12 @@ python -m vibebench status-block --output README-status.md
 python -m vibebench status-block --readme README.md --write-readme
 python -m vibebench status-block --readme README.md --check-readme
 
+# List known artifacts for a run
+python -m vibebench artifacts
+python -m vibebench artifacts --json
+python -m vibebench artifacts --run-dir .vibebench/runs/<run-id>
+python -m vibebench artifacts --only-available
+
 # Emit GitHub Actions annotations for findings and command failures
 python -m vibebench annotate
 
@@ -281,6 +288,8 @@ It packages standard run artifacts for sharing or CI download. Use `--run-dir` f
 `vibebench badge` writes a Shields.io-compatible endpoint JSON artifact at `.vibebench/runs/<timestamp>/badge.json` by default. Use `--format markdown` to write a copy-pasteable README image badge to `badge.md`, or `--format url` to write the static Shields URL to `badge-url.txt`. `--label` customizes all formats, and `--output` writes the selected format to a custom path. `vibebench ci` writes both `badge.json` and `badge.md` by default.
 
 `vibebench status-block` writes `.vibebench/runs/<timestamp>/status-block.md`, a copy-pasteable README section with status, score, risk, diff size, findings, badge, and generated artifacts. Use `--title`, `--no-include-badge`, `--no-include-artifacts`, or `--output` to customize it. Add `<!-- VIBEBENCH_STATUS_START -->` and `<!-- VIBEBENCH_STATUS_END -->` markers to a README, then run `python -m vibebench status-block --readme README.md --write-readme` to update only the marked region. Use `--check-readme` in read-only workflows to fail when the committed block is stale.
+
+`vibebench artifacts` lists known files for the latest run, including metrics, logs, reports, summaries, badges, status blocks, bundles, and comparisons. Use `--json` for automation, `--run-dir .vibebench/runs/<run-id>` for a specific run, `--only-available` to hide missing optional files, and `--strict` when every known artifact must exist.
 
 `vibebench annotate` emits GitHub Actions annotations for command failures and risk findings from the latest run. Use `--no-github-actions` for readable plain text output. It is reporting-only and exits 0 when annotations are emitted; `vibebench gate` remains responsible for pass/fail decisions.
 

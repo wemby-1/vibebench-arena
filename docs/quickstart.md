@@ -250,6 +250,17 @@ python -m vibebench status-block --readme README.md --check-readme
 
 This writes `.vibebench/runs/<timestamp>/status-block.md`, a copy-pasteable README section with the current status, VibeScore, risk level, diff size, findings, optional badge, and generated artifacts. To keep a README block stable, add `<!-- VIBEBENCH_STATUS_START -->` and `<!-- VIBEBENCH_STATUS_END -->` marker lines, then use `--write-readme` to replace only the marked content. Use `--check-readme` in read-only validation when you want to detect a stale committed status block without modifying files.
 
+## Inspect Run Artifacts
+
+```bash
+python -m vibebench artifacts
+python -m vibebench artifacts --json
+python -m vibebench artifacts --run-dir .vibebench/runs/<run-id>
+python -m vibebench artifacts --only-available
+```
+
+This lists known run artifacts with availability and file sizes. Missing optional artifacts do not fail the command unless `--strict` is used. JSON output is intended for lightweight automation and dashboards.
+
 ## Emit GitHub Actions Annotations
 
 ```bash

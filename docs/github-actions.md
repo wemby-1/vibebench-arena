@@ -82,6 +82,8 @@ CI should keep generating `status-block.md` as an artifact, but it should not mu
 
 For local updates, run `python -m vibebench status-block --readme README.md --write-readme` after a fresh VibeBench run.
 
+To inspect what CI uploaded, run `python -m vibebench artifacts --json` locally against a downloaded `.vibebench/runs/<run-id>` directory, or use `python -m vibebench artifacts --only-available` for a concise human-readable view.
+
 ## Limitations
 
 - VibeBench does not post PR comments through the GitHub API yet.
