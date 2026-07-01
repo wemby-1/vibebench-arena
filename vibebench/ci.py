@@ -15,7 +15,7 @@ from vibebench.explain import generate_explanation
 from vibebench.export import export_json_for_ci
 from vibebench.gate import run_gate
 from vibebench.gh_summary import generate_github_summary
-from vibebench.manifest import generate_manifest
+from vibebench.manifest import check_manifest, generate_manifest
 from vibebench.paths import config_file
 from vibebench.pr_comment import generate_pr_comment
 from vibebench.report import ReportError, generate_report, load_metrics
@@ -153,6 +153,11 @@ def run_ci_pipeline(
             lambda: generate_manifest(root, selected_run_dir).output_path,
         ),
         (
+            "manifest-check",
+            skip_manifest,
+            lambda: check_manifest(root, selected_run_dir).manifest_path,
+        ),
+        (
             "annotate",
             skip_annotate,
             lambda: generated_annotations(root, selected_run_dir),
@@ -208,6 +213,7 @@ def append_unavailable_artifact_steps(
         ("status-block", skip_status_block),
         ("trend", skip_trend),
         ("manifest", skip_manifest),
+        ("manifest-check", skip_manifest),
         ("bundle", skip_bundle),
         ("annotate", skip_annotate),
         ("gh-summary", skip_gh_summary),

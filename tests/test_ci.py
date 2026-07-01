@@ -167,6 +167,7 @@ def test_ci_command_creates_standard_artifacts(tmp_path: Path) -> None:
     assert run_dir.joinpath("trend.md").exists()
     assert run_dir.joinpath("trend.json").exists()
     assert run_dir.joinpath("manifest.json").exists()
+    assert "manifest-check" in result.output
     assert run_dir.joinpath("gate-summary.md").exists()
     assert run_dir.joinpath("github-step-summary.md").exists()
 
@@ -420,6 +421,8 @@ def test_ci_runs_export_and_badge_before_bundle_and_summary(tmp_path: Path) -> N
     assert "`trend.md` (available)" in summary
     assert "`trend.json` (available)" in summary
     assert "`manifest.json` (available)" in summary
+    assert result.output.index("manifest") < result.output.index("bundle")
+    assert result.output.index("manifest-check") < result.output.index("bundle")
 
 
 def test_ci_skip_export_skips_export_generation(tmp_path: Path) -> None:
@@ -621,4 +624,5 @@ def test_ci_skip_manifest_skips_manifest_generation(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert not run_dir.joinpath("manifest.json").exists()
     assert "manifest" in result.output
+    assert "manifest-check" in result.output
     assert "skipped" in result.output

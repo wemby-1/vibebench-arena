@@ -274,7 +274,7 @@ python -m vibebench artifacts --run-dir .vibebench/runs/<run-id>
 python -m vibebench artifacts --only-available
 ```
 
-`vibebench manifest` writes `.vibebench/runs/<timestamp>/manifest.json`, a machine-readable index of run metadata and artifact availability.
+`vibebench manifest` writes `.vibebench/runs/<timestamp>/manifest.json`, a machine-readable index of run metadata and artifact availability. `vibebench manifest --check` verifies that an existing manifest has not drifted from the run directory.
 
 This lists known run artifacts with availability and file sizes. Missing optional artifacts do not fail the command unless `--strict` is used. JSON output is intended for lightweight automation and dashboards.
 

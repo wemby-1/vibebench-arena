@@ -288,7 +288,7 @@ python -m vibebench compare
 
 It explains command failures, Git diff risk signals, risk findings, and suggested next actions. Use `--run-dir`, `--output`, or `--no-write` for targeted local review.
 
-`vibebench manifest` writes `.vibebench/runs/<timestamp>/manifest.json`, a machine-readable index of the run status, score, risk, diff size, finding count, and known artifact availability for automation and CI consumers. `vibebench ci` generates it by default unless `--skip-manifest` is used.
+`vibebench manifest` writes `.vibebench/runs/<timestamp>/manifest.json`, a machine-readable index of the run status, score, risk, diff size, finding count, and known artifact availability for automation and CI consumers. Use `vibebench manifest --check` to verify that an existing manifest still matches the run directory. `vibebench ci` generates and checks it by default unless `--skip-manifest` is used.
 
 `vibebench bundle` writes:
 

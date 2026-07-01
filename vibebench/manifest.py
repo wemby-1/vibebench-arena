@@ -29,6 +29,21 @@ class ManifestResult:
     available_artifact_count: int
 
 
+@dataclass(frozen=True)
+class ManifestCheckResult:
+    """Result of checking an existing VibeBench run manifest."""
+
+    run_dir: Path
+    run_id: str
+    manifest_path: Path
+    differences: list[str]
+
+    @property
+    def passed(self) -> bool:
+        """Return whether the manifest matches the current run directory."""
+        return not self.differences
+
+
 def generate_manifest(
     project_root: Path,
     run_dir: Path | None = None,
@@ -86,6 +101,45 @@ def generate_manifest(
     )
 
 
+def check_manifest(
+    project_root: Path,
+    run_dir: Path | None = None,
+    manifest_path: Path | None = None,
+    *,
+    strict: bool = False,
+) -> ManifestCheckResult:
+    """Check that an existing manifest matches current run artifacts."""
+    root = project_root.resolve()
+    selected_run_dir = (run_dir or find_latest_valid_run(root)).resolve()
+    validate_run_dir(selected_run_dir)
+    metrics = load_manifest_metrics(selected_run_dir)
+    selected_manifest_path = (
+        manifest_path.resolve()
+        if manifest_path is not None
+        else selected_run_dir / MANIFEST_FILENAME
+    )
+    stored_payload = load_existing_manifest(selected_manifest_path)
+    if strict:
+        validate_written_manifest(selected_manifest_path)
+
+    generated_at = text(stored_payload.get("generated_at", ""))
+    inventory = collect_artifact_inventory(root, selected_run_dir)
+    current_payload = manifest_payload(
+        root,
+        selected_run_dir,
+        metrics,
+        inventory,
+        generated_at,
+    )
+    differences = compare_manifest_payload(stored_payload, current_payload)
+    return ManifestCheckResult(
+        run_dir=selected_run_dir,
+        run_id=selected_run_dir.name,
+        manifest_path=selected_manifest_path,
+        differences=differences,
+    )
+
+
 def validate_run_dir(run_dir: Path) -> None:
     """Validate a selected run directory."""
     if not run_dir.exists():
@@ -100,6 +154,29 @@ def load_manifest_metrics(run_dir: Path) -> dict[str, Any]:
         return load_metrics(run_dir)
     except json.JSONDecodeError as exc:
         raise ReportError(f"metrics.json in {run_dir} is not valid JSON.") from exc
+
+
+
+
+def load_existing_manifest(manifest_path: Path) -> dict[str, Any]:
+    """Load an existing manifest for consistency checking."""
+    if not manifest_path.exists():
+        message = (
+            f"No manifest.json found at {manifest_path}. "
+            "Run 'vibebench manifest' first."
+        )
+        raise ReportError(message)
+    if manifest_path.is_dir():
+        raise ReportError(f"Manifest path is a directory: {manifest_path}")
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        message = f"manifest.json in {manifest_path} is not valid JSON."
+        raise ReportError(message) from exc
+    if not isinstance(payload, dict):
+        message = f"manifest.json in {manifest_path} must contain a JSON object."
+        raise ReportError(message)
+    return payload
 
 
 def validate_output_path(output_path: Path) -> None:
@@ -156,6 +233,75 @@ def manifest_payload(
             for item in inventory.artifacts
         ],
     }
+
+
+
+
+STABLE_MANIFEST_FIELDS = [
+    "schema_version",
+    "run_id",
+    "run_dir",
+    "project",
+    "created_at",
+    "status",
+    "score",
+    "risk_level",
+    "findings_count",
+    "changed_files",
+    "patch_lines",
+]
+ARTIFACT_FIELDS = ["path", "available", "size_bytes"]
+
+
+def compare_manifest_payload(
+    stored: dict[str, Any],
+    current: dict[str, Any],
+) -> list[str]:
+    """Return stable differences between stored and current manifests."""
+    differences: list[str] = []
+    for field in STABLE_MANIFEST_FIELDS:
+        if stored.get(field) != current.get(field):
+            differences.append(
+                f"{field}: expected {format_value(stored.get(field))}, "
+                f"actual {format_value(current.get(field))}"
+            )
+
+    stored_artifacts = artifacts_by_name(stored.get("artifacts"))
+    current_artifacts = artifacts_by_name(current.get("artifacts"))
+    for name in sorted(current_artifacts):
+        if name not in stored_artifacts:
+            differences.append(f"artifact {name}: missing entry")
+            continue
+        stored_item = stored_artifacts[name]
+        current_item = current_artifacts[name]
+        for field in ARTIFACT_FIELDS:
+            if stored_item.get(field) != current_item.get(field):
+                differences.append(
+                    f"artifact {name} {field}: "
+                    f"expected {format_value(stored_item.get(field))}, "
+                    f"actual {format_value(current_item.get(field))}"
+                )
+    for name in sorted(set(stored_artifacts) - set(current_artifacts)):
+        differences.append(f"artifact {name}: unexpected entry")
+    return differences
+
+
+def artifacts_by_name(value: object) -> dict[str, dict[str, Any]]:
+    """Return artifact entries keyed by name."""
+    artifacts: dict[str, dict[str, Any]] = {}
+    if not isinstance(value, list):
+        return artifacts
+    for item in value:
+        artifact = as_dict(item)
+        name = text(artifact.get("name", ""))
+        if name:
+            artifacts[name] = artifact
+    return artifacts
+
+
+def format_value(value: object) -> str:
+    """Format a manifest value for concise drift output."""
+    return json.dumps(value, sort_keys=True)
 
 
 def display_path(project_root: Path, path: Path) -> Path:

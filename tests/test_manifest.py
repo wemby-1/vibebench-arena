@@ -184,3 +184,253 @@ def test_manifest_invalid_output_parent_fails_clearly(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "Output parent directory does not exist" in result.output
+
+
+def write_manifest(project_root: Path, run_dir: Path) -> dict[str, object]:
+    result = runner.invoke(
+        app,
+        ["manifest", "--project-root", str(project_root), "--run-dir", str(run_dir)],
+    )
+    assert result.exit_code == 0
+    return read_manifest(run_dir)
+
+
+def overwrite_manifest(run_dir: Path, payload: dict[str, object]) -> None:
+    run_dir.joinpath("manifest.json").write_text(
+        json.dumps(payload, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def test_manifest_check_passes_after_writing(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path)
+    write_manifest(tmp_path, run_dir)
+
+    result = runner.invoke(
+        app,
+        [
+            "manifest",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--check",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Manifest is consistent" in result.output
+
+
+def test_manifest_check_run_dir_option_passes(tmp_path: Path) -> None:
+    first = write_run(tmp_path, "20260701_110000")
+    write_run(tmp_path, "20260701_120000")
+    write_manifest(tmp_path, first)
+
+    result = runner.invoke(
+        app,
+        [
+            "manifest",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(first),
+            "--check",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert first.name in result.output or "Manifest is consistent" in result.output
+
+
+def test_manifest_check_output_uses_custom_manifest_without_rewriting(
+    tmp_path: Path,
+) -> None:
+    run_dir = write_run(tmp_path)
+    custom_manifest = tmp_path / "custom-manifest.json"
+    result = runner.invoke(
+        app,
+        [
+            "manifest",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--output",
+            str(custom_manifest),
+        ],
+    )
+    assert result.exit_code == 0
+    before = custom_manifest.read_text(encoding="utf-8")
+
+    check = runner.invoke(
+        app,
+        [
+            "manifest",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--output",
+            str(custom_manifest),
+            "--check",
+        ],
+    )
+
+    assert check.exit_code == 0
+    assert custom_manifest.read_text(encoding="utf-8") == before
+
+
+def test_manifest_check_missing_manifest_fails_clearly(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "manifest",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--check",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "No manifest.json found" in result.output
+
+
+def test_manifest_check_corrupt_manifest_fails_clearly(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path)
+    run_dir.joinpath("manifest.json").write_text("{nope", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "manifest",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--check",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "not valid JSON" in result.output
+
+
+def test_manifest_check_corrupt_metrics_fails_clearly(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path)
+    write_manifest(tmp_path, run_dir)
+    run_dir.joinpath("metrics.json").write_text("{nope", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "manifest",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--check",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "metrics.json" in result.output
+    assert "not valid JSON" in result.output
+
+
+def test_manifest_check_changed_artifact_availability_fails(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path)
+    write_manifest(tmp_path, run_dir)
+    run_dir.joinpath("check.log").unlink()
+
+    result = runner.invoke(
+        app,
+        [
+            "manifest",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--check",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "artifact check.log available" in result.output
+
+
+def test_manifest_check_changed_artifact_size_fails(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path)
+    write_manifest(tmp_path, run_dir)
+    run_dir.joinpath("check.log").write_text("changed size\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "manifest",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--check",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "artifact check.log size_bytes" in result.output
+
+
+def test_manifest_check_missing_artifact_entry_fails(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path)
+    payload = write_manifest(tmp_path, run_dir)
+    artifacts = payload["artifacts"]
+    assert isinstance(artifacts, list)
+    payload["artifacts"] = [
+        item
+        for item in artifacts
+        if isinstance(item, dict) and item["name"] != "check.log"
+    ]
+    overwrite_manifest(run_dir, payload)
+
+    result = runner.invoke(
+        app,
+        [
+            "manifest",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--check",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "artifact check.log: missing entry" in result.output
+
+
+def test_manifest_check_mismatched_run_id_and_score_fail(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path)
+    payload = write_manifest(tmp_path, run_dir)
+    payload["run_id"] = "wrong-run"
+    payload["score"] = 12
+    overwrite_manifest(run_dir, payload)
+
+    result = runner.invoke(
+        app,
+        [
+            "manifest",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--check",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "run_id" in result.output
+    assert "score" in result.output

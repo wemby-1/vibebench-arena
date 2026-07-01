@@ -45,7 +45,12 @@ from vibebench.latest import (
     latest_paths_json,
     select_artifact,
 )
-from vibebench.manifest import ManifestResult, generate_manifest
+from vibebench.manifest import (
+    ManifestCheckResult,
+    ManifestResult,
+    check_manifest,
+    generate_manifest,
+)
 from vibebench.paths import config_file
 from vibebench.pr_comment import generate_pr_comment
 from vibebench.report import (
@@ -819,10 +824,14 @@ def manifest_command(
     ] = None,
     strict: Annotated[
         bool,
-        typer.Option("--strict", help="Validate the written manifest can be read."),
+        typer.Option("--strict", help="Validate the manifest can be read."),
+    ] = False,
+    check: Annotated[
+        bool,
+        typer.Option("--check", help="Check existing manifest consistency."),
     ] = False,
 ) -> None:
-    """Write a machine-readable manifest for a VibeBench run."""
+    """Write or check a machine-readable manifest for a VibeBench run."""
     root = project_root.resolve()
     selected_run_dir = None
     if run_dir:
@@ -834,6 +843,18 @@ def manifest_command(
         selected_output = (output if output.is_absolute() else root / output).resolve()
 
     try:
+        if check:
+            check_result = check_manifest(
+                root,
+                selected_run_dir,
+                selected_output,
+                strict=strict,
+            )
+            render_manifest_check_summary(check_result)
+            if not check_result.passed:
+                raise typer.Exit(code=1)
+            return
+
         result = generate_manifest(
             root,
             selected_run_dir,
@@ -1533,6 +1554,17 @@ def render_manifest_summary(result: ManifestResult) -> None:
     console.print(f"Status: {result.payload.get('status', 'unknown')}")
     console.print(f"Score: {result.payload.get('score', 0)}")
     console.print(f"Available artifacts: {result.available_artifact_count}")
+
+
+def render_manifest_check_summary(result: ManifestCheckResult) -> None:
+    """Render a concise manifest consistency check summary."""
+    if result.passed:
+        console.print(f"Manifest is consistent: {result.manifest_path}")
+        return
+
+    console.print("[red]Manifest drift detected:[/]")
+    for difference in result.differences:
+        console.print(f"- {difference}")
 
 
 def render_artifacts_summary(result: ArtifactInventoryResult) -> None:
