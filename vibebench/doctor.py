@@ -11,8 +11,10 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
 from vibebench.config import ConfigError, VibeBenchConfig, load_config
+from vibebench.explain import find_latest_valid_run
 from vibebench.gitdiff import is_git_repo
 from vibebench.paths import config_dir, config_file
+from vibebench.report import ReportError, load_metrics
 
 DoctorStatus = Literal["passed", "warning", "failed"]
 
@@ -37,9 +39,10 @@ class DoctorResult(BaseModel):
     project_root: Path
     checks: list[DoctorCheck]
     overall_status: DoctorStatus
+    strict: bool = False
 
 
-def run_doctor(project_root: Path) -> DoctorResult:
+def run_doctor(project_root: Path, *, strict: bool = False) -> DoctorResult:
     """Run readiness diagnostics without executing configured checks."""
     root = project_root.resolve()
     checks: list[DoctorCheck] = [
@@ -54,6 +57,8 @@ def run_doctor(project_root: Path) -> DoctorResult:
         if config is not None:
             checks.append(check_configured_commands(config))
         checks.append(check_runs_directory(root))
+        if strict:
+            checks.extend(strict_checks(root))
 
     overall_status: DoctorStatus = (
         "failed" if any(check.status == "failed" for check in checks) else "passed"
@@ -62,6 +67,7 @@ def run_doctor(project_root: Path) -> DoctorResult:
         project_root=root,
         checks=checks,
         overall_status=overall_status,
+        strict=strict,
     )
 
 
@@ -69,6 +75,7 @@ def doctor_json_payload(result: DoctorResult) -> dict[str, object]:
     """Return a deterministic JSON payload for doctor diagnostics."""
     return {
         "overall_status": result.overall_status,
+        "strict": result.strict,
         "project_root": str(result.project_root),
         "checks": [
             {
@@ -192,6 +199,104 @@ def check_configured_commands(config: VibeBenchConfig) -> DoctorCheck:
         category="configured_commands",
         status="passed",
         message=f"{len(commands)} configured command(s) appear runnable",
+    )
+
+
+def strict_checks(project_root: Path) -> list[DoctorCheck]:
+    """Run stronger release/CI readiness checks."""
+    checks = [
+        check_file_exists(
+            "strict_ci_workflow",
+            project_root / ".github" / "workflows" / "ci.yml",
+            ".github/workflows/ci.yml exists",
+        ),
+    ]
+    config_check, _ = check_config(project_root)
+    checks.append(
+        DoctorCheck(
+            category="strict_config",
+            status=config_check.status,
+            message=config_check.message,
+        )
+    )
+
+    runs_dir = config_dir(project_root) / "runs"
+    if runs_dir.exists() and runs_dir.is_dir():
+        checks.append(
+            DoctorCheck(
+                category="strict_runs_directory",
+                status="passed",
+                message=f"Run directory exists: {runs_dir}",
+            )
+        )
+    else:
+        checks.append(
+            DoctorCheck(
+                category="strict_runs_directory",
+                status="failed",
+                message=f"Run directory does not exist: {runs_dir}",
+            )
+        )
+
+    try:
+        latest_run = find_latest_valid_run(project_root)
+        load_metrics(latest_run)
+    except (ReportError, OSError, ValueError) as exc:
+        checks.append(
+            DoctorCheck(
+                category="strict_latest_run",
+                status="failed",
+                message=f"No readable latest VibeBench run: {exc}",
+            )
+        )
+        return checks
+
+    checks.append(
+        DoctorCheck(
+            category="strict_latest_run",
+            status="passed",
+            message=f"Latest valid run: {latest_run.name}",
+        )
+    )
+    checks.extend(
+        [
+            check_file_exists(
+                "strict_metrics",
+                latest_run / "metrics.json",
+                "latest run has metrics.json",
+            ),
+            check_file_exists(
+                "strict_manifest",
+                latest_run / "manifest.json",
+                "latest run has manifest.json",
+            ),
+            check_file_exists(
+                "strict_bundle",
+                latest_run / "vibebench-bundle.zip",
+                "latest run has vibebench-bundle.zip",
+            ),
+            check_file_exists(
+                "strict_report",
+                latest_run / "report" / "index.html",
+                "latest run has report/index.html",
+            ),
+        ]
+    )
+    return checks
+
+
+def check_file_exists(category: str, path: Path, success_message: str) -> DoctorCheck:
+    """Return a doctor check for one required file."""
+    if path.exists() and path.is_file():
+        return DoctorCheck(
+            category=category,
+            status="passed",
+            message=success_message,
+        )
+    return DoctorCheck(
+        category=category,
+        status="failed",
+        message=f"Required file is missing: {path}",
     )
 
 

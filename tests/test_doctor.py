@@ -182,3 +182,84 @@ def test_doctor_json_preserves_failure_exit_code(tmp_path: Path) -> None:
     config = next(check for check in payload["checks"] if check["name"] == "config")
     assert config["status"] == "failed"
     assert "vibebench init" in config["message"]
+
+
+def write_strict_artifacts(path: Path) -> Path:
+    workflow = path / ".github" / "workflows" / "ci.yml"
+    workflow.parent.mkdir(parents=True, exist_ok=True)
+    workflow.write_text("name: CI\n", encoding="utf-8")
+    run_dir = path / ".vibebench" / "runs" / "20260701_120000"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    run_dir.joinpath("metrics.json").write_text('{"score": 100}\n', encoding="utf-8")
+    run_dir.joinpath("manifest.json").write_text("{}\n", encoding="utf-8")
+    run_dir.joinpath("vibebench-bundle.zip").write_text("zip\n", encoding="utf-8")
+    report_dir = run_dir / "report"
+    report_dir.mkdir()
+    report_dir.joinpath("index.html").write_text("<html></html>\n", encoding="utf-8")
+    return run_dir
+
+
+def test_doctor_strict_includes_strict_checks(tmp_path: Path) -> None:
+    init_git_repo(tmp_path)
+    write_config(tmp_path)
+    write_strict_artifacts(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["doctor", "--project-root", str(tmp_path), "--strict"],
+    )
+
+    assert result.exit_code == 0
+    assert "VibeBench Doctor (strict)" in result.output
+    assert "strict_ci_workflow" in result.output
+    assert "strict_report" in result.output
+
+
+def test_doctor_json_strict_is_valid_json(tmp_path: Path) -> None:
+    init_git_repo(tmp_path)
+    write_config(tmp_path)
+    write_strict_artifacts(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["doctor", "--project-root", str(tmp_path), "--json", "--strict"],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["strict"] is True
+    names = {check["name"] for check in payload["checks"]}
+    assert "strict_ci_workflow" in names
+    assert "strict_manifest" in names
+    assert "strict_bundle" in names
+    assert "strict_report" in names
+
+
+def test_doctor_strict_fails_when_required_artifact_missing(tmp_path: Path) -> None:
+    init_git_repo(tmp_path)
+    write_config(tmp_path)
+
+    normal = runner.invoke(app, ["doctor", "--project-root", str(tmp_path)])
+    strict = runner.invoke(
+        app,
+        ["doctor", "--project-root", str(tmp_path), "--strict"],
+    )
+
+    assert normal.exit_code == 0
+    assert strict.exit_code == 1
+    assert "strict_latest_run" in strict.output
+
+
+def test_doctor_json_non_strict_marks_strict_false(tmp_path: Path) -> None:
+    init_git_repo(tmp_path)
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["doctor", "--project-root", str(tmp_path), "--json"],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["strict"] is False
+    assert all(not check["name"].startswith("strict_") for check in payload["checks"])

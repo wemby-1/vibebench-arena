@@ -242,7 +242,7 @@ python -m vibebench gh-summary
 python -m vibebench compare
 ```
 
-`vibebench doctor` 会检查 Python、Git、配置有效性、配置命令是否可找到，以及 `.vibebench/runs/` 是否可写。它不会真正运行配置里的 test/lint 命令。可用 `python -m vibebench doctor --json` 输出机器可读诊断结果。
+`vibebench doctor` 是轻量环境检查，会检查 Python、Git、配置有效性、配置命令是否可找到，以及 `.vibebench/runs/` 是否可写。它不会真正运行配置里的 test/lint 命令。`python -m vibebench doctor --strict` 会执行更强的发布/CI 预检，额外要求最近运行具备 manifest、bundle 和 report 等产物。可用 `python -m vibebench doctor --json` 或 `python -m vibebench doctor --json --strict` 输出机器可读诊断结果。
 
 `vibebench history` 会显示 `.vibebench/runs/` 下最近的运行记录，包括分数、风险等级、diff 规模、风险发现数量和产物生成状态。
 

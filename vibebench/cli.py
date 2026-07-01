@@ -1139,9 +1139,13 @@ def doctor(
         bool,
         typer.Option("--json", help="Print doctor diagnostics as JSON."),
     ] = False,
+    strict: Annotated[
+        bool,
+        typer.Option("--strict", help="Run stricter release/CI preflight checks."),
+    ] = False,
 ) -> None:
     """Diagnose whether this project is ready to run VibeBench."""
-    result = run_doctor(project_root)
+    result = run_doctor(project_root, strict=strict)
     if as_json:
         print(json.dumps(doctor_json_payload(result), indent=2, sort_keys=True))
     else:
@@ -1666,7 +1670,8 @@ def render_ci_summary(result: CiResult) -> None:
 def render_doctor_summary(result: DoctorResult) -> None:
     """Render a concise Rich summary for doctor diagnostics."""
     console.print()
-    console.print("[bold]VibeBench Doctor[/]")
+    title = "VibeBench Doctor (strict)" if result.strict else "VibeBench Doctor"
+    console.print(f"[bold]{title}[/]")
     console.print(f"Project root: {result.project_root}")
 
     table = Table(show_header=True, header_style="bold")
