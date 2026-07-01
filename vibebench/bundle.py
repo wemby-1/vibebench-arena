@@ -15,6 +15,7 @@ BUNDLE_FILENAME = "vibebench-bundle.zip"
 STANDARD_ARTIFACTS = [
     Path("metrics.json"),
     Path("check.log"),
+    Path("manifest.json"),
     Path("report") / "index.html",
     Path("pr-comment.md"),
     Path("github-step-summary.md"),

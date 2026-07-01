@@ -158,7 +158,7 @@ python -m vibebench gate --baseline --write-gate-summary
 python -m vibebench ci
 ```
 
-`vibebench ci` runs check, gate, report, PR comment, explain, export, badge, status block, trend summaries, GitHub annotations, bundle, and GitHub summary. Check and gate decide the final exit code, but artifact steps are still attempted on failure so CI logs and artifacts remain useful.
+`vibebench ci` runs check, gate, report, PR comment, explain, export, badge, status block, trend summaries, manifest, GitHub annotations, bundle, and GitHub summary. Check and gate decide the final exit code, but artifact steps are still attempted on failure so CI logs and artifacts remain useful.
 
 Useful options:
 
@@ -218,6 +218,7 @@ The explanation describes command failures, Git diff risk signals, known risk fi
 ## Bundle Run Artifacts
 
 ```bash
+python -m vibebench manifest
 python -m vibebench bundle
 ```
 
@@ -266,11 +267,14 @@ This writes `.vibebench/runs/<timestamp>/status-block.md`, a copy-pasteable READ
 ## Inspect Run Artifacts
 
 ```bash
+python -m vibebench manifest
 python -m vibebench artifacts
 python -m vibebench artifacts --json
 python -m vibebench artifacts --run-dir .vibebench/runs/<run-id>
 python -m vibebench artifacts --only-available
 ```
+
+`vibebench manifest` writes `.vibebench/runs/<timestamp>/manifest.json`, a machine-readable index of run metadata and artifact availability.
 
 This lists known run artifacts with availability and file sizes. Missing optional artifacts do not fail the command unless `--strict` is used. JSON output is intended for lightweight automation and dashboards.
 

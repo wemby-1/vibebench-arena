@@ -70,6 +70,7 @@ def write_run(
         (run_dir / "status-block.md").write_text("status\n", encoding="utf-8")
         (run_dir / "trend.md").write_text("trend\n", encoding="utf-8")
         (run_dir / "trend.json").write_text("{}\n", encoding="utf-8")
+        (run_dir / "manifest.json").write_text("{}\n", encoding="utf-8")
         (run_dir / "compare.md").write_text("compare\n", encoding="utf-8")
     return run_dir
 
@@ -98,6 +99,7 @@ def test_latest_run_bundle_is_created(tmp_path: Path) -> None:
     assert "status-block.md" in names
     assert "trend.md" in names
     assert "trend.json" in names
+    assert "manifest.json" in names
     assert "vibebench-bundle.zip" not in names
 
 

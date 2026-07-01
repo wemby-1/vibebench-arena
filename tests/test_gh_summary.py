@@ -112,6 +112,7 @@ def write_run(
         (run_dir / "status-block.md").write_text("status\n", encoding="utf-8")
         (run_dir / "trend.md").write_text("trend\n", encoding="utf-8")
         (run_dir / "trend.json").write_text("{}\n", encoding="utf-8")
+        (run_dir / "manifest.json").write_text("{}\n", encoding="utf-8")
         (run_dir / "gate-summary.md").write_text("gate\n", encoding="utf-8")
     return run_dir
 
@@ -212,5 +213,6 @@ def test_summary_contains_key_sections_and_artifacts(
     assert "`status-block.md` (available)" in markdown
     assert "`trend.md` (available)" in markdown
     assert "`trend.json` (available)" in markdown
+    assert "`manifest.json` (available)" in markdown
     assert "`gate-summary.md` (available)" in markdown
     assert "Codex writes code. VibeBench verifies it." in markdown

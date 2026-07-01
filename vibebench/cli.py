@@ -45,6 +45,7 @@ from vibebench.latest import (
     latest_paths_json,
     select_artifact,
 )
+from vibebench.manifest import ManifestResult, generate_manifest
 from vibebench.paths import config_file
 from vibebench.pr_comment import generate_pr_comment
 from vibebench.report import (
@@ -802,6 +803,49 @@ def latest_command(
 
     render_latest_summary(result, selected_artifact)
 
+@app.command("manifest")
+def manifest_command(
+    project_root: ProjectRootOption = Path("."),
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            help="Specific .vibebench/runs/<timestamp> directory to manifest.",
+        ),
+    ] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Write manifest output to this file."),
+    ] = None,
+    strict: Annotated[
+        bool,
+        typer.Option("--strict", help="Validate the written manifest can be read."),
+    ] = False,
+) -> None:
+    """Write a machine-readable manifest for a VibeBench run."""
+    root = project_root.resolve()
+    selected_run_dir = None
+    if run_dir:
+        selected_run_dir = (
+            run_dir if run_dir.is_absolute() else root / run_dir
+        ).resolve()
+    selected_output = None
+    if output:
+        selected_output = (output if output.is_absolute() else root / output).resolve()
+
+    try:
+        result = generate_manifest(
+            root,
+            selected_run_dir,
+            selected_output,
+            strict=strict,
+        )
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    render_manifest_summary(result)
+
 @app.command("artifacts")
 def artifacts_command(
     project_root: ProjectRootOption = Path("."),
@@ -988,6 +1032,10 @@ def ci_command(
         bool,
         typer.Option("--skip-trend", help="Skip trend summary generation."),
     ] = False,
+    skip_manifest: Annotated[
+        bool,
+        typer.Option("--skip-manifest", help="Skip run manifest generation."),
+    ] = False,
     skip_annotate: Annotated[
         bool,
         typer.Option("--skip-annotate", help="Skip GitHub annotation output."),
@@ -1044,6 +1092,7 @@ def ci_command(
             skip_badge=skip_badge,
             skip_status_block=skip_status_block,
             skip_trend=skip_trend,
+            skip_manifest=skip_manifest,
             skip_annotate=skip_annotate,
             skip_gh_summary=skip_gh_summary,
             bundle_include_report_assets=bundle_include_report_assets,
@@ -1473,6 +1522,17 @@ def render_latest_summary(
         )
         table.add_row(item.name, item.display_path.as_posix(), availability, size)
     console.print(table)
+
+
+def render_manifest_summary(result: ManifestResult) -> None:
+    """Render a concise manifest command summary."""
+    console.print("Manifest written.")
+    console.print(f"Run id: {result.run_id}")
+    console.print(f"Run directory: {result.run_dir}")
+    console.print(f"Output path: {result.output_path}")
+    console.print(f"Status: {result.payload.get('status', 'unknown')}")
+    console.print(f"Score: {result.payload.get('score', 0)}")
+    console.print(f"Available artifacts: {result.available_artifact_count}")
 
 
 def render_artifacts_summary(result: ArtifactInventoryResult) -> None:

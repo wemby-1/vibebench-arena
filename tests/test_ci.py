@@ -166,6 +166,7 @@ def test_ci_command_creates_standard_artifacts(tmp_path: Path) -> None:
     assert run_dir.joinpath("status-block.md").exists()
     assert run_dir.joinpath("trend.md").exists()
     assert run_dir.joinpath("trend.json").exists()
+    assert run_dir.joinpath("manifest.json").exists()
     assert run_dir.joinpath("gate-summary.md").exists()
     assert run_dir.joinpath("github-step-summary.md").exists()
 
@@ -192,6 +193,7 @@ def test_ci_attempts_artifacts_when_gate_fails(tmp_path: Path) -> None:
     assert run_dir.joinpath("status-block.md").exists()
     assert run_dir.joinpath("trend.md").exists()
     assert run_dir.joinpath("trend.json").exists()
+    assert run_dir.joinpath("manifest.json").exists()
     assert run_dir.joinpath("github-step-summary.md").exists()
 
 
@@ -215,6 +217,7 @@ def test_skip_flags_skip_artifact_generation(tmp_path: Path) -> None:
             "--skip-badge",
             "--skip-status-block",
             "--skip-trend",
+            "--skip-manifest",
             "--skip-gh-summary",
         ],
     )
@@ -230,6 +233,7 @@ def test_skip_flags_skip_artifact_generation(tmp_path: Path) -> None:
     assert not run_dir.joinpath("status-block.md").exists()
     assert not run_dir.joinpath("trend.md").exists()
     assert not run_dir.joinpath("trend.json").exists()
+    assert not run_dir.joinpath("manifest.json").exists()
     assert not run_dir.joinpath("github-step-summary.md").exists()
     assert "skipped" in result.output
 
@@ -399,6 +403,7 @@ def test_ci_runs_export_and_badge_before_bundle_and_summary(tmp_path: Path) -> N
     assert run_dir.joinpath("status-block.md").exists()
     assert run_dir.joinpath("trend.md").exists()
     assert run_dir.joinpath("trend.json").exists()
+    assert run_dir.joinpath("manifest.json").exists()
     names = zip_names(run_dir / "vibebench-bundle.zip")
     assert "export.json" in names
     assert "badge.json" in names
@@ -406,6 +411,7 @@ def test_ci_runs_export_and_badge_before_bundle_and_summary(tmp_path: Path) -> N
     assert "status-block.md" in names
     assert "trend.md" in names
     assert "trend.json" in names
+    assert "manifest.json" in names
     summary = run_dir.joinpath("github-step-summary.md").read_text(encoding="utf-8")
     assert "`export.json` (available)" in summary
     assert "`badge.json` (available)" in summary
@@ -413,6 +419,7 @@ def test_ci_runs_export_and_badge_before_bundle_and_summary(tmp_path: Path) -> N
     assert "`status-block.md` (available)" in summary
     assert "`trend.md` (available)" in summary
     assert "`trend.json` (available)" in summary
+    assert "`manifest.json` (available)" in summary
 
 
 def test_ci_skip_export_skips_export_generation(tmp_path: Path) -> None:
@@ -593,3 +600,25 @@ def test_active_github_workflow_uses_ci_command() -> None:
     assert "python -m pytest -q" in workflow
     assert "python -m vibebench ci" in workflow
     assert "vibebench check" not in workflow
+
+
+def test_ci_skip_manifest_skips_manifest_generation(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    run_dir = write_run(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--skip-manifest",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert not run_dir.joinpath("manifest.json").exists()
+    assert "manifest" in result.output
+    assert "skipped" in result.output

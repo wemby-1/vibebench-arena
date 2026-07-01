@@ -5,7 +5,7 @@ VibeBench can run inside GitHub Actions without using the GitHub API or requirin
 
 ## VibeBench Dogfoods Itself
 
-This repository's active CI runs direct `ruff` and `pytest` checks first, then runs VibeBench itself. CI now runs `python -m vibebench ci`, which enforces the policy in `.vibebench/config.yaml`; if check or gate fails, the job fails. The command still attempts to generate the HTML report, PR-ready Markdown comment, human-readable explanation, machine-readable export, badge artifacts, README status block, trend summaries, zip artifact bundle, GitHub annotations, GitHub step summary, and uploads `.vibebench/runs` as artifacts.
+This repository's active CI runs direct `ruff` and `pytest` checks first, then runs VibeBench itself. CI now runs `python -m vibebench ci`, which enforces the policy in `.vibebench/config.yaml`; if check or gate fails, the job fails. The command still attempts to generate the HTML report, PR-ready Markdown comment, human-readable explanation, machine-readable export, badge artifacts, README status block, trend summaries, machine-readable manifest, zip artifact bundle, GitHub annotations, GitHub step summary, and uploads `.vibebench/runs` as artifacts.
 
 ## Generate The Workflow
 
@@ -31,7 +31,7 @@ The example workflow:
 - runs direct Ruff and pytest checks
 - runs `python -m vibebench ci` as the recommended VibeBench CI entrypoint
 - uses check and gate as the final VibeBench pass/fail decision
-- still attempts report, PR comment, explanation, export, badge, status block, trend summaries, GitHub annotations, bundle, and GitHub summary artifacts on failure
+- still attempts report, PR comment, explanation, export, badge, status block, trend summaries, manifest, GitHub annotations, bundle, and GitHub summary artifacts on failure
 - uploads `.vibebench/runs` as a workflow artifact
 
 ## Add A Quality Gate
@@ -71,6 +71,7 @@ That directory can include:
 - `status-block.md`
 - `trend.md`
 - `trend.json`
+- `manifest.json`
 - `gate-summary.md`
 - GitHub Actions annotations in the job log when findings or command failures exist
 - `github-step-summary.md` when not running inside GitHub step summary mode

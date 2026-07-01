@@ -337,3 +337,23 @@ def test_latest_json_output_remains_full_inventory(tmp_path: Path) -> None:
     assert "paths" not in payload
     assert any(item["available"] is False for item in payload["artifacts"])
 
+
+
+def test_latest_manifest_path_only(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260701_110000")
+    run_dir.joinpath("manifest.json").write_text("{}\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "manifest",
+            "--path-only",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert result.output.strip() == ".vibebench/runs/20260701_110000/manifest.json"

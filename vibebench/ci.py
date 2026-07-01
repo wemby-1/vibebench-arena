@@ -15,6 +15,7 @@ from vibebench.explain import generate_explanation
 from vibebench.export import export_json_for_ci
 from vibebench.gate import run_gate
 from vibebench.gh_summary import generate_github_summary
+from vibebench.manifest import generate_manifest
 from vibebench.paths import config_file
 from vibebench.pr_comment import generate_pr_comment
 from vibebench.report import ReportError, generate_report, load_metrics
@@ -57,6 +58,7 @@ def run_ci_pipeline(
     skip_badge: bool = False,
     skip_status_block: bool = False,
     skip_trend: bool = False,
+    skip_manifest: bool = False,
     skip_annotate: bool = False,
     skip_gh_summary: bool = False,
     bundle_include_report_assets: bool = False,
@@ -97,6 +99,7 @@ def run_ci_pipeline(
             skip_badge=skip_badge,
             skip_status_block=skip_status_block,
             skip_trend=skip_trend,
+            skip_manifest=skip_manifest,
             skip_annotate=skip_annotate,
             skip_gh_summary=skip_gh_summary,
         )
@@ -145,6 +148,11 @@ def run_ci_pipeline(
             lambda: generated_trend_path(root, selected_run_dir),
         ),
         (
+            "manifest",
+            skip_manifest,
+            lambda: generate_manifest(root, selected_run_dir).output_path,
+        ),
+        (
             "annotate",
             skip_annotate,
             lambda: generated_annotations(root, selected_run_dir),
@@ -186,6 +194,7 @@ def append_unavailable_artifact_steps(
     skip_badge: bool,
     skip_status_block: bool,
     skip_trend: bool,
+    skip_manifest: bool,
     skip_annotate: bool,
     skip_gh_summary: bool,
 ) -> None:
@@ -198,6 +207,7 @@ def append_unavailable_artifact_steps(
         ("badge", skip_badge),
         ("status-block", skip_status_block),
         ("trend", skip_trend),
+        ("manifest", skip_manifest),
         ("bundle", skip_bundle),
         ("annotate", skip_annotate),
         ("gh-summary", skip_gh_summary),

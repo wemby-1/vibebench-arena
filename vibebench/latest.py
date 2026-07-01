@@ -19,6 +19,7 @@ from vibebench.report import ReportError, load_metrics
 ARTIFACT_ALIASES = {
     "metrics": Path("metrics.json"),
     "check-log": Path("check.log"),
+    "manifest": Path("manifest.json"),
     "report": Path("report") / "index.html",
     "pr-comment": Path("pr-comment.md"),
     "explain": Path("explain.md"),

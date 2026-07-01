@@ -88,6 +88,7 @@ python -m vibebench badge
 python -m vibebench badge --format markdown
 python -m vibebench badge --format url
 python -m vibebench status-block
+python -m vibebench manifest
 python -m vibebench artifacts
 python -m vibebench annotate
 python -m vibebench gh-summary
@@ -281,6 +282,8 @@ python -m vibebench compare
 ```
 
 它会解释命令失败、Git diff 风险信号、风险发现，以及下一步建议。可以配合 `--run-dir`、`--output` 或 `--no-write` 做本地审阅。
+
+`vibebench manifest` 会写入 `.vibebench/runs/<timestamp>/manifest.json`，这是面向自动化和 CI 消费者的机器可读运行索引，包含状态、分数、风险、diff 规模、风险发现数量和已知产物可用性。`vibebench ci` 默认会生成它，除非使用 `--skip-manifest`。
 
 `vibebench bundle` 会写入：
 
