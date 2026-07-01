@@ -97,7 +97,7 @@ python -m vibebench compare
 
 `vibebench init` 会创建 `.vibebench/config.yaml` 和 `.github/workflows/vibebench.yml`。已有文件默认会跳过，只有传入 `--force` 才会覆盖；`--no-workflow` 和 `--workflow-only` 可用于只生成其中一部分。
 
-`vibebench config` 会输出最终生效的 project、checks、gate 和 risk 配置。`--json` 可输出机器可读 JSON，`--validate` 只做校验，`--show-source` 会显示主要配置区域来自配置文件还是内置默认值。
+`vibebench config` 会输出最终生效的 project、checks、gate 和 risk 配置。`--json` 可输出机器可读 JSON，`--validate` 只做校验，`--check` 会执行一致性诊断，`--show-source` 会显示主要配置区域来自配置文件还是内置默认值。
 
 默认配置示例：
 
@@ -242,7 +242,7 @@ python -m vibebench gh-summary
 python -m vibebench compare
 ```
 
-`vibebench config --show` 会校验并汇总当前 `.vibebench/config.yaml`，包括项目名、配置的命令、gate 策略和 risk 策略。`python -m vibebench config --show --json` 可输出机器可读配置摘要。
+`vibebench config --show` 会校验并汇总当前 `.vibebench/config.yaml`，包括项目名、配置的命令、gate 策略和 risk 策略。`python -m vibebench config --show --json` 可输出机器可读配置摘要。`python -m vibebench config --check` 或 `python -m vibebench config --check --json` 可在完整流水线前执行配置一致性诊断。
 
 `vibebench doctor` 是轻量环境检查，会检查 Python、Git、配置有效性、配置命令是否可找到，以及 `.vibebench/runs/` 是否可写。它不会真正运行配置里的 test/lint 命令。`python -m vibebench doctor --strict` 会执行更强的发布/CI 预检，额外要求最近运行具备 manifest、bundle 和 report 等产物。加上 `--advice` 会显示简短修复建议但不会修改文件，例如 `python -m vibebench doctor --strict --advice`。可用 `python -m vibebench doctor --json`、`python -m vibebench doctor --json --strict` 或 `python -m vibebench doctor --json --strict --advice` 输出机器可读诊断结果。
 

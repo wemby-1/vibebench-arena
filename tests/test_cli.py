@@ -294,3 +294,123 @@ def test_config_validate_still_works_with_show_option_added(tmp_path: Path) -> N
 
     assert result.exit_code == 0
     assert "VibeBench config is valid" in result.output
+
+
+def test_config_check_human_output(tmp_path: Path) -> None:
+    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+
+    result = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--check"])
+
+    assert result.exit_code == 0
+    assert "VibeBench config check" in result.output
+    assert "overall" in result.output.lower()
+    assert "config_file_exists" in result.output
+    assert "command_strings" in result.output
+
+
+def test_config_check_json_output(tmp_path: Path) -> None:
+    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+
+    result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--check", "--json"],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert sorted(payload) == ["checks", "config_path", "overall_status"]
+    assert payload["config_path"] == str(config_path(tmp_path))
+    assert payload["overall_status"] == "passed"
+    assert {check["name"] for check in payload["checks"]} >= {
+        "config_file_exists",
+        "config_validates",
+        "project_name",
+        "command_groups",
+        "command_strings",
+        "gate_policy",
+        "risk_policy",
+    }
+    assert all(
+        sorted(check) == ["message", "name", "status"]
+        for check in payload["checks"]
+    )
+
+
+def test_config_check_missing_config_fails_clearly(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--check"])
+
+    assert result.exit_code == 1
+    assert "No VibeBench config found" in result.output
+
+
+def test_config_check_json_missing_config_keeps_stdout_clean(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--check", "--json"],
+    )
+
+    assert result.exit_code == 1
+    assert result.stdout == ""
+    assert "No VibeBench config found" in result.stderr
+
+
+def test_config_check_invalid_config_fails_clearly(tmp_path: Path) -> None:
+    config_path(tmp_path).parent.mkdir(parents=True)
+    config_path(tmp_path).write_text("project:\n  name: ''\n", encoding="utf-8")
+
+    result = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--check"])
+
+    assert result.exit_code == 1
+    assert "invalid" in result.output
+    assert "project.name" in result.output
+
+
+def test_config_check_detects_empty_command_string(tmp_path: Path) -> None:
+    config_path(tmp_path).parent.mkdir(parents=True)
+    config_path(tmp_path).write_text(
+        """
+project:
+  name: demo
+checks:
+  test:
+    - ""
+  lint:
+    - ruff check .
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--check", "--json"],
+    )
+
+    assert result.exit_code == 1
+    payload = json.loads(result.output)
+    assert payload["overall_status"] == "failed"
+    command_check = next(
+        check for check in payload["checks"] if check["name"] == "command_strings"
+    )
+    assert command_check["status"] == "failed"
+    assert "Empty command string" in command_check["message"]
+
+
+def test_config_check_does_not_break_validate_or_show(tmp_path: Path) -> None:
+    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+
+    validate = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--validate"],
+    )
+    show = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--show"])
+    show_json = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--show", "--json"],
+    )
+
+    assert validate.exit_code == 0
+    assert "VibeBench config is valid" in validate.output
+    assert show.exit_code == 0
+    assert "vibebench-project" in show.output
+    assert show_json.exit_code == 0
+    assert json.loads(show_json.output)["project"]["name"] == "vibebench-project"

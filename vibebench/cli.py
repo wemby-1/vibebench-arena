@@ -253,6 +253,10 @@ def config_command(
         bool,
         typer.Option("--show", help="Show the active config file summary."),
     ] = False,
+    check_config: Annotated[
+        bool,
+        typer.Option("--check", help="Run config consistency checks."),
+    ] = False,
     show_source: Annotated[
         bool,
         typer.Option("--show-source", help="Show config file/default sources."),
@@ -262,16 +266,27 @@ def config_command(
     root = project_root.resolve()
     target = config_file(root)
     try:
-        if show and not target.exists():
+        if (show or check_config) and not target.exists():
             raise ConfigError(
                 f"No VibeBench config found at {target}.\n"
                 'Run "vibebench init" to create one.'
             )
         result = load_effective_config(target)
     except ConfigError as exc:
-        output_console = err_console if show and as_json else console
+        output_console = err_console if (show or check_config) and as_json else console
         output_console.print(f"[red]{exc}[/]")
         raise typer.Exit(code=1) from exc
+
+    if check_config:
+        checks = config_consistency_checks(result)
+        payload = config_check_payload(result, checks)
+        if as_json:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            render_config_check_summary(result, checks)
+        if payload["overall_status"] == "failed":
+            raise typer.Exit(code=1)
+        return
 
     if validate_only:
         source = result.config_path if result.config_exists else "built-in defaults"
@@ -334,6 +349,120 @@ def format_config_value(value: object) -> str:
     if isinstance(value, list):
         return "\n".join(str(item) for item in value)
     return str(value)
+
+
+def config_consistency_checks(
+    result: EffectiveConfigResult,
+) -> list[dict[str, str]]:
+    """Return user-facing consistency checks for the active config file."""
+    config = result.config
+    checks: list[dict[str, str]] = [
+        {
+            "name": "config_file_exists",
+            "status": "passed" if result.config_exists else "failed",
+            "message": f"Config file found at {result.config_path}"
+            if result.config_exists
+            else f"No config file found at {result.config_path}",
+        },
+        {
+            "name": "config_validates",
+            "status": "passed",
+            "message": "Config parses and validates successfully",
+        },
+        {
+            "name": "project_name",
+            "status": "passed" if config.project.name.strip() else "failed",
+            "message": "Project name is present"
+            if config.project.name.strip()
+            else "Project name is empty",
+        },
+    ]
+
+    command_groups = config.checks.model_dump()
+    non_empty_groups = {
+        group: commands for group, commands in command_groups.items() if commands
+    }
+    checks.append(
+        {
+            "name": "command_groups",
+            "status": "passed" if non_empty_groups else "failed",
+            "message": f"{len(non_empty_groups)} command group(s) contain commands"
+            if non_empty_groups
+            else "At least one command group must contain commands",
+        }
+    )
+
+    empty_commands = [
+        group
+        for group, commands in command_groups.items()
+        for command in commands
+        if not command.strip()
+    ]
+    checks.append(
+        {
+            "name": "command_strings",
+            "status": "passed" if not empty_commands else "failed",
+            "message": "All configured command strings are non-empty"
+            if not empty_commands
+            else "Empty command string found in: " + ", ".join(empty_commands),
+        }
+    )
+
+    gate = config.gate
+    checks.append(
+        {
+            "name": "gate_policy",
+            "status": "passed",
+            "message": (
+                "Gate policy is internally consistent "
+                f"(min_score={gate.min_score}, max_risk={gate.max_risk}, "
+                f"allow_findings={gate.allow_findings})"
+            ),
+        }
+    )
+
+    risk = config.effective_risk()
+    checks.append(
+        {
+            "name": "risk_policy",
+            "status": "passed",
+            "message": (
+                "Risk policy is internally consistent "
+                f"(max_changed_files={risk.max_changed_files}, "
+                f"max_patch_lines={risk.max_patch_lines})"
+            ),
+        }
+    )
+    return checks
+
+
+def config_check_payload(
+    result: EffectiveConfigResult, checks: list[dict[str, str]]
+) -> dict[str, object]:
+    """Return stable JSON-safe config consistency output."""
+    has_errors = any(check["status"] == "failed" for check in checks)
+    return {
+        "config_path": str(result.config_path),
+        "overall_status": "failed" if has_errors else "passed",
+        "checks": checks,
+    }
+
+
+def render_config_check_summary(
+    result: EffectiveConfigResult, checks: list[dict[str, str]]
+) -> None:
+    """Render config consistency checks as a Rich table."""
+    payload = config_check_payload(result, checks)
+    console.print(f"[bold]VibeBench config check[/] ({result.config_path})")
+    console.print(f"Overall status: {payload['overall_status']}")
+    table = Table(title="Config consistency")
+    table.add_column("Check")
+    table.add_column("Status")
+    table.add_column("Message")
+    for check in checks:
+        style = "green" if check["status"] == "passed" else "red"
+        table.add_row(check["name"], f"[{style}]{check['status']}[/]", check["message"])
+    console.print(table)
 
 
 @app.command()
