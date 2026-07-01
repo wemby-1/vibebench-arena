@@ -242,7 +242,7 @@ python -m vibebench compare
 
 `vibebench history` 会显示 `.vibebench/runs/` 下最近的运行记录，包括分数、风险等级、diff 规模、风险发现数量和产物生成状态。
 
-`vibebench trend` 会按最新优先汇总最近多次运行，并判断选定窗口内的质量趋势是 `improved`、`stable` 还是 `regressed`。它会比较最新与最旧运行的分数、风险等级和风险发现数量。`--json`、`--limit N` 和 `--runs-dir PATH` 适合自动化和分析归档运行；`--write-summary` 会把 Markdown 摘要写入 `.vibebench/runs/<timestamp>/trend.md`，`--output PATH` 可指定输出位置。
+`vibebench trend` 会按最新优先汇总最近多次运行，并判断选定窗口内的质量趋势是 `improved`、`stable` 还是 `regressed`。它会比较最新与最旧运行的分数、风险等级和风险发现数量。`--json`、`--limit N` 和 `--runs-dir PATH` 适合自动化和分析归档运行；`--write-summary` 会把面向阅读的 Markdown 摘要写入 `.vibebench/runs/<timestamp>/trend.md`，`--write-json` 会写入机器可读的 `trend.json`；`--output PATH` 和 `--json-output PATH` 可分别指定 Markdown 和 JSON 输出位置。
 
 `vibebench baseline --set latest` 会把某次运行保存为 `.vibebench/baseline.json` 中的 baseline。`vibebench compare --baseline` 会用这个 baseline 和最新运行对比。
 
@@ -305,7 +305,7 @@ python -m vibebench compare
 
 ## 一键 CI 流水线
 
-`vibebench ci` 是推荐的 CI 入口。它会按顺序运行 check、gate、report、PR comment、explain、export、badge、status block、trend summary、GitHub annotations、bundle 和 GitHub summary。最终通过/失败由 check 和 gate 决定；即使门禁失败，后续产物步骤也会尽量继续生成，方便排查。
+`vibebench ci` 是推荐的 CI 入口。它会按顺序运行 check、gate、report、PR comment、explain、export、badge、status block、trend summaries、GitHub annotations、bundle 和 GitHub summary。最终通过/失败由 check 和 gate 决定；即使门禁失败，后续产物步骤也会尽量继续生成，方便排查。
 
 常用选项包括 `--skip-report`、`--skip-pr-comment`、`--skip-explain`、`--skip-export`、`--skip-badge`、`--skip-status-block`、`--skip-trend`、`--skip-bundle`、`--skip-annotate`、`--skip-gh-summary`、`--bundle-include-report-assets` 和 `--bundle-strict`。`--min-score`、`--max-risk`、`--allow-findings`、`--no-require-status-passed` 会传递给 gate。使用 `--run-dir .vibebench/runs/<run-id>` 可以针对已有运行生成产物并执行门禁，不再创建新的 check run。
 
@@ -342,7 +342,7 @@ python -m vibebench compare
 
 `vibebench annotate` 会把可见的风险发现和命令失败输出成 GitHub Actions annotations。`vibebench gh-summary` 会在 `GITHUB_STEP_SUMMARY` 存在时写入 GitHub Actions step summary。当前它不会通过 GitHub API 自动发布 PR comment。
 
-这个仓库已经在自己的 CI 里 dogfood VibeBench：直接运行 Ruff 和 pytest 后，CI 会继续运行 `vibebench ci`，按 `.vibebench/config.yaml` 中的策略执行明确门禁，并生成 report/comment/explanation/export/badge/status-block/trend，输出 annotations，并打包运行产物 和 summary，并上传 `.vibebench/runs` artifacts。`vibebench init` 可以生成 `.github/workflows/vibebench.yml` starter workflow；可参考 [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml)，更多说明见 [docs/github-actions.md](docs/github-actions.md)。
+这个仓库已经在自己的 CI 里 dogfood VibeBench：直接运行 Ruff 和 pytest 后，CI 会继续运行 `vibebench ci`，按 `.vibebench/config.yaml` 中的策略执行明确门禁，并生成 report/comment/explanation/export/badge/status-block/trend，包含 `trend.md` 和 `trend.json`，输出 annotations，打包运行产物，写入 summary，并上传 `.vibebench/runs` artifacts。`vibebench init` 可以生成 `.github/workflows/vibebench.yml` starter workflow；可参考 [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml)，更多说明见 [docs/github-actions.md](docs/github-actions.md)。
 
 ## 试运行风险检测 Demo
 

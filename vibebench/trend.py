@@ -14,6 +14,7 @@ from vibebench.report import ReportError
 
 TrendVerdict = Literal["improved", "stable", "regressed"]
 TREND_SUMMARY_FILENAME = "trend.md"
+TREND_JSON_FILENAME = "trend.json"
 
 
 class TrendRun(BaseModel):
@@ -257,6 +258,28 @@ def write_trend_summary(
     selected_output = selected_output.resolve()
     validate_output_path(selected_output)
     selected_output.write_text(render_markdown(result), encoding="utf-8")
+    return selected_output
+
+
+def write_trend_json(
+    result: TrendResult,
+    output_path: Path | None = None,
+) -> Path:
+    """Write a machine-readable trend JSON artifact."""
+    selected_output = output_path
+    if selected_output is None:
+        if not result.runs:
+            raise ReportError(
+                "No valid VibeBench runs found. Provide --json-output to write "
+                "trend JSON to an explicit path."
+            )
+        selected_output = result.runs[0].run_dir / TREND_JSON_FILENAME
+    selected_output = selected_output.resolve()
+    validate_output_path(selected_output)
+    selected_output.write_text(
+        json.dumps(trend_json(result), indent=2) + "\n",
+        encoding="utf-8",
+    )
     return selected_output
 
 

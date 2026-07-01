@@ -140,6 +140,7 @@ def artifacts_section(run_dir: Path) -> str:
         run_dir / "badge.md",
         run_dir / "status-block.md",
         run_dir / "trend.md",
+        run_dir / "trend.json",
         run_dir / "gate-summary.md",
     ]
     lines = []

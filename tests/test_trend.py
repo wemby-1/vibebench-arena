@@ -362,3 +362,116 @@ def test_write_summary_invalid_output_parent_fails(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "Output parent directory does not exist" in result.output
+
+
+def test_write_json_writes_latest_run_trend_json(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260630_110000", metrics(score=90))
+    latest = write_run(tmp_path, "20260630_120000", metrics(score=95))
+
+    result = runner.invoke(
+        app,
+        ["trend", "--project-root", str(tmp_path), "--write-json"],
+    )
+
+    output = latest / "trend.json"
+    assert result.exit_code == 0
+    assert output.exists()
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload == parse_json_output(
+        runner.invoke(app, ["trend", "--project-root", str(tmp_path), "--json"]).output
+    )
+    assert payload["runs"][0]["run_id"] == "20260630_120000"
+    assert "Trend JSON:" in result.output
+
+
+def test_write_json_output_path_is_used(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260630_120000", metrics(score=88))
+    output = tmp_path / "trend-data.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "trend",
+            "--project-root",
+            str(tmp_path),
+            "--write-json",
+            "--json-output",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert output.exists()
+    assert json.loads(output.read_text(encoding="utf-8"))["valid_run_count"] == 1
+
+
+def test_json_can_write_json_without_contaminating_stdout(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260630_120000", metrics(score=88))
+
+    result = runner.invoke(
+        app,
+        ["trend", "--project-root", str(tmp_path), "--json", "--write-json"],
+    )
+
+    assert result.exit_code == 0
+    assert run_dir.joinpath("trend.json").exists()
+    assert parse_json_output(result.output)["valid_run_count"] == 1
+
+
+def test_write_summary_and_write_json_write_both_artifacts(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260630_120000", metrics(score=88))
+
+    result = runner.invoke(
+        app,
+        [
+            "trend",
+            "--project-root",
+            str(tmp_path),
+            "--write-summary",
+            "--write-json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert run_dir.joinpath("trend.md").exists()
+    assert run_dir.joinpath("trend.json").exists()
+
+
+def test_limit_affects_written_trend_json(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260630_100000", metrics(score=70))
+    write_run(tmp_path, "20260630_110000", metrics(score=80))
+    latest = write_run(tmp_path, "20260630_120000", metrics(score=90))
+
+    result = runner.invoke(
+        app,
+        [
+            "trend",
+            "--project-root",
+            str(tmp_path),
+            "--limit",
+            "2",
+            "--write-json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(latest.joinpath("trend.json").read_text(encoding="utf-8"))
+    assert payload["limit"] == 2
+    assert payload["valid_run_count"] == 2
+    assert [run["run_id"] for run in payload["runs"]] == [
+        "20260630_120000",
+        "20260630_110000",
+    ]
+
+
+def test_write_json_without_runs_fails_clearly(tmp_path: Path) -> None:
+    (tmp_path / ".vibebench" / "runs").mkdir(parents=True)
+
+    result = runner.invoke(
+        app,
+        ["trend", "--project-root", str(tmp_path), "--write-json"],
+    )
+
+    assert result.exit_code == 1
+    assert "Provide --json-output" in result.output
+

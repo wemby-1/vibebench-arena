@@ -20,7 +20,7 @@ from vibebench.pr_comment import generate_pr_comment
 from vibebench.report import ReportError, generate_report, load_metrics
 from vibebench.runner import run_checks
 from vibebench.status_block import generate_status_block
-from vibebench.trend import analyze_trend, write_trend_summary
+from vibebench.trend import analyze_trend, write_trend_json, write_trend_summary
 
 StepStatus = Literal["passed", "failed", "skipped"]
 
@@ -297,10 +297,13 @@ def generated_explanation_path(project_root: Path, run_dir: Path | None) -> Path
 
 
 def generated_trend_path(project_root: Path, run_dir: Path | None) -> Path | None:
-    """Generate trend summary and return its path."""
+    """Generate trend summary artifacts and return the Markdown path."""
     result = analyze_trend(project_root)
-    output_path = run_dir / "trend.md" if run_dir is not None else None
-    return write_trend_summary(result, output_path)
+    markdown_output = run_dir / "trend.md" if run_dir is not None else None
+    json_output = run_dir / "trend.json" if run_dir is not None else None
+    markdown_path = write_trend_summary(result, markdown_output)
+    write_trend_json(result, json_output)
+    return markdown_path
 
 
 def validate_explicit_run(run_dir: Path) -> None:

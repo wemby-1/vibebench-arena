@@ -51,7 +51,13 @@ from vibebench.status_block import (
     generate_status_block,
     update_readme_status_block,
 )
-from vibebench.trend import TrendResult, analyze_trend, trend_json, write_trend_summary
+from vibebench.trend import (
+    TrendResult,
+    analyze_trend,
+    trend_json,
+    write_trend_json,
+    write_trend_summary,
+)
 
 app = typer.Typer(
     help="Codex-first quality gate for vibe coding projects.",
@@ -668,6 +674,14 @@ def trend_command(
         Path | None,
         typer.Option("--output", help="Write trend summary Markdown to this path."),
     ] = None,
+    write_json: Annotated[
+        bool,
+        typer.Option("--write-json", help="Write trend.json machine-readable data."),
+    ] = False,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write trend JSON to this path."),
+    ] = None,
 ) -> None:
     """Show quality trend across recent VibeBench runs."""
     root = project_root.resolve()
@@ -679,11 +693,19 @@ def trend_command(
     selected_output = None
     if output:
         selected_output = (output if output.is_absolute() else root / output).resolve()
+    selected_json_output = None
+    if json_output:
+        selected_json_output = (
+            json_output if json_output.is_absolute() else root / json_output
+        ).resolve()
 
     try:
         result = analyze_trend(root, selected_runs_dir, limit=limit)
         summary_path = (
             write_trend_summary(result, selected_output) if write_summary else None
+        )
+        json_path = (
+            write_trend_json(result, selected_json_output) if write_json else None
         )
     except ReportError as exc:
         console.print(f"[red]{exc}[/]")
@@ -696,6 +718,8 @@ def trend_command(
     render_trend_summary(result)
     if summary_path is not None:
         console.print(f"Trend summary: {summary_path}")
+    if json_path is not None:
+        console.print(f"Trend JSON: {json_path}")
 
 @app.command("artifacts")
 def artifacts_command(
