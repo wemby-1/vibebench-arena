@@ -12,6 +12,7 @@ from vibebench import __version__
 from vibebench.annotate import AnnotationResult, generate_annotations
 from vibebench.artifacts import (
     ArtifactInventoryResult,
+    ArtifactItem,
     collect_artifact_inventory,
     inventory_json,
 )
@@ -35,6 +36,12 @@ from vibebench.export import ExportResult, export_run
 from vibebench.gate import GateResult, run_gate
 from vibebench.gh_summary import generate_github_summary
 from vibebench.history import HistoryResult, HistoryRun, get_history
+from vibebench.latest import (
+    LatestRunResult,
+    get_latest_run,
+    latest_json,
+    select_artifact,
+)
 from vibebench.paths import config_file
 from vibebench.pr_comment import generate_pr_comment
 from vibebench.report import (
@@ -721,6 +728,60 @@ def trend_command(
     if json_path is not None:
         console.print(f"Trend JSON: {json_path}")
 
+@app.command("latest")
+def latest_command(
+    project_root: ProjectRootOption = Path("."),
+    runs_dir: Annotated[
+        Path | None,
+        typer.Option("--runs-dir", help="Directory containing VibeBench run dirs."),
+    ] = None,
+    artifact: Annotated[
+        str | None,
+        typer.Option("--artifact", help="Show one known artifact by alias."),
+    ] = None,
+    path_only: Annotated[
+        bool,
+        typer.Option("--path-only", help="Print only the selected artifact path."),
+    ] = False,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print latest run details as JSON."),
+    ] = False,
+) -> None:
+    """Locate the latest valid VibeBench run and artifacts."""
+    root = project_root.resolve()
+    selected_runs_dir = None
+    if runs_dir:
+        selected_runs_dir = (
+            runs_dir if runs_dir.is_absolute() else root / runs_dir
+        ).resolve()
+
+    if path_only and artifact is None:
+        console.print("[red]--path-only requires --artifact NAME.[/]")
+        raise typer.Exit(code=1)
+
+    try:
+        result = get_latest_run(root, selected_runs_dir)
+        selected_artifact = select_artifact(result, artifact) if artifact else None
+        if path_only:
+            if selected_artifact is None:
+                raise ReportError("--path-only requires --artifact NAME.")
+            if not selected_artifact.available:
+                raise ReportError(
+                    f"Artifact '{artifact}' is unavailable for run {result.run_id}."
+                )
+            print(selected_artifact.display_path.as_posix())
+            return
+    except ReportError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if as_json:
+        print(json.dumps(latest_json(result, selected_artifact), indent=2))
+        return
+
+    render_latest_summary(result, selected_artifact)
+
 @app.command("artifacts")
 def artifacts_command(
     project_root: ProjectRootOption = Path("."),
@@ -1349,6 +1410,43 @@ def optional_delta(value: int | None) -> str:
     if value > 0:
         return f"+{value}"
     return str(value)
+
+
+def render_latest_summary(
+    result: LatestRunResult,
+    selected_artifact: ArtifactItem | None,
+) -> None:
+    """Render latest run details."""
+    console.print("\n[bold]VibeBench latest[/]")
+    console.print(f"Run id: {result.run_id}")
+    console.print(f"Run directory: {result.run_dir}")
+    console.print(f"Status: {result.status}")
+    console.print(f"VibeScore: {result.score}")
+    console.print(f"Risk: {result.risk}")
+    if result.created_at:
+        console.print(f"Created at: {result.created_at}")
+    if result.skipped_runs:
+        console.print(f"Skipped corrupt runs: {len(result.skipped_runs)}")
+
+    table = Table(title="Artifacts")
+    table.add_column("Artifact")
+    table.add_column("Path")
+    table.add_column("Availability")
+    table.add_column("Size")
+    artifacts = (
+        [selected_artifact]
+        if selected_artifact is not None
+        else result.inventory.artifacts
+    )
+    for item in artifacts:
+        availability = "available" if item.available else "missing"
+        size = (
+            artifact_size_text(item.size_bytes)
+            if item.size_bytes is not None
+            else ""
+        )
+        table.add_row(item.name, item.display_path.as_posix(), availability, size)
+    console.print(table)
 
 
 def render_artifacts_summary(result: ArtifactInventoryResult) -> None:

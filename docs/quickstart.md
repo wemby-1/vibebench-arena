@@ -48,8 +48,13 @@ python -m vibebench doctor
 
 ```bash
 python -m vibebench history
+python -m vibebench latest
+python -m vibebench latest --json
+python -m vibebench latest --artifact report --path-only
 python -m vibebench trend
 ```
+
+`vibebench latest` prints the newest valid run and artifact availability. Use `--artifact NAME` to focus on one artifact, or `--path-only` when a script needs only an available path.
 
 By default history and trend use the 10 newest valid runs with `metrics.json`. You can change the limit, inspect another runs directory, export trend data as JSON, write `.vibebench/runs/<timestamp>/trend.md`, or persist machine-readable `.vibebench/runs/<timestamp>/trend.json`:
 
