@@ -263,3 +263,88 @@ def test_doctor_json_non_strict_marks_strict_false(tmp_path: Path) -> None:
     payload = json.loads(result.output)
     assert payload["strict"] is False
     assert all(not check["name"].startswith("strict_") for check in payload["checks"])
+
+
+def test_doctor_advice_human_output_for_missing_config(tmp_path: Path) -> None:
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["doctor", "--project-root", str(tmp_path), "--advice"],
+    )
+
+    assert result.exit_code == 1
+    assert "Advice" in result.output
+    assert "python -m vibebench init" in result.output
+
+
+def test_doctor_json_advice_is_valid_json(tmp_path: Path) -> None:
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["doctor", "--project-root", str(tmp_path), "--json", "--advice"],
+    )
+
+    assert result.exit_code == 1
+    payload = json.loads(result.output)
+    assert payload["advice"] is True
+    config = next(check for check in payload["checks"] if check["name"] == "config")
+    assert "advice" in config
+    assert "python -m vibebench init" in config["advice"]
+    assert "VibeBench Doctor" not in result.output
+
+
+def test_doctor_strict_advice_includes_strict_recommendation(tmp_path: Path) -> None:
+    init_git_repo(tmp_path)
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["doctor", "--project-root", str(tmp_path), "--strict", "--advice"],
+    )
+
+    assert result.exit_code == 1
+    assert "strict_latest_run" in result.output
+    assert "python -m vibebench check" in result.output
+
+
+def test_doctor_json_strict_advice_flags(tmp_path: Path) -> None:
+    init_git_repo(tmp_path)
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "doctor",
+            "--project-root",
+            str(tmp_path),
+            "--json",
+            "--strict",
+            "--advice",
+        ],
+    )
+
+    assert result.exit_code == 1
+    payload = json.loads(result.output)
+    assert payload["strict"] is True
+    assert payload["advice"] is True
+    latest = next(
+        check for check in payload["checks"] if check["name"] == "strict_latest_run"
+    )
+    assert latest["advice"] == "Run `python -m vibebench check`."
+
+
+def test_doctor_advice_does_not_change_exit_code(tmp_path: Path) -> None:
+    init_git_repo(tmp_path)
+    write_config(tmp_path)
+
+    plain = runner.invoke(app, ["doctor", "--project-root", str(tmp_path)])
+    advised = runner.invoke(
+        app,
+        ["doctor", "--project-root", str(tmp_path), "--advice"],
+    )
+
+    assert plain.exit_code == 0
+    assert advised.exit_code == 0
+    assert "Advice" in advised.output

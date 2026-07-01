@@ -1143,9 +1143,13 @@ def doctor(
         bool,
         typer.Option("--strict", help="Run stricter release/CI preflight checks."),
     ] = False,
+    advice: Annotated[
+        bool,
+        typer.Option("--advice", help="Show advice for failed or warning checks."),
+    ] = False,
 ) -> None:
     """Diagnose whether this project is ready to run VibeBench."""
-    result = run_doctor(project_root, strict=strict)
+    result = run_doctor(project_root, strict=strict, advice=advice)
     if as_json:
         print(json.dumps(doctor_json_payload(result), indent=2, sort_keys=True))
     else:
@@ -1678,14 +1682,25 @@ def render_doctor_summary(result: DoctorResult) -> None:
     table.add_column("Check")
     table.add_column("Status")
     table.add_column("Message")
+    if result.advice:
+        table.add_column("Advice")
     status_style = {"passed": "green", "warning": "yellow", "failed": "red"}
     for check in result.checks:
-        table.add_row(
+        row = [
             check.category,
             f"[{status_style[check.status]}]{check.status}[/]",
             check.message,
-        )
+        ]
+        if result.advice:
+            row.append(check.advice or "")
+        table.add_row(*row)
     console.print(table)
+    if result.advice:
+        advice_items = [check for check in result.checks if check.advice]
+        if advice_items:
+            console.print("[bold]Advice[/]")
+            for check in advice_items:
+                console.print(f"- {check.category}: {check.advice}")
 
 
 

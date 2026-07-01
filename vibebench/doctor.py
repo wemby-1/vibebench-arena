@@ -29,6 +29,7 @@ class DoctorCheck(BaseModel):
     category: str
     status: DoctorStatus
     message: str
+    advice: str | None = None
 
 
 class DoctorResult(BaseModel):
@@ -40,9 +41,15 @@ class DoctorResult(BaseModel):
     checks: list[DoctorCheck]
     overall_status: DoctorStatus
     strict: bool = False
+    advice: bool = False
 
 
-def run_doctor(project_root: Path, *, strict: bool = False) -> DoctorResult:
+def run_doctor(
+    project_root: Path,
+    *,
+    strict: bool = False,
+    advice: bool = False,
+) -> DoctorResult:
     """Run readiness diagnostics without executing configured checks."""
     root = project_root.resolve()
     checks: list[DoctorCheck] = [
@@ -60,6 +67,9 @@ def run_doctor(project_root: Path, *, strict: bool = False) -> DoctorResult:
         if strict:
             checks.extend(strict_checks(root))
 
+    if advice:
+        checks = [with_advice(check) for check in checks]
+
     overall_status: DoctorStatus = (
         "failed" if any(check.status == "failed" for check in checks) else "passed"
     )
@@ -68,6 +78,7 @@ def run_doctor(project_root: Path, *, strict: bool = False) -> DoctorResult:
         checks=checks,
         overall_status=overall_status,
         strict=strict,
+        advice=advice,
     )
 
 
@@ -76,16 +87,72 @@ def doctor_json_payload(result: DoctorResult) -> dict[str, object]:
     return {
         "overall_status": result.overall_status,
         "strict": result.strict,
+        "advice": result.advice,
         "project_root": str(result.project_root),
         "checks": [
-            {
-                "name": check.category,
-                "status": check.status,
-                "message": check.message,
-            }
+            doctor_check_payload(check, include_advice=result.advice)
             for check in result.checks
         ],
     }
+
+
+def doctor_check_payload(
+    check: DoctorCheck,
+    *,
+    include_advice: bool,
+) -> dict[str, object]:
+    """Return a JSON-safe doctor check payload."""
+    payload: dict[str, object] = {
+        "name": check.category,
+        "status": check.status,
+        "message": check.message,
+    }
+    if include_advice and check.advice:
+        payload["advice"] = check.advice
+    return payload
+
+
+def with_advice(check: DoctorCheck) -> DoctorCheck:
+    """Attach concise advice to checks that need user attention."""
+    if check.status == "passed":
+        return check
+    advice = advice_for_check(check)
+    if not advice:
+        return check
+    return check.model_copy(update={"advice": advice})
+
+
+def advice_for_check(check: DoctorCheck) -> str | None:
+    """Return actionable advice for a failed or warning check."""
+    advice_by_category = {
+        "python": "Use Python 3.11 or newer.",
+        "project_root": "Run VibeBench from an existing project directory.",
+        "git": "Run inside a Git repository or initialize one with `git init`.",
+        "config": (
+            "Run `python -m vibebench init` or create `.vibebench/config.yaml`. "
+            "Use `python -m vibebench config --validate` for invalid config."
+        ),
+        "configured_commands": (
+            "Install missing tools or update `checks.test` and `checks.lint` "
+            "in `.vibebench/config.yaml`."
+        ),
+        "runs_directory": "Ensure `.vibebench/runs/` is writable.",
+        "strict_ci_workflow": (
+            "Run `python -m vibebench init` or add `.github/workflows/ci.yml`."
+        ),
+        "strict_config": (
+            "Run `python -m vibebench init` or `python -m vibebench config --validate`."
+        ),
+        "strict_runs_directory": "Run `python -m vibebench check`.",
+        "strict_latest_run": "Run `python -m vibebench check`.",
+        "strict_metrics": "Run `python -m vibebench check`.",
+        "strict_manifest": "Run `python -m vibebench manifest`.",
+        "strict_bundle": "Run `python -m vibebench bundle`.",
+        "strict_report": "Run `python -m vibebench report`.",
+    }
+    return advice_by_category.get(check.category)
+
+
 
 
 def check_python_version() -> DoctorCheck:
