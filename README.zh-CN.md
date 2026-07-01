@@ -71,6 +71,7 @@ python -m vibebench config
 python -m vibebench doctor
 python -m vibebench history
 python -m vibebench latest
+python -m vibebench latest --all-paths
 python -m vibebench latest --artifact report --path-only
 python -m vibebench trend
 python -m vibebench baseline --set latest
@@ -244,7 +245,7 @@ python -m vibebench compare
 
 `vibebench history` 会显示 `.vibebench/runs/` 下最近的运行记录，包括分数、风险等级、diff 规模、风险发现数量和产物生成状态。
 
-`vibebench latest` 会定位最新的有效运行及其已知产物。`--json` 适合自动化，`--artifact NAME` 可查看单个产物，`--path-only` 配合 `--artifact` 可只输出可用产物路径，方便脚本使用。
+`vibebench latest` 会定位最新的有效运行及其已知产物。`--json` 适合自动化，`--all-paths` 可一次输出所有可用产物路径，方便脚本、本地排查和查看下载后的 CI artifacts；`--artifact NAME` 可查看单个产物，`--path-only` 配合 `--artifact` 可只输出一个可用产物路径。
 
 `vibebench trend` 会按最新优先汇总最近多次运行，并判断选定窗口内的质量趋势是 `improved`、`stable` 还是 `regressed`。它会比较最新与最旧运行的分数、风险等级和风险发现数量。`--json`、`--limit N` 和 `--runs-dir PATH` 适合自动化和分析归档运行；`--write-summary` 会把面向阅读的 Markdown 摘要写入 `.vibebench/runs/<timestamp>/trend.md`，`--write-json` 会写入机器可读的 `trend.json`；`--output PATH` 和 `--json-output PATH` 可分别指定 Markdown 和 JSON 输出位置。
 

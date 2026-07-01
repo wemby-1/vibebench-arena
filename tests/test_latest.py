@@ -220,3 +220,120 @@ def test_latest_path_only_fails_when_artifact_unavailable(tmp_path: Path) -> Non
 
     assert result.exit_code == 1
     assert "unavailable" in result.output
+
+
+def test_latest_all_paths_prints_only_available_artifact_paths(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260701_110000")
+    run_dir.joinpath("check.log").write_text("log\n", encoding="utf-8")
+    report_dir = run_dir / "report"
+    report_dir.mkdir()
+    report_dir.joinpath("index.html").write_text("<html></html>\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["latest", "--project-root", str(tmp_path), "--all-paths"],
+    )
+
+    assert result.exit_code == 0
+    lines = result.output.strip().splitlines()
+    assert "metrics: .vibebench/runs/20260701_110000/metrics.json" in lines
+    assert "check-log: .vibebench/runs/20260701_110000/check.log" in lines
+    assert "report: .vibebench/runs/20260701_110000/report/index.html" in lines
+
+
+def test_latest_all_paths_omits_unavailable_artifacts(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260701_110000")
+
+    result = runner.invoke(
+        app,
+        ["latest", "--project-root", str(tmp_path), "--all-paths"],
+    )
+
+    assert result.exit_code == 0
+    assert "metrics:" in result.output
+    assert "bundle:" not in result.output
+    assert "report:" not in result.output
+
+
+def test_latest_all_paths_json_output_shape(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260701_110000")
+    run_dir.joinpath("check.log").write_text("log\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["latest", "--project-root", str(tmp_path), "--all-paths", "--json"],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["run_id"] == "20260701_110000"
+    paths = {item["name"]: item for item in payload["paths"]}
+    assert paths["metrics"]["path"] == ".vibebench/runs/20260701_110000/metrics.json"
+    assert paths["check-log"]["size_bytes"] == 4
+    assert "bundle" not in paths
+
+
+def test_latest_all_paths_rejects_artifact(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260701_110000")
+
+    result = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--all-paths",
+            "--artifact",
+            "metrics",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "--all-paths cannot be combined with --artifact" in result.output
+
+
+def test_latest_all_paths_rejects_path_only(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260701_110000")
+
+    result = runner.invoke(
+        app,
+        ["latest", "--project-root", str(tmp_path), "--all-paths", "--path-only"],
+    )
+
+    assert result.exit_code == 1
+    assert "--all-paths cannot be combined with --path-only" in result.output
+
+
+def test_latest_artifact_path_only_still_works_with_all_paths_added(
+    tmp_path: Path,
+) -> None:
+    run_dir = write_run(tmp_path, "20260701_110000")
+    run_dir.joinpath("check.log").write_text("log\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "check-log",
+            "--path-only",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert result.output.strip() == ".vibebench/runs/20260701_110000/check.log"
+
+
+def test_latest_json_output_remains_full_inventory(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260701_110000")
+
+    result = runner.invoke(app, ["latest", "--project-root", str(tmp_path), "--json"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert "artifacts" in payload
+    assert "paths" not in payload
+    assert any(item["available"] is False for item in payload["artifacts"])
+

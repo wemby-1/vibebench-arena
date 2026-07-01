@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- `vibebench latest --all-paths` for printing every available artifact path from the newest valid run.
 - `vibebench latest` for locating the newest valid run and key artifact paths.
 - `vibebench trend` for summarizing recent run quality movement across scores, risks, and findings, with optional `trend.md` and `trend.json` artifact output.
 - `vibebench artifacts` for listing known run artifacts, availability, and file sizes.

@@ -76,6 +76,7 @@ python -m vibebench config
 python -m vibebench doctor
 python -m vibebench history
 python -m vibebench latest
+python -m vibebench latest --all-paths
 python -m vibebench latest --artifact report --path-only
 python -m vibebench trend
 python -m vibebench baseline --set latest
@@ -249,7 +250,7 @@ python -m vibebench compare
 
 `vibebench history` shows recent runs from `.vibebench/runs/`, including score, risk level, diff size, finding count, and generated artifact status.
 
-`vibebench latest` locates the newest valid run and its known artifacts. Use `--json` for automation, `--artifact NAME` to inspect one artifact, and `--path-only` with `--artifact` for scripts that only need an available artifact path.
+`vibebench latest` locates the newest valid run and its known artifacts. Use `--json` for automation, `--all-paths` to print every available artifact path for scripts or local debugging, `--artifact NAME` to inspect one artifact, and `--path-only` with `--artifact` for scripts that only need one available artifact path.
 
 `vibebench trend` summarizes recent runs newest first and reports whether quality is `improved`, `stable`, or `regressed` across the selected window. The verdict compares latest vs oldest score, risk level, and finding count. Use `--json`, `--limit N`, or `--runs-dir PATH` for automation and archived run directories. Use `--write-summary` to persist human-readable `.vibebench/runs/<timestamp>/trend.md`, `--write-json` to persist machine-readable `trend.json`, `--output PATH` for a custom Markdown destination, or `--json-output PATH` for a custom JSON destination.
 

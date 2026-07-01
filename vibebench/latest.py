@@ -31,6 +31,7 @@ ARTIFACT_ALIASES = {
     "gate-summary": Path("gate-summary.md"),
     "bundle": Path(BUNDLE_FILENAME),
 }
+ARTIFACT_NAMES_BY_PATH = {path: name for name, path in ARTIFACT_ALIASES.items()}
 
 
 @dataclass(frozen=True)
@@ -161,6 +162,16 @@ def latest_json(
     }
 
 
+def available_artifacts(result: LatestRunResult) -> list[ArtifactItem]:
+    """Return all available known artifacts for a latest run."""
+    return [item for item in result.inventory.artifacts if item.available]
+
+
+def artifact_label(item: ArtifactItem) -> str:
+    """Return a user-facing artifact alias when one exists."""
+    return ARTIFACT_NAMES_BY_PATH.get(item.relative_path, item.name)
+
+
 def artifact_payload(item: ArtifactItem) -> dict[str, object]:
     """Return JSON-safe artifact details."""
     return {
@@ -168,6 +179,24 @@ def artifact_payload(item: ArtifactItem) -> dict[str, object]:
         "path": item.display_path.as_posix(),
         "available": item.available,
         "size_bytes": item.size_bytes,
+    }
+
+
+def artifact_path_payload(item: ArtifactItem) -> dict[str, object]:
+    """Return JSON-safe available artifact path details."""
+    return {
+        "name": artifact_label(item),
+        "path": item.display_path.as_posix(),
+        "size_bytes": item.size_bytes,
+    }
+
+
+def latest_paths_json(result: LatestRunResult) -> dict[str, object]:
+    """Return deterministic JSON for available artifact paths."""
+    return {
+        "run_id": result.run_id,
+        "run_dir": str(result.run_dir),
+        "paths": [artifact_path_payload(item) for item in available_artifacts(result)],
     }
 
 

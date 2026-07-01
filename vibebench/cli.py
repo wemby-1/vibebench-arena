@@ -38,8 +38,11 @@ from vibebench.gh_summary import generate_github_summary
 from vibebench.history import HistoryResult, HistoryRun, get_history
 from vibebench.latest import (
     LatestRunResult,
+    artifact_label,
+    available_artifacts,
     get_latest_run,
     latest_json,
+    latest_paths_json,
     select_artifact,
 )
 from vibebench.paths import config_file
@@ -743,6 +746,10 @@ def latest_command(
         bool,
         typer.Option("--path-only", help="Print only the selected artifact path."),
     ] = False,
+    all_paths: Annotated[
+        bool,
+        typer.Option("--all-paths", help="Print all available artifact paths."),
+    ] = False,
     as_json: Annotated[
         bool,
         typer.Option("--json", help="Print latest run details as JSON."),
@@ -756,6 +763,12 @@ def latest_command(
             runs_dir if runs_dir.is_absolute() else root / runs_dir
         ).resolve()
 
+    if all_paths and artifact is not None:
+        console.print("[red]--all-paths cannot be combined with --artifact.[/]")
+        raise typer.Exit(code=1)
+    if all_paths and path_only:
+        console.print("[red]--all-paths cannot be combined with --path-only.[/]")
+        raise typer.Exit(code=1)
     if path_only and artifact is None:
         console.print("[red]--path-only requires --artifact NAME.[/]")
         raise typer.Exit(code=1)
@@ -775,6 +788,13 @@ def latest_command(
     except ReportError as exc:
         console.print(f"[red]{exc}[/]")
         raise typer.Exit(code=1) from exc
+
+    if all_paths:
+        if as_json:
+            print(json.dumps(latest_paths_json(result), indent=2))
+            return
+        render_latest_paths(result)
+        return
 
     if as_json:
         print(json.dumps(latest_json(result, selected_artifact), indent=2))
@@ -1410,6 +1430,12 @@ def optional_delta(value: int | None) -> str:
     if value > 0:
         return f"+{value}"
     return str(value)
+
+
+def render_latest_paths(result: LatestRunResult) -> None:
+    """Render available artifact paths for copy/paste use."""
+    for item in available_artifacts(result):
+        console.print(f"{artifact_label(item)}: {item.display_path.as_posix()}")
 
 
 def render_latest_summary(
