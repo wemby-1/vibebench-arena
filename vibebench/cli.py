@@ -257,6 +257,10 @@ def config_command(
         bool,
         typer.Option("--check", help="Run config consistency checks."),
     ] = False,
+    advice: Annotated[
+        bool,
+        typer.Option("--advice", help="Show actionable config check advice."),
+    ] = False,
     show_source: Annotated[
         bool,
         typer.Option("--show-source", help="Show config file/default sources."),
@@ -275,15 +279,17 @@ def config_command(
     except ConfigError as exc:
         output_console = err_console if (show or check_config) and as_json else console
         output_console.print(f"[red]{exc}[/]")
+        if check_config and advice and not as_json:
+            render_config_error_advice(exc)
         raise typer.Exit(code=1) from exc
 
     if check_config:
-        checks = config_consistency_checks(result)
-        payload = config_check_payload(result, checks)
+        checks = config_consistency_checks(result, include_advice=advice)
+        payload = config_check_payload(result, checks, include_advice=advice)
         if as_json:
             print(json.dumps(payload, indent=2, sort_keys=True))
         else:
-            render_config_check_summary(result, checks)
+            render_config_check_summary(result, checks, include_advice=advice)
         if payload["overall_status"] == "failed":
             raise typer.Exit(code=1)
         return
@@ -353,6 +359,8 @@ def format_config_value(value: object) -> str:
 
 def config_consistency_checks(
     result: EffectiveConfigResult,
+    *,
+    include_advice: bool = False,
 ) -> list[dict[str, str]]:
     """Return user-facing consistency checks for the active config file."""
     config = result.config
@@ -382,15 +390,19 @@ def config_consistency_checks(
     non_empty_groups = {
         group: commands for group, commands in command_groups.items() if commands
     }
-    checks.append(
-        {
-            "name": "command_groups",
-            "status": "passed" if non_empty_groups else "failed",
-            "message": f"{len(non_empty_groups)} command group(s) contain commands"
-            if non_empty_groups
-            else "At least one command group must contain commands",
-        }
-    )
+    command_group_check = {
+        "name": "command_groups",
+        "status": "passed" if non_empty_groups else "failed",
+        "message": f"{len(non_empty_groups)} command group(s) contain commands"
+        if non_empty_groups
+        else "At least one command group must contain commands",
+    }
+    if include_advice and not non_empty_groups:
+        command_group_check["advice"] = (
+            "Add at least one command under checks.test or checks.lint in "
+            ".vibebench/config.yaml."
+        )
+    checks.append(command_group_check)
 
     empty_commands = [
         group
@@ -398,15 +410,19 @@ def config_consistency_checks(
         for command in commands
         if not command.strip()
     ]
-    checks.append(
-        {
-            "name": "command_strings",
-            "status": "passed" if not empty_commands else "failed",
-            "message": "All configured command strings are non-empty"
-            if not empty_commands
-            else "Empty command string found in: " + ", ".join(empty_commands),
-        }
-    )
+    command_string_check = {
+        "name": "command_strings",
+        "status": "passed" if not empty_commands else "failed",
+        "message": "All configured command strings are non-empty"
+        if not empty_commands
+        else "Empty command string found in: " + ", ".join(empty_commands),
+    }
+    if include_advice and empty_commands:
+        command_string_check["advice"] = (
+            "Replace empty command entries with real shell commands, for example "
+            "pytest -q or ruff check ."
+        )
+    checks.append(command_string_check)
 
     gate = config.gate
     checks.append(
@@ -437,22 +453,31 @@ def config_consistency_checks(
 
 
 def config_check_payload(
-    result: EffectiveConfigResult, checks: list[dict[str, str]]
+    result: EffectiveConfigResult,
+    checks: list[dict[str, str]],
+    *,
+    include_advice: bool = False,
 ) -> dict[str, object]:
     """Return stable JSON-safe config consistency output."""
     has_errors = any(check["status"] == "failed" for check in checks)
-    return {
+    payload: dict[str, object] = {
         "config_path": str(result.config_path),
         "overall_status": "failed" if has_errors else "passed",
         "checks": checks,
     }
+    if include_advice:
+        payload["advice"] = True
+    return payload
 
 
 def render_config_check_summary(
-    result: EffectiveConfigResult, checks: list[dict[str, str]]
+    result: EffectiveConfigResult,
+    checks: list[dict[str, str]],
+    *,
+    include_advice: bool = False,
 ) -> None:
     """Render config consistency checks as a Rich table."""
-    payload = config_check_payload(result, checks)
+    payload = config_check_payload(result, checks, include_advice=include_advice)
     console.print(f"[bold]VibeBench config check[/] ({result.config_path})")
     console.print(f"Overall status: {payload['overall_status']}")
     table = Table(title="Config consistency")
@@ -463,6 +488,27 @@ def render_config_check_summary(
         style = "green" if check["status"] == "passed" else "red"
         table.add_row(check["name"], f"[{style}]{check['status']}[/]", check["message"])
     console.print(table)
+    if include_advice:
+        advice_rows = [check for check in checks if "advice" in check]
+        if advice_rows:
+            advice_table = Table(title="Advice")
+            advice_table.add_column("Check")
+            advice_table.add_column("Advice")
+            for check in advice_rows:
+                advice_table.add_row(check["name"], check["advice"])
+            console.print(advice_table)
+
+
+def render_config_error_advice(exc: ConfigError) -> None:
+    """Render advice for config errors that happen before consistency checks run."""
+    message = str(exc)
+    if "No VibeBench config found" in message:
+        console.print("Advice: run `python -m vibebench init` to create one.")
+        return
+    console.print(
+        "Advice: run `python -m vibebench config --validate` and check "
+        "`.vibebench/config.yaml`."
+    )
 
 
 @app.command()

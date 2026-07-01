@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- `vibebench config --check --advice` and `vibebench config --check --json --advice` for actionable config consistency repair guidance.
 - `vibebench config --check` and `vibebench config --check --json` for focused config consistency diagnostics.
 - `vibebench config --show` and `vibebench config --show --json` for inspecting the active validated config file.
 - `vibebench manifest` for writing machine-readable `manifest.json` run indexes and `vibebench manifest --check` for drift detection against run artifacts.

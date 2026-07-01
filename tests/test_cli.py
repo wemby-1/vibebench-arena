@@ -414,3 +414,104 @@ def test_config_check_does_not_break_validate_or_show(tmp_path: Path) -> None:
     assert "vibebench-project" in show.output
     assert show_json.exit_code == 0
     assert json.loads(show_json.output)["project"]["name"] == "vibebench-project"
+
+
+
+def test_config_check_advice_human_output_for_empty_command(tmp_path: Path) -> None:
+    config_path(tmp_path).parent.mkdir(parents=True)
+    config_path(tmp_path).write_text(
+        """
+project:
+  name: demo
+checks:
+  test:
+    - ""
+  lint:
+    - ruff check .
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--check", "--advice"],
+    )
+
+    assert result.exit_code == 1
+    assert "Advice" in result.output
+    assert "Replace empty command entries" in result.output
+
+
+def test_config_check_json_advice_output(tmp_path: Path) -> None:
+    config_path(tmp_path).parent.mkdir(parents=True)
+    config_path(tmp_path).write_text(
+        """
+project:
+  name: demo
+checks:
+  test:
+    - ""
+  lint:
+    - ruff check .
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "config",
+            "--project-root",
+            str(tmp_path),
+            "--check",
+            "--json",
+            "--advice",
+        ],
+    )
+
+    assert result.exit_code == 1
+    payload = json.loads(result.output)
+    assert payload["advice"] is True
+    command_check = next(
+        check for check in payload["checks"] if check["name"] == "command_strings"
+    )
+    assert command_check["status"] == "failed"
+    assert "advice" in command_check
+    assert "pytest -q" in command_check["advice"]
+
+
+def test_config_check_json_without_advice_has_no_advice_fields(tmp_path: Path) -> None:
+    config_path(tmp_path).parent.mkdir(parents=True)
+    config_path(tmp_path).write_text(
+        """
+project:
+  name: demo
+checks:
+  test:
+    - ""
+  lint:
+    - ruff check .
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--check", "--json"],
+    )
+
+    assert result.exit_code == 1
+    payload = json.loads(result.output)
+    assert "advice" not in payload
+    assert all("advice" not in check for check in payload["checks"])
+
+
+def test_config_check_missing_config_advice(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--check", "--advice"],
+    )
+
+    assert result.exit_code == 1
+    assert "No VibeBench config found" in result.output
+    assert "python -m vibebench init" in result.output
