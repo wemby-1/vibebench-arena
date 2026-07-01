@@ -1,3 +1,4 @@
+import json
 import subprocess
 from pathlib import Path
 
@@ -123,3 +124,61 @@ def test_doctor_fails_for_missing_project_root(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "Project root does not exist" in result.output
+
+
+def test_doctor_json_outputs_valid_json_only(tmp_path: Path) -> None:
+    init_git_repo(tmp_path)
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["doctor", "--project-root", str(tmp_path), "--json"],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["overall_status"] == "passed"
+    assert payload["project_root"] == str(tmp_path.resolve())
+    assert "VibeBench Doctor" not in result.output
+    assert isinstance(payload["checks"], list)
+    assert payload["checks"]
+    for check in payload["checks"]:
+        assert set(check) == {"name", "status", "message"}
+        assert check["status"] in {"passed", "warning", "failed"}
+        assert isinstance(check["message"], str)
+
+
+def test_doctor_json_uses_same_checks_as_table_mode(tmp_path: Path) -> None:
+    init_git_repo(tmp_path)
+    write_config(tmp_path)
+
+    cli_result = runner.invoke(
+        app,
+        ["doctor", "--project-root", str(tmp_path), "--json"],
+    )
+    direct_result = run_doctor(tmp_path)
+
+    assert cli_result.exit_code == 0
+    payload = json.loads(cli_result.output)
+    assert [check["name"] for check in payload["checks"]] == [
+        check.category for check in direct_result.checks
+    ]
+    assert [check["status"] for check in payload["checks"]] == [
+        check.status for check in direct_result.checks
+    ]
+
+
+def test_doctor_json_preserves_failure_exit_code(tmp_path: Path) -> None:
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["doctor", "--project-root", str(tmp_path), "--json"],
+    )
+
+    assert result.exit_code == 1
+    payload = json.loads(result.output)
+    assert payload["overall_status"] == "failed"
+    config = next(check for check in payload["checks"] if check["name"] == "config")
+    assert config["status"] == "failed"
+    assert "vibebench init" in config["message"]

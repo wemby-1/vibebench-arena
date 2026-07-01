@@ -65,6 +65,22 @@ def run_doctor(project_root: Path) -> DoctorResult:
     )
 
 
+def doctor_json_payload(result: DoctorResult) -> dict[str, object]:
+    """Return a deterministic JSON payload for doctor diagnostics."""
+    return {
+        "overall_status": result.overall_status,
+        "project_root": str(result.project_root),
+        "checks": [
+            {
+                "name": check.category,
+                "status": check.status,
+                "message": check.message,
+            }
+            for check in result.checks
+        ],
+    }
+
+
 def check_python_version() -> DoctorCheck:
     """Check that Python is new enough for VibeBench."""
     version = sys.version_info

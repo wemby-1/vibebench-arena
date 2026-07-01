@@ -29,7 +29,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 - `vibebench baseline` for saving a project baseline run and comparing against it.
 - `vibebench clean` for safe dry-run cleanup of old local run directories.
 - `vibebench history` for inspecting recent local run metrics and generated artifacts.
-- `vibebench doctor` for local readiness diagnostics before running checks.
+- `vibebench doctor --json` for machine-readable local readiness diagnostics before running checks.
 - `vibebench compare` for comparing the latest run against a previous run and writing `compare.md`.
 - Upgraded active GitHub Actions to Node 24-compatible action majors.
 - Active GitHub Actions CI now dogfoods VibeBench and uploads `.vibebench/runs` artifacts.

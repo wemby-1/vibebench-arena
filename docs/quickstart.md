@@ -42,7 +42,7 @@ python -m vibebench config --show-source
 python -m vibebench doctor
 ```
 
-`vibebench doctor` checks Python, Git, `.vibebench/config.yaml`, configured command executables, and whether `.vibebench/runs/` is writable. It does not run your configured checks.
+`vibebench doctor` checks Python, Git, `.vibebench/config.yaml`, configured command executables, and whether `.vibebench/runs/` is writable. It does not run your configured checks. Use `python -m vibebench doctor --json` for machine-readable diagnostics.
 
 ## Show Run History
 

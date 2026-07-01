@@ -247,7 +247,7 @@ python -m vibebench gh-summary
 python -m vibebench compare
 ```
 
-`vibebench doctor` checks Python, Git, config validity, configured command executables, and whether `.vibebench/runs/` is writable. It does not run the configured checks.
+`vibebench doctor` checks Python, Git, config validity, configured command executables, and whether `.vibebench/runs/` is writable. It does not run the configured checks. Use `python -m vibebench doctor --json` for machine-readable diagnostics.
 
 `vibebench history` shows recent runs from `.vibebench/runs/`, including score, risk level, diff size, finding count, and generated artifact status.
 

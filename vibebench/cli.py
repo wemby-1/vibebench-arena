@@ -30,7 +30,7 @@ from vibebench.config import (
     load_config,
     load_effective_config,
 )
-from vibebench.doctor import DoctorResult, run_doctor
+from vibebench.doctor import DoctorResult, doctor_json_payload, run_doctor
 from vibebench.explain import ExplainResult, generate_explanation
 from vibebench.export import ExportResult, export_run
 from vibebench.gate import GateResult, run_gate
@@ -1135,10 +1135,17 @@ def ci_command(
 @app.command()
 def doctor(
     project_root: ProjectRootOption = Path("."),
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print doctor diagnostics as JSON."),
+    ] = False,
 ) -> None:
     """Diagnose whether this project is ready to run VibeBench."""
     result = run_doctor(project_root)
-    render_doctor_summary(result)
+    if as_json:
+        print(json.dumps(doctor_json_payload(result), indent=2, sort_keys=True))
+    else:
+        render_doctor_summary(result)
     if result.overall_status == "failed":
         raise typer.Exit(code=1)
 
