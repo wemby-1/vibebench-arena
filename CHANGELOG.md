@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- `vibebench config --show` and `vibebench config --show --json` for inspecting the active validated config file.
 - `vibebench manifest` for writing machine-readable `manifest.json` run indexes and `vibebench manifest --check` for drift detection against run artifacts.
 - `vibebench latest --all-paths` for printing every available artifact path from the newest valid run.
 - `vibebench latest` for locating the newest valid run and key artifact paths.

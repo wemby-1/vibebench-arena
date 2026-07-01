@@ -222,3 +222,75 @@ def test_config_command_does_not_break_existing_check_and_gate(tmp_path: Path) -
 
     assert check.exit_code == 0
     assert gate.exit_code == 0
+
+
+def test_config_show_human_output(tmp_path: Path) -> None:
+    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+
+    result = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--show"])
+
+    assert result.exit_code == 0
+    assert str(config_path(tmp_path)) in result.output.replace("\n", "")
+    assert "vibebench-project" in result.output
+    assert "pytest -q" in result.output
+    assert "min_score" in result.output
+    assert "max_patch_lines" in result.output
+
+
+def test_config_show_json_output(tmp_path: Path) -> None:
+    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+
+    result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--show", "--json"],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert sorted(payload) == ["commands", "config_path", "gate", "project", "risk"]
+    assert payload["config_path"] == str(config_path(tmp_path))
+    assert payload["project"]["name"] == "vibebench-project"
+    assert payload["commands"]["test"] == ["pytest -q"]
+    assert payload["gate"]["min_score"] == 80
+    assert payload["risk"]["max_patch_lines"] == 500
+
+
+def test_config_show_missing_config_fails_clearly(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--show"])
+
+    assert result.exit_code == 1
+    assert "No VibeBench config found" in result.output
+
+
+def test_config_show_json_missing_config_keeps_stdout_clean(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--show", "--json"],
+    )
+
+    assert result.exit_code == 1
+    assert result.stdout == ""
+    assert "No VibeBench config found" in result.stderr
+
+
+def test_config_show_invalid_config_fails_clearly(tmp_path: Path) -> None:
+    config_path(tmp_path).parent.mkdir(parents=True)
+    config_path(tmp_path).write_text("project:\n  name: ''\n", encoding="utf-8")
+
+    result = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--show"])
+
+    assert result.exit_code == 1
+    assert "invalid" in result.output
+    assert "project.name" in result.output
+
+
+def test_config_validate_still_works_with_show_option_added(tmp_path: Path) -> None:
+    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+
+    result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--validate"],
+    )
+
+    assert result.exit_code == 0
+    assert "VibeBench config is valid" in result.output

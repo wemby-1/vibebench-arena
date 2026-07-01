@@ -80,6 +80,7 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 console = Console()
+err_console = Console(stderr=True)
 
 ProjectRootOption = Annotated[
     Path,
@@ -248,6 +249,10 @@ def config_command(
         bool,
         typer.Option("--validate", help="Only validate config and print a result."),
     ] = False,
+    show: Annotated[
+        bool,
+        typer.Option("--show", help="Show the active config file summary."),
+    ] = False,
     show_source: Annotated[
         bool,
         typer.Option("--show-source", help="Show config file/default sources."),
@@ -257,9 +262,15 @@ def config_command(
     root = project_root.resolve()
     target = config_file(root)
     try:
+        if show and not target.exists():
+            raise ConfigError(
+                f"No VibeBench config found at {target}.\n"
+                'Run "vibebench init" to create one.'
+            )
         result = load_effective_config(target)
     except ConfigError as exc:
-        console.print(f"[red]{exc}[/]")
+        output_console = err_console if show and as_json else console
+        output_console.print(f"[red]{exc}[/]")
         raise typer.Exit(code=1) from exc
 
     if validate_only:
@@ -267,15 +278,30 @@ def config_command(
         console.print(f"[green]VibeBench config is valid.[/] Source: {source}")
         return
 
-    payload = effective_config_payload(result)
+    if show:
+        payload = config_show_payload(result)
+    else:
+        payload = effective_config_payload(result)
     if show_source:
         payload["sources"] = result.sources
 
     if as_json:
-        console.print(json.dumps(payload, indent=2, sort_keys=True))
+        print(json.dumps(payload, indent=2, sort_keys=True))
         return
 
     render_config_summary(result, show_source=show_source)
+
+
+def config_show_payload(result: EffectiveConfigResult) -> dict[str, object]:
+    """Return JSON-safe active config inspection output."""
+    payload = effective_config_payload(result)
+    return {
+        "config_path": str(result.config_path),
+        "project": payload["project"],
+        "commands": payload["checks"],
+        "gate": payload["gate"],
+        "risk": payload["risk"],
+    }
 
 
 def render_config_summary(
