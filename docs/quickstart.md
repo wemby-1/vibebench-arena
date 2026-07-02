@@ -162,7 +162,7 @@ python -m vibebench gate --baseline --write-gate-summary
 python -m vibebench ci
 ```
 
-`vibebench ci` runs check, gate, config check artifacts, report, PR comment, explain, export, badge, status block, trend summaries, manifest, GitHub annotations, bundle, and GitHub summary. Check and gate decide the final exit code, but artifact steps are still attempted on failure so CI logs and artifacts remain useful. Add `--json` for machine-readable stdout or `--json-output PATH` to save the same payload while keeping normal human output. Use `--dry-run` or `--plan` to inspect the CI step order and skip behavior without executing checks or writing artifacts.
+`vibebench ci` runs check, gate, config check artifacts, report, PR comment, explain, export, badge, status block, trend summaries, manifest, GitHub annotations, bundle, and GitHub summary. Check and gate decide the final exit code, but artifact steps are still attempted on failure so CI logs and artifacts remain useful. Add `--json` for machine-readable stdout or `--json-output PATH` to save the same payload while keeping normal human output. Use `--dry-run` or `--plan` to inspect the CI step order and skip behavior without executing checks or writing artifacts. Add `--write-plan` to write `ci-plan.json` and `ci-plan.md` under `.vibebench/runs/<timestamp>_plan/`; those files then work with `artifacts`, `bundle`, `manifest`, and `latest --artifact ci-plan-json`.
 
 Useful options:
 
@@ -176,6 +176,8 @@ python -m vibebench ci --skip-trend
 python -m vibebench ci --skip-config-check
 python -m vibebench ci --dry-run
 python -m vibebench ci --dry-run --json
+python -m vibebench ci --dry-run --write-plan
+python -m vibebench ci --dry-run --write-plan --json
 python -m vibebench ci --json
 python -m vibebench ci --json-output /tmp/vibebench-ci.json
 python -m vibebench ci --skip-annotate

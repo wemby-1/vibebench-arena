@@ -762,6 +762,171 @@ def test_ci_dry_run_json_and_output_use_same_payload(tmp_path: Path) -> None:
     assert stdout_payload == file_payload
 
 
+def test_ci_dry_run_write_plan_creates_plan_artifacts(tmp_path: Path) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--dry-run", "--write-plan"],
+    )
+
+    assert result.exit_code == 0
+    plan_dir = latest_run(tmp_path)
+    assert plan_dir.name.endswith("_plan")
+    assert plan_dir.joinpath("metrics.json").exists()
+    assert plan_dir.joinpath("ci-plan.json").exists()
+    assert plan_dir.joinpath("ci-plan.md").exists()
+    payload = json.loads(plan_dir.joinpath("ci-plan.json").read_text())
+    markdown = plan_dir.joinpath("ci-plan.md").read_text(encoding="utf-8")
+    assert payload["status"] == "planned"
+    assert payload["dry_run"] is True
+    assert "# VibeBench CI Plan" in markdown
+    assert "| check | planned |" in markdown
+    assert "CI plan directory:" in result.output
+
+
+def test_ci_dry_run_write_plan_json_stdout_stays_clean(tmp_path: Path) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--write-plan",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    plan_dir = latest_run(tmp_path)
+    file_payload = json.loads(plan_dir.joinpath("ci-plan.json").read_text())
+    assert result.exit_code == 0
+    assert payload == file_payload
+    assert "CI plan directory" not in result.output
+    assert plan_dir.joinpath("ci-plan.md").exists()
+
+
+def test_ci_dry_run_plan_output_overrides(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    json_output = tmp_path / "custom-plan.json"
+    markdown_output = tmp_path / "custom-plan.md"
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--plan-json-output",
+            str(json_output),
+            "--plan-summary-output",
+            str(markdown_output),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(json_output.read_text())["status"] == "planned"
+    assert "# VibeBench CI Plan" in markdown_output.read_text(encoding="utf-8")
+    assert not (tmp_path / ".vibebench" / "runs").exists()
+
+
+def test_ci_dry_run_written_plan_reflects_skip_flags(tmp_path: Path) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--write-plan",
+            "--skip-bundle",
+            "--skip-manifest",
+        ],
+    )
+
+    assert result.exit_code == 0
+    plan_dir = latest_run(tmp_path)
+    payload = json.loads(plan_dir.joinpath("ci-plan.json").read_text())
+    markdown = plan_dir.joinpath("ci-plan.md").read_text(encoding="utf-8")
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert steps["bundle"]["status"] == "skipped"
+    assert steps["manifest"]["status"] == "skipped"
+    assert steps["manifest-check"]["status"] == "skipped"
+    assert "| bundle | skipped |" in markdown
+    assert "Skipped by --skip-manifest" in markdown
+
+
+def test_ci_plan_artifacts_are_discoverable(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--dry-run", "--write-plan"],
+    )
+    assert result.exit_code == 0
+    plan_dir = latest_run(tmp_path)
+
+    artifacts = runner.invoke(
+        app,
+        ["artifacts", "--project-root", str(tmp_path), "--json"],
+    )
+    artifact_payload = json.loads(artifacts.output)
+    artifact_map = {item["name"]: item for item in artifact_payload["artifacts"]}
+    assert artifacts.exit_code == 0
+    assert artifact_map["ci-plan.json"]["available"] is True
+    assert artifact_map["ci-plan.md"]["available"] is True
+
+    latest = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "ci-plan-json",
+            "--path-only",
+        ],
+    )
+    assert latest.exit_code == 0
+    assert latest.output.strip().endswith("ci-plan.json")
+
+    bundle = runner.invoke(
+        app,
+        ["bundle", "--project-root", str(tmp_path), "--run-dir", str(plan_dir)],
+    )
+    assert bundle.exit_code == 0
+    names = zip_names(plan_dir / "vibebench-bundle.zip")
+    assert "ci-plan.json" in names
+    assert "ci-plan.md" in names
+
+    manifest = runner.invoke(
+        app,
+        ["manifest", "--project-root", str(tmp_path), "--run-dir", str(plan_dir)],
+    )
+    assert manifest.exit_code == 0
+    manifest_payload = json.loads(plan_dir.joinpath("manifest.json").read_text())
+    manifest_artifacts = {item["name"]: item for item in manifest_payload["artifacts"]}
+    assert manifest_artifacts["ci-plan.json"]["available"] is True
+    assert manifest_artifacts["ci-plan.md"]["available"] is True
+
+
+def test_ci_plan_output_options_require_plan_mode(tmp_path: Path) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--write-plan"],
+    )
+
+    assert result.exit_code == 1
+    assert "require --dry-run or --plan" in result.output
+
+
 def test_ci_json_outputs_parseable_payload(tmp_path: Path) -> None:
     write_config(tmp_path)
     run_dir = write_run(tmp_path)

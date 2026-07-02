@@ -22,6 +22,8 @@ ARTIFACT_ALIASES = {
     "manifest": Path("manifest.json"),
     "config-check-json": Path("config-check.json"),
     "config-check-md": Path("config-check.md"),
+    "ci-plan-json": Path("ci-plan.json"),
+    "ci-plan-md": Path("ci-plan.md"),
     "report": Path("report") / "index.html",
     "pr-comment": Path("pr-comment.md"),
     "explain": Path("explain.md"),

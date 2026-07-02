@@ -25,6 +25,7 @@ from vibebench.ci import (
     plan_ci_pipeline,
     run_ci_pipeline,
     write_ci_json,
+    write_ci_plan_artifacts,
 )
 from vibebench.clean import CleanResult, clean_runs
 from vibebench.compare import CompareResult, compare_runs
@@ -1232,6 +1233,25 @@ def ci_command(
         bool,
         typer.Option("--plan", help="Alias for --dry-run."),
     ] = False,
+    write_plan: Annotated[
+        bool,
+        typer.Option("--write-plan", help="Write ci-plan.json and ci-plan.md."),
+    ] = False,
+    output_dir: Annotated[
+        Path | None,
+        typer.Option("--output-dir", help="Directory for CI plan artifacts."),
+    ] = None,
+    plan_json_output: Annotated[
+        Path | None,
+        typer.Option("--plan-json-output", help="Write CI plan JSON to this file."),
+    ] = None,
+    plan_summary_output: Annotated[
+        Path | None,
+        typer.Option(
+            "--plan-summary-output",
+            help="Write CI plan Markdown to this file.",
+        ),
+    ] = None,
     bundle_include_report_assets: Annotated[
         bool,
         typer.Option(
@@ -1272,9 +1292,41 @@ def ci_command(
         selected_json_output = (
             json_output if json_output.is_absolute() else root / json_output
         ).resolve()
+    selected_output_dir = None
+    if output_dir:
+        selected_output_dir = (
+            output_dir if output_dir.is_absolute() else root / output_dir
+        ).resolve()
+    selected_plan_json_output = None
+    if plan_json_output:
+        selected_plan_json_output = (
+            plan_json_output
+            if plan_json_output.is_absolute()
+            else root / plan_json_output
+        ).resolve()
+    selected_plan_summary_output = None
+    if plan_summary_output:
+        selected_plan_summary_output = (
+            plan_summary_output
+            if plan_summary_output.is_absolute()
+            else root / plan_summary_output
+        ).resolve()
+    plan_mode = dry_run or plan
+    plan_outputs_requested = any(
+        [
+            write_plan,
+            selected_output_dir,
+            selected_plan_json_output,
+            selected_plan_summary_output,
+        ]
+    )
+    if plan_outputs_requested and not plan_mode:
+        console.print("[red]CI plan output options require --dry-run or --plan.[/]")
+        raise typer.Exit(code=1)
 
     try:
-        if dry_run or plan:
+        plan_artifacts = None
+        if plan_mode:
             result = plan_ci_pipeline(
                 skip_report=skip_report,
                 skip_pr_comment=skip_pr_comment,
@@ -1288,6 +1340,14 @@ def ci_command(
                 skip_manifest=skip_manifest,
                 skip_annotate=skip_annotate,
                 skip_gh_summary=skip_gh_summary,
+            )
+            plan_artifacts = write_ci_plan_artifacts(
+                root,
+                result,
+                output_dir=selected_output_dir,
+                json_output=selected_plan_json_output,
+                summary_output=selected_plan_summary_output,
+                create_default_dir=write_plan,
             )
         else:
             result = run_ci_pipeline(
@@ -1326,6 +1386,8 @@ def ci_command(
         render_ci_summary(result)
         if selected_json_output is not None:
             console.print(f"CI JSON: {selected_json_output}")
+        if plan_artifacts is not None:
+            render_ci_plan_artifact_summary(plan_artifacts)
 
     if not result.passed:
         raise typer.Exit(code=1)
@@ -1839,6 +1901,19 @@ def render_export_summary(result: ExportResult) -> None:
 def render_annotation_summary(result: AnnotationResult) -> None:
     """Render annotation output."""
     console.print(result.output, markup=False)
+
+
+def render_ci_plan_artifact_summary(artifacts: object) -> None:
+    """Render paths written for CI plan artifacts."""
+    output_dir = getattr(artifacts, "output_dir", None)
+    json_path = getattr(artifacts, "json_path", None)
+    markdown_path = getattr(artifacts, "markdown_path", None)
+    if output_dir is not None:
+        console.print(f"CI plan directory: {output_dir}")
+    if json_path is not None:
+        console.print(f"CI plan JSON: {json_path}")
+    if markdown_path is not None:
+        console.print(f"CI plan Markdown: {markdown_path}")
 
 
 def render_ci_summary(result: CiResult) -> None:

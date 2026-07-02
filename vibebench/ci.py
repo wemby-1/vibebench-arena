@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import time
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
@@ -24,7 +25,7 @@ from vibebench.export import export_json_for_ci
 from vibebench.gate import run_gate
 from vibebench.gh_summary import generate_github_summary
 from vibebench.manifest import check_manifest, generate_manifest
-from vibebench.paths import config_file
+from vibebench.paths import config_dir, config_file
 from vibebench.pr_comment import generate_pr_comment
 from vibebench.report import ReportError, generate_report, load_metrics
 from vibebench.runner import run_checks
@@ -32,6 +33,8 @@ from vibebench.status_block import generate_status_block
 from vibebench.trend import analyze_trend, write_trend_json, write_trend_summary
 
 StepStatus = Literal["passed", "failed", "skipped", "planned"]
+CI_PLAN_JSON = "ci-plan.json"
+CI_PLAN_MARKDOWN = "ci-plan.md"
 
 
 @dataclass(frozen=True)
@@ -54,6 +57,15 @@ class CiResult:
     steps: list[CiStepResult]
     passed: bool
     dry_run: bool = False
+
+
+@dataclass(frozen=True)
+class CiPlanArtifacts:
+    """Artifacts written for a CI dry-run plan."""
+
+    output_dir: Path | None
+    json_path: Path | None
+    markdown_path: Path | None
 
 
 def plan_ci_pipeline(
@@ -152,6 +164,186 @@ def ci_artifact_step_flags(
         ("bundle", skip_bundle, "--skip-bundle"),
         ("gh-summary", skip_gh_summary, "--skip-gh-summary"),
     ]
+
+
+def write_ci_plan_artifacts(
+    project_root: Path,
+    result: CiResult,
+    *,
+    output_dir: Path | None = None,
+    json_output: Path | None = None,
+    summary_output: Path | None = None,
+    create_default_dir: bool = False,
+) -> CiPlanArtifacts:
+    """Write dry-run plan artifacts and return their paths."""
+    if not result.dry_run:
+        raise ConfigError("CI plan artifacts can only be written for --dry-run/--plan.")
+    no_outputs_requested = (
+        not create_default_dir
+        and output_dir is None
+        and json_output is None
+        and summary_output is None
+    )
+    if no_outputs_requested:
+        return CiPlanArtifacts(output_dir=None, json_path=None, markdown_path=None)
+
+    root = project_root.resolve()
+    selected_output_dir = output_dir.resolve() if output_dir is not None else None
+    if selected_output_dir is None and create_default_dir:
+        selected_output_dir = create_plan_dir(root)
+    if selected_output_dir is not None:
+        validate_plan_output_dir(selected_output_dir)
+        selected_output_dir.mkdir(parents=True, exist_ok=True)
+        write_plan_metrics(selected_output_dir)
+
+    json_path = resolve_plan_output_path(
+        selected_output_dir,
+        json_output,
+        CI_PLAN_JSON,
+    )
+    markdown_path = resolve_plan_output_path(
+        selected_output_dir,
+        summary_output,
+        CI_PLAN_MARKDOWN,
+    )
+
+    if json_path is not None:
+        validate_file_output_path(json_path)
+        json_path.write_text(
+            json.dumps(ci_json_payload(result), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    if markdown_path is not None:
+        validate_file_output_path(markdown_path)
+        markdown_path.write_text(render_ci_plan_markdown(result), encoding="utf-8")
+    return CiPlanArtifacts(
+        output_dir=selected_output_dir,
+        json_path=json_path,
+        markdown_path=markdown_path,
+    )
+
+
+def create_plan_dir(project_root: Path) -> Path:
+    """Create a timestamped run-like directory for CI plan artifacts."""
+    timestamp = datetime.now(UTC).astimezone().strftime("%Y%m%d_%H%M%S_plan")
+    base_dir = config_dir(project_root) / "runs" / timestamp
+    output_dir = base_dir
+    suffix = 1
+    while output_dir.exists():
+        output_dir = Path(f"{base_dir}_{suffix}")
+        suffix += 1
+    output_dir.mkdir(parents=True, exist_ok=False)
+    return output_dir
+
+
+def validate_plan_output_dir(output_dir: Path) -> None:
+    """Validate a requested plan output directory."""
+    if output_dir.exists() and not output_dir.is_dir():
+        raise ConfigError(f"CI plan output path is not a directory: {output_dir}")
+    if not output_dir.exists() and not output_dir.parent.exists():
+        raise ConfigError(f"CI plan output parent does not exist: {output_dir.parent}")
+
+
+def resolve_plan_output_path(
+    output_dir: Path | None,
+    explicit_output: Path | None,
+    default_name: str,
+) -> Path | None:
+    """Resolve a plan artifact output path."""
+    if explicit_output is not None:
+        return explicit_output.resolve()
+    if output_dir is None:
+        return None
+    return output_dir / default_name
+
+
+def validate_file_output_path(output_path: Path) -> None:
+    """Validate a requested artifact file path."""
+    if output_path.exists() and output_path.is_dir():
+        raise ConfigError(f"CI plan output path is a directory: {output_path}")
+    if not output_path.parent.exists():
+        raise ConfigError(f"CI plan output parent does not exist: {output_path.parent}")
+
+
+def write_plan_metrics(output_dir: Path) -> None:
+    """Write minimal metrics so plan artifacts can use run artifact tooling."""
+    now = datetime.now(UTC).isoformat()
+    payload = {
+        "schema_version": "1.0",
+        "project_name": "vibebench-ci-plan",
+        "created_at": now,
+        "overall_status": "planned",
+        "score": 0,
+        "risk_level": "low",
+        "command_results": [],
+        "diff_analysis": {
+            "git_available": False,
+            "changed_files": [],
+            "deleted_files": [],
+            "added_files": [],
+            "modified_files": [],
+            "renamed_files": [],
+            "test_files_changed": [],
+            "tests_deleted": [],
+            "forbidden_paths_touched": [],
+            "secret_like_files_touched": [],
+            "lockfiles_changed": [],
+            "total_added_lines": 0,
+            "total_deleted_lines": 0,
+            "total_patch_lines": 0,
+            "changed_file_count": 0,
+            "warnings": ["CI dry-run plan artifact; checks were not executed."],
+            "file_changes": [],
+        },
+        "risk_findings": [],
+        "summary": {
+            "total_commands": 0,
+            "passed_commands": 0,
+            "failed_commands": 0,
+            "total_findings": 0,
+            "critical_findings": 0,
+            "high_findings": 0,
+            "warning_findings": 0,
+            "info_findings": 0,
+        },
+    }
+    output_dir.joinpath("metrics.json").write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def render_ci_plan_markdown(result: CiResult) -> str:
+    """Render a human-readable Markdown CI plan."""
+    generated_at = datetime.now(UTC).isoformat()
+    lines = [
+        "# VibeBench CI Plan",
+        "",
+        "- Status: planned",
+        "- dry_run: true",
+        f"- Generated: {generated_at}",
+        "",
+        "| Step | Status | Exit code | Artifact | Message |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    for step in result.steps:
+        lines.append(
+            "| "
+            f"{markdown_cell(step.name)} | "
+            f"{markdown_cell(step.status)} | "
+            f"{markdown_cell(step.exit_code)} | "
+            f"{markdown_cell(step.artifact_path)} | "
+            f"{markdown_cell(step.message)} |"
+        )
+    lines.append("")
+    return "\n".join(lines)
+
+
+def markdown_cell(value: object) -> str:
+    """Escape a Markdown table cell."""
+    if value is None:
+        return ""
+    return str(value).replace("|", "\\|").replace("\n", " ")
 
 
 def run_ci_pipeline(
