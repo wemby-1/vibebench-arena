@@ -315,9 +315,9 @@ python -m vibebench compare
 
 ## 一键 CI 流水线
 
-`vibebench ci` 是推荐的 CI 入口。它会按顺序运行 check、gate、config check artifact、report、PR comment、explain、export、badge、status block、trend summaries、GitHub annotations、bundle 和 GitHub summary。最终通过/失败由 check 和 gate 决定；即使门禁失败，后续产物步骤也会尽量继续生成，方便排查。默认仍输出适合人看的 Rich 表格；`--json` 适合自动化，`--json-output PATH` 可把同一份机器可读流水线结果写入文件。
+`vibebench ci` 是推荐的 CI 入口。它会按顺序运行 check、gate、config check artifact、report、PR comment、explain、export、badge、status block、trend summaries、GitHub annotations、bundle 和 GitHub summary。最终通过/失败由 check 和 gate 决定；即使门禁失败，后续产物步骤也会尽量继续生成，方便排查。默认仍输出适合人看的 Rich 表格；`--json` 适合自动化，`--json-output PATH` 可把同一份机器可读流水线结果写入文件。使用 `--dry-run` 或 `--plan` 可以只查看流水线顺序和 skip flag 效果，不运行检查也不写产物。
 
-常用选项包括 `--json`、`--json-output PATH`、`--skip-report`、`--skip-pr-comment`、`--skip-explain`、`--skip-export`、`--skip-badge`、`--skip-status-block`、`--skip-trend`、`--skip-config-check`、`--skip-bundle`、`--skip-annotate`、`--skip-gh-summary`、`--bundle-include-report-assets` 和 `--bundle-strict`。`--min-score`、`--max-risk`、`--allow-findings`、`--no-require-status-passed` 会传递给 gate。使用 `--run-dir .vibebench/runs/<run-id>` 可以针对已有运行生成产物并执行门禁，不再创建新的 check run。
+常用选项包括 `--dry-run`、`--plan`、`--json`、`--json-output PATH`、`--skip-report`、`--skip-pr-comment`、`--skip-explain`、`--skip-export`、`--skip-badge`、`--skip-status-block`、`--skip-trend`、`--skip-config-check`、`--skip-bundle`、`--skip-annotate`、`--skip-gh-summary`、`--bundle-include-report-assets` 和 `--bundle-strict`。`--min-score`、`--max-risk`、`--allow-findings`、`--no-require-status-passed` 会传递给 gate。使用 `--run-dir .vibebench/runs/<run-id>` 可以针对已有运行生成产物并执行门禁，不再创建新的 check run。
 
 ## HTML 报告展示什么？
 

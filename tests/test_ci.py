@@ -579,6 +579,189 @@ def test_ci_skip_annotate_suppresses_annotation_output(tmp_path: Path) -> None:
     assert "::warning" not in result.output
     assert "demo_warning" not in result.output
 
+def test_ci_dry_run_does_not_create_run_or_execute_commands(tmp_path: Path) -> None:
+    marker = tmp_path / "executed.txt"
+    command = (
+        "python -c "
+        f"'from pathlib import Path; Path({str(marker)!r}).write_text(\"ran\")'"
+    )
+    write_config(tmp_path, command)
+
+    result = runner.invoke(app, ["ci", "--project-root", str(tmp_path), "--dry-run"])
+
+    assert result.exit_code == 0
+    assert "VibeBench CI plan" in result.output
+    assert "Dry run" in result.output
+    assert "Final CI verdict: planned" in result.output
+    assert not marker.exists()
+    assert not (tmp_path / ".vibebench" / "runs").exists()
+
+
+def test_ci_dry_run_human_output_includes_ordered_steps(tmp_path: Path) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(app, ["ci", "--project-root", str(tmp_path), "--dry-run"])
+
+    assert result.exit_code == 0
+    expected_steps = [
+        "check",
+        "gate",
+        "config-check",
+        "report",
+        "pr-comment",
+        "explain",
+        "export",
+        "badge",
+        "status-block",
+        "trend",
+        "manifest",
+        "manifest-check",
+        "annotate",
+        "bundle",
+        "gh-summary",
+    ]
+    positions = [result.output.index(step) for step in expected_steps]
+    assert positions == sorted(positions)
+
+
+def test_ci_dry_run_json_outputs_plan_payload(tmp_path: Path) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--dry-run", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["status"] == "planned"
+    assert payload["dry_run"] is True
+    assert payload["run_dir"] is None
+    assert payload["run_id"] is None
+    assert [step["name"] for step in payload["steps"]] == [
+        "check",
+        "gate",
+        "config-check",
+        "report",
+        "pr-comment",
+        "explain",
+        "export",
+        "badge",
+        "status-block",
+        "trend",
+        "manifest",
+        "manifest-check",
+        "annotate",
+        "bundle",
+        "gh-summary",
+    ]
+    for step in payload["steps"]:
+        assert set(step) == {
+            "name",
+            "status",
+            "exit_code",
+            "artifact",
+            "message",
+            "duration_seconds",
+        }
+        assert step["status"] == "planned"
+        assert step["exit_code"] is None
+        assert step["artifact"] is None
+        assert step["duration_seconds"] is None
+
+
+def test_ci_plan_alias_json_outputs_plan_payload(tmp_path: Path) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--plan", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["status"] == "planned"
+    assert payload["dry_run"] is True
+
+
+def test_ci_dry_run_skip_flags_mark_steps_skipped(tmp_path: Path) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--skip-manifest",
+            "--skip-config-check",
+            "--skip-bundle",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["config-check"]["status"] == "skipped"
+    assert steps["config-check"]["message"] == "Skipped by --skip-config-check"
+    assert steps["manifest"]["status"] == "skipped"
+    assert steps["manifest-check"]["status"] == "skipped"
+    assert steps["manifest"]["message"] == "Skipped by --skip-manifest"
+    assert steps["manifest-check"]["message"] == "Skipped by --skip-manifest"
+    assert steps["bundle"]["status"] == "skipped"
+    assert steps["bundle"]["message"] == "Skipped by --skip-bundle"
+    assert steps["check"]["status"] == "planned"
+
+
+def test_ci_dry_run_json_output_writes_plan_file(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    output_path = tmp_path / "ci-plan.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--json-output",
+            str(output_path),
+        ],
+    )
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert result.exit_code == 0
+    assert payload["status"] == "planned"
+    assert payload["dry_run"] is True
+    assert "VibeBench CI plan" in result.output
+    assert "CI JSON:" in result.output
+
+
+def test_ci_dry_run_json_and_output_use_same_payload(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    output_path = tmp_path / "ci-plan.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--json",
+            "--json-output",
+            str(output_path),
+        ],
+    )
+
+    stdout_payload = json.loads(result.output)
+    file_payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert result.exit_code == 0
+    assert stdout_payload == file_payload
+
+
 def test_ci_json_outputs_parseable_payload(tmp_path: Path) -> None:
     write_config(tmp_path)
     run_dir = write_run(tmp_path)

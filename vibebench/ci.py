@@ -31,7 +31,7 @@ from vibebench.runner import run_checks
 from vibebench.status_block import generate_status_block
 from vibebench.trend import analyze_trend, write_trend_json, write_trend_summary
 
-StepStatus = Literal["passed", "failed", "skipped"]
+StepStatus = Literal["passed", "failed", "skipped", "planned"]
 
 
 @dataclass(frozen=True)
@@ -40,10 +40,10 @@ class CiStepResult:
 
     name: str
     status: StepStatus
-    exit_code: int
+    exit_code: int | None
     artifact_path: Path | None = None
     message: str = ""
-    duration_seconds: float = 0.0
+    duration_seconds: float | None = 0.0
 
 
 @dataclass(frozen=True)
@@ -53,6 +53,105 @@ class CiResult:
     run_dir: Path | None
     steps: list[CiStepResult]
     passed: bool
+    dry_run: bool = False
+
+
+def plan_ci_pipeline(
+    *,
+    skip_report: bool = False,
+    skip_pr_comment: bool = False,
+    skip_explain: bool = False,
+    skip_bundle: bool = False,
+    skip_export: bool = False,
+    skip_badge: bool = False,
+    skip_status_block: bool = False,
+    skip_trend: bool = False,
+    skip_config_check: bool = False,
+    skip_manifest: bool = False,
+    skip_annotate: bool = False,
+    skip_gh_summary: bool = False,
+) -> CiResult:
+    """Return the CI pipeline plan without running commands or writing artifacts."""
+    steps = [
+        planned_step("check", "Would run configured checks"),
+        planned_step("gate", "Would evaluate the quality gate"),
+    ]
+    for name, skipped, flag in ci_artifact_step_flags(
+        skip_report=skip_report,
+        skip_pr_comment=skip_pr_comment,
+        skip_explain=skip_explain,
+        skip_bundle=skip_bundle,
+        skip_export=skip_export,
+        skip_badge=skip_badge,
+        skip_status_block=skip_status_block,
+        skip_trend=skip_trend,
+        skip_config_check=skip_config_check,
+        skip_manifest=skip_manifest,
+        skip_annotate=skip_annotate,
+        skip_gh_summary=skip_gh_summary,
+    ):
+        if skipped:
+            steps.append(skipped_plan_step(name, flag))
+        else:
+            steps.append(planned_step(name, f"Would run {name}"))
+    return CiResult(run_dir=None, steps=steps, passed=True, dry_run=True)
+
+
+def planned_step(name: str, message: str) -> CiStepResult:
+    """Create a dry-run planned step."""
+    return CiStepResult(
+        name,
+        "planned",
+        None,
+        artifact_path=None,
+        message=message,
+        duration_seconds=None,
+    )
+
+
+def skipped_plan_step(name: str, flag: str) -> CiStepResult:
+    """Create a dry-run skipped step."""
+    return CiStepResult(
+        name,
+        "skipped",
+        None,
+        artifact_path=None,
+        message=f"Skipped by {flag}",
+        duration_seconds=None,
+    )
+
+
+def ci_artifact_step_flags(
+    *,
+    skip_report: bool,
+    skip_pr_comment: bool,
+    skip_explain: bool,
+    skip_bundle: bool,
+    skip_export: bool,
+    skip_badge: bool,
+    skip_status_block: bool,
+    skip_trend: bool,
+    skip_config_check: bool,
+    skip_manifest: bool,
+    skip_annotate: bool,
+    skip_gh_summary: bool,
+) -> list[tuple[str, bool, str]]:
+    """Return artifact step skip flags in canonical CI order."""
+    return [
+        ("config-check", skip_config_check, "--skip-config-check"),
+        ("report", skip_report, "--skip-report"),
+        ("pr-comment", skip_pr_comment, "--skip-pr-comment"),
+        ("explain", skip_explain, "--skip-explain"),
+        ("export", skip_export, "--skip-export"),
+        ("badge", skip_badge, "--skip-badge"),
+        ("status-block", skip_status_block, "--skip-status-block"),
+        ("trend", skip_trend, "--skip-trend"),
+        ("manifest", skip_manifest, "--skip-manifest"),
+        ("manifest-check", skip_manifest, "--skip-manifest"),
+        ("annotate", skip_annotate, "--skip-annotate"),
+        ("bundle", skip_bundle, "--skip-bundle"),
+        ("gh-summary", skip_gh_summary, "--skip-gh-summary"),
+    ]
 
 
 def run_ci_pipeline(
@@ -372,7 +471,14 @@ def ci_json_payload(result: CiResult) -> dict[str, object]:
     """Return a deterministic JSON-compatible CI result payload."""
     run_id = result.run_dir.name if result.run_dir is not None else None
     return {
-        "status": "passed" if result.passed else "failed",
+        "status": (
+            "planned"
+            if result.dry_run
+            else "passed"
+            if result.passed
+            else "failed"
+        ),
+        "dry_run": result.dry_run,
         "run_dir": str(result.run_dir) if result.run_dir is not None else None,
         "run_id": run_id,
         "steps": [

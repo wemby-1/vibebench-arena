@@ -19,7 +19,13 @@ from vibebench.artifacts import (
 from vibebench.badge import DEFAULT_BADGE_LABEL, BadgeResult, generate_badge
 from vibebench.baseline import BaselineStatus, set_baseline, show_baseline
 from vibebench.bundle import BundleResult, create_bundle
-from vibebench.ci import CiResult, ci_json_payload, run_ci_pipeline, write_ci_json
+from vibebench.ci import (
+    CiResult,
+    ci_json_payload,
+    plan_ci_pipeline,
+    run_ci_pipeline,
+    write_ci_json,
+)
 from vibebench.clean import CleanResult, clean_runs
 from vibebench.compare import CompareResult, compare_runs
 from vibebench.config import (
@@ -1218,6 +1224,14 @@ def ci_command(
         Path | None,
         typer.Option("--json-output", help="Write CI result JSON to this file."),
     ] = None,
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="Show the CI pipeline plan without running it."),
+    ] = False,
+    plan: Annotated[
+        bool,
+        typer.Option("--plan", help="Alias for --dry-run."),
+    ] = False,
     bundle_include_report_assets: Annotated[
         bool,
         typer.Option(
@@ -1260,29 +1274,45 @@ def ci_command(
         ).resolve()
 
     try:
-        result = run_ci_pipeline(
-            root,
-            run_dir=selected_run_dir,
-            skip_report=skip_report,
-            skip_pr_comment=skip_pr_comment,
-            skip_explain=skip_explain,
-            skip_bundle=skip_bundle,
-            skip_export=skip_export,
-            skip_badge=skip_badge,
-            skip_status_block=skip_status_block,
-            skip_trend=skip_trend,
-            skip_config_check=skip_config_check,
-            skip_manifest=skip_manifest,
-            skip_annotate=skip_annotate,
-            skip_gh_summary=skip_gh_summary,
-            emit_annotations=not as_json,
-            bundle_include_report_assets=bundle_include_report_assets,
-            bundle_strict=bundle_strict,
-            min_score=min_score,
-            max_risk=max_risk,
-            allow_findings=allow_findings,
-            require_status_passed=require_status_passed,
-        )
+        if dry_run or plan:
+            result = plan_ci_pipeline(
+                skip_report=skip_report,
+                skip_pr_comment=skip_pr_comment,
+                skip_explain=skip_explain,
+                skip_bundle=skip_bundle,
+                skip_export=skip_export,
+                skip_badge=skip_badge,
+                skip_status_block=skip_status_block,
+                skip_trend=skip_trend,
+                skip_config_check=skip_config_check,
+                skip_manifest=skip_manifest,
+                skip_annotate=skip_annotate,
+                skip_gh_summary=skip_gh_summary,
+            )
+        else:
+            result = run_ci_pipeline(
+                root,
+                run_dir=selected_run_dir,
+                skip_report=skip_report,
+                skip_pr_comment=skip_pr_comment,
+                skip_explain=skip_explain,
+                skip_bundle=skip_bundle,
+                skip_export=skip_export,
+                skip_badge=skip_badge,
+                skip_status_block=skip_status_block,
+                skip_trend=skip_trend,
+                skip_config_check=skip_config_check,
+                skip_manifest=skip_manifest,
+                skip_annotate=skip_annotate,
+                skip_gh_summary=skip_gh_summary,
+                emit_annotations=not as_json,
+                bundle_include_report_assets=bundle_include_report_assets,
+                bundle_strict=bundle_strict,
+                min_score=min_score,
+                max_risk=max_risk,
+                allow_findings=allow_findings,
+                require_status_passed=require_status_passed,
+            )
         if selected_json_output is not None:
             write_ci_json(result, selected_json_output)
     except (ReportError, ConfigError) as exc:
@@ -1814,7 +1844,10 @@ def render_annotation_summary(result: AnnotationResult) -> None:
 def render_ci_summary(result: CiResult) -> None:
     """Render a concise CI pipeline summary."""
     console.print()
-    console.print("[bold]VibeBench CI[/]")
+    title = "VibeBench CI plan" if result.dry_run else "VibeBench CI"
+    console.print(f"[bold]{title}[/]")
+    if result.dry_run:
+        console.print("Dry run: no checks or artifacts will be executed.")
     if result.run_dir is not None:
         console.print(f"Run directory: {result.run_dir}")
 
@@ -1824,17 +1857,25 @@ def render_ci_summary(result: CiResult) -> None:
     table.add_column("Exit")
     table.add_column("Artifact")
     table.add_column("Message")
-    status_style = {"passed": "green", "failed": "red", "skipped": "yellow"}
+    status_style = {
+        "passed": "green",
+        "failed": "red",
+        "skipped": "yellow",
+        "planned": "cyan",
+    }
     for step in result.steps:
         table.add_row(
             step.name,
             f"[{status_style[step.status]}]{step.status}[/]",
-            str(step.exit_code),
+            str(step.exit_code) if step.exit_code is not None else "",
             str(step.artifact_path) if step.artifact_path else "",
             step.message,
         )
     console.print(table)
 
+    if result.dry_run:
+        console.print("Final CI verdict: [cyan]planned[/]")
+        return
     verdict = "passed" if result.passed else "failed"
     style = "green" if result.passed else "red"
     console.print(f"Final CI verdict: [{style}]{verdict}[/]")

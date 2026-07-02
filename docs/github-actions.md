@@ -36,7 +36,7 @@ The example workflow:
 
 ## Add A Quality Gate
 
-Use `vibebench ci` when CI should fail on explicit score, risk, and finding thresholds while still producing debugging artifacts. The default output is human-readable; `--json` emits a pure machine-readable CI payload and `--json-output PATH` saves that payload for automation:
+Use `vibebench ci` when CI should fail on explicit score, risk, and finding thresholds while still producing debugging artifacts. The default output is human-readable; `--json` emits a pure machine-readable CI payload and `--json-output PATH` saves that payload for automation. Use `--dry-run` or `--plan` locally to inspect the same step order and skip behavior without executing checks or writing artifacts:
 
 ```yaml
       - name: Run VibeBench CI pipeline
@@ -47,7 +47,7 @@ The command writes `.vibebench/runs/<timestamp>/gate-summary.md` and supports on
 
 ## Why `if: always()` Is Used
 
-`vibebench ci` should fail the workflow when check or gate fails. It internally still attempts config check artifacts, report, comment, explanation, export, badge, status block, trend summaries, annotation output, bundle, and summary generation so reviewers can inspect VibeBench output after a failed check or gate. The artifact upload step remains `if: always()`. Automation can consume `python -m vibebench ci --json` directly, or save the same payload with `python -m vibebench ci --json-output .vibebench-ci.json`.
+`vibebench ci` should fail the workflow when check or gate fails. It internally still attempts config check artifacts, report, comment, explanation, export, badge, status block, trend summaries, annotation output, bundle, and summary generation so reviewers can inspect VibeBench output after a failed check or gate. The artifact upload step remains `if: always()`. Automation can consume `python -m vibebench ci --json` directly, save the same payload with `python -m vibebench ci --json-output .vibebench-ci.json`, or inspect a non-executing plan with `python -m vibebench ci --dry-run --json`.
 
 ## Artifacts
 

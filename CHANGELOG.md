@@ -21,7 +21,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 - `vibebench badge` for Shields.io-compatible `badge.json`, `badge.md`, and badge URL run status artifacts.
 - `vibebench export` for stable JSON and Markdown run exports for dashboards, external tools, and CI aggregation.
 - `vibebench annotate` for emitting GitHub Actions annotations from command failures and risk findings.
-- `vibebench ci` for running the complete check, gate, and artifact pipeline in one command, including trend summary, trend JSON, manifest generation, and machine-readable CI JSON output via `--json` or `--json-output`.
+- `vibebench ci` for running the complete check, gate, and artifact pipeline in one command, including `--dry-run` / `--plan` pipeline previews, trend summary, trend JSON, manifest generation, and machine-readable CI JSON output via `--json` or `--json-output`.
 - `vibebench bundle` for packaging run artifacts into `vibebench-bundle.zip`.
 - `vibebench explain` for human-readable run explanations and `explain.md` artifacts.
 - `vibebench config` for inspecting, validating, and exporting the effective configuration.
