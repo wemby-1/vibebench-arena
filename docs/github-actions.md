@@ -49,6 +49,10 @@ The command writes `.vibebench/runs/<timestamp>/gate-summary.md` and supports on
 
 `vibebench ci` should fail the workflow when check or gate fails. It internally still attempts config check artifacts, report, comment, explanation, export, badge, status block, trend summaries, release-check artifacts, annotation output, bundle, and summary generation so reviewers can inspect VibeBench output after a failed check or gate. The artifact upload step remains `if: always()`. Automation can consume `python -m vibebench ci --json` directly, save the same payload with `python -m vibebench ci --json-output .vibebench-ci.json`, or inspect a non-executing plan with `python -m vibebench ci --dry-run --json`. Plan artifacts can be written with `python -m vibebench ci --dry-run --write-plan`. For release branches, `python -m vibebench release-check --json` provides a read-only pre-release readiness payload without creating tags, releases, commits, or pushes; CI also writes `release-check.json` and `release-check.md` unless `--skip-release-check` is used.
 
+## CI Pipeline Contract
+
+The CI pipeline order and skip flags are covered by contract tests. Any intentional change to the canonical step order, JSON dry-run payload, or skip flag behavior should update those tests alongside the implementation.
+
 ## Artifacts
 
 The workflow uploads:
