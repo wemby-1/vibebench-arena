@@ -10,7 +10,14 @@ from typing import Literal
 from vibebench.annotate import generate_annotations
 from vibebench.badge import generate_ci_badges
 from vibebench.bundle import create_bundle
-from vibebench.config import ConfigError, load_config
+from vibebench.config import ConfigError, load_config, load_effective_config
+from vibebench.config_check import (
+    CONFIG_CHECK_JSON,
+    CONFIG_CHECK_SUMMARY,
+    config_consistency_checks,
+    write_config_check_json,
+    write_config_check_summary,
+)
 from vibebench.explain import generate_explanation
 from vibebench.export import export_json_for_ci
 from vibebench.gate import run_gate
@@ -58,6 +65,7 @@ def run_ci_pipeline(
     skip_badge: bool = False,
     skip_status_block: bool = False,
     skip_trend: bool = False,
+    skip_config_check: bool = False,
     skip_manifest: bool = False,
     skip_annotate: bool = False,
     skip_gh_summary: bool = False,
@@ -99,6 +107,7 @@ def run_ci_pipeline(
             skip_badge=skip_badge,
             skip_status_block=skip_status_block,
             skip_trend=skip_trend,
+            skip_config_check=skip_config_check,
             skip_manifest=skip_manifest,
             skip_annotate=skip_annotate,
             skip_gh_summary=skip_gh_summary,
@@ -116,6 +125,11 @@ def run_ci_pipeline(
     steps.append(gate_step)
 
     artifact_steps: list[tuple[str, bool, object]] = [
+        (
+            "config-check",
+            skip_config_check,
+            lambda: generated_config_check_path(root, selected_run_dir),
+        ),
         ("report", skip_report, lambda: generate_report(root, selected_run_dir)),
         (
             "pr-comment",
@@ -199,6 +213,7 @@ def append_unavailable_artifact_steps(
     skip_badge: bool,
     skip_status_block: bool,
     skip_trend: bool,
+    skip_config_check: bool,
     skip_manifest: bool,
     skip_annotate: bool,
     skip_gh_summary: bool,
@@ -212,6 +227,7 @@ def append_unavailable_artifact_steps(
         ("badge", skip_badge),
         ("status-block", skip_status_block),
         ("trend", skip_trend),
+        ("config-check", skip_config_check),
         ("manifest", skip_manifest),
         ("manifest-check", skip_manifest),
         ("bundle", skip_bundle),
@@ -297,6 +313,30 @@ def run_artifact_step(name: str, callback: object) -> CiStepResult:
     except Exception as exc:
         return CiStepResult(name, "failed", 1, message=str(exc))
     return CiStepResult(name, "passed", 0, artifact_path=artifact_path)
+
+
+def generated_config_check_path(
+    project_root: Path, run_dir: Path | None
+) -> Path | None:
+    """Generate config check artifacts and return the JSON path."""
+    if run_dir is None:
+        return None
+    target = config_file(project_root)
+    if not target.exists():
+        raise ConfigError(
+            f"No VibeBench config found at {target}.\n"
+            'Run "vibebench init" to create one.'
+        )
+    result = load_effective_config(target)
+    checks = config_consistency_checks(result, include_advice=True)
+    json_path = run_dir / CONFIG_CHECK_JSON
+    summary_path = run_dir / CONFIG_CHECK_SUMMARY
+    write_config_check_json(result, checks, json_path, include_advice=True)
+    write_config_check_summary(result, checks, summary_path, include_advice=True)
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+    if payload["overall_status"] == "failed":
+        raise ConfigError("Config consistency check failed.")
+    return json_path
 
 
 def generated_annotations(project_root: Path, run_dir: Path | None) -> None:

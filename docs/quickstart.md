@@ -44,7 +44,7 @@ python -m vibebench config --show-source
 python -m vibebench doctor
 ```
 
-`vibebench config --show` validates and summarizes the active `.vibebench/config.yaml`. Use `python -m vibebench config --show --json` for machine-readable config inspection. Use `python -m vibebench config --check`, `python -m vibebench config --check --advice`, or `python -m vibebench config --check --json --advice` for focused consistency diagnostics and optional repair guidance.
+`vibebench config --show` validates and summarizes the active `.vibebench/config.yaml`. Use `python -m vibebench config --show --json` for machine-readable config inspection. Use `python -m vibebench config --check`, `python -m vibebench config --check --advice`, or `python -m vibebench config --check --json --advice` for focused consistency diagnostics and optional repair guidance. Add `--write-json PATH` or `--write-summary PATH` to persist config check artifacts.
 
 `vibebench doctor` is a lightweight environment check for Python, Git, `.vibebench/config.yaml`, configured command executables, and whether `.vibebench/runs/` is writable. It does not run your configured checks. Use `python -m vibebench doctor --strict` for a stronger release/CI preflight that also expects recent run artifacts such as the manifest, bundle, and report. Add `--advice` to explain how to fix failed checks without modifying files. Use `python -m vibebench doctor --json`, `python -m vibebench doctor --json --strict`, or `python -m vibebench doctor --json --strict --advice` for machine-readable diagnostics.
 
@@ -162,7 +162,7 @@ python -m vibebench gate --baseline --write-gate-summary
 python -m vibebench ci
 ```
 
-`vibebench ci` runs check, gate, report, PR comment, explain, export, badge, status block, trend summaries, manifest, GitHub annotations, bundle, and GitHub summary. Check and gate decide the final exit code, but artifact steps are still attempted on failure so CI logs and artifacts remain useful.
+`vibebench ci` runs check, gate, config check artifacts, report, PR comment, explain, export, badge, status block, trend summaries, manifest, GitHub annotations, bundle, and GitHub summary. Check and gate decide the final exit code, but artifact steps are still attempted on failure so CI logs and artifacts remain useful.
 
 Useful options:
 
@@ -173,6 +173,7 @@ python -m vibebench ci --skip-export
 python -m vibebench ci --skip-badge
 python -m vibebench ci --skip-status-block
 python -m vibebench ci --skip-trend
+python -m vibebench ci --skip-config-check
 python -m vibebench ci --skip-annotate
 python -m vibebench ci --bundle-include-report-assets
 python -m vibebench ci --run-dir .vibebench/runs/<run-id>
@@ -280,7 +281,7 @@ python -m vibebench artifacts --only-available
 
 `vibebench manifest` writes `.vibebench/runs/<timestamp>/manifest.json`, a machine-readable index of run metadata and artifact availability. `vibebench manifest --check` verifies that an existing manifest has not drifted from the run directory.
 
-This lists known run artifacts with availability and file sizes. Missing optional artifacts do not fail the command unless `--strict` is used. JSON output is intended for lightweight automation and dashboards.
+This lists known run artifacts, including config check artifacts, with availability and file sizes. Missing optional artifacts do not fail the command unless `--strict` is used. JSON output is intended for lightweight automation and dashboards.
 
 ## Emit GitHub Actions Annotations
 
@@ -340,7 +341,7 @@ The risk demo intentionally creates critical findings, so `vibebench check` is e
 
 ## CI Artifacts
 
-VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml`, generates `explain.md`, writes `export.json`, `badge.json`, `badge.md`, `status-block.md`, `trend.md`, and `trend.json`, bundles run artifacts, emits GitHub annotations, writes the GitHub Actions job summary, and uploads `.vibebench/runs` as artifacts for review.
+VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml`, generates `config-check.json`, `config-check.md`, `explain.md`, writes `export.json`, `badge.json`, `badge.md`, `status-block.md`, `trend.md`, and `trend.json`, bundles run artifacts, emits GitHub annotations, writes the GitHub Actions job summary, and uploads `.vibebench/runs` as artifacts for review.
 
 ## Generated Files
 

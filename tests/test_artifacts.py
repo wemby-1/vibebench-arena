@@ -61,6 +61,8 @@ def test_default_latest_run_artifact_listing(tmp_path: Path) -> None:
     assert "trend.md" in artifacts
     assert "trend.json" in artifacts
     assert "manifest.json" in artifacts
+    assert "config-check.json" in artifacts
+    assert "config-check.md" in artifacts
 
 
 def test_explicit_run_dir_is_used(tmp_path: Path) -> None:

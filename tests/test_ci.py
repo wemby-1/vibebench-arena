@@ -135,7 +135,6 @@ def zip_names(path: Path) -> list[str]:
     with zipfile.ZipFile(path) as archive:
         return sorted(archive.namelist())
 
-
 def test_ci_command_succeeds_on_clean_passing_run(tmp_path: Path) -> None:
     write_config(tmp_path)
     init_git_repo(tmp_path)
@@ -146,7 +145,6 @@ def test_ci_command_succeeds_on_clean_passing_run(tmp_path: Path) -> None:
     assert "Final CI verdict: passed" in result.output
     run_dir = latest_run(tmp_path)
     assert run_dir.joinpath("metrics.json").exists()
-
 
 def test_ci_command_creates_standard_artifacts(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -166,11 +164,13 @@ def test_ci_command_creates_standard_artifacts(tmp_path: Path) -> None:
     assert run_dir.joinpath("status-block.md").exists()
     assert run_dir.joinpath("trend.md").exists()
     assert run_dir.joinpath("trend.json").exists()
+    assert run_dir.joinpath("config-check.json").exists()
+    assert run_dir.joinpath("config-check.md").exists()
     assert run_dir.joinpath("manifest.json").exists()
+    assert "config-check" in result.output
     assert "manifest-check" in result.output
     assert run_dir.joinpath("gate-summary.md").exists()
     assert run_dir.joinpath("github-step-summary.md").exists()
-
 
 def test_ci_attempts_artifacts_when_gate_fails(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -194,9 +194,10 @@ def test_ci_attempts_artifacts_when_gate_fails(tmp_path: Path) -> None:
     assert run_dir.joinpath("status-block.md").exists()
     assert run_dir.joinpath("trend.md").exists()
     assert run_dir.joinpath("trend.json").exists()
+    assert run_dir.joinpath("config-check.json").exists()
+    assert run_dir.joinpath("config-check.md").exists()
     assert run_dir.joinpath("manifest.json").exists()
     assert run_dir.joinpath("github-step-summary.md").exists()
-
 
 def test_skip_flags_skip_artifact_generation(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -218,6 +219,7 @@ def test_skip_flags_skip_artifact_generation(tmp_path: Path) -> None:
             "--skip-badge",
             "--skip-status-block",
             "--skip-trend",
+            "--skip-config-check",
             "--skip-manifest",
             "--skip-gh-summary",
         ],
@@ -234,10 +236,11 @@ def test_skip_flags_skip_artifact_generation(tmp_path: Path) -> None:
     assert not run_dir.joinpath("status-block.md").exists()
     assert not run_dir.joinpath("trend.md").exists()
     assert not run_dir.joinpath("trend.json").exists()
+    assert not run_dir.joinpath("config-check.json").exists()
+    assert not run_dir.joinpath("config-check.md").exists()
     assert not run_dir.joinpath("manifest.json").exists()
     assert not run_dir.joinpath("github-step-summary.md").exists()
     assert "skipped" in result.output
-
 
 def test_bundle_include_report_assets_passes_through(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -259,7 +262,6 @@ def test_bundle_include_report_assets_passes_through(tmp_path: Path) -> None:
     assert result.exit_code == 0
     names = zip_names(run_dir / "vibebench-bundle.zip")
     assert "report/assets/style.css" in names
-
 
 def test_bundle_strict_passes_through(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -290,7 +292,6 @@ def test_bundle_strict_passes_through(tmp_path: Path) -> None:
     assert "bundle" in result.output
     assert "failed" in result.output
 
-
 def test_gate_override_flags_affect_gate_decision(tmp_path: Path) -> None:
     write_config(tmp_path)
     run_dir = write_run(tmp_path, metrics=sample_metrics(score=70))
@@ -319,7 +320,6 @@ def test_gate_override_flags_affect_gate_decision(tmp_path: Path) -> None:
     assert failed.exit_code == 1
     assert passed.exit_code == 0
 
-
 def test_no_require_status_passed_override(tmp_path: Path) -> None:
     write_config(tmp_path)
     run_dir = write_run(
@@ -341,7 +341,6 @@ def test_no_require_status_passed_override(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
 
-
 def test_run_dir_mode_does_not_create_fresh_check_run(tmp_path: Path) -> None:
     write_config(tmp_path)
     run_dir = write_run(tmp_path)
@@ -355,7 +354,6 @@ def test_run_dir_mode_does_not_create_fresh_check_run(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert run_dirs == [run_dir]
     assert "using --run-dir" in result.output
-
 
 def test_ci_writes_only_to_explicit_github_summary_env(
     tmp_path: Path,
@@ -376,7 +374,6 @@ def test_ci_writes_only_to_explicit_github_summary_env(
     assert "# VibeBench Summary" in summary_file.read_text(encoding="utf-8")
     assert not run_dir.joinpath("github-step-summary.md").exists()
 
-
 def test_invalid_run_dir_fails_clearly(tmp_path: Path) -> None:
     result = runner.invoke(
         app,
@@ -385,8 +382,6 @@ def test_invalid_run_dir_fails_clearly(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "Run directory does not exist" in result.output
-
-
 
 def test_ci_runs_export_and_badge_before_bundle_and_summary(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -404,6 +399,8 @@ def test_ci_runs_export_and_badge_before_bundle_and_summary(tmp_path: Path) -> N
     assert run_dir.joinpath("status-block.md").exists()
     assert run_dir.joinpath("trend.md").exists()
     assert run_dir.joinpath("trend.json").exists()
+    assert run_dir.joinpath("config-check.json").exists()
+    assert run_dir.joinpath("config-check.md").exists()
     assert run_dir.joinpath("manifest.json").exists()
     names = zip_names(run_dir / "vibebench-bundle.zip")
     assert "export.json" in names
@@ -412,6 +409,8 @@ def test_ci_runs_export_and_badge_before_bundle_and_summary(tmp_path: Path) -> N
     assert "status-block.md" in names
     assert "trend.md" in names
     assert "trend.json" in names
+    assert "config-check.json" in names
+    assert "config-check.md" in names
     assert "manifest.json" in names
     summary = run_dir.joinpath("github-step-summary.md").read_text(encoding="utf-8")
     assert "`export.json` (available)" in summary
@@ -423,7 +422,6 @@ def test_ci_runs_export_and_badge_before_bundle_and_summary(tmp_path: Path) -> N
     assert "`manifest.json` (available)" in summary
     assert result.output.index("manifest") < result.output.index("bundle")
     assert result.output.index("manifest-check") < result.output.index("bundle")
-
 
 def test_ci_skip_export_skips_export_generation(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -445,7 +443,6 @@ def test_ci_skip_export_skips_export_generation(tmp_path: Path) -> None:
     assert not run_dir.joinpath("export.json").exists()
     assert "export" in result.output
     assert "skipped" in result.output
-
 
 def test_ci_skip_badge_skips_badge_generation(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -469,7 +466,6 @@ def test_ci_skip_badge_skips_badge_generation(tmp_path: Path) -> None:
     assert "badge" in result.output
     assert "skipped" in result.output
 
-
 def test_ci_skip_status_block_skips_status_block_generation(tmp_path: Path) -> None:
     write_config(tmp_path)
     run_dir = write_run(tmp_path)
@@ -490,7 +486,6 @@ def test_ci_skip_status_block_skips_status_block_generation(tmp_path: Path) -> N
     assert not run_dir.joinpath("status-block.md").exists()
     assert "status-block" in result.output
     assert "skipped" in result.output
-
 
 def test_ci_skip_trend_skips_trend_generation(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -548,7 +543,6 @@ def test_ci_runs_annotations_by_default(tmp_path: Path) -> None:
     assert "::warning" in result.output
     assert "demo_warning" in result.output
 
-
 def test_ci_skip_annotate_suppresses_annotation_output(tmp_path: Path) -> None:
     write_config(tmp_path)
     run_dir = write_run(
@@ -595,7 +589,6 @@ def test_generated_init_workflow_uses_ci_command(tmp_path: Path) -> None:
     assert "python -m vibebench ci" in workflow
     assert "python -m vibebench check" not in workflow
 
-
 def test_active_github_workflow_uses_ci_command() -> None:
     workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
 
@@ -603,7 +596,6 @@ def test_active_github_workflow_uses_ci_command() -> None:
     assert "python -m pytest -q" in workflow
     assert "python -m vibebench ci" in workflow
     assert "vibebench check" not in workflow
-
 
 def test_ci_skip_manifest_skips_manifest_generation(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -625,4 +617,26 @@ def test_ci_skip_manifest_skips_manifest_generation(tmp_path: Path) -> None:
     assert not run_dir.joinpath("manifest.json").exists()
     assert "manifest" in result.output
     assert "manifest-check" in result.output
+    assert "skipped" in result.output
+
+def test_ci_skip_config_check_skips_config_check_generation(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    run_dir = write_run(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--skip-config-check",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert not run_dir.joinpath("config-check.json").exists()
+    assert not run_dir.joinpath("config-check.md").exists()
+    assert "config-check" in result.output
     assert "skipped" in result.output

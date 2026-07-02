@@ -20,6 +20,8 @@ ARTIFACT_ALIASES = {
     "metrics": Path("metrics.json"),
     "check-log": Path("check.log"),
     "manifest": Path("manifest.json"),
+    "config-check-json": Path("config-check.json"),
+    "config-check-md": Path("config-check.md"),
     "report": Path("report") / "index.html",
     "pr-comment": Path("pr-comment.md"),
     "explain": Path("explain.md"),

@@ -30,6 +30,13 @@ from vibebench.config import (
     load_config,
     load_effective_config,
 )
+from vibebench.config_check import (
+    advice_for_config_error,
+    config_check_payload,
+    config_consistency_checks,
+    write_config_check_json,
+    write_config_check_summary,
+)
 from vibebench.doctor import DoctorResult, doctor_json_payload, run_doctor
 from vibebench.explain import ExplainResult, generate_explanation
 from vibebench.export import ExportResult, export_run
@@ -261,6 +268,14 @@ def config_command(
         bool,
         typer.Option("--advice", help="Show actionable config check advice."),
     ] = False,
+    write_json: Annotated[
+        Path | None,
+        typer.Option("--write-json", help="Write config check JSON to PATH."),
+    ] = None,
+    write_summary: Annotated[
+        Path | None,
+        typer.Option("--write-summary", help="Write config check Markdown to PATH."),
+    ] = None,
     show_source: Annotated[
         bool,
         typer.Option("--show-source", help="Show config file/default sources."),
@@ -286,10 +301,42 @@ def config_command(
     if check_config:
         checks = config_consistency_checks(result, include_advice=advice)
         payload = config_check_payload(result, checks, include_advice=advice)
+        try:
+            written_json = (
+                write_config_check_json(
+                    result,
+                    checks,
+                    resolve_output_path(root, write_json),
+                    include_advice=advice,
+                )
+                if write_json is not None
+                else None
+            )
+            written_summary = (
+                write_config_check_summary(
+                    result,
+                    checks,
+                    resolve_output_path(root, write_summary),
+                    include_advice=advice,
+                )
+                if write_summary is not None
+                else None
+            )
+        except ConfigError as exc:
+            output_console = err_console if as_json else console
+            output_console.print(f"[red]{exc}[/]")
+            raise typer.Exit(code=1) from exc
+
         if as_json:
             print(json.dumps(payload, indent=2, sort_keys=True))
         else:
-            render_config_check_summary(result, checks, include_advice=advice)
+            render_config_check_summary(
+                result,
+                checks,
+                include_advice=advice,
+                written_json=written_json,
+                written_summary=written_summary,
+            )
         if payload["overall_status"] == "failed":
             raise typer.Exit(code=1)
         return
@@ -357,124 +404,13 @@ def format_config_value(value: object) -> str:
     return str(value)
 
 
-def config_consistency_checks(
-    result: EffectiveConfigResult,
-    *,
-    include_advice: bool = False,
-) -> list[dict[str, str]]:
-    """Return user-facing consistency checks for the active config file."""
-    config = result.config
-    checks: list[dict[str, str]] = [
-        {
-            "name": "config_file_exists",
-            "status": "passed" if result.config_exists else "failed",
-            "message": f"Config file found at {result.config_path}"
-            if result.config_exists
-            else f"No config file found at {result.config_path}",
-        },
-        {
-            "name": "config_validates",
-            "status": "passed",
-            "message": "Config parses and validates successfully",
-        },
-        {
-            "name": "project_name",
-            "status": "passed" if config.project.name.strip() else "failed",
-            "message": "Project name is present"
-            if config.project.name.strip()
-            else "Project name is empty",
-        },
-    ]
-
-    command_groups = config.checks.model_dump()
-    non_empty_groups = {
-        group: commands for group, commands in command_groups.items() if commands
-    }
-    command_group_check = {
-        "name": "command_groups",
-        "status": "passed" if non_empty_groups else "failed",
-        "message": f"{len(non_empty_groups)} command group(s) contain commands"
-        if non_empty_groups
-        else "At least one command group must contain commands",
-    }
-    if include_advice and not non_empty_groups:
-        command_group_check["advice"] = (
-            "Add at least one command under checks.test or checks.lint in "
-            ".vibebench/config.yaml."
-        )
-    checks.append(command_group_check)
-
-    empty_commands = [
-        group
-        for group, commands in command_groups.items()
-        for command in commands
-        if not command.strip()
-    ]
-    command_string_check = {
-        "name": "command_strings",
-        "status": "passed" if not empty_commands else "failed",
-        "message": "All configured command strings are non-empty"
-        if not empty_commands
-        else "Empty command string found in: " + ", ".join(empty_commands),
-    }
-    if include_advice and empty_commands:
-        command_string_check["advice"] = (
-            "Replace empty command entries with real shell commands, for example "
-            "pytest -q or ruff check ."
-        )
-    checks.append(command_string_check)
-
-    gate = config.gate
-    checks.append(
-        {
-            "name": "gate_policy",
-            "status": "passed",
-            "message": (
-                "Gate policy is internally consistent "
-                f"(min_score={gate.min_score}, max_risk={gate.max_risk}, "
-                f"allow_findings={gate.allow_findings})"
-            ),
-        }
-    )
-
-    risk = config.effective_risk()
-    checks.append(
-        {
-            "name": "risk_policy",
-            "status": "passed",
-            "message": (
-                "Risk policy is internally consistent "
-                f"(max_changed_files={risk.max_changed_files}, "
-                f"max_patch_lines={risk.max_patch_lines})"
-            ),
-        }
-    )
-    return checks
-
-
-def config_check_payload(
-    result: EffectiveConfigResult,
-    checks: list[dict[str, str]],
-    *,
-    include_advice: bool = False,
-) -> dict[str, object]:
-    """Return stable JSON-safe config consistency output."""
-    has_errors = any(check["status"] == "failed" for check in checks)
-    payload: dict[str, object] = {
-        "config_path": str(result.config_path),
-        "overall_status": "failed" if has_errors else "passed",
-        "checks": checks,
-    }
-    if include_advice:
-        payload["advice"] = True
-    return payload
-
-
 def render_config_check_summary(
     result: EffectiveConfigResult,
     checks: list[dict[str, str]],
     *,
     include_advice: bool = False,
+    written_json: Path | None = None,
+    written_summary: Path | None = None,
 ) -> None:
     """Render config consistency checks as a Rich table."""
     payload = config_check_payload(result, checks, include_advice=include_advice)
@@ -497,18 +433,22 @@ def render_config_check_summary(
             for check in advice_rows:
                 advice_table.add_row(check["name"], check["advice"])
             console.print(advice_table)
+    if written_json is not None:
+        console.print(f"Config check JSON: {written_json}")
+    if written_summary is not None:
+        console.print(f"Config check summary: {written_summary}")
 
 
 def render_config_error_advice(exc: ConfigError) -> None:
     """Render advice for config errors that happen before consistency checks run."""
-    message = str(exc)
-    if "No VibeBench config found" in message:
-        console.print("Advice: run `python -m vibebench init` to create one.")
-        return
-    console.print(
-        "Advice: run `python -m vibebench config --validate` and check "
-        "`.vibebench/config.yaml`."
-    )
+    console.print(f"Advice: {advice_for_config_error(exc)}")
+
+
+def resolve_output_path(project_root: Path, output_path: Path) -> Path:
+    """Resolve a CLI output path relative to the project root."""
+    if output_path.is_absolute():
+        return output_path.resolve()
+    return (project_root / output_path).resolve()
 
 
 @app.command()
@@ -1254,6 +1194,10 @@ def ci_command(
         bool,
         typer.Option("--skip-trend", help="Skip trend summary generation."),
     ] = False,
+    skip_config_check: Annotated[
+        bool,
+        typer.Option("--skip-config-check", help="Skip config check artifacts."),
+    ] = False,
     skip_manifest: Annotated[
         bool,
         typer.Option("--skip-manifest", help="Skip run manifest generation."),
@@ -1314,6 +1258,7 @@ def ci_command(
             skip_badge=skip_badge,
             skip_status_block=skip_status_block,
             skip_trend=skip_trend,
+            skip_config_check=skip_config_check,
             skip_manifest=skip_manifest,
             skip_annotate=skip_annotate,
             skip_gh_summary=skip_gh_summary,

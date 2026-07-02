@@ -16,6 +16,8 @@ STANDARD_ARTIFACTS = [
     Path("metrics.json"),
     Path("check.log"),
     Path("manifest.json"),
+    Path("config-check.json"),
+    Path("config-check.md"),
     Path("report") / "index.html",
     Path("pr-comment.md"),
     Path("github-step-summary.md"),
