@@ -71,6 +71,8 @@ from vibebench.release_check import (
     ReleaseReadinessResult,
     release_check_json,
     run_release_check,
+    write_release_check_json,
+    write_release_check_summary,
 )
 from vibebench.report import (
     ReportError,
@@ -1222,6 +1224,13 @@ def ci_command(
         bool,
         typer.Option("--skip-gh-summary", help="Skip GitHub summary generation."),
     ] = False,
+    skip_release_check: Annotated[
+        bool,
+        typer.Option(
+            "--skip-release-check",
+            help="Skip release-check artifact generation.",
+        ),
+    ] = False,
     as_json: Annotated[
         bool,
         typer.Option("--json", help="Print CI result as JSON."),
@@ -1345,6 +1354,7 @@ def ci_command(
                 skip_manifest=skip_manifest,
                 skip_annotate=skip_annotate,
                 skip_gh_summary=skip_gh_summary,
+                skip_release_check=skip_release_check,
             )
             plan_artifacts = write_ci_plan_artifacts(
                 root,
@@ -1370,6 +1380,7 @@ def ci_command(
                 skip_manifest=skip_manifest,
                 skip_annotate=skip_annotate,
                 skip_gh_summary=skip_gh_summary,
+                skip_release_check=skip_release_check,
                 emit_annotations=not as_json,
                 bundle_include_report_assets=bundle_include_report_assets,
                 bundle_strict=bundle_strict,
@@ -1431,9 +1442,32 @@ def release_check_command(
         bool,
         typer.Option("--json", help="Print release readiness as JSON."),
     ] = False,
+    write_json: Annotated[
+        Path | None,
+        typer.Option(
+            "--write-json",
+            help="Write release readiness JSON to this path.",
+        ),
+    ] = None,
+    write_summary: Annotated[
+        Path | None,
+        typer.Option(
+            "--write-summary",
+            help="Write release readiness Markdown to this path.",
+        ),
+    ] = None,
 ) -> None:
     """Run pre-release readiness checks."""
     result = run_release_check(project_root)
+    try:
+        if write_json is not None:
+            write_release_check_json(result, write_json)
+        if write_summary is not None:
+            write_release_check_summary(result, write_summary)
+    except ReportError as exc:
+        typer.echo(f"Error: {exc}")
+        raise typer.Exit(1) from exc
+
     if as_json:
         print(release_check_json(result))
     else:

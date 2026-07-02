@@ -616,6 +616,7 @@ def test_ci_dry_run_human_output_includes_ordered_steps(tmp_path: Path) -> None:
         "trend",
         "manifest",
         "manifest-check",
+        "release-check",
         "annotate",
         "bundle",
         "gh-summary",
@@ -651,6 +652,7 @@ def test_ci_dry_run_json_outputs_plan_payload(tmp_path: Path) -> None:
         "trend",
         "manifest",
         "manifest-check",
+        "release-check",
         "annotate",
         "bundle",
         "gh-summary",
@@ -962,6 +964,7 @@ def test_ci_json_outputs_parseable_payload(tmp_path: Path) -> None:
         "trend",
         "manifest",
         "manifest-check",
+        "release-check",
         "annotate",
         "bundle",
         "gh-summary",
@@ -1199,3 +1202,86 @@ def test_ci_skip_config_check_skips_config_check_generation(tmp_path: Path) -> N
     assert not run_dir.joinpath("config-check.md").exists()
     assert "config-check" in result.output
     assert "skipped" in result.output
+
+
+def test_ci_dry_run_skip_release_check_marks_step_skipped(tmp_path: Path) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--skip-release-check",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["release-check"]["status"] == "skipped"
+    assert steps["release-check"]["message"] == "Skipped by --skip-release-check"
+
+
+def test_ci_accepts_skip_release_check_option(tmp_path: Path) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--dry-run", "--skip-release-check"],
+    )
+
+    assert result.exit_code == 0
+    assert "release-check" in result.output
+    assert "skipped" in result.output
+
+
+def test_ci_generates_release_check_artifacts(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(app, ["ci", "--project-root", str(tmp_path)])
+
+    assert result.exit_code == 0
+    run_dir = latest_run(tmp_path)
+    assert run_dir.joinpath("release-check.json").exists()
+    assert run_dir.joinpath("release-check.md").exists()
+    payload = json.loads(run_dir.joinpath("release-check.json").read_text())
+    assert payload["status"] in {"ready", "not-ready"}
+
+
+def test_ci_skip_release_check_skips_artifacts(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--skip-release-check",
+        ],
+    )
+
+    assert result.exit_code == 0
+    run_dir = latest_run(tmp_path)
+    assert not run_dir.joinpath("release-check.json").exists()
+    assert not run_dir.joinpath("release-check.md").exists()
+    assert "release-check" in result.output
+
+
+def test_ci_bundle_includes_release_check_artifacts(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(app, ["ci", "--project-root", str(tmp_path)])
+
+    assert result.exit_code == 0
+    run_dir = latest_run(tmp_path)
+    names = zip_names(run_dir / "vibebench-bundle.zip")
+    assert "release-check.json" in names
+    assert "release-check.md" in names

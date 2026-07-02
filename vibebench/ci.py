@@ -27,6 +27,13 @@ from vibebench.gh_summary import generate_github_summary
 from vibebench.manifest import check_manifest, generate_manifest
 from vibebench.paths import config_dir, config_file
 from vibebench.pr_comment import generate_pr_comment
+from vibebench.release_check import (
+    RELEASE_CHECK_JSON,
+    RELEASE_CHECK_SUMMARY,
+    run_release_check,
+    write_release_check_json,
+    write_release_check_summary,
+)
 from vibebench.report import ReportError, generate_report, load_metrics
 from vibebench.runner import run_checks
 from vibebench.status_block import generate_status_block
@@ -82,6 +89,7 @@ def plan_ci_pipeline(
     skip_manifest: bool = False,
     skip_annotate: bool = False,
     skip_gh_summary: bool = False,
+    skip_release_check: bool = False,
 ) -> CiResult:
     """Return the CI pipeline plan without running commands or writing artifacts."""
     steps = [
@@ -101,6 +109,7 @@ def plan_ci_pipeline(
         skip_manifest=skip_manifest,
         skip_annotate=skip_annotate,
         skip_gh_summary=skip_gh_summary,
+        skip_release_check=skip_release_check,
     ):
         if skipped:
             steps.append(skipped_plan_step(name, flag))
@@ -147,6 +156,7 @@ def ci_artifact_step_flags(
     skip_manifest: bool,
     skip_annotate: bool,
     skip_gh_summary: bool,
+    skip_release_check: bool,
 ) -> list[tuple[str, bool, str]]:
     """Return artifact step skip flags in canonical CI order."""
     return [
@@ -160,6 +170,7 @@ def ci_artifact_step_flags(
         ("trend", skip_trend, "--skip-trend"),
         ("manifest", skip_manifest, "--skip-manifest"),
         ("manifest-check", skip_manifest, "--skip-manifest"),
+        ("release-check", skip_release_check, "--skip-release-check"),
         ("annotate", skip_annotate, "--skip-annotate"),
         ("bundle", skip_bundle, "--skip-bundle"),
         ("gh-summary", skip_gh_summary, "--skip-gh-summary"),
@@ -362,6 +373,7 @@ def run_ci_pipeline(
     skip_manifest: bool = False,
     skip_annotate: bool = False,
     skip_gh_summary: bool = False,
+    skip_release_check: bool = False,
     emit_annotations: bool = True,
     bundle_include_report_assets: bool = False,
     bundle_strict: bool = False,
@@ -405,6 +417,7 @@ def run_ci_pipeline(
             skip_manifest=skip_manifest,
             skip_annotate=skip_annotate,
             skip_gh_summary=skip_gh_summary,
+            skip_release_check=skip_release_check,
         )
         return CiResult(run_dir=None, steps=steps, passed=False)
 
@@ -466,6 +479,11 @@ def run_ci_pipeline(
             lambda: check_manifest(root, selected_run_dir).manifest_path,
         ),
         (
+            "release-check",
+            skip_release_check,
+            lambda: generated_release_check_path(root, selected_run_dir),
+        ),
+        (
             "annotate",
             skip_annotate,
             lambda: generated_annotations(
@@ -515,6 +533,7 @@ def append_unavailable_artifact_steps(
     skip_manifest: bool,
     skip_annotate: bool,
     skip_gh_summary: bool,
+    skip_release_check: bool,
 ) -> None:
     """Append artifact steps when no run directory exists."""
     flags = [
@@ -528,6 +547,7 @@ def append_unavailable_artifact_steps(
         ("config-check", skip_config_check),
         ("manifest", skip_manifest),
         ("manifest-check", skip_manifest),
+        ("release-check", skip_release_check),
         ("bundle", skip_bundle),
         ("annotate", skip_annotate),
         ("gh-summary", skip_gh_summary),
@@ -762,3 +782,13 @@ def validate_explicit_run(run_dir: Path) -> None:
         load_metrics(run_dir)
     except json.JSONDecodeError as exc:
         raise ReportError(f"metrics.json in {run_dir} is not valid JSON.") from exc
+
+
+def generated_release_check_path(project_root: Path, run_dir: Path) -> Path:
+    """Write release-check artifacts for a CI run and return the JSON path."""
+    result = run_release_check(project_root)
+    json_path = run_dir / RELEASE_CHECK_JSON
+    summary_path = run_dir / RELEASE_CHECK_SUMMARY
+    write_release_check_json(result, json_path)
+    write_release_check_summary(result, summary_path)
+    return json_path

@@ -20,6 +20,8 @@ STANDARD_ARTIFACTS = [
     Path("config-check.md"),
     Path("ci-plan.json"),
     Path("ci-plan.md"),
+    Path("release-check.json"),
+    Path("release-check.md"),
     Path("report") / "index.html",
     Path("pr-comment.md"),
     Path("github-step-summary.md"),

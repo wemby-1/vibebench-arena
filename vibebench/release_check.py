@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Literal
 
 from vibebench.artifacts import collect_artifact_inventory
-from vibebench.ci import plan_ci_pipeline
 from vibebench.config import ConfigError, load_effective_config
 from vibebench.config_check import config_check_payload, config_consistency_checks
 from vibebench.doctor import run_doctor
@@ -17,6 +16,9 @@ from vibebench.explain import find_latest_valid_run
 from vibebench.manifest import check_manifest
 from vibebench.paths import config_file
 from vibebench.report import ReportError
+
+RELEASE_CHECK_JSON = "release-check.json"
+RELEASE_CHECK_SUMMARY = "release-check.md"
 
 ReleaseCheckStatus = Literal["passed", "failed"]
 
@@ -173,6 +175,8 @@ def check_artifact_inventory(
 
 def check_ci_plan() -> ReleaseReadinessCheck:
     """Check that a dry-run CI plan can be produced."""
+    from vibebench.ci import plan_ci_pipeline
+
     result = plan_ci_pipeline()
     if result.dry_run and result.steps:
         return ReleaseReadinessCheck("ci_plan", "passed", "CI dry-run plan produced")
@@ -224,3 +228,59 @@ def release_check_json_payload(result: ReleaseReadinessResult) -> dict[str, obje
 def release_check_json(result: ReleaseReadinessResult) -> str:
     """Return pretty deterministic JSON for release readiness."""
     return json.dumps(release_check_json_payload(result), indent=2, sort_keys=True)
+
+
+def release_check_markdown(result: ReleaseReadinessResult) -> str:
+    """Render a human-readable Markdown release readiness summary."""
+    lines = [
+        "# VibeBench Release Check",
+        "",
+        f"- Project root: `{escape_markdown(result.project_root)}`",
+        f"- Status: `{escape_markdown(result.status)}`",
+        f"- Latest run: `{escape_markdown(result.latest_run_id or 'none')}`",
+        "",
+        "| Check | Status | Message |",
+        "| --- | --- | --- |",
+    ]
+    for check in result.checks:
+        lines.append(
+            "| "
+            f"{escape_markdown(check.name)} | "
+            f"{escape_markdown(check.status)} | "
+            f"{escape_markdown(check.message)} |"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def write_release_check_json(
+    result: ReleaseReadinessResult,
+    output_path: Path,
+) -> Path:
+    """Write release readiness JSON to a selected path."""
+    validate_output_path(output_path)
+    output_path.write_text(release_check_json(result) + "\n", encoding="utf-8")
+    return output_path
+
+
+def write_release_check_summary(
+    result: ReleaseReadinessResult,
+    output_path: Path,
+) -> Path:
+    """Write release readiness Markdown to a selected path."""
+    validate_output_path(output_path)
+    output_path.write_text(release_check_markdown(result), encoding="utf-8")
+    return output_path
+
+
+def validate_output_path(output_path: Path) -> None:
+    """Validate a requested release check artifact output path."""
+    if output_path.exists() and output_path.is_dir():
+        raise ReportError(f"Output path is a directory: {output_path}")
+    if not output_path.parent.exists():
+        message = f"Output parent directory does not exist: {output_path.parent}"
+        raise ReportError(message)
+
+
+def escape_markdown(value: object) -> str:
+    """Escape Markdown table-sensitive characters."""
+    return str(value).replace("|", "\\|").replace("\n", " ")

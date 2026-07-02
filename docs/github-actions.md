@@ -47,7 +47,7 @@ The command writes `.vibebench/runs/<timestamp>/gate-summary.md` and supports on
 
 ## Why `if: always()` Is Used
 
-`vibebench ci` should fail the workflow when check or gate fails. It internally still attempts config check artifacts, report, comment, explanation, export, badge, status block, trend summaries, annotation output, bundle, and summary generation so reviewers can inspect VibeBench output after a failed check or gate. The artifact upload step remains `if: always()`. Automation can consume `python -m vibebench ci --json` directly, save the same payload with `python -m vibebench ci --json-output .vibebench-ci.json`, or inspect a non-executing plan with `python -m vibebench ci --dry-run --json`. Plan artifacts can be written with `python -m vibebench ci --dry-run --write-plan`. For release branches, `python -m vibebench release-check --json` provides a read-only pre-release readiness payload without creating tags, releases, commits, or pushes.
+`vibebench ci` should fail the workflow when check or gate fails. It internally still attempts config check artifacts, report, comment, explanation, export, badge, status block, trend summaries, release-check artifacts, annotation output, bundle, and summary generation so reviewers can inspect VibeBench output after a failed check or gate. The artifact upload step remains `if: always()`. Automation can consume `python -m vibebench ci --json` directly, save the same payload with `python -m vibebench ci --json-output .vibebench-ci.json`, or inspect a non-executing plan with `python -m vibebench ci --dry-run --json`. Plan artifacts can be written with `python -m vibebench ci --dry-run --write-plan`. For release branches, `python -m vibebench release-check --json` provides a read-only pre-release readiness payload without creating tags, releases, commits, or pushes; CI also writes `release-check.json` and `release-check.md` unless `--skip-release-check` is used.
 
 ## Artifacts
 
@@ -73,6 +73,8 @@ That directory can include:
 - `trend.json`
 - `manifest.json`
 - `config-check.json`
+- `release-check.json`
+- `release-check.md`
 - `config-check.md`
 - `gate-summary.md`
 - GitHub Actions annotations in the job log when findings or command failures exist
