@@ -24,6 +24,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 - `vibebench ci` for running the complete check, gate, and artifact pipeline in one command, including `--dry-run` / `--plan` pipeline previews, `ci-plan.json` / `ci-plan.md` plan artifacts, trend summary, trend JSON, manifest generation, and machine-readable CI JSON output via `--json` or `--json-output`.
 - `vibebench bundle` for packaging run artifacts into `vibebench-bundle.zip`.
 - `vibebench explain` for human-readable run explanations and `explain.md` artifacts.
+- `vibebench release-check` for read-only pre-release readiness checks across config, strict doctor, latest run, manifest, artifacts, CI plan, and `git diff --check`.
 - `vibebench config` for inspecting, validating, and exporting the effective configuration.
 - `vibebench init` now bootstraps `.vibebench/config.yaml` and a GitHub Actions workflow, with safe overwrite controls.
 - Configurable `risk` policy in `.vibebench/config.yaml` for Git diff risk detection.

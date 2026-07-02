@@ -74,6 +74,7 @@ python -m pip install -e ".[dev]"
 python -m vibebench init
 python -m vibebench config
 python -m vibebench doctor
+python -m vibebench release-check
 python -m vibebench history
 python -m vibebench latest
 python -m vibebench latest --all-paths
@@ -249,7 +250,7 @@ python -m vibebench compare
 
 `vibebench config --show` validates and summarizes the active `.vibebench/config.yaml`, including project name, configured commands, gate policy, and risk policy. Use `python -m vibebench config --show --json` for machine-readable config inspection. Use `python -m vibebench config --check`, `python -m vibebench config --check --advice`, or `python -m vibebench config --check --json --advice` to run focused consistency diagnostics before the full pipeline. Add `--write-json PATH` or `--write-summary PATH` to persist `config-check.json` or `config-check.md` artifacts.
 
-`vibebench doctor` is a lightweight environment check for Python, Git, config validity, configured command executables, and whether `.vibebench/runs/` is writable. It does not run the configured checks. Use `python -m vibebench doctor --strict` for a stronger release/CI preflight that also expects recent run artifacts such as the manifest, bundle, and report. Add `--advice` to show concise repair suggestions without modifying files, for example `python -m vibebench doctor --strict --advice`. Use `python -m vibebench doctor --json`, `python -m vibebench doctor --json --strict`, or `python -m vibebench doctor --json --strict --advice` for machine-readable diagnostics.
+`vibebench doctor` is a lightweight environment check for Python, Git, config validity, configured command executables, and whether `.vibebench/runs/` is writable. It does not run the configured checks. Use `python -m vibebench doctor --strict` for a stronger release/CI preflight that also expects recent run artifacts such as the manifest, bundle, and report. Add `--advice` to show concise repair suggestions without modifying files, for example `python -m vibebench doctor --strict --advice`. Use `python -m vibebench doctor --json`, `python -m vibebench doctor --json --strict`, or `python -m vibebench doctor --json --strict --advice` for machine-readable diagnostics. `vibebench release-check` combines config consistency, strict doctor, latest run, manifest consistency, artifact inventory, CI plan generation, and `git diff --check` into one read-only pre-release readiness check; add `--json` for automation.
 
 `vibebench history` shows recent runs from `.vibebench/runs/`, including score, risk level, diff size, finding count, and generated artifact status.
 

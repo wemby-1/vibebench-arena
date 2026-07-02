@@ -69,6 +69,7 @@ python -m pip install -e ".[dev]"
 python -m vibebench init
 python -m vibebench config
 python -m vibebench doctor
+python -m vibebench release-check
 python -m vibebench history
 python -m vibebench latest
 python -m vibebench latest --all-paths
@@ -244,7 +245,7 @@ python -m vibebench compare
 
 `vibebench config --show` 会校验并汇总当前 `.vibebench/config.yaml`，包括项目名、配置的命令、gate 策略和 risk 策略。`python -m vibebench config --show --json` 可输出机器可读配置摘要。`python -m vibebench config --check`、`python -m vibebench config --check --advice` 或 `python -m vibebench config --check --json --advice` 可在完整流水线前执行配置一致性诊断并按需显示修复建议。加上 `--write-json PATH` 或 `--write-summary PATH` 可持久化 `config-check.json` 或 `config-check.md` artifact。
 
-`vibebench doctor` 是轻量环境检查，会检查 Python、Git、配置有效性、配置命令是否可找到，以及 `.vibebench/runs/` 是否可写。它不会真正运行配置里的 test/lint 命令。`python -m vibebench doctor --strict` 会执行更强的发布/CI 预检，额外要求最近运行具备 manifest、bundle 和 report 等产物。加上 `--advice` 会显示简短修复建议但不会修改文件，例如 `python -m vibebench doctor --strict --advice`。可用 `python -m vibebench doctor --json`、`python -m vibebench doctor --json --strict` 或 `python -m vibebench doctor --json --strict --advice` 输出机器可读诊断结果。
+`vibebench doctor` 是轻量环境检查，会检查 Python、Git、配置有效性、配置命令是否可找到，以及 `.vibebench/runs/` 是否可写。它不会真正运行配置里的 test/lint 命令。`python -m vibebench doctor --strict` 会执行更强的发布/CI 预检，额外要求最近运行具备 manifest、bundle 和 report 等产物。加上 `--advice` 会显示简短修复建议但不会修改文件，例如 `python -m vibebench doctor --strict --advice`。可用 `python -m vibebench doctor --json`、`python -m vibebench doctor --json --strict` 或 `python -m vibebench doctor --json --strict --advice` 输出机器可读诊断结果。`vibebench release-check` 会把配置一致性、strict doctor、最新运行、manifest 一致性、artifact inventory、CI plan 生成和 `git diff --check` 汇总成一个只读的发布前检查；`--json` 适合自动化。
 
 `vibebench history` 会显示 `.vibebench/runs/` 下最近的运行记录，包括分数、风险等级、diff 规模、风险发现数量和产物生成状态。
 

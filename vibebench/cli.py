@@ -67,6 +67,11 @@ from vibebench.manifest import (
 )
 from vibebench.paths import config_file
 from vibebench.pr_comment import generate_pr_comment
+from vibebench.release_check import (
+    ReleaseReadinessResult,
+    release_check_json,
+    run_release_check,
+)
 from vibebench.report import (
     ReportError,
     generate_report,
@@ -1419,6 +1424,24 @@ def doctor(
         raise typer.Exit(code=1)
 
 
+@app.command("release-check")
+def release_check_command(
+    project_root: ProjectRootOption = Path("."),
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print release readiness as JSON."),
+    ] = False,
+) -> None:
+    """Run pre-release readiness checks."""
+    result = run_release_check(project_root)
+    if as_json:
+        print(release_check_json(result))
+    else:
+        render_release_check_summary(result)
+    if not result.ready:
+        raise typer.Exit(code=1)
+
+
 @app.command()
 def gate(
     project_root: ProjectRootOption = Path("."),
@@ -1987,6 +2010,31 @@ def render_doctor_summary(result: DoctorResult) -> None:
             for check in advice_items:
                 console.print(f"- {check.category}: {check.advice}")
 
+
+
+def render_release_check_summary(result: ReleaseReadinessResult) -> None:
+    """Render release readiness summary."""
+    console.print()
+    console.print("[bold]VibeBench Release Check[/]")
+    console.print(f"Project root: {result.project_root}")
+    if result.latest_run_dir is not None:
+        console.print(f"Latest run: {result.latest_run_dir}")
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Check")
+    table.add_column("Status")
+    table.add_column("Message")
+    status_style = {"passed": "green", "failed": "red"}
+    for check in result.checks:
+        table.add_row(
+            check.name,
+            f"[{status_style[check.status]}]{check.status}[/]",
+            check.message,
+        )
+    console.print(table)
+
+    style = "green" if result.ready else "red"
+    console.print(f"Release readiness: [{style}]{result.status}[/]")
 
 
 def render_gate_summary(result: GateResult) -> None:
