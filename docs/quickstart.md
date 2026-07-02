@@ -162,7 +162,7 @@ python -m vibebench gate --baseline --write-gate-summary
 python -m vibebench ci
 ```
 
-`vibebench ci` runs check, gate, config check artifacts, report, PR comment, explain, export, badge, status block, trend summaries, manifest, GitHub annotations, bundle, and GitHub summary. Check and gate decide the final exit code, but artifact steps are still attempted on failure so CI logs and artifacts remain useful.
+`vibebench ci` runs check, gate, config check artifacts, report, PR comment, explain, export, badge, status block, trend summaries, manifest, GitHub annotations, bundle, and GitHub summary. Check and gate decide the final exit code, but artifact steps are still attempted on failure so CI logs and artifacts remain useful. Add `--json` for machine-readable stdout or `--json-output PATH` to save the same payload while keeping normal human output.
 
 Useful options:
 
@@ -174,6 +174,8 @@ python -m vibebench ci --skip-badge
 python -m vibebench ci --skip-status-block
 python -m vibebench ci --skip-trend
 python -m vibebench ci --skip-config-check
+python -m vibebench ci --json
+python -m vibebench ci --json-output /tmp/vibebench-ci.json
 python -m vibebench ci --skip-annotate
 python -m vibebench ci --bundle-include-report-assets
 python -m vibebench ci --run-dir .vibebench/runs/<run-id>

@@ -579,6 +579,217 @@ def test_ci_skip_annotate_suppresses_annotation_output(tmp_path: Path) -> None:
     assert "::warning" not in result.output
     assert "demo_warning" not in result.output
 
+def test_ci_json_outputs_parseable_payload(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    run_dir = write_run(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["status"] == "passed"
+    assert payload["run_dir"] == str(run_dir.resolve())
+    assert payload["run_id"] == run_dir.name
+    step_names = [step["name"] for step in payload["steps"]]
+    assert step_names == [
+        "check",
+        "gate",
+        "config-check",
+        "report",
+        "pr-comment",
+        "explain",
+        "export",
+        "badge",
+        "status-block",
+        "trend",
+        "manifest",
+        "manifest-check",
+        "annotate",
+        "bundle",
+        "gh-summary",
+    ]
+    for step in payload["steps"]:
+        assert set(step) == {
+            "name",
+            "status",
+            "exit_code",
+            "artifact",
+            "message",
+            "duration_seconds",
+        }
+        assert step["status"] in {"passed", "failed", "skipped"}
+        assert isinstance(step["exit_code"], int)
+        assert isinstance(step["duration_seconds"], int | float)
+        assert step["duration_seconds"] >= 0
+
+
+def test_ci_json_output_writes_payload_file(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    run_dir = write_run(tmp_path)
+    output_path = tmp_path / "ci-result.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--json-output",
+            str(output_path),
+        ],
+    )
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert result.exit_code == 0
+    assert output_path.exists()
+    assert payload["status"] == "passed"
+    assert payload["run_id"] == run_dir.name
+    assert "Final CI verdict: passed" in result.output
+    assert "CI JSON:" in result.output
+
+
+def test_ci_json_and_json_output_use_same_payload(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    run_dir = write_run(tmp_path)
+    output_path = tmp_path / "ci-result.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--json",
+            "--json-output",
+            str(output_path),
+        ],
+    )
+
+    stdout_payload = json.loads(result.output)
+    file_payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert result.exit_code == 0
+    assert stdout_payload == file_payload
+
+
+def test_ci_json_reflects_skipped_steps(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    run_dir = write_run(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--skip-export",
+            "--skip-badge",
+            "--skip-status-block",
+            "--skip-trend",
+            "--skip-config-check",
+            "--skip-manifest",
+            "--skip-annotate",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    for name in [
+        "export",
+        "badge",
+        "status-block",
+        "trend",
+        "config-check",
+        "manifest",
+        "manifest-check",
+        "annotate",
+    ]:
+        assert steps[name]["status"] == "skipped"
+        assert steps[name]["exit_code"] == 0
+        assert steps[name]["artifact"] is None
+        assert steps[name]["message"] == "skipped by flag"
+
+
+def test_ci_json_reports_failed_required_step(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    run_dir = write_run(tmp_path, metrics=sample_metrics(score=70))
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert steps["gate"]["status"] == "failed"
+    assert steps["gate"]["exit_code"] == 1
+
+
+def test_ci_json_suppresses_annotation_stdout(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    run_dir = write_run(
+        tmp_path,
+        metrics=sample_metrics(
+            findings=[
+                {
+                    "severity": "warning",
+                    "code": "demo_warning",
+                    "message": "Review this change.",
+                    "paths": ["src/app.py"],
+                }
+            ]
+        ),
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--allow-findings",
+            "1",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["status"] == "passed"
+    assert "::warning" not in result.output
+    assert "demo_warning" not in result.output
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert steps["annotate"]["status"] == "passed"
+
+
 def test_generated_init_workflow_uses_ci_command(tmp_path: Path) -> None:
     result = runner.invoke(app, ["init", "--project-root", str(tmp_path)])
 

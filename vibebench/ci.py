@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -42,6 +43,7 @@ class CiStepResult:
     exit_code: int
     artifact_path: Path | None = None
     message: str = ""
+    duration_seconds: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -69,6 +71,7 @@ def run_ci_pipeline(
     skip_manifest: bool = False,
     skip_annotate: bool = False,
     skip_gh_summary: bool = False,
+    emit_annotations: bool = True,
     bundle_include_report_assets: bool = False,
     bundle_strict: bool = False,
     min_score: int | None = None,
@@ -174,7 +177,11 @@ def run_ci_pipeline(
         (
             "annotate",
             skip_annotate,
-            lambda: generated_annotations(root, selected_run_dir),
+            lambda: generated_annotations(
+                root,
+                selected_run_dir,
+                emit=emit_annotations,
+            ),
         ),
         (
             "bundle",
@@ -250,14 +257,33 @@ def append_unavailable_artifact_steps(
 
 def run_check_step(project_root: Path) -> tuple[CiStepResult, Path | None]:
     """Run the check step and return its selected run directory."""
+    started = time.perf_counter()
     target = config_file(project_root)
     try:
         config = load_config(target)
         result = run_checks(config, project_root)
     except ConfigError as exc:
-        return CiStepResult("check", "failed", 1, message=str(exc)), None
+        return (
+            CiStepResult(
+                "check",
+                "failed",
+                1,
+                message=str(exc),
+                duration_seconds=elapsed_since(started),
+            ),
+            None,
+        )
     except Exception as exc:
-        return CiStepResult("check", "failed", 1, message=str(exc)), None
+        return (
+            CiStepResult(
+                "check",
+                "failed",
+                1,
+                message=str(exc),
+                duration_seconds=elapsed_since(started),
+            ),
+            None,
+        )
 
     status: StepStatus = "passed" if result.overall_status == "passed" else "failed"
     exit_code = 0 if status == "passed" else 1
@@ -268,6 +294,7 @@ def run_check_step(project_root: Path) -> tuple[CiStepResult, Path | None]:
             exit_code,
             artifact_path=result.metrics_path,
             message=f"status {result.overall_status}",
+            duration_seconds=elapsed_since(started),
         ),
         result.run_dir,
     )
@@ -283,6 +310,7 @@ def run_gate_step(
     require_status_passed: bool | None,
 ) -> CiStepResult:
     """Run the gate step."""
+    started = time.perf_counter()
     try:
         result = run_gate(
             project_root,
@@ -294,7 +322,13 @@ def run_gate_step(
             write_gate_summary=True,
         )
     except Exception as exc:
-        return CiStepResult("gate", "failed", 1, message=str(exc))
+        return CiStepResult(
+            "gate",
+            "failed",
+            1,
+            message=str(exc),
+            duration_seconds=elapsed_since(started),
+        )
 
     status: StepStatus = "passed" if result.passed else "failed"
     return CiStepResult(
@@ -303,16 +337,69 @@ def run_gate_step(
         0 if result.passed else 1,
         artifact_path=result.summary_path,
         message="passed" if result.passed else "; ".join(result.reasons),
+        duration_seconds=elapsed_since(started),
     )
 
 
 def run_artifact_step(name: str, callback: object) -> CiStepResult:
     """Run an artifact callback and capture errors."""
+    started = time.perf_counter()
     try:
         artifact_path = callback()
     except Exception as exc:
-        return CiStepResult(name, "failed", 1, message=str(exc))
-    return CiStepResult(name, "passed", 0, artifact_path=artifact_path)
+        return CiStepResult(
+            name,
+            "failed",
+            1,
+            message=str(exc),
+            duration_seconds=elapsed_since(started),
+        )
+    return CiStepResult(
+        name,
+        "passed",
+        0,
+        artifact_path=artifact_path,
+        duration_seconds=elapsed_since(started),
+    )
+
+
+def elapsed_since(started: float) -> float:
+    """Return elapsed monotonic time in seconds."""
+    return time.perf_counter() - started
+
+
+def ci_json_payload(result: CiResult) -> dict[str, object]:
+    """Return a deterministic JSON-compatible CI result payload."""
+    run_id = result.run_dir.name if result.run_dir is not None else None
+    return {
+        "status": "passed" if result.passed else "failed",
+        "run_dir": str(result.run_dir) if result.run_dir is not None else None,
+        "run_id": run_id,
+        "steps": [
+            {
+                "name": step.name,
+                "status": step.status,
+                "exit_code": step.exit_code,
+                "artifact": str(step.artifact_path) if step.artifact_path else None,
+                "message": step.message,
+                "duration_seconds": step.duration_seconds,
+            }
+            for step in result.steps
+        ],
+    }
+
+
+def write_ci_json(result: CiResult, output_path: Path) -> Path:
+    """Write CI JSON payload to a file."""
+    if output_path.exists() and output_path.is_dir():
+        raise ConfigError(f"CI JSON output path is a directory: {output_path}")
+    if not output_path.parent.exists():
+        raise ConfigError(f"CI JSON output parent does not exist: {output_path.parent}")
+    output_path.write_text(
+        json.dumps(ci_json_payload(result), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return output_path
 
 
 def generated_config_check_path(
@@ -339,10 +426,15 @@ def generated_config_check_path(
     return json_path
 
 
-def generated_annotations(project_root: Path, run_dir: Path | None) -> None:
+def generated_annotations(
+    project_root: Path,
+    run_dir: Path | None,
+    *,
+    emit: bool = True,
+) -> None:
     """Generate annotations and print their output."""
     result = generate_annotations(project_root, run_dir)
-    if result.output:
+    if emit and result.output:
         print(result.output)
     return None
 

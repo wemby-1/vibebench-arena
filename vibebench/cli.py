@@ -19,7 +19,7 @@ from vibebench.artifacts import (
 from vibebench.badge import DEFAULT_BADGE_LABEL, BadgeResult, generate_badge
 from vibebench.baseline import BaselineStatus, set_baseline, show_baseline
 from vibebench.bundle import BundleResult, create_bundle
-from vibebench.ci import CiResult, run_ci_pipeline
+from vibebench.ci import CiResult, ci_json_payload, run_ci_pipeline, write_ci_json
 from vibebench.clean import CleanResult, clean_runs
 from vibebench.compare import CompareResult, compare_runs
 from vibebench.config import (
@@ -1210,6 +1210,14 @@ def ci_command(
         bool,
         typer.Option("--skip-gh-summary", help="Skip GitHub summary generation."),
     ] = False,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print CI result as JSON."),
+    ] = False,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write CI result JSON to this file."),
+    ] = None,
     bundle_include_report_assets: Annotated[
         bool,
         typer.Option(
@@ -1245,6 +1253,11 @@ def ci_command(
         selected_run_dir = (
             run_dir if run_dir.is_absolute() else root / run_dir
         ).resolve()
+    selected_json_output = None
+    if json_output:
+        selected_json_output = (
+            json_output if json_output.is_absolute() else root / json_output
+        ).resolve()
 
     try:
         result = run_ci_pipeline(
@@ -1262,6 +1275,7 @@ def ci_command(
             skip_manifest=skip_manifest,
             skip_annotate=skip_annotate,
             skip_gh_summary=skip_gh_summary,
+            emit_annotations=not as_json,
             bundle_include_report_assets=bundle_include_report_assets,
             bundle_strict=bundle_strict,
             min_score=min_score,
@@ -1269,11 +1283,20 @@ def ci_command(
             allow_findings=allow_findings,
             require_status_passed=require_status_passed,
         )
-    except ReportError as exc:
-        console.print(f"[red]{exc}[/]")
+        if selected_json_output is not None:
+            write_ci_json(result, selected_json_output)
+    except (ReportError, ConfigError) as exc:
+        target_console = err_console if as_json else console
+        target_console.print(f"[red]{exc}[/]")
         raise typer.Exit(code=1) from exc
 
-    render_ci_summary(result)
+    if as_json:
+        print(json.dumps(ci_json_payload(result), indent=2, sort_keys=True))
+    else:
+        render_ci_summary(result)
+        if selected_json_output is not None:
+            console.print(f"CI JSON: {selected_json_output}")
+
     if not result.passed:
         raise typer.Exit(code=1)
 

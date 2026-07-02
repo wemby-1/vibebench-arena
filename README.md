@@ -320,9 +320,9 @@ It compares the latest run with the previous run, including score, risk level, c
 
 ## One-Shot CI Pipeline
 
-`vibebench ci` is the recommended CI entrypoint. It runs check, gate, config check artifact generation, report, PR comment, explanation, export, badge, status block, trend summaries, GitHub annotations, bundle, and GitHub summary in order. The check and gate steps decide the final pass/fail verdict, while artifact steps are still attempted even when the quality gate fails.
+`vibebench ci` is the recommended CI entrypoint. It runs check, gate, config check artifact generation, report, PR comment, explanation, export, badge, status block, trend summaries, GitHub annotations, bundle, and GitHub summary in order. The check and gate steps decide the final pass/fail verdict, while artifact steps are still attempted even when the quality gate fails. Human-readable Rich output remains the default; use `--json` for automation or `--json-output PATH` to save the same machine-readable pipeline result to a file.
 
-Useful options include `--skip-report`, `--skip-pr-comment`, `--skip-explain`, `--skip-export`, `--skip-badge`, `--skip-status-block`, `--skip-trend`, `--skip-config-check`, `--skip-bundle`, `--skip-annotate`, `--skip-gh-summary`, `--bundle-include-report-assets`, and `--bundle-strict`. Gate overrides such as `--min-score`, `--max-risk`, `--allow-findings`, and `--no-require-status-passed` are passed through to the gate step. Use `--run-dir .vibebench/runs/<run-id>` to generate artifacts and enforce the gate against an existing run without creating a fresh check run.
+Useful options include `--json`, `--json-output PATH`, `--skip-report`, `--skip-pr-comment`, `--skip-explain`, `--skip-export`, `--skip-badge`, `--skip-status-block`, `--skip-trend`, `--skip-config-check`, `--skip-bundle`, `--skip-annotate`, `--skip-gh-summary`, `--bundle-include-report-assets`, and `--bundle-strict`. Gate overrides such as `--min-score`, `--max-risk`, `--allow-findings`, and `--no-require-status-passed` are passed through to the gate step. Use `--run-dir .vibebench/runs/<run-id>` to generate artifacts and enforce the gate against an existing run without creating a fresh check run.
 
 ## What The HTML Report Shows
 
