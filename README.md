@@ -401,21 +401,13 @@ See [examples/risk-demo/README.md](examples/risk-demo/README.md) for details.
 - [Security](SECURITY.md)
 - [Changelog](CHANGELOG.md)
 - [v0.2.0 release notes](RELEASE_NOTES_v0.2.0.md)
+- [Roadmap](ROADMAP.md)
 
 ## Roadmap
 
-Planned next milestones:
+The v0.3.0 roadmap is focused on moving from local/CI verification toward collaborative GitHub-native review workflows. See [ROADMAP.md](ROADMAP.md) for priorities, non-goals, the proposed milestone sequence, and release criteria.
 
-- automatic GitHub PR comment posting
-- richer GitHub Action integration
-- multi-agent arena workflows
-- replay timeline for AI-generated changes
-
-Not in v0.1.0:
-
-- hosted benchmark leaderboards
-- browser app or dashboard server
-- multi-agent tournament system
+Near-term priorities include GitHub PR comment integration, packaging/install readiness, init/template polish, artifact/report UX, and policy presets.
 
 ## Built With A Codex-First Workflow
 

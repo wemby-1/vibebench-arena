@@ -392,21 +392,11 @@ python -m vibebench bundle
 - [Security](SECURITY.md)
 - [Changelog](CHANGELOG.md)
 - [v0.2.0 发布说明](RELEASE_NOTES_v0.2.0.md)
+- [Roadmap](ROADMAP.md)
 
 ## Roadmap
 
-后续计划：
-
-- 自动发布 GitHub PR comment
-- 更完整的 GitHub Action integration
-- multi-agent arena workflows
-- AI 生成改动的 replay timeline
-
-v0.1.0 不包含：
-
-- 托管式 benchmark 排行榜
-- 浏览器应用或 dashboard server
-- multi-agent tournament system
+v0.3.0 的路线图会把重点从本地/CI 验证推进到更协作化的 GitHub 原生 review 流程。优先方向包括 GitHub PR comment 集成、安装与打包准备、初始化模板打磨、artifact/report 体验，以及 policy presets。完整计划见 [ROADMAP.md](ROADMAP.md)。
 
 ## Built With A Codex-First Workflow
 
