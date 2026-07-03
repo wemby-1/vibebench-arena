@@ -29,7 +29,7 @@ v0.3.0 should make VibeBench easier to use in real code review loops while prese
 
 ### A. GitHub PR Comment Integration
 
-Goal: make `pr-comment.md` useful directly inside GitHub pull requests.
+Goal: make `pr-comment.md` useful directly inside GitHub pull requests. The design contract lives in [docs/pr-comments.md](docs/pr-comments.md).
 
 Planned direction:
 
@@ -88,7 +88,7 @@ Planned direction:
 ## Proposed Milestone Sequence
 
 - **M59: GitHub PR comment design**
-  Define the comment marker strategy, permissions model, dry-run output, and failure behavior before implementing API calls.
+  Define the comment marker strategy, permissions model, dry-run output, and failure behavior in [docs/pr-comments.md](docs/pr-comments.md) before implementing API calls.
 
 - **M60: GitHub PR comment implementation**
   Add the command and tests for posting/updating PR comments from `pr-comment.md`, with dry-run support and no duplicate comments.

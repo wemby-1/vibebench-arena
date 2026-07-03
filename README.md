@@ -402,12 +402,13 @@ See [examples/risk-demo/README.md](examples/risk-demo/README.md) for details.
 - [Changelog](CHANGELOG.md)
 - [v0.2.0 release notes](RELEASE_NOTES_v0.2.0.md)
 - [Roadmap](ROADMAP.md)
+- [GitHub PR comment design](docs/pr-comments.md)
 
 ## Roadmap
 
 The v0.3.0 roadmap is focused on moving from local/CI verification toward collaborative GitHub-native review workflows. See [ROADMAP.md](ROADMAP.md) for priorities, non-goals, the proposed milestone sequence, and release criteria.
 
-Near-term priorities include GitHub PR comment integration, packaging/install readiness, init/template polish, artifact/report UX, and policy presets.
+Near-term priorities include GitHub PR comment integration, packaging/install readiness, init/template polish, artifact/report UX, and policy presets. The GitHub PR comment design is documented in [docs/pr-comments.md](docs/pr-comments.md).
 
 ## Built With A Codex-First Workflow
 

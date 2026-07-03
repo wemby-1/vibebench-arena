@@ -9,6 +9,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 ### Added
 
 - v0.3.0 roadmap planning in [ROADMAP.md](ROADMAP.md), covering GitHub-native PR review workflows, packaging readiness, init/template polish, artifact UX, policy presets, non-goals, and release criteria.
+- GitHub PR comment integration design in [docs/pr-comments.md](docs/pr-comments.md), covering CLI shape, GitHub Actions behavior, duplicate-comment prevention, safety rules, output contracts, and test strategy.
 
 ## [0.2.0] - 2026-07-03
 
