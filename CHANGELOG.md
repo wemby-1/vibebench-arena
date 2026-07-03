@@ -4,6 +4,16 @@ All notable changes to VibeBench Arena will be documented in this file.
 
 The format is inspired by Keep a Changelog, and this project aims to follow semantic versioning once releases begin.
 
+## [0.2.0 Release Candidate] - Unreleased
+
+### Highlights
+
+- Prepared release-candidate notes in [RELEASE_NOTES_v0.2.0.md](RELEASE_NOTES_v0.2.0.md).
+- Hardened the one-shot `vibebench ci` pipeline with JSON output, dry-run/plan mode, plan artifacts, release-check artifacts, and CI contract tests.
+- Added release readiness tooling with `vibebench release-check`, strict doctor advice, manifest consistency checks, and config-check artifacts.
+- GitHub Actions now uploads downloadable `vibebench-run-artifacts` containing selected run outputs such as manifests, bundles, reports, config-check summaries, release-check summaries, and trend artifacts.
+- Existing users can keep running `python -m vibebench ci`; the new commands and artifacts are additive.
+
 ## [Unreleased]
 
 ### Added

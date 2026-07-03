@@ -55,6 +55,8 @@ The CI pipeline order and skip flags are covered by contract tests. Any intentio
 
 ## Artifacts
 
+After a workflow run finishes, open the repository's **Actions** tab, select the CI run, and scroll to the **Artifacts** section on the run summary page. Download `vibebench-run-artifacts` to inspect the run outputs locally. This does not require GitHub secrets or API posting; it is the normal GitHub Actions artifact download flow.
+
 The workflow uploads a downloadable artifact named `vibebench-run-artifacts` from selected run outputs:
 
 ```text

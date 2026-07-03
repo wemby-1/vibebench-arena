@@ -49,6 +49,20 @@ python -m vibebench release-check
 
 `vibebench doctor` is a lightweight environment check for Python, Git, `.vibebench/config.yaml`, configured command executables, and whether `.vibebench/runs/` is writable. It does not run your configured checks. Use `python -m vibebench doctor --strict` for a stronger release/CI preflight that also expects recent run artifacts such as the manifest, bundle, and report. Add `--advice` to explain how to fix failed checks without modifying files. Use `python -m vibebench doctor --json`, `python -m vibebench doctor --json --strict`, or `python -m vibebench doctor --json --strict --advice` for machine-readable diagnostics. Run `python -m vibebench release-check` before tagging or publishing to combine config, strict doctor, latest run, manifest, artifacts, CI plan, and whitespace readiness checks. Add `--write-json PATH` and `--write-summary PATH` to persist release-check artifacts.
 
+## Release-Readiness Flow
+
+Before preparing a tag or GitHub Release, run a local release-readiness pass:
+
+```bash
+python -m vibebench ci --dry-run
+python -m vibebench ci
+python -m vibebench release-check
+python -m vibebench doctor --strict
+python -m vibebench manifest --check
+```
+
+For v0.2.0 release-candidate review, see [../RELEASE_NOTES_v0.2.0.md](../RELEASE_NOTES_v0.2.0.md). In GitHub Actions, download `vibebench-run-artifacts` from the workflow run to inspect reports, manifests, bundles, config-check summaries, trend artifacts, and `release-check.json`/`release-check.md`.
+
 ## Show Run History
 
 ```bash

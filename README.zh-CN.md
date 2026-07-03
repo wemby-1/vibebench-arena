@@ -355,6 +355,12 @@ python -m vibebench compare
 
 这个仓库已经在自己的 CI 里 dogfood VibeBench：直接运行 Ruff 和 pytest 后，CI 会继续运行 `vibebench ci`，按 `.vibebench/config.yaml` 中的策略执行明确门禁，并生成 config-check/report/comment/explanation/export/badge/status-block/trend，包含 `config-check.json`、`config-check.md`、`trend.md` 和 `trend.json`，输出 annotations，打包运行产物，写入 summary，并把选定的 `.vibebench/runs` 输出上传为 `vibebench-run-artifacts` artifact。`vibebench init` 可以生成 `.github/workflows/vibebench.yml` starter workflow；可参考 [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml)，更多说明见 [docs/github-actions.md](docs/github-actions.md)。
 
+## 发布就绪与 CI Artifacts
+
+v0.2.0 的候选发布说明见 [RELEASE_NOTES_v0.2.0.md](RELEASE_NOTES_v0.2.0.md)。未来准备打 tag 或发布前，建议先运行 `python -m vibebench ci`、`python -m vibebench release-check` 和 `python -m vibebench doctor --strict`。如果只想查看流水线计划，可以先用 `python -m vibebench ci --dry-run` 或 `python -m vibebench ci --dry-run --write-plan`。
+
+GitHub Actions 会上传名为 `vibebench-run-artifacts` 的可下载 artifact。里面可能包含 run manifest、bundle zip、HTML report、GitHub summary、config-check artifacts、trend artifacts，以及用于发布前检查的 `release-check.json` 和 `release-check.md`。
+
 ## 试运行风险检测 Demo
 
 一个干净的 100/100 报告很适合展示基础能力，但 VibeBench 的核心价值还包括：在 AI 生成代码进入交付前，发现那些看起来危险的改动。这个 demo 会创建一个临时仓库，先提交干净基线，然后故意制造几类未提交风险改动，让 VibeBench 去检测。
@@ -385,6 +391,7 @@ python -m vibebench bundle
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)
 - [Changelog](CHANGELOG.md)
+- [v0.2.0 候选发布说明](RELEASE_NOTES_v0.2.0.md)
 
 ## Roadmap
 

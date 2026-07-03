@@ -365,6 +365,12 @@ does not call the GitHub API.
 
 This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml` and generates config-check/report/comment/explanation/export/badge/status-block/trend output, including `config-check.json`, `config-check.md`, `trend.md`, and `trend.json`, emits annotations, bundles run artifacts, writes summaries, and uploads selected `.vibebench/runs` outputs as the `vibebench-run-artifacts` artifact. `vibebench init` can generate a starter workflow at `.github/workflows/vibebench.yml`; see [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) and [docs/github-actions.md](docs/github-actions.md) for details.
 
+## Release Readiness And CI Artifacts
+
+For v0.2.0 release-candidate review, see [RELEASE_NOTES_v0.2.0.md](RELEASE_NOTES_v0.2.0.md). Before tagging or publishing a future release, run `python -m vibebench ci`, `python -m vibebench release-check`, and `python -m vibebench doctor --strict`. Use `python -m vibebench ci --dry-run` or `python -m vibebench ci --dry-run --write-plan` to inspect the pipeline before executing it.
+
+GitHub Actions uploads a downloadable artifact named `vibebench-run-artifacts` from workflow runs. It can include the run manifest, bundle zip, HTML report, GitHub summary, config-check artifacts, trend artifacts, and `release-check.json`/`release-check.md` for review after CI completes.
+
 ## Try The Risk Demo
 
 A clean 100/100 run is useful, but VibeBench is meant to catch risky generated changes before they ship. The risk demo creates a temporary repository with a clean baseline commit, then intentionally leaves suspicious uncommitted changes for VibeBench to analyze.
@@ -395,6 +401,7 @@ See [examples/risk-demo/README.md](examples/risk-demo/README.md) for details.
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)
 - [Changelog](CHANGELOG.md)
+- [v0.2.0 release-candidate notes](RELEASE_NOTES_v0.2.0.md)
 
 ## Roadmap
 
