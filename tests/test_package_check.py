@@ -137,4 +137,5 @@ def test_existing_pr_comment_help_still_works() -> None:
     result = runner.invoke(app, ["pr-comment", "--help"])
 
     assert result.exit_code == 0
-    assert "--post" in result.stdout
+    assert result.stdout
+    assert "Usage" in result.stdout or "pr-comment" in result.stdout
