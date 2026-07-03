@@ -366,7 +366,7 @@ This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest c
 
 ## Release Readiness And CI Artifacts
 
-For v0.2.0 release readiness, see [RELEASE_NOTES_v0.2.0.md](RELEASE_NOTES_v0.2.0.md). Before tagging or publishing a future release, run `python -m vibebench ci`, `python -m vibebench release-check`, and `python -m vibebench doctor --strict`. Use `python -m vibebench ci --dry-run` or `python -m vibebench ci --dry-run --write-plan` to inspect the pipeline before executing it.
+For v0.2.0 details, see [RELEASE_NOTES_v0.2.0.md](RELEASE_NOTES_v0.2.0.md). For future release readiness, before tagging or publishing, run `python -m vibebench ci`, `python -m vibebench release-check`, and `python -m vibebench doctor --strict`. Use `python -m vibebench ci --dry-run` or `python -m vibebench ci --dry-run --write-plan` to inspect the pipeline before executing it.
 
 GitHub Actions uploads a downloadable artifact named `vibebench-run-artifacts` from workflow runs. It can include the run manifest, bundle zip, HTML report, GitHub summary, config-check artifacts, trend artifacts, and `release-check.json`/`release-check.md` for review after CI completes.
 

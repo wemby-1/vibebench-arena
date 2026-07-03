@@ -357,7 +357,7 @@ python -m vibebench compare
 
 ## 发布就绪与 CI Artifacts
 
-v0.2.0 的发布说明见 [RELEASE_NOTES_v0.2.0.md](RELEASE_NOTES_v0.2.0.md)。未来准备打 tag 或发布前，建议先运行 `python -m vibebench ci`、`python -m vibebench release-check` 和 `python -m vibebench doctor --strict`。如果只想查看流水线计划，可以先用 `python -m vibebench ci --dry-run` 或 `python -m vibebench ci --dry-run --write-plan`。
+v0.2.0 的发布说明见 [RELEASE_NOTES_v0.2.0.md](RELEASE_NOTES_v0.2.0.md)。后续准备新的 tag 或发布前，建议先运行 `python -m vibebench ci`、`python -m vibebench release-check` 和 `python -m vibebench doctor --strict`。如果只想查看流水线计划，可以先用 `python -m vibebench ci --dry-run` 或 `python -m vibebench ci --dry-run --write-plan`。
 
 GitHub Actions 会上传名为 `vibebench-run-artifacts` 的可下载 artifact。里面可能包含 run manifest、bundle zip、HTML report、GitHub summary、config-check artifacts、trend artifacts，以及用于发布前检查的 `release-check.json` 和 `release-check.md`。
 

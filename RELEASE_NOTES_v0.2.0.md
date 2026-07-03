@@ -4,11 +4,18 @@ Tagline: Codex-first quality gate for vibe coding projects.
 
 Slogan: Codex writes code. VibeBench verifies it.
 
-These notes are prepared for the v0.2.0 release. This metadata commit does not create a tag, publish a package, or create a GitHub Release.
+VibeBench Arena v0.2.0 is focused on CI orchestration, machine-readable outputs, release readiness checks, and downloadable GitHub Actions artifacts.
+
+## Release Status
+
+- v0.2.0 is tagged as `v0.2.0`.
+- The GitHub Release is published as **VibeBench Arena v0.2.0**.
+- Package metadata is `0.2.0`.
+- GitHub Actions uploads downloadable `vibebench-run-artifacts` from workflow runs.
 
 ## Highlights
 
-v0.2.0 is focused on making VibeBench more useful in real local and CI workflows. Since v0.1.0, VibeBench has grown from a local check/report scaffold into a fuller quality-gate toolkit with CI orchestration, machine-readable outputs, release readiness checks, run artifact discovery, and downloadable GitHub Actions artifacts.
+Since v0.1.0, VibeBench has grown from a local check/report scaffold into a fuller quality-gate toolkit with CI orchestration, machine-readable outputs, release readiness checks, run artifact discovery, and downloadable GitHub Actions artifacts.
 
 ## What Changed Since v0.1.0
 
@@ -28,7 +35,7 @@ v0.2.0 is focused on making VibeBench more useful in real local and CI workflows
 
 ## New CI Capabilities
 
-`python -m vibebench ci` is now the recommended CI entrypoint. It runs the configured checks, enforces the quality gate, and then attempts artifact generation so failures are easier to diagnose.
+`python -m vibebench ci` is the recommended CI entrypoint. It runs the configured checks, enforces the quality gate, and then attempts artifact generation so failures are easier to diagnose.
 
 The current pipeline includes:
 
@@ -49,7 +56,7 @@ The current pipeline includes:
 15. `bundle`
 16. `gh-summary`
 
-GitHub Actions now uploads selected run outputs as a downloadable artifact named `vibebench-run-artifacts`.
+GitHub Actions uploads selected run outputs as a downloadable artifact named `vibebench-run-artifacts`.
 
 Expected uploaded files can include:
 
@@ -79,7 +86,7 @@ Dry-run mode is useful when reviewing CI changes, debugging skip flags, or docum
 
 ## Machine-Readable Outputs
 
-v0.2.0 capabilities include JSON outputs for automation and external tooling:
+v0.2.0 includes JSON outputs for automation and external tooling:
 
 - `python -m vibebench ci --json`
 - `python -m vibebench config --check --json`
@@ -133,11 +140,11 @@ python -m vibebench release-check --json
 
 GitHub Actions users can download `vibebench-run-artifacts` from a workflow run's Artifacts section. The artifact contains selected run outputs for review and debugging.
 
-No breaking changes are included in v0.2.0. Existing local commands remain compatible, and the package metadata is updated to 0.2.0 for the release.
+No breaking changes are included in v0.2.0. Existing local commands remain compatible, and the package metadata is `0.2.0`.
 
 ## Release Readiness Flow
 
-Before tagging or publishing a future v0.2.0 release, run:
+Before tagging or publishing a future release, run:
 
 ```bash
 python -m ruff check .
@@ -157,20 +164,9 @@ Then confirm:
 - `vibebench-run-artifacts` is uploaded and downloadable
 - release notes and changelog match the intended release scope
 
-## Release Checklist
-
-Before creating the v0.2.0 tag or GitHub Release in a separate milestone:
-
-1. Run `python -m vibebench release-check`.
-2. Run `python -m vibebench ci`.
-3. Confirm GitHub Actions is green on `main`.
-4. Confirm `vibebench-run-artifacts` is uploaded and downloadable from the workflow run.
-5. Create and push the `v0.2.0` tag only in the dedicated release milestone.
-
 ## Known Limitations
 
-- No PyPI publishing is included in this release metadata step.
-- No GitHub Release is created automatically.
+- PyPI publishing is not part of the current release workflow.
 - VibeBench still does not post PR comments through the GitHub API.
 - VibeBench is not yet a hosted dashboard or multi-agent arena platform.
 
@@ -178,7 +174,6 @@ Before creating the v0.2.0 tag or GitHub Release in a separate milestone:
 
 Potential follow-up work:
 
-- tag v0.2.0 in the separate release milestone when maintainers are ready
 - add GitHub API PR comment posting
 - improve dashboard/export integrations
 - continue hardening release readiness and artifact contracts

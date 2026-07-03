@@ -36,7 +36,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 ### Notes
 
 - v0.2.0 remains local-first and Codex-first: Codex writes code, VibeBench verifies it.
-- No PyPI publishing, GitHub Release creation, GitHub API PR comment posting, hosted dashboard, or multi-agent arena workflow is included in this metadata commit.
+- PyPI publishing, GitHub API PR comment posting, hosted dashboards, and multi-agent arena workflows remain out of scope for v0.2.0.
 
 ## [0.1.0] - 2026-06-27
 
