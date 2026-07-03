@@ -65,6 +65,11 @@ from vibebench.manifest import (
     check_manifest,
     generate_manifest,
 )
+from vibebench.package_check import (
+    PackageReadinessResult,
+    package_check_json_payload,
+    run_package_check,
+)
 from vibebench.paths import config_file
 from vibebench.pr_comment import (
     DEFAULT_COMMENT_MARKER,
@@ -1557,6 +1562,34 @@ def doctor(
         raise typer.Exit(code=1)
 
 
+@app.command("package-check")
+def package_check_command(
+    project_root: ProjectRootOption = Path("."),
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print package readiness as JSON."),
+    ] = False,
+    advice: Annotated[
+        bool,
+        typer.Option("--advice", help="Show advice for failed package checks."),
+    ] = False,
+) -> None:
+    """Check local package and install readiness without network access."""
+    result = run_package_check(project_root, advice=advice)
+    if as_json:
+        print(
+            json.dumps(
+                package_check_json_payload(result),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+    else:
+        render_package_check_summary(result)
+    if not result.ready:
+        raise typer.Exit(code=1)
+
+
 @app.command("release-check")
 def release_check_command(
     project_root: ProjectRootOption = Path("."),
@@ -2166,6 +2199,37 @@ def render_doctor_summary(result: DoctorResult) -> None:
             for check in advice_items:
                 console.print(f"- {check.category}: {check.advice}")
 
+
+
+def render_package_check_summary(result: PackageReadinessResult) -> None:
+    """Render package readiness summary."""
+    console.print()
+    console.print("[bold]VibeBench Package Check[/]")
+    console.print(f"Project root: {result.project_root}")
+    if result.package_name:
+        console.print(f"Package: {result.package_name}")
+    if result.version:
+        console.print(f"Version: {result.version}")
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Check")
+    table.add_column("Status")
+    table.add_column("Message")
+    if result.advice:
+        table.add_column("Advice")
+    status_style = {"passed": "green", "failed": "red"}
+    for check in result.checks:
+        row = [
+            check.name,
+            f"[{status_style[check.status]}]{check.status}[/]",
+            check.message,
+        ]
+        if result.advice:
+            row.append(check.advice or "")
+        table.add_row(*row)
+    console.print(table)
+    status_style_name = "green" if result.ready else "red"
+    console.print(f"Package readiness: [{status_style_name}]{result.status}[/]")
 
 
 def render_release_check_summary(result: ReleaseReadinessResult) -> None:

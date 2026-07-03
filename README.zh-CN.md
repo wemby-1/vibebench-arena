@@ -70,6 +70,7 @@ python -m vibebench init
 python -m vibebench config
 python -m vibebench doctor
 python -m vibebench release-check
+python -m vibebench package-check
 python -m vibebench history
 python -m vibebench latest
 python -m vibebench latest --all-paths
@@ -97,6 +98,17 @@ python -m vibebench compare
 ```
 
 `vibebench init` 会创建 `.vibebench/config.yaml` 和 `.github/workflows/vibebench.yml`。已有文件默认会跳过，只有传入 `--force` 才会覆盖；`--no-workflow` 和 `--workflow-only` 可用于只生成其中一部分。
+
+如果要检查安装与打包准备情况，可以使用 editable install 和本地 metadata 检查：
+
+```bash
+python -m pip install -e .
+python -m vibebench --help
+python -m vibebench package-check
+python -m vibebench package-check --json
+```
+
+`package-check` 会检查本地 package metadata、import、console script 入口和关键文档文件；它不会访问网络、不会发布到 PyPI，也不会调用 GitHub API。
 
 `vibebench config` 会输出最终生效的 project、checks、gate 和 risk 配置。`--json` 可输出机器可读 JSON，`--validate` 只做校验，`--check` 会执行一致性诊断，`--check --advice` 会给出修复建议，`--show-source` 会显示主要配置区域来自配置文件还是内置默认值。
 

@@ -74,6 +74,7 @@ python -m vibebench init
 python -m vibebench config
 python -m vibebench doctor
 python -m vibebench release-check
+python -m vibebench package-check
 python -m vibebench history
 python -m vibebench latest
 python -m vibebench latest --all-paths
@@ -101,6 +102,17 @@ python -m vibebench compare
 ```
 
 `vibebench init` creates `.vibebench/config.yaml` and `.github/workflows/vibebench.yml`. Existing files are skipped unless `--force` is used; `--no-workflow` and `--workflow-only` support partial bootstrap.
+
+For packaging readiness, use editable install and local metadata checks:
+
+```bash
+python -m pip install -e .
+python -m vibebench --help
+python -m vibebench package-check
+python -m vibebench package-check --json
+```
+
+`package-check` validates local metadata, imports, the console script entry point, and key docs without network calls, PyPI publishing, or GitHub API access.
 
 `vibebench config` prints the effective project, checks, gate, and risk configuration. Use `--json` for machine-readable output, `--validate` for a short validation result, `--check` for consistency diagnostics, `--check --advice` for repair guidance, and `--show-source` to see whether major sections came from the config file or built-in defaults.
 

@@ -10,6 +10,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 - v0.3.0 roadmap planning in [ROADMAP.md](ROADMAP.md), covering GitHub-native PR review workflows, packaging readiness, init/template polish, artifact UX, policy presets, non-goals, and release criteria.
 - GitHub PR comment posting via `python -m vibebench pr-comment --post`, with dry-run mode, JSON output, marker-based update behavior, tested create/update decisions, and pull-request-only GitHub Actions wiring.
+- Local package/install readiness checks with `python -m vibebench package-check`, `--json`, and `--advice`.
 
 ## [0.2.0] - 2026-07-03
 

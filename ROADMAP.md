@@ -17,7 +17,7 @@ v0.2.0 established VibeBench as a local and CI verification tool with a complete
 - GitHub Actions annotations, step summaries, and downloadable `vibebench-run-artifacts`.
 - Contract tests that pin CI pipeline order, skip flags, dry-run JSON, and import safety.
 
-The project is still intentionally local-first. It does not yet post PR comments through the GitHub API, publish to PyPI, provide a hosted dashboard, or implement multi-agent arena workflows.
+The project is still intentionally local-first. It can now post/update PR comments from GitHub Actions, but it does not publish to PyPI, provide a hosted dashboard, or implement multi-agent arena workflows.
 
 ## v0.3.0 Theme
 
@@ -46,7 +46,7 @@ Goal: make installation guidance more reliable without rushing package distribut
 
 Planned direction:
 
-- Validate `pyproject.toml` metadata and packaging shape.
+- Validate `pyproject.toml` metadata and packaging shape with `python -m vibebench package-check`.
 - Document editable installs clearly for contributors.
 - Consider a `pipx`-friendly install workflow.
 - Keep source installs and local development paths first-class.
@@ -93,8 +93,11 @@ Planned direction:
 - **M60: GitHub PR comment implementation**
   Add the command and tests for posting/updating PR comments from `pr-comment.md`, with dry-run support and no duplicate comments.
 
-- **M61: Packaging/install readiness**
-  Validate package metadata, document install paths, and make contributor/user installation guidance sharper.
+- **M61: GitHub PR comment workflow wiring**
+  Wire marker-based PR comment posting into GitHub Actions safely.
+
+- **M63: Packaging/install readiness**
+  Validate package metadata, document install paths, and make contributor/user installation guidance sharper without publishing to PyPI.
 
 - **M62: Init/template polish**
   Improve `vibebench init`, generated workflow/config guidance, and a minimal example project for first-run clarity.
