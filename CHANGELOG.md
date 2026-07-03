@@ -4,54 +4,39 @@ All notable changes to VibeBench Arena will be documented in this file.
 
 The format is inspired by Keep a Changelog, and this project aims to follow semantic versioning once releases begin.
 
-## [0.2.0 Release Candidate] - Unreleased
-
-### Highlights
-
-- Prepared release-candidate notes in [RELEASE_NOTES_v0.2.0.md](RELEASE_NOTES_v0.2.0.md).
-- Hardened the one-shot `vibebench ci` pipeline with JSON output, dry-run/plan mode, plan artifacts, release-check artifacts, and CI contract tests.
-- Added release readiness tooling with `vibebench release-check`, strict doctor advice, manifest consistency checks, and config-check artifacts.
-- GitHub Actions now uploads downloadable `vibebench-run-artifacts` containing selected run outputs such as manifests, bundles, reports, config-check summaries, release-check summaries, and trend artifacts.
-- Existing users can keep running `python -m vibebench ci`; the new commands and artifacts are additive.
-
 ## [Unreleased]
 
 ### Added
 
-- `vibebench config --check --write-json` and `--write-summary` plus CI-generated `config-check.json` and `config-check.md` artifacts.
-- `vibebench config --check --advice` and `vibebench config --check --json --advice` for actionable config consistency repair guidance.
-- `vibebench config --check` and `vibebench config --check --json` for focused config consistency diagnostics.
-- `vibebench config --show` and `vibebench config --show --json` for inspecting the active validated config file.
-- `vibebench manifest` for writing machine-readable `manifest.json` run indexes and `vibebench manifest --check` for drift detection against run artifacts.
-- `vibebench latest --all-paths` for printing every available artifact path from the newest valid run.
-- `vibebench latest` for locating the newest valid run and key artifact paths.
-- `vibebench trend` for summarizing recent run quality movement across scores, risks, and findings, with optional `trend.md` and `trend.json` artifact output.
-- `vibebench artifacts` for listing known run artifacts, availability, and file sizes.
-- `vibebench status-block` for copy-pasteable README status summaries, plus marker-based README update and check modes.
-- `vibebench badge` for Shields.io-compatible `badge.json`, `badge.md`, and badge URL run status artifacts.
-- `vibebench export` for stable JSON and Markdown run exports for dashboards, external tools, and CI aggregation.
-- `vibebench annotate` for emitting GitHub Actions annotations from command failures and risk findings.
-- `vibebench ci` for running the complete check, gate, and artifact pipeline in one command, including `--dry-run` / `--plan` pipeline previews, `ci-plan.json` / `ci-plan.md` plan artifacts, trend summary, trend JSON, manifest generation, downloadable GitHub Actions run artifacts, and machine-readable CI JSON output via `--json` or `--json-output`.
-- `vibebench bundle` for packaging run artifacts into `vibebench-bundle.zip`.
-- `vibebench explain` for human-readable run explanations and `explain.md` artifacts.
-- `vibebench release-check` for read-only pre-release readiness checks across config, strict doctor, latest run, manifest, artifacts, CI plan, and `git diff --check`, with `release-check.json` and `release-check.md` artifact output.
-- `vibebench config` for inspecting, validating, and exporting the effective configuration.
-- `vibebench init` now bootstraps `.vibebench/config.yaml` and a GitHub Actions workflow, with safe overwrite controls.
-- Configurable `risk` policy in `.vibebench/config.yaml` for Git diff risk detection.
-- `vibebench gate` for explicit local and CI pass/fail quality thresholds.
-- Configurable `gate` policy in `.vibebench/config.yaml`, with CLI flags as explicit overrides.
-- Active GitHub Actions CI now enforces the VibeBench quality gate from config and writes `gate-summary.md`.
-- `vibebench baseline` for saving a project baseline run and comparing against it.
+- Nothing yet.
+
+## [0.2.0] - 2026-07-03
+
+### Added
+
+- Release notes in [RELEASE_NOTES_v0.2.0.md](RELEASE_NOTES_v0.2.0.md).
+- `vibebench ci` as the one-shot check, gate, artifact, annotation, bundle, and GitHub summary pipeline.
+- Machine-readable CI output with `vibebench ci --json` and `--json-output`.
+- CI dry-run / plan mode with `vibebench ci --dry-run`, `vibebench ci --plan`, `ci-plan.json`, and `ci-plan.md`.
+- CI pipeline contract tests covering import safety, canonical step order, skip flags, dry-run JSON, and release-check integration.
+- `vibebench release-check` for read-only pre-release readiness checks across config, strict doctor, latest run, manifest, artifacts, CI plan, and `git diff --check`.
+- Release-check artifacts with `release-check.json` and `release-check.md`, including generation from `vibebench ci`.
+- Config inspection and consistency diagnostics with `config --show`, `config --check`, `config --check --advice`, and persisted `config-check.json` / `config-check.md` artifacts.
+- Strict doctor checks, JSON output, and actionable advice with `vibebench doctor --strict`, `--json`, and `--advice`.
+- Run manifest generation and consistency checks with `vibebench manifest` and `vibebench manifest --check`.
+- Run discovery and artifact inspection commands including `latest`, `latest --all-paths`, `artifacts`, `history`, `trend`, `compare`, and `baseline`.
+- Machine-readable and shareable run artifacts including `export.json`, `badge.json`, `badge.md`, `badge-url.txt`, `status-block.md`, `trend.md`, `trend.json`, and `vibebench-bundle.zip`.
+- GitHub Actions annotations and step summaries without GitHub API posting.
+- Active GitHub Actions dogfooding of VibeBench, including quality gate enforcement, downloadable `vibebench-run-artifacts`, and Node 24-compatible official actions.
+- `vibebench init` bootstrapping for `.vibebench/config.yaml` and `.github/workflows/vibebench.yml`, with safe overwrite controls.
+- Configurable `gate` and `risk` policy sections in `.vibebench/config.yaml`.
 - `vibebench clean` for safe dry-run cleanup of old local run directories.
-- `vibebench history` for inspecting recent local run metrics and generated artifacts.
-- `vibebench doctor --json`, `vibebench doctor --strict`, and `vibebench doctor --advice` for machine-readable diagnostics, stronger release/CI readiness preflights, and actionable repair suggestions.
-- `vibebench compare` for comparing the latest run against a previous run and writing `compare.md`.
-- Upgraded active GitHub Actions to Node 24-compatible action majors.
-- Active GitHub Actions CI now dogfoods VibeBench and uploads `.vibebench/runs` artifacts.
-- `vibebench gh-summary` for GitHub Actions step summaries without GitHub API posting.
-- Example GitHub Actions workflow and setup documentation.
-- Release-readiness documentation for contributors, security reporting, risk rules, and quickstart usage.
-- GitHub issue and pull request templates for focused open-source collaboration.
+- Release-readiness documentation, GitHub Actions documentation, quickstart updates, contributor/security docs, and issue/PR templates.
+
+### Notes
+
+- v0.2.0 remains local-first and Codex-first: Codex writes code, VibeBench verifies it.
+- No PyPI publishing, GitHub Release creation, GitHub API PR comment posting, hosted dashboard, or multi-agent arena workflow is included in this metadata commit.
 
 ## [0.1.0] - 2026-06-27
 

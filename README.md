@@ -26,8 +26,7 @@ VibeBench Arena is a local verification tool for Codex-first and AI-assisted
 coding workflows. It helps developers check whether AI-generated code is safe to
 review, commit, and ship.
 
-The project is intentionally small today. v0.1.0 focuses on a clean CLI, local
-checks, Git diff risk analysis, VibeScore, and a static HTML report.
+The project remains local-first and pragmatic. v0.2.0 adds stronger CI orchestration, release readiness checks, machine-readable artifacts, and downloadable GitHub Actions outputs on top of the original local quality gate.
 
 ## Why VibeBench?
 
@@ -367,7 +366,7 @@ This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest c
 
 ## Release Readiness And CI Artifacts
 
-For v0.2.0 release-candidate review, see [RELEASE_NOTES_v0.2.0.md](RELEASE_NOTES_v0.2.0.md). Before tagging or publishing a future release, run `python -m vibebench ci`, `python -m vibebench release-check`, and `python -m vibebench doctor --strict`. Use `python -m vibebench ci --dry-run` or `python -m vibebench ci --dry-run --write-plan` to inspect the pipeline before executing it.
+For v0.2.0 release readiness, see [RELEASE_NOTES_v0.2.0.md](RELEASE_NOTES_v0.2.0.md). Before tagging or publishing a future release, run `python -m vibebench ci`, `python -m vibebench release-check`, and `python -m vibebench doctor --strict`. Use `python -m vibebench ci --dry-run` or `python -m vibebench ci --dry-run --write-plan` to inspect the pipeline before executing it.
 
 GitHub Actions uploads a downloadable artifact named `vibebench-run-artifacts` from workflow runs. It can include the run manifest, bundle zip, HTML report, GitHub summary, config-check artifacts, trend artifacts, and `release-check.json`/`release-check.md` for review after CI completes.
 
@@ -401,7 +400,7 @@ See [examples/risk-demo/README.md](examples/risk-demo/README.md) for details.
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)
 - [Changelog](CHANGELOG.md)
-- [v0.2.0 release-candidate notes](RELEASE_NOTES_v0.2.0.md)
+- [v0.2.0 release notes](RELEASE_NOTES_v0.2.0.md)
 
 ## Roadmap
 

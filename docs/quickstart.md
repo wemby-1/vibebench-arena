@@ -61,7 +61,7 @@ python -m vibebench doctor --strict
 python -m vibebench manifest --check
 ```
 
-For v0.2.0 release-candidate review, see [../RELEASE_NOTES_v0.2.0.md](../RELEASE_NOTES_v0.2.0.md). In GitHub Actions, download `vibebench-run-artifacts` from the workflow run to inspect reports, manifests, bundles, config-check summaries, trend artifacts, and `release-check.json`/`release-check.md`.
+For v0.2.0 release readiness, see [../RELEASE_NOTES_v0.2.0.md](../RELEASE_NOTES_v0.2.0.md). In GitHub Actions, download `vibebench-run-artifacts` from the workflow run to inspect reports, manifests, bundles, config-check summaries, trend artifacts, and `release-check.json`/`release-check.md`.
 
 ## Show Run History
 

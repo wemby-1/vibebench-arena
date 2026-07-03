@@ -1,10 +1,10 @@
-# VibeBench Arena v0.2.0 Release Candidate
+# VibeBench Arena v0.2.0
 
 Tagline: Codex-first quality gate for vibe coding projects.
 
 Slogan: Codex writes code. VibeBench verifies it.
 
-This is release-candidate documentation for a future v0.2.0 release. It does not create a tag, publish a package, or change the current package version.
+These notes are prepared for the v0.2.0 release. This metadata commit does not create a tag, publish a package, or create a GitHub Release.
 
 ## Highlights
 
@@ -79,7 +79,7 @@ Dry-run mode is useful when reviewing CI changes, debugging skip flags, or docum
 
 ## Machine-Readable Outputs
 
-v0.2.0 candidate capabilities include JSON outputs for automation and external tooling:
+v0.2.0 capabilities include JSON outputs for automation and external tooling:
 
 - `python -m vibebench ci --json`
 - `python -m vibebench config --check --json`
@@ -133,7 +133,7 @@ python -m vibebench release-check --json
 
 GitHub Actions users can download `vibebench-run-artifacts` from a workflow run's Artifacts section. The artifact contains selected run outputs for review and debugging.
 
-No breaking changes are currently planned for v0.2.0. Existing local commands and the v0.1.0 package version remain unchanged until an actual release is prepared.
+No breaking changes are included in v0.2.0. Existing local commands remain compatible, and the package metadata is updated to 0.2.0 for the release.
 
 ## Release Readiness Flow
 
@@ -157,9 +157,19 @@ Then confirm:
 - `vibebench-run-artifacts` is uploaded and downloadable
 - release notes and changelog match the intended release scope
 
+## Release Checklist
+
+Before creating the v0.2.0 tag or GitHub Release in a separate milestone:
+
+1. Run `python -m vibebench release-check`.
+2. Run `python -m vibebench ci`.
+3. Confirm GitHub Actions is green on `main`.
+4. Confirm `vibebench-run-artifacts` is uploaded and downloadable from the workflow run.
+5. Create and push the `v0.2.0` tag only in the dedicated release milestone.
+
 ## Known Limitations
 
-- No PyPI publishing is included in this release-candidate prep.
+- No PyPI publishing is included in this release metadata step.
 - No GitHub Release is created automatically.
 - VibeBench still does not post PR comments through the GitHub API.
 - VibeBench is not yet a hosted dashboard or multi-agent arena platform.
@@ -168,7 +178,7 @@ Then confirm:
 
 Potential follow-up work:
 
-- finalize and tag v0.2.0 when maintainers are ready
+- tag v0.2.0 in the separate release milestone when maintainers are ready
 - add GitHub API PR comment posting
 - improve dashboard/export integrations
 - continue hardening release readiness and artifact contracts
