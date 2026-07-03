@@ -1149,6 +1149,10 @@ def test_generated_init_workflow_uses_ci_command(tmp_path: Path) -> None:
     assert "python -m ruff check ." in workflow
     assert "python -m pytest -q" in workflow
     assert "python -m vibebench ci" in workflow
+    assert "pull-requests: write" in workflow
+    assert "if: github.event_name == 'pull_request'" in workflow
+    assert "python -m vibebench pr-comment --post --no-fail-on-error" in workflow
+    assert "GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}" in workflow
     assert "python -m vibebench check" not in workflow
 
 def test_active_github_workflow_uses_ci_command() -> None:
@@ -1157,11 +1161,26 @@ def test_active_github_workflow_uses_ci_command() -> None:
     assert "python -m ruff check ." in workflow
     assert "python -m pytest -q" in workflow
     assert "python -m vibebench ci" in workflow
+    assert "pull-requests: write" in workflow
+    assert "if: github.event_name == 'pull_request'" in workflow
+    assert "python -m vibebench pr-comment --post --no-fail-on-error" in workflow
+    assert "GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}" in workflow
     assert "actions/upload-artifact@v7" in workflow
     assert "name: vibebench-run-artifacts" in workflow
     assert ".vibebench/runs/**/metrics.json" in workflow
     assert ".vibebench/runs/**/release-check.md" in workflow
     assert "vibebench check" not in workflow
+
+def test_example_github_workflow_posts_pr_comments_safely() -> None:
+    workflow = Path("docs/examples/github-actions/vibebench.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "pull-requests: write" in workflow
+    assert "if: github.event_name == 'pull_request'" in workflow
+    assert "python -m vibebench pr-comment --post --no-fail-on-error" in workflow
+    assert "GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}" in workflow
+    assert "actions/upload-artifact@v7" in workflow
 
 def test_ci_skip_manifest_skips_manifest_generation(tmp_path: Path) -> None:
     write_config(tmp_path)

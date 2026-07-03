@@ -343,7 +343,7 @@ python -m vibebench compare
 - 最多 10 条风险发现和相关路径
 - 与 HTML 报告一致的 review / ship 建议
 
-GitHub PR comment 发布现在是显式启用能力。可以先运行 `python -m vibebench pr-comment --post --dry-run` 预览，再在 `pull_request` workflow 中使用 `python -m vibebench pr-comment --post`，并授予 `pull-requests: write` 权限。当前仓库默认 workflow 还不会自动发布评论。
+GitHub PR comment 发布已经接入 GitHub Actions workflow，并且只在 `pull_request` 事件中运行。可以先用 `python -m vibebench pr-comment --post --dry-run` 本地预览。CI 中会用隐藏 marker 更新同一条评论，默认使用内置 `GITHUB_TOKEN`，并通过 `--no-fail-on-error` 避免 fork PR 权限受限时影响核心 VibeBench 门禁。
 
 ## 运行解释
 
@@ -351,7 +351,7 @@ GitHub PR comment 发布现在是显式启用能力。可以先运行 `python -m
 
 ## GitHub Actions
 
-`vibebench annotate` 会把可见的风险发现和命令失败输出成 GitHub Actions annotations。`vibebench gh-summary` 会在 `GITHUB_STEP_SUMMARY` 存在时写入 GitHub Actions step summary。`vibebench pr-comment --post` 可以在显式启用时发布或更新生成的 PR comment。
+`vibebench annotate` 会把可见的风险发现和命令失败输出成 GitHub Actions annotations。`vibebench gh-summary` 会在 `GITHUB_STEP_SUMMARY` 存在时写入 GitHub Actions step summary。workflow 只会在 `pull_request` 事件中发布或更新 VibeBench PR comment。
 
 这个仓库已经在自己的 CI 里 dogfood VibeBench：直接运行 Ruff 和 pytest 后，CI 会继续运行 `vibebench ci`，按 `.vibebench/config.yaml` 中的策略执行明确门禁，并生成 config-check/report/comment/explanation/export/badge/status-block/trend，包含 `config-check.json`、`config-check.md`、`trend.md` 和 `trend.json`，输出 annotations，打包运行产物，写入 summary，并把选定的 `.vibebench/runs` 输出上传为 `vibebench-run-artifacts` artifact。`vibebench init` 可以生成 `.github/workflows/vibebench.yml` starter workflow；可参考 [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml)，更多说明见 [docs/github-actions.md](docs/github-actions.md)。
 
@@ -397,7 +397,7 @@ python -m vibebench bundle
 
 ## Roadmap
 
-v0.3.0 的路线图会把重点从本地/CI 验证推进到更协作化的 GitHub 原生 review 流程。优先方向包括把 PR comment 发布接入默认 GitHub Actions 模板、安装与打包准备、初始化模板打磨、artifact/report 体验，以及 policy presets。完整计划见 [ROADMAP.md](ROADMAP.md)，GitHub PR comment 行为见 [docs/pr-comments.md](docs/pr-comments.md)。
+v0.3.0 的路线图会把重点从本地/CI 验证推进到更协作化的 GitHub 原生 review 流程。优先方向包括安装与打包准备、初始化模板打磨、artifact/report 体验，以及 policy presets。完整计划见 [ROADMAP.md](ROADMAP.md)，GitHub PR comment 行为见 [docs/pr-comments.md](docs/pr-comments.md)。
 
 ## Built With A Codex-First Workflow
 

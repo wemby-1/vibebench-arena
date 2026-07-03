@@ -127,6 +127,10 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   vibebench:
     runs-on: ubuntu-latest
@@ -156,6 +160,12 @@ jobs:
 
       - name: Run VibeBench CI pipeline
         run: python -m vibebench ci
+
+      - name: Post VibeBench PR comment
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python -m vibebench pr-comment --post --no-fail-on-error
 
       - name: Upload VibeBench artifacts
         if: always()

@@ -57,6 +57,10 @@ def test_init_generated_workflow_contains_required_commands(tmp_path: Path) -> N
     assert "python -m ruff check ." in workflow
     assert "python -m pytest -q" in workflow
     assert "python -m vibebench ci" in workflow
+    assert "pull-requests: write" in workflow
+    assert "if: github.event_name == 'pull_request'" in workflow
+    assert "python -m vibebench pr-comment --post --no-fail-on-error" in workflow
+    assert "GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}" in workflow
     assert "actions/upload-artifact@v7" in workflow
     assert "name: vibebench-run-artifacts" in workflow
     assert ".vibebench/runs/**/metrics.json" in workflow

@@ -1,6 +1,6 @@
 # GitHub PR Comment Integration
 
-VibeBench generates `pr-comment.md` for local review and can now post or update that Markdown summary on a GitHub pull request. Posting is opt-in: the default repository workflow still generates artifacts, while `python -m vibebench pr-comment --post` performs the GitHub API step when you choose to enable it.
+VibeBench generates `pr-comment.md` for local review and can post or update that Markdown summary on a GitHub pull request. The generated GitHub Actions workflow includes a pull-request-only posting step, while local users can run `python -m vibebench pr-comment --post` directly when they want to post from another environment.
 
 The posting implementation is intentionally small and boring. It uses the GitHub REST API, a stable hidden marker, and no live network calls in tests.
 
@@ -20,7 +20,7 @@ The posting implementation is intentionally small and boring. It uses the GitHub
 - No requirement for user-created GitHub secrets for normal same-repo PRs.
 - No automatic posting on untrusted events where GitHub permissions are unsafe or unavailable.
 - No replacement for the existing pasteable Markdown workflow.
-- No default workflow posting yet; a later milestone can wire this into `.github/workflows/ci.yml`.
+- No posting on push events or non-PR events.
 
 ## CLI Interface
 
@@ -70,7 +70,7 @@ permissions:
   pull-requests: write
 ```
 
-Opt-in workflow shape:
+Workflow shape:
 
 ```yaml
 - name: Run VibeBench
@@ -80,16 +80,16 @@ Opt-in workflow shape:
   if: github.event_name == 'pull_request'
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  run: python -m vibebench pr-comment --post
+  run: python -m vibebench pr-comment --post --no-fail-on-error
 ```
 
-For non-PR events, the command skips clearly instead of crashing when no PR number can be inferred.
+For non-PR events, the workflow step is skipped by `if: github.event_name == 'pull_request'`. If the command is run manually without PR context, it skips clearly instead of crashing. The workflow uses `--no-fail-on-error` so permission-limited fork PRs do not fail the core VibeBench check/gate verdict.
 
 Dry-run is safe in any workflow:
 
 ```yaml
 - name: Preview VibeBench PR comment posting
-  run: python -m vibebench pr-comment --post --dry-run
+  run: python -m vibebench pr-comment --post --no-fail-on-error --dry-run
 ```
 
 ## Duplicate Comment Prevention

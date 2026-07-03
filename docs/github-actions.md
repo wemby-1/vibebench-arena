@@ -1,6 +1,6 @@
 # GitHub Actions
 
-VibeBench can run inside GitHub Actions without requiring a GitHub token for its default CI flow. The `annotate` command emits GitHub Actions annotations for command failures and risk findings, and the `gh-summary` command writes a Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is available. PR comment posting is available as an explicit opt-in step with `python -m vibebench pr-comment --post`.
+VibeBench can run inside GitHub Actions with a local-first CI flow and optional GitHub-native review output. The `annotate` command emits GitHub Actions annotations for command failures and risk findings, `gh-summary` writes a Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is available, and the workflow posts or updates VibeBench PR comments on `pull_request` events using the built-in `GITHUB_TOKEN`.
 
 
 ## VibeBench Dogfoods Itself
@@ -30,6 +30,7 @@ The example workflow:
 - installs the project with `python -m pip install -e ".[dev]"` and installs VibeBench from GitHub until PyPI support exists
 - runs direct Ruff and pytest checks
 - runs `python -m vibebench ci` as the recommended VibeBench CI entrypoint
+- posts or updates a VibeBench PR comment only on `pull_request` events
 - uses check and gate as the final VibeBench pass/fail decision
 - still attempts config check, report, PR comment, explanation, export, badge, status block, trend summaries, manifest, GitHub annotations, bundle, and GitHub summary artifacts on failure
 - uploads selected `.vibebench/runs` outputs as the `vibebench-run-artifacts` workflow artifact
@@ -43,7 +44,7 @@ Use `vibebench ci` when CI should fail on explicit score, risk, and finding thre
         run: python -m vibebench ci
 ```
 
-The command writes `.vibebench/runs/<timestamp>/gate-summary.md` and supports one-run gate overrides such as `--min-score`, `--max-risk`, `--allow-findings`, and `--no-require-status-passed`.
+The command writes `.vibebench/runs/<timestamp>/gate-summary.md` and supports one-run gate overrides such as `--min-score`, `--max-risk`, `--allow-findings`, and `--no-require-status-passed`. The workflow also grants `contents: read` and `pull-requests: write`, then runs `python -m vibebench pr-comment --post --no-fail-on-error` only when `github.event_name == 'pull_request'`. Fork PRs may not have write permission, so comment posting is intentionally non-fatal; `vibebench ci` remains the quality authority.
 
 ## Why `if: always()` Is Used
 
