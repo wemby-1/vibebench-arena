@@ -5,7 +5,15 @@ import pytest
 from typer.testing import CliRunner
 
 from vibebench.cli import app
-from vibebench.pr_comment import generate_pr_comment
+from vibebench.pr_comment import (
+    DEFAULT_COMMENT_MARKER,
+    GitHubApiError,
+    GitHubComment,
+    ensure_comment_marker,
+    generate_pr_comment,
+    post_pr_comment,
+    pr_comment_post_json,
+)
 from vibebench.report import ReportError, find_latest_run
 
 runner = CliRunner()
@@ -192,3 +200,270 @@ def test_failed_run_recommendation_says_do_not_ship(tmp_path: Path) -> None:
     markdown = comment_path.read_text(encoding="utf-8")
 
     assert "Do not ship until failures are resolved." in markdown
+
+
+class FakeGitHubClient:
+    def __init__(self, comments: list[GitHubComment] | None = None) -> None:
+        self.comments = comments or []
+        self.created_body: str | None = None
+        self.updated_body: str | None = None
+        self.list_called = False
+        self.create_called = False
+        self.update_called = False
+
+    def list_comments(self, repo: str, pr_number: int) -> list[GitHubComment]:
+        self.list_called = True
+        return self.comments
+
+    def create_comment(self, repo: str, pr_number: int, body: str) -> GitHubComment:
+        self.create_called = True
+        self.created_body = body
+        return GitHubComment(123, body, "https://github.test/comment/123")
+
+    def update_comment(self, repo: str, comment_id: int, body: str) -> GitHubComment:
+        self.update_called = True
+        self.updated_body = body
+        return GitHubComment(comment_id, body, f"https://github.test/comment/{comment_id}")
+
+
+class FailingGitHubClient:
+    def list_comments(self, repo: str, pr_number: int) -> list[GitHubComment]:
+        raise GitHubApiError("boom")
+
+    def create_comment(self, repo: str, pr_number: int, body: str) -> GitHubComment:
+        raise AssertionError("create should not be called")
+
+    def update_comment(self, repo: str, comment_id: int, body: str) -> GitHubComment:
+        raise AssertionError("update should not be called")
+
+
+def write_comment_file(root: Path, body: str = "hello") -> Path:
+    run_dir = write_run(root, "20260626_120000")
+    path = run_dir / "pr-comment.md"
+    path.write_text(body, encoding="utf-8")
+    return path
+
+
+def test_marker_is_inserted_when_body_lacks_marker() -> None:
+    body = ensure_comment_marker("hello", DEFAULT_COMMENT_MARKER)
+
+    assert body.startswith(DEFAULT_COMMENT_MARKER)
+    assert "hello" in body
+
+
+def test_marker_is_not_duplicated_when_body_already_has_marker() -> None:
+    body = f"{DEFAULT_COMMENT_MARKER}\n\nhello"
+
+    assert ensure_comment_marker(body, DEFAULT_COMMENT_MARKER) == body
+
+
+def test_post_dry_run_does_not_call_network(tmp_path: Path) -> None:
+    comment = write_comment_file(tmp_path)
+    client = FakeGitHubClient()
+
+    result = post_pr_comment(
+        tmp_path,
+        body_file=comment,
+        repo="owner/repo",
+        pr_number=7,
+        dry_run=True,
+        client=client,
+    )
+
+    assert result.status == "would-post"
+    assert result.action == "would-post"
+    assert client.list_called is False
+    assert client.create_called is False
+    assert client.update_called is False
+
+
+def test_post_uses_explicit_repo_and_pr_number(tmp_path: Path) -> None:
+    comment = write_comment_file(tmp_path)
+    client = FakeGitHubClient()
+
+    result = post_pr_comment(
+        tmp_path,
+        body_file=comment,
+        repo="owner/repo",
+        pr_number=42,
+        env={"GITHUB_TOKEN": "secret"},
+        client=client,
+    )
+
+    assert result.status == "created"
+    assert result.repo == "owner/repo"
+    assert result.pr_number == 42
+    assert client.create_called is True
+
+
+def test_post_infers_repo_from_environment(tmp_path: Path) -> None:
+    comment = write_comment_file(tmp_path)
+    client = FakeGitHubClient()
+
+    result = post_pr_comment(
+        tmp_path,
+        body_file=comment,
+        pr_number=42,
+        env={"GITHUB_REPOSITORY": "env/repo", "GITHUB_TOKEN": "secret"},
+        client=client,
+    )
+
+    assert result.status == "created"
+    assert result.repo == "env/repo"
+
+
+def test_post_infers_pr_number_from_github_event(tmp_path: Path) -> None:
+    comment = write_comment_file(tmp_path)
+    event = tmp_path / "event.json"
+    event.write_text(json.dumps({"pull_request": {"number": 55}}), encoding="utf-8")
+    client = FakeGitHubClient()
+
+    result = post_pr_comment(
+        tmp_path,
+        body_file=comment,
+        repo="owner/repo",
+        env={"GITHUB_EVENT_PATH": str(event), "GITHUB_TOKEN": "secret"},
+        client=client,
+    )
+
+    assert result.status == "created"
+    assert result.pr_number == 55
+
+
+def test_non_pr_event_skips_cleanly(tmp_path: Path) -> None:
+    comment = write_comment_file(tmp_path)
+
+    result = post_pr_comment(
+        tmp_path,
+        body_file=comment,
+        repo="owner/repo",
+        env={"GITHUB_TOKEN": "secret"},
+    )
+
+    assert result.status == "skipped"
+    assert result.action == "skip"
+    assert "No pull request context" in result.message
+
+
+def test_missing_token_in_real_post_mode(tmp_path: Path) -> None:
+    comment = write_comment_file(tmp_path)
+
+    with pytest.raises(ReportError, match="Missing GitHub token"):
+        post_pr_comment(
+            tmp_path,
+            body_file=comment,
+            repo="owner/repo",
+            pr_number=7,
+            env={},
+        )
+
+
+def test_existing_marker_comment_is_updated(tmp_path: Path) -> None:
+    comment = write_comment_file(tmp_path, "new body")
+    client = FakeGitHubClient(
+        [GitHubComment(10, f"old\n{DEFAULT_COMMENT_MARKER}", "old-url")]
+    )
+
+    result = post_pr_comment(
+        tmp_path,
+        body_file=comment,
+        repo="owner/repo",
+        pr_number=7,
+        env={"GITHUB_TOKEN": "secret"},
+        client=client,
+    )
+
+    assert result.status == "updated"
+    assert result.comment_id == 10
+    assert client.update_called is True
+    assert client.create_called is False
+    assert client.updated_body is not None
+    assert DEFAULT_COMMENT_MARKER in client.updated_body
+
+
+def test_no_marker_comment_is_created(tmp_path: Path) -> None:
+    comment = write_comment_file(tmp_path, "new body")
+    client = FakeGitHubClient([GitHubComment(10, "ordinary comment")])
+
+    result = post_pr_comment(
+        tmp_path,
+        body_file=comment,
+        repo="owner/repo",
+        pr_number=7,
+        env={"GITHUB_TOKEN": "secret"},
+        client=client,
+    )
+
+    assert result.status == "created"
+    assert result.comment_id == 123
+    assert client.create_called is True
+    assert client.update_called is False
+    assert client.created_body is not None
+    assert DEFAULT_COMMENT_MARKER in client.created_body
+
+
+def test_post_json_payload_shape(tmp_path: Path) -> None:
+    comment = write_comment_file(tmp_path)
+
+    result = post_pr_comment(
+        tmp_path,
+        body_file=comment,
+        repo="owner/repo",
+        pr_number=7,
+        dry_run=True,
+    )
+    payload = pr_comment_post_json(result)
+
+    assert payload["status"] == "would-post"
+    assert payload["repo"] == "owner/repo"
+    assert payload["pr_number"] == 7
+    assert payload["comment_id"] is None
+    assert payload["dry_run"] is True
+    assert payload["body_file"] == str(comment)
+    assert payload["marker"] == DEFAULT_COMMENT_MARKER
+
+
+def test_no_fail_on_error_returns_failed_result(tmp_path: Path) -> None:
+    comment = write_comment_file(tmp_path)
+
+    result = post_pr_comment(
+        tmp_path,
+        body_file=comment,
+        repo="owner/repo",
+        pr_number=7,
+        env={"GITHUB_TOKEN": "secret"},
+        client=FailingGitHubClient(),
+        fail_on_error=False,
+    )
+
+    assert result.status == "failed"
+    assert result.action == "failed"
+    assert "boom" in result.message
+
+
+def test_cli_dry_run_json_stdout_is_pure_json(tmp_path: Path) -> None:
+    comment = write_comment_file(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "pr-comment",
+            "--project-root",
+            str(tmp_path),
+            "--post",
+            "--dry-run",
+            "--json",
+            "--body-file",
+            str(comment),
+            "--repo",
+            "owner/repo",
+            "--pr-number",
+            "7",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "would-post"
+    assert payload["repo"] == "owner/repo"
+    assert payload["pr_number"] == 7

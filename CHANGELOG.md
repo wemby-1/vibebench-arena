@@ -9,7 +9,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 ### Added
 
 - v0.3.0 roadmap planning in [ROADMAP.md](ROADMAP.md), covering GitHub-native PR review workflows, packaging readiness, init/template polish, artifact UX, policy presets, non-goals, and release criteria.
-- GitHub PR comment integration design in [docs/pr-comments.md](docs/pr-comments.md), covering CLI shape, GitHub Actions behavior, duplicate-comment prevention, safety rules, output contracts, and test strategy.
+- GitHub PR comment posting via `python -m vibebench pr-comment --post`, with dry-run mode, JSON output, marker-based update behavior, and tested create/update decisions.
 
 ## [0.2.0] - 2026-07-03
 
@@ -37,7 +37,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 ### Notes
 
 - v0.2.0 remains local-first and Codex-first: Codex writes code, VibeBench verifies it.
-- PyPI publishing, GitHub API PR comment posting, hosted dashboards, and multi-agent arena workflows remain out of scope for v0.2.0.
+- PyPI publishing, default workflow PR comment posting, hosted dashboards, and multi-agent arena workflows remain out of scope for v0.2.0.
 
 ## [0.1.0] - 2026-06-27
 

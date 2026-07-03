@@ -1,6 +1,6 @@
 # GitHub Actions
 
-VibeBench can run inside GitHub Actions without using the GitHub API or requiring a GitHub token. The `annotate` command emits GitHub Actions annotations for command failures and risk findings, and the `gh-summary` command writes a Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is available.
+VibeBench can run inside GitHub Actions without requiring a GitHub token for its default CI flow. The `annotate` command emits GitHub Actions annotations for command failures and risk findings, and the `gh-summary` command writes a Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is available. PR comment posting is available as an explicit opt-in step with `python -m vibebench pr-comment --post`.
 
 
 ## VibeBench Dogfoods Itself
@@ -109,6 +109,5 @@ To inspect what CI uploaded, run `python -m vibebench artifacts --json` locally 
 
 ## Limitations
 
-- VibeBench does not post PR comments through the GitHub API yet.
 - Your project test and lint commands must be installable and runnable in CI.
 - The generated workflow assumes your project can be installed with `python -m pip install -e ".[dev]"`; adjust that step if your project uses a different install command. Pin the VibeBench install line to a tag or commit when you need reproducible CI.

@@ -351,8 +351,11 @@ into a GitHub Pull Request, issue, or code review. It includes:
 - up to 10 risk findings with affected paths
 - the same recommendation used by the HTML report
 
-Automatic GitHub PR posting is planned later; the current command is local and
-does not call the GitHub API.
+GitHub PR posting is available as an explicit opt-in command. Use
+`python -m vibebench pr-comment --post --dry-run` to preview it, then
+`python -m vibebench pr-comment --post` in a `pull_request` workflow with
+`pull-requests: write` permission. The default repository workflow does not post
+comments yet.
 
 ## Run Explanation
 
@@ -360,7 +363,7 @@ does not call the GitHub API.
 
 ## GitHub Actions
 
-`vibebench annotate` emits GitHub Actions annotations for visible risk findings and command failures. `vibebench gh-summary` writes a concise Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is set. It does not post PR comments through the GitHub API yet.
+`vibebench annotate` emits GitHub Actions annotations for visible risk findings and command failures. `vibebench gh-summary` writes a concise Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is set. `vibebench pr-comment --post` can post or update the generated PR comment when explicitly enabled.
 
 This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml` and generates config-check/report/comment/explanation/export/badge/status-block/trend output, including `config-check.json`, `config-check.md`, `trend.md`, and `trend.json`, emits annotations, bundles run artifacts, writes summaries, and uploads selected `.vibebench/runs` outputs as the `vibebench-run-artifacts` artifact. `vibebench init` can generate a starter workflow at `.github/workflows/vibebench.yml`; see [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) and [docs/github-actions.md](docs/github-actions.md) for details.
 
@@ -408,7 +411,7 @@ See [examples/risk-demo/README.md](examples/risk-demo/README.md) for details.
 
 The v0.3.0 roadmap is focused on moving from local/CI verification toward collaborative GitHub-native review workflows. See [ROADMAP.md](ROADMAP.md) for priorities, non-goals, the proposed milestone sequence, and release criteria.
 
-Near-term priorities include GitHub PR comment integration, packaging/install readiness, init/template polish, artifact/report UX, and policy presets. The GitHub PR comment design is documented in [docs/pr-comments.md](docs/pr-comments.md).
+Near-term priorities include wiring PR comment posting into the default GitHub Actions template, packaging/install readiness, init/template polish, artifact/report UX, and policy presets. The GitHub PR comment behavior is documented in [docs/pr-comments.md](docs/pr-comments.md).
 
 ## Built With A Codex-First Workflow
 

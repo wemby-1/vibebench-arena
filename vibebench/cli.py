@@ -66,7 +66,14 @@ from vibebench.manifest import (
     generate_manifest,
 )
 from vibebench.paths import config_file
-from vibebench.pr_comment import generate_pr_comment
+from vibebench.pr_comment import (
+    DEFAULT_COMMENT_MARKER,
+    DEFAULT_TOKEN_ENV,
+    PrCommentPostResult,
+    generate_pr_comment,
+    post_pr_comment,
+    pr_comment_post_json,
+)
 from vibebench.release_check import (
     ReleaseReadinessResult,
     release_check_json,
@@ -545,14 +552,86 @@ def pr_comment(
             help="Specific .vibebench/runs/<timestamp> directory to summarize.",
         ),
     ] = None,
+    post: Annotated[
+        bool,
+        typer.Option("--post", help="Post or update the comment on a GitHub PR."),
+    ] = False,
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="Preview posting without network calls."),
+    ] = False,
+    body_file: Annotated[
+        Path | None,
+        typer.Option("--body-file", help="Markdown file to post as the PR comment."),
+    ] = None,
+    repo: Annotated[
+        str | None,
+        typer.Option("--repo", help="GitHub repository as OWNER/REPO."),
+    ] = None,
+    pr_number: Annotated[
+        int | None,
+        typer.Option("--pr-number", help="GitHub pull request number."),
+    ] = None,
+    comment_marker: Annotated[
+        str,
+        typer.Option("--comment-marker", help="Hidden marker for comment updates."),
+    ] = DEFAULT_COMMENT_MARKER,
+    token_env: Annotated[
+        str,
+        typer.Option("--token-env", help="Environment variable containing token."),
+    ] = DEFAULT_TOKEN_ENV,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print posting result as JSON."),
+    ] = False,
+    fail_on_error: Annotated[
+        bool,
+        typer.Option(
+            "--fail-on-error/--no-fail-on-error",
+            help="Exit nonzero when posting fails.",
+        ),
+    ] = True,
 ) -> None:
-    """Generate a PR-ready Markdown summary for a VibeBench run."""
+    """Generate or post a PR-ready Markdown summary for a VibeBench run."""
     root = project_root.resolve()
     selected_run_dir = None
     if run_dir:
         selected_run_dir = (
             run_dir if run_dir.is_absolute() else root / run_dir
         ).resolve()
+    selected_body_file = None
+    if body_file:
+        selected_body_file = (
+            body_file if body_file.is_absolute() else root / body_file
+        ).resolve()
+
+    if post:
+        try:
+            result = post_pr_comment(
+                root,
+                run_dir=selected_run_dir,
+                body_file=selected_body_file,
+                repo=repo,
+                pr_number=pr_number,
+                marker=comment_marker,
+                token_env=token_env,
+                dry_run=dry_run,
+                fail_on_error=fail_on_error,
+            )
+        except ReportError as exc:
+            if as_json:
+                err_console.print(str(exc))
+            else:
+                console.print(f"[red]{exc}[/]")
+            raise typer.Exit(code=1) from exc
+
+        if as_json:
+            print(json.dumps(pr_comment_post_json(result), indent=2))
+        else:
+            render_pr_comment_post_result(result)
+        if result.status == "failed" and fail_on_error:
+            raise typer.Exit(code=1)
+        return
 
     try:
         comment_path = generate_pr_comment(root, selected_run_dir)
@@ -566,6 +645,27 @@ def pr_comment(
     console.print(f"Run directory: {comment_path.parent}")
     console.print(f"Output path: {comment_path}")
     console.print(f"Recommendation: {recommendation}")
+
+def render_pr_comment_post_result(result: PrCommentPostResult) -> None:
+    """Render the GitHub PR comment posting result."""
+    color = {
+        "created": "green",
+        "updated": "green",
+        "would-post": "yellow",
+        "skipped": "yellow",
+        "failed": "red",
+    }.get(result.status, "white")
+    console.print(f"[{color}]PR comment posting: {result.status}[/]")
+    console.print(f"Action: {result.action}")
+    if result.repo:
+        console.print(f"Repository: {result.repo}")
+    if result.pr_number is not None:
+        console.print(f"PR number: {result.pr_number}")
+    if result.body_file:
+        console.print(f"Body file: {result.body_file}")
+    if result.comment_url:
+        console.print(f"Comment URL: {result.comment_url}")
+    console.print(f"Message: {result.message}")
 
 
 @app.command("gh-summary")
