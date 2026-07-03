@@ -353,7 +353,7 @@ python -m vibebench compare
 
 `vibebench annotate` 会把可见的风险发现和命令失败输出成 GitHub Actions annotations。`vibebench gh-summary` 会在 `GITHUB_STEP_SUMMARY` 存在时写入 GitHub Actions step summary。当前它不会通过 GitHub API 自动发布 PR comment。
 
-这个仓库已经在自己的 CI 里 dogfood VibeBench：直接运行 Ruff 和 pytest 后，CI 会继续运行 `vibebench ci`，按 `.vibebench/config.yaml` 中的策略执行明确门禁，并生成 config-check/report/comment/explanation/export/badge/status-block/trend，包含 `config-check.json`、`config-check.md`、`trend.md` 和 `trend.json`，输出 annotations，打包运行产物，写入 summary，并上传 `.vibebench/runs` artifacts。`vibebench init` 可以生成 `.github/workflows/vibebench.yml` starter workflow；可参考 [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml)，更多说明见 [docs/github-actions.md](docs/github-actions.md)。
+这个仓库已经在自己的 CI 里 dogfood VibeBench：直接运行 Ruff 和 pytest 后，CI 会继续运行 `vibebench ci`，按 `.vibebench/config.yaml` 中的策略执行明确门禁，并生成 config-check/report/comment/explanation/export/badge/status-block/trend，包含 `config-check.json`、`config-check.md`、`trend.md` 和 `trend.json`，输出 annotations，打包运行产物，写入 summary，并把选定的 `.vibebench/runs` 输出上传为 `vibebench-run-artifacts` artifact。`vibebench init` 可以生成 `.github/workflows/vibebench.yml` starter workflow；可参考 [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml)，更多说明见 [docs/github-actions.md](docs/github-actions.md)。
 
 ## 试运行风险检测 Demo
 

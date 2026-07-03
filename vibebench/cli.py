@@ -154,8 +154,20 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: vibebench-runs
-          path: .vibebench/runs
+          name: vibebench-run-artifacts
+          path: |
+            .vibebench/runs/**/metrics.json
+            .vibebench/runs/**/check.log
+            .vibebench/runs/**/manifest.json
+            .vibebench/runs/**/vibebench-bundle.zip
+            .vibebench/runs/**/github-step-summary.md
+            .vibebench/runs/**/release-check.json
+            .vibebench/runs/**/release-check.md
+            .vibebench/runs/**/config-check.json
+            .vibebench/runs/**/config-check.md
+            .vibebench/runs/**/trend.json
+            .vibebench/runs/**/trend.md
+            .vibebench/runs/**/report/**
           if-no-files-found: ignore
 """
 

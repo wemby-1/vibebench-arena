@@ -32,7 +32,7 @@ The example workflow:
 - runs `python -m vibebench ci` as the recommended VibeBench CI entrypoint
 - uses check and gate as the final VibeBench pass/fail decision
 - still attempts config check, report, PR comment, explanation, export, badge, status block, trend summaries, manifest, GitHub annotations, bundle, and GitHub summary artifacts on failure
-- uploads `.vibebench/runs` as a workflow artifact
+- uploads selected `.vibebench/runs` outputs as the `vibebench-run-artifacts` workflow artifact
 
 ## Add A Quality Gate
 
@@ -55,13 +55,23 @@ The CI pipeline order and skip flags are covered by contract tests. Any intentio
 
 ## Artifacts
 
-The workflow uploads:
+The workflow uploads a downloadable artifact named `vibebench-run-artifacts` from selected run outputs:
 
 ```text
-.vibebench/runs/
+.vibebench/runs/**/metrics.json
+.vibebench/runs/**/manifest.json
+.vibebench/runs/**/vibebench-bundle.zip
+.vibebench/runs/**/github-step-summary.md
+.vibebench/runs/**/release-check.json
+.vibebench/runs/**/release-check.md
+.vibebench/runs/**/config-check.json
+.vibebench/runs/**/config-check.md
+.vibebench/runs/**/trend.json
+.vibebench/runs/**/trend.md
+.vibebench/runs/**/report/**
 ```
 
-That directory can include:
+Uploaded files can include:
 
 - `metrics.json`
 - `check.log`

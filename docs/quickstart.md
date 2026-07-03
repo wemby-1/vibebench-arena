@@ -352,7 +352,7 @@ The risk demo intentionally creates critical findings, so `vibebench check` is e
 
 ## CI Artifacts
 
-VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml`, generates `config-check.json`, `config-check.md`, `explain.md`, writes `export.json`, `badge.json`, `badge.md`, `status-block.md`, `trend.md`, and `trend.json`, bundles run artifacts, emits GitHub annotations, writes the GitHub Actions job summary, and uploads `.vibebench/runs` as artifacts for review.
+VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml`, generates `config-check.json`, `config-check.md`, `explain.md`, writes `export.json`, `badge.json`, `badge.md`, `status-block.md`, `trend.md`, and `trend.json`, bundles run artifacts, emits GitHub annotations, writes the GitHub Actions job summary, and uploads selected `.vibebench/runs` outputs as the `vibebench-run-artifacts` artifact for review.
 
 ## Generated Files
 

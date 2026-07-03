@@ -1157,6 +1157,10 @@ def test_active_github_workflow_uses_ci_command() -> None:
     assert "python -m ruff check ." in workflow
     assert "python -m pytest -q" in workflow
     assert "python -m vibebench ci" in workflow
+    assert "actions/upload-artifact@v7" in workflow
+    assert "name: vibebench-run-artifacts" in workflow
+    assert ".vibebench/runs/**/metrics.json" in workflow
+    assert ".vibebench/runs/**/release-check.md" in workflow
     assert "vibebench check" not in workflow
 
 def test_ci_skip_manifest_skips_manifest_generation(tmp_path: Path) -> None:

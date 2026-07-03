@@ -363,7 +363,7 @@ does not call the GitHub API.
 
 `vibebench annotate` emits GitHub Actions annotations for visible risk findings and command failures. `vibebench gh-summary` writes a concise Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is set. It does not post PR comments through the GitHub API yet.
 
-This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml` and generates config-check/report/comment/explanation/export/badge/status-block/trend output, including `config-check.json`, `config-check.md`, `trend.md`, and `trend.json`, emits annotations, bundles run artifacts, writes summaries, and uploads `.vibebench/runs`. `vibebench init` can generate a starter workflow at `.github/workflows/vibebench.yml`; see [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) and [docs/github-actions.md](docs/github-actions.md) for details.
+This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml` and generates config-check/report/comment/explanation/export/badge/status-block/trend output, including `config-check.json`, `config-check.md`, `trend.md`, and `trend.json`, emits annotations, bundles run artifacts, writes summaries, and uploads selected `.vibebench/runs` outputs as the `vibebench-run-artifacts` artifact. `vibebench init` can generate a starter workflow at `.github/workflows/vibebench.yml`; see [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) and [docs/github-actions.md](docs/github-actions.md) for details.
 
 ## Try The Risk Demo
 
