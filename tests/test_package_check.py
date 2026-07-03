@@ -105,6 +105,108 @@ def test_package_check_json_output_is_pure_json(tmp_path: Path) -> None:
     assert isinstance(payload["checks"], list)
 
 
+def test_package_check_write_json(tmp_path: Path) -> None:
+    write_ready_project(tmp_path)
+    output_path = tmp_path / "package-check.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "package-check",
+            "--project-root",
+            str(tmp_path),
+            "--write-json",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["status"] == "ready"
+    assert payload["package_name"] == "vibebench-arena"
+
+
+def test_package_check_write_summary(tmp_path: Path) -> None:
+    write_ready_project(tmp_path)
+    output_path = tmp_path / "package-check.md"
+
+    result = runner.invoke(
+        app,
+        [
+            "package-check",
+            "--project-root",
+            str(tmp_path),
+            "--write-summary",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    markdown = output_path.read_text(encoding="utf-8")
+    assert "# VibeBench Package Check" in markdown
+    assert "| Check | Status | Message |" in markdown
+    assert "ready" in markdown
+
+
+def test_package_check_json_stdout_stays_pure_when_writing(tmp_path: Path) -> None:
+    write_ready_project(tmp_path)
+    output_path = tmp_path / "package-check.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "package-check",
+            "--project-root",
+            str(tmp_path),
+            "--json",
+            "--write-json",
+            str(output_path),
+        ],
+    )
+
+    stdout_payload = json.loads(result.stdout)
+    file_payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert result.exit_code == 0
+    assert stdout_payload == file_payload
+
+
+def test_package_check_missing_output_parent_fails(tmp_path: Path) -> None:
+    write_ready_project(tmp_path)
+    output_path = tmp_path / "missing" / "package-check.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "package-check",
+            "--project-root",
+            str(tmp_path),
+            "--write-json",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "output parent does not exist" in result.output
+
+
+def test_package_check_output_directory_fails(tmp_path: Path) -> None:
+    write_ready_project(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "package-check",
+            "--project-root",
+            str(tmp_path),
+            "--write-summary",
+            str(tmp_path),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "output path is a directory" in result.output
+
+
 def test_package_check_advice_includes_advice_fields(tmp_path: Path) -> None:
     result = runner.invoke(
         app,

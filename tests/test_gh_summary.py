@@ -113,6 +113,8 @@ def write_run(
         (run_dir / "trend.md").write_text("trend\n", encoding="utf-8")
         (run_dir / "trend.json").write_text("{}\n", encoding="utf-8")
         (run_dir / "manifest.json").write_text("{}\n", encoding="utf-8")
+        (run_dir / "package-check.json").write_text("{}\n", encoding="utf-8")
+        (run_dir / "package-check.md").write_text("package\n", encoding="utf-8")
         (run_dir / "release-check.json").write_text("{}\n", encoding="utf-8")
         (run_dir / "release-check.md").write_text("release\n", encoding="utf-8")
         (run_dir / "gate-summary.md").write_text("gate\n", encoding="utf-8")
@@ -216,6 +218,8 @@ def test_summary_contains_key_sections_and_artifacts(
     assert "`trend.md` (available)" in markdown
     assert "`trend.json` (available)" in markdown
     assert "`manifest.json` (available)" in markdown
+    assert "`package-check.json` (available)" in markdown
+    assert "`package-check.md` (available)" in markdown
     assert "`release-check.json` (available)" in markdown
     assert "`release-check.md` (available)" in markdown
     assert "`gate-summary.md` (available)" in markdown

@@ -18,6 +18,8 @@ STANDARD_ARTIFACTS = [
     Path("manifest.json"),
     Path("config-check.json"),
     Path("config-check.md"),
+    Path("package-check.json"),
+    Path("package-check.md"),
     Path("ci-plan.json"),
     Path("ci-plan.md"),
     Path("release-check.json"),

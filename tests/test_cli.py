@@ -1,5 +1,6 @@
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -65,6 +66,8 @@ def test_init_generated_workflow_contains_required_commands(tmp_path: Path) -> N
     assert "name: vibebench-run-artifacts" in workflow
     assert ".vibebench/runs/**/metrics.json" in workflow
     assert ".vibebench/runs/**/release-check.json" in workflow
+    assert ".vibebench/runs/**/package-check.json" in workflow
+    assert ".vibebench/runs/**/package-check.md" in workflow
     assert ".vibebench/runs/**/report/**" in workflow
     assert workflow.count("if: always()") >= 1
 
@@ -193,8 +196,8 @@ def test_config_command_show_source_includes_sources(tmp_path: Path) -> None:
 def test_config_command_does_not_break_existing_check_and_gate(tmp_path: Path) -> None:
     runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
     config = config_path(tmp_path).read_text(encoding="utf-8")
-    config = config.replace("pytest -q", "python -c \"print('test ok')\"")
-    config = config.replace("ruff check .", "python -c \"print('lint ok')\"")
+    config = config.replace("pytest -q", f"{sys.executable} -c \"print('test ok')\"")
+    config = config.replace("ruff check .", f"{sys.executable} -c \"print('lint ok')\"")
     config_path(tmp_path).write_text(config, encoding="utf-8")
     subprocess.run(["git", "init"], cwd=tmp_path, check=True)
     subprocess.run(

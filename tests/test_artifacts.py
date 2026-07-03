@@ -63,6 +63,8 @@ def test_default_latest_run_artifact_listing(tmp_path: Path) -> None:
     assert "manifest.json" in artifacts
     assert "config-check.json" in artifacts
     assert "config-check.md" in artifacts
+    assert "package-check.json" in artifacts
+    assert "package-check.md" in artifacts
 
 
 def test_explicit_run_dir_is_used(tmp_path: Path) -> None:

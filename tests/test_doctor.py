@@ -1,5 +1,6 @@
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -30,7 +31,11 @@ def init_git_repo(path: Path) -> None:
 def write_config(path: Path, content: str | None = None) -> Path:
     config_path = path / ".vibebench" / "config.yaml"
     config_path.parent.mkdir(parents=True, exist_ok=True)
-    config_path.write_text(content or default_config_yaml(), encoding="utf-8")
+    config = content or default_config_yaml()
+    if content is None:
+        config = config.replace("pytest -q", f"{sys.executable} -c 'print(1)'")
+        config = config.replace("ruff check .", f"{sys.executable} -c 'print(2)'")
+    config_path.write_text(config, encoding="utf-8")
     return config_path
 
 

@@ -47,6 +47,7 @@ Goal: make installation guidance more reliable without rushing package distribut
 Planned direction:
 
 - Validate `pyproject.toml` metadata and packaging shape with `python -m vibebench package-check`.
+- Persist `package-check.json` and `package-check.md` in CI/release artifact flows.
 - Document editable installs clearly for contributors.
 - Consider a `pipx`-friendly install workflow.
 - Keep source installs and local development paths first-class.

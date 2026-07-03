@@ -48,7 +48,7 @@ The command writes `.vibebench/runs/<timestamp>/gate-summary.md` and supports on
 
 ## Why `if: always()` Is Used
 
-`vibebench ci` should fail the workflow when check or gate fails. It internally still attempts config check artifacts, report, comment, explanation, export, badge, status block, trend summaries, release-check artifacts, annotation output, bundle, and summary generation so reviewers can inspect VibeBench output after a failed check or gate. The artifact upload step remains `if: always()`. Automation can consume `python -m vibebench ci --json` directly, save the same payload with `python -m vibebench ci --json-output .vibebench-ci.json`, or inspect a non-executing plan with `python -m vibebench ci --dry-run --json`. Plan artifacts can be written with `python -m vibebench ci --dry-run --write-plan`. For release branches, `python -m vibebench release-check --json` provides a read-only pre-release readiness payload without creating tags, releases, commits, or pushes; CI also writes `release-check.json` and `release-check.md` unless `--skip-release-check` is used.
+`vibebench ci` should fail the workflow when check or gate fails. It internally still attempts config check artifacts, package-check artifacts, report, comment, explanation, export, badge, status block, trend summaries, release-check artifacts, annotation output, bundle, and summary generation so reviewers can inspect VibeBench output after a failed check or gate. The artifact upload step remains `if: always()`. Automation can consume `python -m vibebench ci --json` directly, save the same payload with `python -m vibebench ci --json-output .vibebench-ci.json`, or inspect a non-executing plan with `python -m vibebench ci --dry-run --json`. Plan artifacts can be written with `python -m vibebench ci --dry-run --write-plan`. For release branches, `python -m vibebench release-check --json` provides a read-only pre-release readiness payload without creating tags, releases, commits, or pushes; CI also writes `package-check.json` / `package-check.md` unless `--skip-package-check` is used, and `release-check.json` / `release-check.md` unless `--skip-release-check` is used.
 
 ## Packaging Readiness
 
@@ -61,7 +61,7 @@ python -m vibebench package-check
 python -m vibebench package-check --json
 ```
 
-`package-check` is local-only. It validates metadata and import readiness but does not publish to PyPI, call GitHub APIs, or require network access.
+`package-check` is local-only. It validates metadata and import readiness but does not publish to PyPI, call GitHub APIs, or require network access. Use `--write-json PATH` and `--write-summary PATH` to persist package readiness artifacts; `vibebench ci` writes them by default.
 
 ## CI Pipeline Contract
 
@@ -82,6 +82,8 @@ The workflow uploads a downloadable artifact named `vibebench-run-artifacts` fro
 .vibebench/runs/**/release-check.md
 .vibebench/runs/**/config-check.json
 .vibebench/runs/**/config-check.md
+.vibebench/runs/**/package-check.json
+.vibebench/runs/**/package-check.md
 .vibebench/runs/**/trend.json
 .vibebench/runs/**/trend.md
 .vibebench/runs/**/report/**
@@ -103,6 +105,8 @@ Uploaded files can include:
 - `trend.json`
 - `manifest.json`
 - `config-check.json`
+- `package-check.json`
+- `package-check.md`
 - `release-check.json`
 - `release-check.md`
 - `config-check.md`

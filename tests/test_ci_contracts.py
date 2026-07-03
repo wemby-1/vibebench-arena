@@ -16,6 +16,7 @@ CANONICAL_CI_STEPS = [
     "check",
     "gate",
     "config-check",
+    "package-check",
     "report",
     "pr-comment",
     "explain",
@@ -97,6 +98,7 @@ def test_ci_dry_run_skip_flag_contract(tmp_path: Path) -> None:
             "--dry-run",
             "--json",
             "--skip-config-check",
+            "--skip-package-check",
             "--skip-manifest",
             "--skip-release-check",
             "--skip-bundle",
@@ -109,6 +111,7 @@ def test_ci_dry_run_skip_flag_contract(tmp_path: Path) -> None:
     assert result.exit_code == 0
     expected_skips = {
         "config-check": "--skip-config-check",
+        "package-check": "--skip-package-check",
         "manifest": "--skip-manifest",
         "manifest-check": "--skip-manifest",
         "release-check": "--skip-release-check",
@@ -128,13 +131,20 @@ def test_plan_ci_pipeline_default_contract() -> None:
     assert step_names == CANONICAL_CI_STEPS
     assert len(step_names) == len(set(step_names))
     steps = {step.name: step for step in result.steps}
+    assert steps["package-check"].status == "planned"
     assert steps["release-check"].status == "planned"
 
 
 def test_plan_ci_pipeline_skip_contract() -> None:
-    result = plan_ci_pipeline(skip_release_check=True, skip_manifest=True)
+    result = plan_ci_pipeline(
+        skip_package_check=True,
+        skip_release_check=True,
+        skip_manifest=True,
+    )
     steps = {step.name: step for step in result.steps}
 
+    assert steps["package-check"].status == "skipped"
+    assert steps["package-check"].message == "Skipped by --skip-package-check"
     assert steps["release-check"].status == "skipped"
     assert steps["release-check"].message == "Skipped by --skip-release-check"
     assert steps["manifest"].status == "skipped"

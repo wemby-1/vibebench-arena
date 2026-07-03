@@ -69,6 +69,8 @@ from vibebench.package_check import (
     PackageReadinessResult,
     package_check_json_payload,
     run_package_check,
+    write_package_check_json,
+    write_package_check_summary,
 )
 from vibebench.paths import config_file
 from vibebench.pr_comment import (
@@ -187,6 +189,8 @@ jobs:
             .vibebench/runs/**/release-check.md
             .vibebench/runs/**/config-check.json
             .vibebench/runs/**/config-check.md
+            .vibebench/runs/**/package-check.json
+            .vibebench/runs/**/package-check.md
             .vibebench/runs/**/trend.json
             .vibebench/runs/**/trend.md
             .vibebench/runs/**/report/**
@@ -1343,6 +1347,10 @@ def ci_command(
         bool,
         typer.Option("--skip-manifest", help="Skip run manifest generation."),
     ] = False,
+    skip_package_check: Annotated[
+        bool,
+        typer.Option("--skip-package-check", help="Skip package-check artifacts."),
+    ] = False,
     skip_annotate: Annotated[
         bool,
         typer.Option("--skip-annotate", help="Skip GitHub annotation output."),
@@ -1482,6 +1490,7 @@ def ci_command(
                 skip_annotate=skip_annotate,
                 skip_gh_summary=skip_gh_summary,
                 skip_release_check=skip_release_check,
+                skip_package_check=skip_package_check,
             )
             plan_artifacts = write_ci_plan_artifacts(
                 root,
@@ -1508,6 +1517,7 @@ def ci_command(
                 skip_annotate=skip_annotate,
                 skip_gh_summary=skip_gh_summary,
                 skip_release_check=skip_release_check,
+                skip_package_check=skip_package_check,
                 emit_annotations=not as_json,
                 bundle_include_report_assets=bundle_include_report_assets,
                 bundle_strict=bundle_strict,
@@ -1573,9 +1583,30 @@ def package_check_command(
         bool,
         typer.Option("--advice", help="Show advice for failed package checks."),
     ] = False,
+    write_json: Annotated[
+        Path | None,
+        typer.Option("--write-json", help="Write package readiness JSON."),
+    ] = None,
+    write_summary: Annotated[
+        Path | None,
+        typer.Option("--write-summary", help="Write package readiness Markdown."),
+    ] = None,
 ) -> None:
     """Check local package and install readiness without network access."""
-    result = run_package_check(project_root, advice=advice)
+    root = project_root.resolve()
+    result = run_package_check(root, advice=advice)
+    selected_json_path = resolve_optional_output_path(root, write_json)
+    selected_summary_path = resolve_optional_output_path(root, write_summary)
+    try:
+        if selected_json_path is not None:
+            write_package_check_json(result, selected_json_path)
+        if selected_summary_path is not None:
+            write_package_check_summary(result, selected_summary_path)
+    except ReportError as exc:
+        target_console = err_console if as_json else console
+        target_console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
     if as_json:
         print(
             json.dumps(
@@ -1586,6 +1617,10 @@ def package_check_command(
         )
     else:
         render_package_check_summary(result)
+        if selected_json_path is not None:
+            console.print(f"Package-check JSON: {selected_json_path}")
+        if selected_summary_path is not None:
+            console.print(f"Package-check summary: {selected_summary_path}")
     if not result.ready:
         raise typer.Exit(code=1)
 
@@ -2199,6 +2234,15 @@ def render_doctor_summary(result: DoctorResult) -> None:
             for check in advice_items:
                 console.print(f"- {check.category}: {check.advice}")
 
+
+
+def resolve_optional_output_path(root: Path, output_path: Path | None) -> Path | None:
+    """Resolve an optional CLI output path relative to project root."""
+    if output_path is None:
+        return None
+    if output_path.is_absolute():
+        return output_path.resolve()
+    return (root / output_path).resolve()
 
 
 def render_package_check_summary(result: PackageReadinessResult) -> None:

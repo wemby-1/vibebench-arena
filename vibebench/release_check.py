@@ -14,6 +14,7 @@ from vibebench.config_check import config_check_payload, config_consistency_chec
 from vibebench.doctor import run_doctor
 from vibebench.explain import find_latest_valid_run
 from vibebench.manifest import check_manifest
+from vibebench.package_check import run_package_check
 from vibebench.paths import config_file
 from vibebench.report import ReportError
 
@@ -60,6 +61,7 @@ def run_release_check(project_root: Path) -> ReleaseReadinessResult:
 
     checks = [
         check_config_consistency(root),
+        check_package_readiness(root),
         check_doctor_strict(root),
     ]
 
@@ -98,6 +100,24 @@ def check_config_consistency(project_root: Path) -> ReleaseReadinessCheck:
         else "; ".join(check["message"] for check in failed)
     )
     return ReleaseReadinessCheck("config", status, message)
+
+
+def check_package_readiness(project_root: Path) -> ReleaseReadinessCheck:
+    """Run package metadata and install readiness diagnostics."""
+    result = run_package_check(project_root)
+    if result.ready:
+        return ReleaseReadinessCheck(
+            "package_check",
+            "passed",
+            "Package readiness check passed",
+        )
+    failed = [check for check in result.checks if check.status == "failed"]
+    message = "; ".join(f"{check.name}: {check.message}" for check in failed)
+    return ReleaseReadinessCheck(
+        "package_check",
+        "failed",
+        message or "Package readiness check failed",
+    )
 
 
 def check_doctor_strict(project_root: Path) -> ReleaseReadinessCheck:

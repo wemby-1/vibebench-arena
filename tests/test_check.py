@@ -1,5 +1,7 @@
 import json
+import shlex
 import subprocess
+import sys
 from pathlib import Path
 
 import yaml
@@ -9,6 +11,10 @@ from vibebench.cli import app
 from vibebench.runner import score_from_failures
 
 runner = CliRunner()
+
+
+def py_cmd(code: str) -> str:
+    return f"{shlex.quote(sys.executable)} -c {shlex.quote(code)}"
 
 
 def write_config(
@@ -70,8 +76,8 @@ def test_check_command_succeeds_when_configured_commands_pass(tmp_path: Path) ->
     init_repo(tmp_path)
     write_config(
         tmp_path,
-        ["python -c \"print('tests ok')\""],
-        ["python -c \"print('lint ok')\""],
+        [py_cmd("print('tests ok')")],
+        [py_cmd("print('lint ok')")],
         commit=True,
     )
 
@@ -104,8 +110,8 @@ def test_check_command_records_failure_and_continues(tmp_path: Path) -> None:
     init_repo(tmp_path)
     write_config(
         tmp_path,
-        ["python -c \"import sys; print('bad test'); sys.exit(3)\""],
-        ["python -c \"print('lint still runs')\""],
+        [py_cmd("import sys; print('bad test'); sys.exit(3)")],
+        [py_cmd("print('lint still runs')")],
         commit=True,
     )
 
@@ -132,8 +138,8 @@ def test_metrics_json_is_created(tmp_path: Path) -> None:
     init_repo(tmp_path)
     write_config(
         tmp_path,
-        ["python -c \"print('ok')\""],
-        ["python -c \"print('ok')\""],
+        [py_cmd("print('ok')")],
+        [py_cmd("print('ok')")],
         commit=True,
     )
 
@@ -166,8 +172,8 @@ def test_check_metrics_include_diff_analysis_and_findings(tmp_path: Path) -> Non
     init_repo(tmp_path)
     write_config(
         tmp_path,
-        ["python -c \"print('ok')\""],
-        ["python -c \"print('ok')\""],
+        [py_cmd("print('ok')")],
+        [py_cmd("print('ok')")],
         commit=True,
     )
     (tmp_path / ".env.local").write_text("TOKEN=value\n", encoding="utf-8")

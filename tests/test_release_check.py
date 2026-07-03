@@ -1,5 +1,6 @@
 import json
 import subprocess
+import sys
 import zipfile
 from pathlib import Path
 
@@ -26,8 +27,8 @@ def config_path(root: Path) -> Path:
 def write_config(root: Path) -> None:
     config_path(root).parent.mkdir(parents=True, exist_ok=True)
     config = default_config_yaml()
-    config = config.replace("pytest -q", "python -c 'print(1)'")
-    config = config.replace("ruff check .", "python -c 'print(2)'")
+    config = config.replace("pytest -q", f"{sys.executable} -c 'print(1)'")
+    config = config.replace("ruff check .", f"{sys.executable} -c 'print(2)'")
     config_path(root).write_text(config, encoding="utf-8")
 
 
@@ -89,8 +90,35 @@ def metrics() -> dict[str, object]:
     }
 
 
+def write_package_metadata(root: Path) -> None:
+    docs = root / "docs"
+    docs.mkdir(parents=True, exist_ok=True)
+    root.joinpath("README.md").write_text("# Demo\n", encoding="utf-8")
+    root.joinpath("README.zh-CN.md").write_text("# Demo\n", encoding="utf-8")
+    root.joinpath("LICENSE").write_text("Apache-2.0\n", encoding="utf-8")
+    docs.joinpath("quickstart.md").write_text("# Quickstart\n", encoding="utf-8")
+    docs.joinpath("github-actions.md").write_text("# Actions\n", encoding="utf-8")
+    root.joinpath("ROADMAP.md").write_text("# Roadmap\n", encoding="utf-8")
+    root.joinpath("pyproject.toml").write_text(
+        """
+[project]
+name = "vibebench-arena"
+version = "0.2.0"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+
+[project.scripts]
+vibebench = "vibebench.cli:main"
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+
 def create_ready_project(root: Path) -> Path:
     write_config(root)
+    write_package_metadata(root)
     workflow = root / ".github" / "workflows" / "ci.yml"
     workflow.parent.mkdir(parents=True, exist_ok=True)
     workflow.write_text("name: CI\n", encoding="utf-8")

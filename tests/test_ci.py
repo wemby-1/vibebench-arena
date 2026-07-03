@@ -1,5 +1,6 @@
 import json
 import subprocess
+import sys
 import zipfile
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from typer.testing import CliRunner
 
 from vibebench.cli import app
 from vibebench.config import default_config_yaml
+from vibebench.manifest import check_manifest
 
 runner = CliRunner()
 
@@ -26,12 +28,40 @@ def workflow_path(root: Path) -> Path:
     return root / ".github" / "workflows" / "vibebench.yml"
 
 
-def write_config(root: Path, test_command: str = "python -c 'print(1)'") -> None:
+def write_config(root: Path, test_command: str | None = None) -> None:
     config_path(root).parent.mkdir(parents=True, exist_ok=True)
+    selected_test_command = test_command or f"{sys.executable} -c 'print(1)'"
     config = default_config_yaml()
-    config = config.replace("pytest -q", test_command)
-    config = config.replace("ruff check .", "python -c 'print(2)'")
+    config = config.replace("pytest -q", selected_test_command)
+    config = config.replace("ruff check .", f"{sys.executable} -c 'print(2)'")
     config_path(root).write_text(config, encoding="utf-8")
+    write_package_metadata(root)
+
+
+def write_package_metadata(root: Path) -> None:
+    docs = root / "docs"
+    docs.mkdir(parents=True, exist_ok=True)
+    root.joinpath("README.md").write_text("# Demo\n", encoding="utf-8")
+    root.joinpath("README.zh-CN.md").write_text("# Demo\n", encoding="utf-8")
+    root.joinpath("LICENSE").write_text("Apache-2.0\n", encoding="utf-8")
+    docs.joinpath("quickstart.md").write_text("# Quickstart\n", encoding="utf-8")
+    docs.joinpath("github-actions.md").write_text("# Actions\n", encoding="utf-8")
+    root.joinpath("ROADMAP.md").write_text("# Roadmap\n", encoding="utf-8")
+    root.joinpath("pyproject.toml").write_text(
+        """
+[project]
+name = "vibebench-arena"
+version = "0.2.0"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+
+[project.scripts]
+vibebench = "vibebench.cli:main"
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
 
 
 def init_git_repo(root: Path) -> None:
@@ -166,6 +196,8 @@ def test_ci_command_creates_standard_artifacts(tmp_path: Path) -> None:
     assert run_dir.joinpath("trend.json").exists()
     assert run_dir.joinpath("config-check.json").exists()
     assert run_dir.joinpath("config-check.md").exists()
+    assert run_dir.joinpath("package-check.json").exists()
+    assert run_dir.joinpath("package-check.md").exists()
     assert run_dir.joinpath("manifest.json").exists()
     assert "config-check" in result.output
     assert "manifest-check" in result.output
@@ -220,6 +252,7 @@ def test_skip_flags_skip_artifact_generation(tmp_path: Path) -> None:
             "--skip-status-block",
             "--skip-trend",
             "--skip-config-check",
+            "--skip-package-check",
             "--skip-manifest",
             "--skip-gh-summary",
         ],
@@ -238,6 +271,8 @@ def test_skip_flags_skip_artifact_generation(tmp_path: Path) -> None:
     assert not run_dir.joinpath("trend.json").exists()
     assert not run_dir.joinpath("config-check.json").exists()
     assert not run_dir.joinpath("config-check.md").exists()
+    assert not run_dir.joinpath("package-check.json").exists()
+    assert not run_dir.joinpath("package-check.md").exists()
     assert not run_dir.joinpath("manifest.json").exists()
     assert not run_dir.joinpath("github-step-summary.md").exists()
     assert "skipped" in result.output
@@ -607,6 +642,7 @@ def test_ci_dry_run_human_output_includes_ordered_steps(tmp_path: Path) -> None:
         "check",
         "gate",
         "config-check",
+        "package-check",
         "report",
         "pr-comment",
         "explain",
@@ -643,6 +679,7 @@ def test_ci_dry_run_json_outputs_plan_payload(tmp_path: Path) -> None:
         "check",
         "gate",
         "config-check",
+        "package-check",
         "report",
         "pr-comment",
         "explain",
@@ -698,6 +735,7 @@ def test_ci_dry_run_skip_flags_mark_steps_skipped(tmp_path: Path) -> None:
             "--dry-run",
             "--skip-manifest",
             "--skip-config-check",
+            "--skip-package-check",
             "--skip-bundle",
             "--json",
         ],
@@ -708,6 +746,8 @@ def test_ci_dry_run_skip_flags_mark_steps_skipped(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert steps["config-check"]["status"] == "skipped"
     assert steps["config-check"]["message"] == "Skipped by --skip-config-check"
+    assert steps["package-check"]["status"] == "skipped"
+    assert steps["package-check"]["message"] == "Skipped by --skip-package-check"
     assert steps["manifest"]["status"] == "skipped"
     assert steps["manifest-check"]["status"] == "skipped"
     assert steps["manifest"]["message"] == "Skipped by --skip-manifest"
@@ -955,6 +995,7 @@ def test_ci_json_outputs_parseable_payload(tmp_path: Path) -> None:
         "check",
         "gate",
         "config-check",
+        "package-check",
         "report",
         "pr-comment",
         "explain",
@@ -1169,6 +1210,8 @@ def test_active_github_workflow_uses_ci_command() -> None:
     assert "name: vibebench-run-artifacts" in workflow
     assert ".vibebench/runs/**/metrics.json" in workflow
     assert ".vibebench/runs/**/release-check.md" in workflow
+    assert ".vibebench/runs/**/package-check.json" in workflow
+    assert ".vibebench/runs/**/package-check.md" in workflow
     assert "vibebench check" not in workflow
 
 def test_example_github_workflow_posts_pr_comments_safely() -> None:
@@ -1227,6 +1270,62 @@ def test_ci_skip_config_check_skips_config_check_generation(tmp_path: Path) -> N
     assert "skipped" in result.output
 
 
+def test_ci_dry_run_skip_package_check_marks_step_skipped(tmp_path: Path) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--skip-package-check",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["package-check"]["status"] == "skipped"
+    assert steps["package-check"]["message"] == "Skipped by --skip-package-check"
+
+
+def test_ci_accepts_skip_package_check_option(tmp_path: Path) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--dry-run", "--skip-package-check"],
+    )
+
+    assert result.exit_code == 0
+    assert "package-check" in result.output
+    assert "skipped" in result.output
+
+
+def test_ci_skip_package_check_skips_artifacts(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--skip-package-check",
+        ],
+    )
+
+    assert result.exit_code == 0
+    run_dir = latest_run(tmp_path)
+    assert not run_dir.joinpath("package-check.json").exists()
+    assert not run_dir.joinpath("package-check.md").exists()
+    assert "package-check" in result.output
+
+
 def test_ci_dry_run_skip_release_check_marks_step_skipped(tmp_path: Path) -> None:
     write_config(tmp_path)
 
@@ -1260,6 +1359,17 @@ def test_ci_accepts_skip_release_check_option(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert "release-check" in result.output
     assert "skipped" in result.output
+
+
+def test_ci_refreshes_manifest_after_late_artifacts(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(app, ["ci", "--project-root", str(tmp_path)])
+
+    assert result.exit_code == 0
+    manifest_check = check_manifest(tmp_path, latest_run(tmp_path))
+    assert manifest_check.passed is True
 
 
 def test_ci_generates_release_check_artifacts(tmp_path: Path) -> None:
@@ -1306,5 +1416,7 @@ def test_ci_bundle_includes_release_check_artifacts(tmp_path: Path) -> None:
     assert result.exit_code == 0
     run_dir = latest_run(tmp_path)
     names = zip_names(run_dir / "vibebench-bundle.zip")
+    assert "package-check.json" in names
+    assert "package-check.md" in names
     assert "release-check.json" in names
     assert "release-check.md" in names

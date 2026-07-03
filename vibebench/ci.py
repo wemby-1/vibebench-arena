@@ -25,6 +25,13 @@ from vibebench.export import export_json_for_ci
 from vibebench.gate import run_gate
 from vibebench.gh_summary import generate_github_summary
 from vibebench.manifest import check_manifest, generate_manifest
+from vibebench.package_check import (
+    PACKAGE_CHECK_JSON,
+    PACKAGE_CHECK_SUMMARY,
+    run_package_check,
+    write_package_check_json,
+    write_package_check_summary,
+)
 from vibebench.paths import config_dir, config_file
 from vibebench.pr_comment import generate_pr_comment
 from vibebench.release_check import (
@@ -90,6 +97,7 @@ def plan_ci_pipeline(
     skip_annotate: bool = False,
     skip_gh_summary: bool = False,
     skip_release_check: bool = False,
+    skip_package_check: bool = False,
 ) -> CiResult:
     """Return the CI pipeline plan without running commands or writing artifacts."""
     steps = [
@@ -110,6 +118,7 @@ def plan_ci_pipeline(
         skip_annotate=skip_annotate,
         skip_gh_summary=skip_gh_summary,
         skip_release_check=skip_release_check,
+        skip_package_check=skip_package_check,
     ):
         if skipped:
             steps.append(skipped_plan_step(name, flag))
@@ -157,10 +166,12 @@ def ci_artifact_step_flags(
     skip_annotate: bool,
     skip_gh_summary: bool,
     skip_release_check: bool,
+    skip_package_check: bool,
 ) -> list[tuple[str, bool, str]]:
     """Return artifact step skip flags in canonical CI order."""
     return [
         ("config-check", skip_config_check, "--skip-config-check"),
+        ("package-check", skip_package_check, "--skip-package-check"),
         ("report", skip_report, "--skip-report"),
         ("pr-comment", skip_pr_comment, "--skip-pr-comment"),
         ("explain", skip_explain, "--skip-explain"),
@@ -374,6 +385,7 @@ def run_ci_pipeline(
     skip_annotate: bool = False,
     skip_gh_summary: bool = False,
     skip_release_check: bool = False,
+    skip_package_check: bool = False,
     emit_annotations: bool = True,
     bundle_include_report_assets: bool = False,
     bundle_strict: bool = False,
@@ -418,6 +430,7 @@ def run_ci_pipeline(
             skip_annotate=skip_annotate,
             skip_gh_summary=skip_gh_summary,
             skip_release_check=skip_release_check,
+            skip_package_check=skip_package_check,
         )
         return CiResult(run_dir=None, steps=steps, passed=False)
 
@@ -436,6 +449,11 @@ def run_ci_pipeline(
             "config-check",
             skip_config_check,
             lambda: generated_config_check_path(root, selected_run_dir),
+        ),
+        (
+            "package-check",
+            skip_package_check,
+            lambda: generated_package_check_path(root, selected_run_dir),
         ),
         ("report", skip_report, lambda: generate_report(root, selected_run_dir)),
         (
@@ -514,6 +532,9 @@ def run_ci_pipeline(
             continue
         steps.append(run_artifact_step(name, callback))
 
+    if not skip_manifest:
+        refresh_manifest_after_ci(root, selected_run_dir)
+
     passed = all(step.exit_code == 0 for step in steps if step.status != "skipped")
     return CiResult(run_dir=selected_run_dir, steps=steps, passed=passed)
 
@@ -534,6 +555,7 @@ def append_unavailable_artifact_steps(
     skip_annotate: bool,
     skip_gh_summary: bool,
     skip_release_check: bool,
+    skip_package_check: bool,
 ) -> None:
     """Append artifact steps when no run directory exists."""
     flags = [
@@ -545,6 +567,7 @@ def append_unavailable_artifact_steps(
         ("status-block", skip_status_block),
         ("trend", skip_trend),
         ("config-check", skip_config_check),
+        ("package-check", skip_package_check),
         ("manifest", skip_manifest),
         ("manifest-check", skip_manifest),
         ("release-check", skip_release_check),
@@ -564,6 +587,11 @@ def append_unavailable_artifact_steps(
                     message="no run directory available",
                 )
             )
+
+
+def refresh_manifest_after_ci(project_root: Path, run_dir: Path) -> None:
+    """Refresh manifest after late artifact steps."""
+    generate_manifest(project_root, run_dir)
 
 
 def run_check_step(project_root: Path) -> tuple[CiStepResult, Path | None]:
@@ -741,6 +769,25 @@ def generated_config_check_path(
     payload = json.loads(json_path.read_text(encoding="utf-8"))
     if payload["overall_status"] == "failed":
         raise ConfigError("Config consistency check failed.")
+    return json_path
+
+
+def generated_package_check_path(
+    project_root: Path,
+    run_dir: Path | None,
+) -> Path | None:
+    """Generate package check artifacts and return the JSON path."""
+    if run_dir is None:
+        return None
+    result = run_package_check(project_root, advice=True)
+    json_path = run_dir / PACKAGE_CHECK_JSON
+    summary_path = run_dir / PACKAGE_CHECK_SUMMARY
+    write_package_check_json(result, json_path)
+    write_package_check_summary(result, summary_path)
+    if not result.ready:
+        failed = [check for check in result.checks if check.status == "failed"]
+        message = "; ".join(f"{check.name}: {check.message}" for check in failed)
+        raise ConfigError(message or "Package readiness check failed.")
     return json_path
 
 

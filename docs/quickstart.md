@@ -51,9 +51,9 @@ python -m vibebench release-check
 
 `vibebench config --show` validates and summarizes the active `.vibebench/config.yaml`. Use `python -m vibebench config --show --json` for machine-readable config inspection. Use `python -m vibebench config --check`, `python -m vibebench config --check --advice`, or `python -m vibebench config --check --json --advice` for focused consistency diagnostics and optional repair guidance. Add `--write-json PATH` or `--write-summary PATH` to persist config check artifacts.
 
-`vibebench package-check` validates local package metadata, imports, console script configuration, README/license references, and key docs without network access or PyPI publishing.
+`vibebench package-check` validates local package metadata, imports, console script configuration, README/license references, and key docs without network access or PyPI publishing. Add `--write-json PATH` or `--write-summary PATH` to save package-check artifacts.
 
-`vibebench doctor` is a lightweight environment check for Python, Git, `.vibebench/config.yaml`, configured command executables, and whether `.vibebench/runs/` is writable. It does not run your configured checks. Use `python -m vibebench doctor --strict` for a stronger release/CI preflight that also expects recent run artifacts such as the manifest, bundle, and report. Add `--advice` to explain how to fix failed checks without modifying files. Use `python -m vibebench doctor --json`, `python -m vibebench doctor --json --strict`, or `python -m vibebench doctor --json --strict --advice` for machine-readable diagnostics. Run `python -m vibebench release-check` before tagging or publishing to combine config, strict doctor, latest run, manifest, artifacts, CI plan, and whitespace readiness checks. Add `--write-json PATH` and `--write-summary PATH` to persist release-check artifacts.
+`vibebench doctor` is a lightweight environment check for Python, Git, `.vibebench/config.yaml`, configured command executables, and whether `.vibebench/runs/` is writable. It does not run your configured checks. Use `python -m vibebench doctor --strict` for a stronger release/CI preflight that also expects recent run artifacts such as the manifest, bundle, and report. Add `--advice` to explain how to fix failed checks without modifying files. Use `python -m vibebench doctor --json`, `python -m vibebench doctor --json --strict`, or `python -m vibebench doctor --json --strict --advice` for machine-readable diagnostics. Run `python -m vibebench release-check` before tagging or publishing to combine config, package readiness, strict doctor, latest run, manifest, artifacts, CI plan, and whitespace readiness checks. Add `--write-json PATH` and `--write-summary PATH` to persist release-check artifacts.
 
 ## Release-Readiness Flow
 
@@ -67,7 +67,7 @@ python -m vibebench doctor --strict
 python -m vibebench manifest --check
 ```
 
-For v0.2.0 details, see [../RELEASE_NOTES_v0.2.0.md](../RELEASE_NOTES_v0.2.0.md). In GitHub Actions, download `vibebench-run-artifacts` from the workflow run to inspect reports, manifests, bundles, config-check summaries, trend artifacts, and `release-check.json`/`release-check.md`.
+For v0.2.0 details, see [../RELEASE_NOTES_v0.2.0.md](../RELEASE_NOTES_v0.2.0.md). In GitHub Actions, download `vibebench-run-artifacts` from the workflow run to inspect reports, manifests, bundles, config-check summaries, package-check summaries, trend artifacts, and `release-check.json`/`release-check.md`.
 
 ## Show Run History
 

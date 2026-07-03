@@ -59,6 +59,8 @@ jobs:
             .vibebench/runs/**/release-check.md
             .vibebench/runs/**/config-check.json
             .vibebench/runs/**/config-check.md
+            .vibebench/runs/**/package-check.json
+            .vibebench/runs/**/package-check.md
             .vibebench/runs/**/trend.json
             .vibebench/runs/**/trend.md
             .vibebench/runs/**/report/**

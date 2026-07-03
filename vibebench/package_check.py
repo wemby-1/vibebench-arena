@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,6 +13,8 @@ from vibebench import __version__
 from vibebench.report import ReportError
 
 PackageCheckStatus = Literal["passed", "failed"]
+PACKAGE_CHECK_JSON = "package-check.json"
+PACKAGE_CHECK_SUMMARY = "package-check.md"
 
 REQUIRED_DOCS = [
     "README.md",
@@ -264,6 +267,76 @@ def package_check_payload(
     if include_advice and check.advice:
         payload["advice"] = check.advice
     return payload
+
+
+def write_package_check_json(
+    result: PackageReadinessResult,
+    output_path: Path,
+) -> Path:
+    """Write package readiness JSON to a file."""
+    validate_output_path(output_path)
+    output_path.write_text(
+        json.dumps(package_check_json_payload(result), indent=2, sort_keys=True)
+        + "\n",
+        encoding="utf-8",
+    )
+    return output_path
+
+
+def write_package_check_summary(
+    result: PackageReadinessResult,
+    output_path: Path,
+) -> Path:
+    """Write a human-readable package readiness Markdown summary."""
+    validate_output_path(output_path)
+    output_path.write_text(render_package_check_markdown(result), encoding="utf-8")
+    return output_path
+
+
+def validate_output_path(output_path: Path) -> None:
+    """Validate a requested package-check output path."""
+    if output_path.exists() and output_path.is_dir():
+        raise ReportError(f"Package-check output path is a directory: {output_path}")
+    if not output_path.parent.exists():
+        raise ReportError(
+            f"Package-check output parent does not exist: {output_path.parent}"
+        )
+
+
+def render_package_check_markdown(result: PackageReadinessResult) -> str:
+    """Render a human-readable package readiness summary."""
+    lines = [
+        "# VibeBench Package Check",
+        "",
+        f"- Project root: {result.project_root}",
+        f"- Package name: {result.package_name or ''}",
+        f"- Version: {result.version or ''}",
+        f"- Status: {result.status}",
+        "",
+        "| Check | Status | Message |",
+        "| --- | --- | --- |",
+    ]
+    for check in result.checks:
+        lines.append(
+            "| "
+            f"{markdown_cell(check.name)} | "
+            f"{markdown_cell(check.status)} | "
+            f"{markdown_cell(check.message)} |"
+        )
+    advice_items = [check for check in result.checks if check.advice]
+    if advice_items:
+        lines.extend(["", "## Advice", ""])
+        for check in advice_items:
+            lines.append(f"- {check.name}: {check.advice}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def markdown_cell(value: object) -> str:
+    """Escape a Markdown table cell."""
+    if value is None:
+        return ""
+    return str(value).replace("|", "\\|").replace("\n", " ")
 
 
 def with_advice(check: PackageReadinessCheck) -> PackageReadinessCheck:

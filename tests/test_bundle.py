@@ -72,6 +72,8 @@ def write_run(
         (run_dir / "trend.json").write_text("{}\n", encoding="utf-8")
         (run_dir / "config-check.json").write_text("{}\n", encoding="utf-8")
         (run_dir / "config-check.md").write_text("config check\n", encoding="utf-8")
+        (run_dir / "package-check.json").write_text("{}\n", encoding="utf-8")
+        (run_dir / "package-check.md").write_text("package check\n", encoding="utf-8")
         (run_dir / "manifest.json").write_text("{}\n", encoding="utf-8")
         (run_dir / "compare.md").write_text("compare\n", encoding="utf-8")
     return run_dir
@@ -103,6 +105,8 @@ def test_latest_run_bundle_is_created(tmp_path: Path) -> None:
     assert "trend.json" in names
     assert "config-check.json" in names
     assert "config-check.md" in names
+    assert "package-check.json" in names
+    assert "package-check.md" in names
     assert "manifest.json" in names
     assert "vibebench-bundle.zip" not in names
 
