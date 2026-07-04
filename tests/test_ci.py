@@ -67,7 +67,7 @@ def write_package_metadata(root: Path) -> None:
         """
 [project]
 name = "vibebench-arena"
-version = "0.2.0"
+version = "0.3.0"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }

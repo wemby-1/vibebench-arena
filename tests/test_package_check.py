@@ -12,7 +12,7 @@ runner = CliRunner()
 def write_ready_project(
     root: Path,
     *,
-    version: str = "0.2.0",
+    version: str = "0.3.0",
     readme: str = "README.md",
 ) -> None:
     (root / "docs").mkdir(parents=True)
@@ -101,7 +101,7 @@ def test_package_check_json_output_is_pure_json(tmp_path: Path) -> None:
     payload = json.loads(result.stdout)
     assert payload["status"] == "ready"
     assert payload["package_name"] == "vibebench-arena"
-    assert payload["version"] == "0.2.0"
+    assert payload["version"] == "0.3.0"
     assert isinstance(payload["checks"], list)
 
 

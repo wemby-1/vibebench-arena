@@ -4,7 +4,7 @@ GitHub-native review workflows, richer artifacts, and safer release readiness fo
 
 ## Release Status
 
-This is a release candidate note for v0.3.0. The release has not been tagged yet, and this milestone must not create the v0.3.0 tag or GitHub release.
+This is a release candidate note for v0.3.0. Package metadata is prepared for version 0.3.0, but the release has not been tagged yet, and this milestone must not create the v0.3.0 tag or GitHub release.
 
 ## Highlights
 
