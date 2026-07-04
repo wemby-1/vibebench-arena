@@ -37,13 +37,15 @@ python -m vibebench config --check
 python -m vibebench config --check --advice
 python -m vibebench config --show-source
 python3 -m vibebench config --init
+python3 -m vibebench config --init --dry-run
+python3 -m vibebench config --init --dry-run --json
 python3 -m vibebench config --example
 python3 -m vibebench config --write-example .vibebench/config.example.yaml
 python3 -m vibebench config --path
 python3 -m vibebench config --path --json
 ```
 
-`vibebench config` shows the effective project, checks, gate, and risk settings. It uses `.vibebench/config.yaml` when present and falls back to built-in defaults when no config file exists. Use `python3 -m vibebench config --init` to create `.vibebench/config.yaml` from the starter config; it refuses to overwrite by default, and `--force` replaces the file intentionally. Use `python3 -m vibebench config --example` to view the starter config, or `python3 -m vibebench config --write-example .vibebench/config.example.yaml` to write a copy; the starter includes `compare.fail_on_regression`. Use `python3 -m vibebench config --path` to see the expected config path before or after `--init`, or add `--json` for machine-readable `project_root`, `config_path`, and `exists`.
+`vibebench config` shows the effective project, checks, gate, and risk settings. It uses `.vibebench/config.yaml` when present and falls back to built-in defaults when no config file exists. Use `python3 -m vibebench config --init --dry-run` to preview config initialization; add `--json` for machine-readable dry-run output. Use `python3 -m vibebench config --init` to create `.vibebench/config.yaml` from the starter config; it refuses to overwrite by default. Use `--force` only when you intentionally want a real init to overwrite an existing config. Use `python3 -m vibebench config --example` to view the starter config, or `python3 -m vibebench config --write-example .vibebench/config.example.yaml` to write a copy; the starter includes `compare.fail_on_regression`. Use `python3 -m vibebench config --path` to see the expected config path before or after `--init`, or add `--json` for machine-readable `project_root`, `config_path`, and `exists`.
 
 ## Diagnose Project Readiness
 

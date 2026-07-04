@@ -250,6 +250,120 @@ def test_config_command_init_force_overwrites_existing_config(tmp_path: Path) ->
     assert "fail_on_regression: false" in generated
 
 
+def test_config_command_init_dry_run_plans_without_writing(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "config",
+            "--project-root",
+            str(tmp_path),
+            "--init",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert not config_path(tmp_path).exists()
+    assert not config_path(tmp_path).parent.exists()
+    assert str(config_path(tmp_path)) in result.output
+    assert "Would write: yes" in result.output
+    assert "Force: no" in result.output
+
+
+def test_config_command_init_dry_run_json_before_and_after_init(
+    tmp_path: Path,
+) -> None:
+    before = runner.invoke(
+        app,
+        [
+            "config",
+            "--project-root",
+            str(tmp_path),
+            "--init",
+            "--dry-run",
+            "--json",
+        ],
+    )
+    before_payload = json.loads(before.output)
+
+    assert before.exit_code == 0
+    assert sorted(before_payload) == [
+        "config_path",
+        "dry_run",
+        "exists",
+        "force",
+        "project_root",
+        "status",
+        "would_write",
+    ]
+    assert before_payload == {
+        "status": "planned",
+        "project_root": str(tmp_path),
+        "config_path": str(config_path(tmp_path)),
+        "exists": False,
+        "would_write": True,
+        "force": False,
+        "dry_run": True,
+    }
+    assert not config_path(tmp_path).exists()
+    assert not config_path(tmp_path).parent.exists()
+
+    init_result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--init"],
+    )
+    after = runner.invoke(
+        app,
+        [
+            "config",
+            "--project-root",
+            str(tmp_path),
+            "--init",
+            "--dry-run",
+            "--json",
+        ],
+    )
+    after_payload = json.loads(after.output)
+
+    assert init_result.exit_code == 0
+    assert after.exit_code == 0
+    assert after_payload["status"] == "blocked"
+    assert after_payload["project_root"] == str(tmp_path)
+    assert after_payload["config_path"] == str(config_path(tmp_path))
+    assert after_payload["exists"] is True
+    assert after_payload["would_write"] is False
+    assert after_payload["force"] is False
+    assert after_payload["dry_run"] is True
+
+
+def test_config_command_init_dry_run_force_preserves_existing_config(
+    tmp_path: Path,
+) -> None:
+    config_path(tmp_path).parent.mkdir(parents=True)
+    config_path(tmp_path).write_text("existing: true\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "config",
+            "--project-root",
+            str(tmp_path),
+            "--init",
+            "--dry-run",
+            "--force",
+            "--json",
+        ],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 0
+    assert payload["exists"] is True
+    assert payload["would_write"] is True
+    assert payload["force"] is True
+    assert payload["dry_run"] is True
+    assert config_path(tmp_path).read_text(encoding="utf-8") == "existing: true\n"
+
+
 def test_config_command_path_outputs_expected_config_path(tmp_path: Path) -> None:
     result = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--path"])
 

@@ -376,6 +376,10 @@ def config_command(
             help="Overwrite .vibebench/config.yaml when using --init.",
         ),
     ] = False,
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="Preview --init without writing files."),
+    ] = False,
 ) -> None:
     """Inspect and validate the effective VibeBench configuration."""
     root = project_root.resolve()
@@ -389,6 +393,14 @@ def config_command(
         return
 
     if init_config:
+        if dry_run:
+            payload = config_init_plan_payload(root, target, force=force)
+            if as_json:
+                print(json.dumps(payload, indent=2, sort_keys=True))
+            else:
+                render_config_init_plan(payload)
+            return
+
         example_yaml = config_example_yaml()
         try:
             written_path, overwritten = write_config_init(
@@ -507,6 +519,40 @@ def config_path_payload(project_root: Path, path: Path) -> dict[str, object]:
     }
 
 
+def config_init_plan_payload(
+    project_root: Path,
+    path: Path,
+    *,
+    force: bool,
+) -> dict[str, object]:
+    """Return JSON-safe config init dry-run output."""
+    exists = path.exists()
+    would_write = (not exists or force) and not path.is_dir()
+    return {
+        "status": "planned" if would_write else "blocked",
+        "project_root": str(project_root),
+        "config_path": str(path),
+        "exists": exists,
+        "would_write": would_write,
+        "force": force,
+        "dry_run": True,
+    }
+
+
+def render_config_init_plan(payload: dict[str, object]) -> None:
+    """Render a concise config init dry-run plan."""
+    print("Config init dry run")
+    print("Project root: " + str(payload["project_root"]))
+    print("Config path: " + str(payload["config_path"]))
+    print("Config exists: " + format_bool(payload["exists"]))
+    print("Would write: " + format_bool(payload["would_write"]))
+    print("Force: " + format_bool(payload["force"]))
+    if payload["would_write"]:
+        print("Dry run only: no files or directories were written.")
+    else:
+        print("Normal init would not overwrite without --force.")
+
+
 def write_config_init(
     output_path: Path,
     content: str,
@@ -581,6 +627,11 @@ def format_config_value(value: object) -> str:
     if isinstance(value, list):
         return "\n".join(str(item) for item in value)
     return str(value)
+
+
+def format_bool(value: object) -> str:
+    """Format booleans for concise human output."""
+    return "yes" if value else "no"
 
 
 def render_config_check_summary(
