@@ -158,7 +158,8 @@ def test_config_command_json_is_valid(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     payload = json.loads(result.output)
-    assert sorted(payload) == ["checks", "gate", "project", "risk"]
+    assert sorted(payload) == ["checks", "compare", "gate", "project", "risk"]
+    assert payload["compare"]["fail_on_regression"] is False
     assert payload["project"]["name"] == "vibebench-project"
     assert payload["checks"]["test"] == ["pytest -q"]
     assert payload["gate"]["min_score"] == 80

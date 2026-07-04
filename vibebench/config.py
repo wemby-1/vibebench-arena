@@ -70,6 +70,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "allow_findings": 0,
         "require_status_passed": True,
     },
+    "compare": {
+        "fail_on_regression": False,
+    },
 }
 
 
@@ -147,6 +150,14 @@ class GateConfig(BaseModel):
     require_status_passed: bool = True
 
 
+class CompareConfig(BaseModel):
+    """Compare artifact policy defaults."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    fail_on_regression: bool = False
+
+
 class VibeBenchConfig(BaseModel):
     """Top-level VibeBench configuration."""
 
@@ -157,6 +168,7 @@ class VibeBenchConfig(BaseModel):
     risk_rules: RiskRulesConfig = Field(default_factory=RiskRulesConfig)
     risk: RiskConfig | None = None
     gate: GateConfig = Field(default_factory=GateConfig)
+    compare: CompareConfig = Field(default_factory=CompareConfig)
 
     def effective_risk(self) -> RiskConfig:
         """Return the active Git diff risk policy."""
@@ -220,6 +232,7 @@ def load_effective_config(path: Path | None = None) -> EffectiveConfigResult:
                 "checks": "built-in defaults",
                 "gate": "built-in defaults",
                 "risk": "built-in defaults",
+                "compare": "built-in defaults",
             },
             config_path=config_path,
             config_exists=False,
@@ -234,6 +247,7 @@ def load_effective_config(path: Path | None = None) -> EffectiveConfigResult:
         "checks": "config file" if "checks" in raw_config else "built-in defaults",
         "gate": "config file" if "gate" in raw_config else "built-in defaults",
         "risk": "config file" if "risk" in raw_config else "built-in defaults",
+        "compare": "config file" if "compare" in raw_config else "built-in defaults",
     }
     return EffectiveConfigResult(
         config=config,
@@ -249,6 +263,7 @@ def effective_config_payload(result: EffectiveConfigResult) -> dict[str, Any]:
         "project": result.config.project.model_dump(),
         "checks": result.config.checks.model_dump(),
         "gate": result.config.gate.model_dump(),
+        "compare": result.config.compare.model_dump(),
         "risk": result.config.effective_risk().model_dump(),
     }
     return payload

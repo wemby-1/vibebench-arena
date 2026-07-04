@@ -20,8 +20,10 @@ from vibebench.badge import DEFAULT_BADGE_LABEL, BadgeResult, generate_badge
 from vibebench.baseline import BaselineStatus, set_baseline, show_baseline
 from vibebench.bundle import BundleResult, create_bundle
 from vibebench.ci import (
+    CiRegressionGuardPolicy,
     CiResult,
     ci_json_payload,
+    ci_regression_guard_policy,
     plan_ci_pipeline,
     run_ci_pipeline,
     write_ci_json,
@@ -1309,6 +1311,37 @@ def annotate(
     render_annotation_summary(result)
 
 
+
+def resolve_ci_regression_guard(
+    root: Path,
+    fail_on_regression: bool | None,
+    skip_compare: bool,
+) -> CiRegressionGuardPolicy:
+    """Resolve CI compare regression guard from CLI flags and config."""
+    if skip_compare:
+        return ci_regression_guard_policy(
+            enabled=False,
+            source="cli",
+            message="Disabled because --skip-compare skips compare.",
+        )
+    if fail_on_regression is not None:
+        return ci_regression_guard_policy(
+            enabled=fail_on_regression,
+            source="cli",
+        )
+
+    effective_config = load_effective_config(config_file(root))
+    source = (
+        "config"
+        if effective_config.sources.get("compare") == "config file"
+        else "default"
+    )
+    return ci_regression_guard_policy(
+        enabled=effective_config.config.compare.fail_on_regression,
+        source=source,
+    )
+
+
 @app.command("ci")
 def ci_command(
     project_root: ProjectRootOption = Path("."),
@@ -1390,12 +1423,15 @@ def ci_command(
         ),
     ] = False,
     fail_on_regression: Annotated[
-        bool,
+        bool | None,
         typer.Option(
-            "--fail-on-regression",
-            help="Fail CI when the compare step verdict is regressed.",
+            "--fail-on-regression/--no-fail-on-regression",
+            help=(
+                "Override whether CI fails when the compare step verdict "
+                "is regressed."
+            ),
         ),
-    ] = False,
+    ] = None,
     as_json: Annotated[
         bool,
         typer.Option("--json", help="Print CI result as JSON."),
@@ -1505,6 +1541,11 @@ def ci_command(
 
     try:
         plan_artifacts = None
+        regression_guard = resolve_ci_regression_guard(
+            root,
+            fail_on_regression,
+            skip_compare,
+        )
         if plan_mode:
             result = plan_ci_pipeline(
                 skip_report=skip_report,
@@ -1523,7 +1564,9 @@ def ci_command(
                 skip_gh_summary=skip_gh_summary,
                 skip_release_check=skip_release_check,
                 skip_package_check=skip_package_check,
-                fail_on_regression=fail_on_regression,
+                fail_on_regression=regression_guard.enabled,
+                regression_guard_source=regression_guard.source,
+                regression_guard_message=regression_guard.message,
             )
             plan_artifacts = write_ci_plan_artifacts(
                 root,
@@ -1560,7 +1603,9 @@ def ci_command(
                 max_risk=max_risk,
                 allow_findings=allow_findings,
                 require_status_passed=require_status_passed,
-                fail_on_regression=fail_on_regression,
+                fail_on_regression=regression_guard.enabled,
+                regression_guard_source=regression_guard.source,
+                regression_guard_message=regression_guard.message,
             )
         if selected_json_output is not None:
             write_ci_json(result, selected_json_output)

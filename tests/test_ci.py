@@ -28,12 +28,28 @@ def workflow_path(root: Path) -> Path:
     return root / ".github" / "workflows" / "vibebench.yml"
 
 
-def write_config(root: Path, test_command: str | None = None) -> None:
+def write_config(
+    root: Path,
+    test_command: str | None = None,
+    *,
+    fail_on_regression: bool | None = None,
+    include_compare: bool = True,
+) -> None:
     config_path(root).parent.mkdir(parents=True, exist_ok=True)
     selected_test_command = test_command or f"{sys.executable} -c 'print(1)'"
     config = default_config_yaml()
     config = config.replace("pytest -q", selected_test_command)
     config = config.replace("ruff check .", f"{sys.executable} -c 'print(2)'")
+    if fail_on_regression is not None:
+        config = config.replace(
+            "fail_on_regression: false",
+            f"fail_on_regression: {str(fail_on_regression).lower()}",
+        )
+    if not include_compare:
+        config = config.replace(
+            "compare:\n  fail_on_regression: false\n",
+            "",
+        )
     config_path(root).write_text(config, encoding="utf-8")
     write_package_metadata(root)
 
@@ -808,6 +824,172 @@ def test_ci_default_dry_run_compare_step_remains_reporting_only(
     steps = {step["name"]: step for step in payload["steps"]}
     assert result.exit_code == 0
     assert steps["compare"]["message"] == "Would run compare"
+
+
+
+def test_ci_missing_compare_config_keeps_regression_guard_disabled(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path, include_compare=False)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--dry-run", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert payload["regression_guard"] == {
+        "enabled": False,
+        "source": "default",
+        "message": "Disabled by default.",
+    }
+    assert steps["compare"]["message"] == "Would run compare"
+
+
+def test_ci_config_true_enables_regression_guard(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path, fail_on_regression=True)
+    write_run(tmp_path, "20260629_120000", metrics=sample_metrics(score=100))
+    head = write_run(tmp_path, "20260629_130000", metrics=sample_metrics(score=90))
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(head),
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 1
+    assert payload["regression_guard"]["enabled"] is True
+    assert payload["regression_guard"]["source"] == "config"
+    assert steps["compare"]["status"] == "failed"
+
+
+def test_ci_fail_on_regression_overrides_config_false(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path, fail_on_regression=False)
+    write_run(tmp_path, "20260629_120000", metrics=sample_metrics(score=100))
+    head = write_run(tmp_path, "20260629_130000", metrics=sample_metrics(score=90))
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(head),
+            "--fail-on-regression",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 1
+    assert payload["regression_guard"]["enabled"] is True
+    assert payload["regression_guard"]["source"] == "cli"
+    assert steps["compare"]["status"] == "failed"
+
+
+def test_ci_no_fail_on_regression_overrides_config_true(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path, fail_on_regression=True)
+    write_run(tmp_path, "20260629_120000", metrics=sample_metrics(score=100))
+    head = write_run(tmp_path, "20260629_130000", metrics=sample_metrics(score=90))
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(head),
+            "--no-fail-on-regression",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert payload["regression_guard"]["enabled"] is False
+    assert payload["regression_guard"]["source"] == "cli"
+    assert steps["compare"]["status"] == "passed"
+
+
+def test_ci_skip_compare_overrides_enabled_regression_guard(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path, fail_on_regression=True)
+    write_run(tmp_path, "20260629_120000", metrics=sample_metrics(score=100))
+    head = write_run(tmp_path, "20260629_130000", metrics=sample_metrics(score=90))
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(head),
+            "--skip-compare",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert payload["regression_guard"] == {
+        "enabled": False,
+        "source": "cli",
+        "message": "Disabled because --skip-compare skips compare.",
+    }
+    assert steps["compare"]["status"] == "skipped"
+    assert not head.joinpath("compare.json").exists()
+
+
+@pytest.mark.parametrize(
+    ("config_value", "args", "expected_enabled", "expected_source"),
+    [
+        (True, [], True, "config"),
+        (False, ["--fail-on-regression"], True, "cli"),
+        (True, ["--no-fail-on-regression"], False, "cli"),
+    ],
+)
+def test_ci_dry_run_json_exposes_regression_guard_policy(
+    tmp_path: Path,
+    config_value: bool,
+    args: list[str],
+    expected_enabled: bool,
+    expected_source: str,
+) -> None:
+    write_config(tmp_path, fail_on_regression=config_value)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--dry-run", "--json", *args],
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["regression_guard"]["enabled"] is expected_enabled
+    assert payload["regression_guard"]["source"] == expected_source
+    assert payload["regression_guard"]["message"]
 
 
 def test_ci_fail_on_regression_fails_compare_step_after_writing_artifacts(

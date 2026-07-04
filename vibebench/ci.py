@@ -53,6 +53,7 @@ from vibebench.status_block import generate_status_block
 from vibebench.trend import analyze_trend, write_trend_json, write_trend_summary
 
 StepStatus = Literal["passed", "failed", "skipped", "planned"]
+RegressionGuardSource = Literal["cli", "config", "default"]
 CI_PLAN_JSON = "ci-plan.json"
 CI_PLAN_MARKDOWN = "ci-plan.md"
 
@@ -70,6 +71,15 @@ class CiStepResult:
 
 
 @dataclass(frozen=True)
+class CiRegressionGuardPolicy:
+    """Effective CI compare regression guard policy."""
+
+    enabled: bool = False
+    source: RegressionGuardSource = "default"
+    message: str = "Disabled by default."
+
+
+@dataclass(frozen=True)
 class CiResult:
     """Complete VibeBench CI pipeline result."""
 
@@ -77,6 +87,7 @@ class CiResult:
     steps: list[CiStepResult]
     passed: bool
     dry_run: bool = False
+    regression_guard: CiRegressionGuardPolicy = CiRegressionGuardPolicy()
 
 
 @dataclass(frozen=True)
@@ -86,6 +97,32 @@ class CiPlanArtifacts:
     output_dir: Path | None
     json_path: Path | None
     markdown_path: Path | None
+
+
+def ci_regression_guard_policy(
+    *,
+    enabled: bool = False,
+    source: RegressionGuardSource | None = None,
+    message: str | None = None,
+) -> CiRegressionGuardPolicy:
+    """Return the effective CI regression guard policy."""
+    selected_source: RegressionGuardSource = source or ("cli" if enabled else "default")
+    if message is None:
+        if enabled and selected_source == "cli":
+            message = "Enabled by --fail-on-regression."
+        elif enabled and selected_source == "config":
+            message = "Enabled by compare.fail_on_regression."
+        elif selected_source == "cli":
+            message = "Disabled by --no-fail-on-regression."
+        elif selected_source == "config":
+            message = "Disabled by compare.fail_on_regression."
+        else:
+            message = "Disabled by default."
+    return CiRegressionGuardPolicy(
+        enabled=enabled,
+        source=selected_source,
+        message=message,
+    )
 
 
 def plan_ci_pipeline(
@@ -107,8 +144,21 @@ def plan_ci_pipeline(
     skip_release_check: bool = False,
     skip_package_check: bool = False,
     fail_on_regression: bool = False,
+    regression_guard_source: RegressionGuardSource | None = None,
+    regression_guard_message: str | None = None,
 ) -> CiResult:
     """Return the CI pipeline plan without running commands or writing artifacts."""
+    regression_guard = ci_regression_guard_policy(
+        enabled=fail_on_regression,
+        source=regression_guard_source,
+        message=regression_guard_message,
+    )
+    if skip_compare and regression_guard.enabled:
+        regression_guard = ci_regression_guard_policy(
+            enabled=False,
+            source="cli",
+            message="Disabled because --skip-compare skips compare.",
+        )
     steps = [
         planned_step("check", "Would run configured checks"),
         planned_step("gate", "Would evaluate the quality gate"),
@@ -133,11 +183,17 @@ def plan_ci_pipeline(
     ):
         if skipped:
             steps.append(skipped_plan_step(name, flag))
-        elif name == "compare" and fail_on_regression:
+        elif name == "compare" and regression_guard.enabled:
             steps.append(planned_step(name, "Would run compare with regression guard"))
         else:
             steps.append(planned_step(name, f"Would run {name}"))
-    return CiResult(run_dir=None, steps=steps, passed=True, dry_run=True)
+    return CiResult(
+        run_dir=None,
+        steps=steps,
+        passed=True,
+        dry_run=True,
+        regression_guard=regression_guard,
+    )
 
 
 def planned_step(name: str, message: str) -> CiStepResult:
@@ -413,8 +469,21 @@ def run_ci_pipeline(
     allow_findings: int | None = None,
     require_status_passed: bool | None = None,
     fail_on_regression: bool = False,
+    regression_guard_source: RegressionGuardSource | None = None,
+    regression_guard_message: str | None = None,
 ) -> CiResult:
     """Run the complete local CI pipeline."""
+    regression_guard = ci_regression_guard_policy(
+        enabled=fail_on_regression,
+        source=regression_guard_source,
+        message=regression_guard_message,
+    )
+    if skip_compare and regression_guard.enabled:
+        regression_guard = ci_regression_guard_policy(
+            enabled=False,
+            source="cli",
+            message="Disabled because --skip-compare skips compare.",
+        )
     root = project_root.resolve()
     selected_run_dir = run_dir.resolve() if run_dir is not None else None
     steps: list[CiStepResult] = []
@@ -454,7 +523,12 @@ def run_ci_pipeline(
             skip_release_check=skip_release_check,
             skip_package_check=skip_package_check,
         )
-        return CiResult(run_dir=None, steps=steps, passed=False)
+        return CiResult(
+            run_dir=None,
+            steps=steps,
+            passed=False,
+            regression_guard=regression_guard,
+        )
 
     gate_step = run_gate_step(
         root,
@@ -567,7 +641,7 @@ def run_ci_pipeline(
                 run_compare_artifact_step(
                     root,
                     selected_run_dir,
-                    fail_on_regression=fail_on_regression,
+                    fail_on_regression=regression_guard.enabled,
                 )
             )
             continue
@@ -577,7 +651,12 @@ def run_ci_pipeline(
         refresh_manifest_after_ci(root, selected_run_dir)
 
     passed = all(step.exit_code == 0 for step in steps if step.status != "skipped")
-    return CiResult(run_dir=selected_run_dir, steps=steps, passed=passed)
+    return CiResult(
+        run_dir=selected_run_dir,
+        steps=steps,
+        passed=passed,
+        regression_guard=regression_guard,
+    )
 
 
 def append_unavailable_artifact_steps(
@@ -810,6 +889,11 @@ def ci_json_payload(result: CiResult) -> dict[str, object]:
         "dry_run": result.dry_run,
         "run_dir": str(result.run_dir) if result.run_dir is not None else None,
         "run_id": run_id,
+        "regression_guard": {
+            "enabled": result.regression_guard.enabled,
+            "source": result.regression_guard.source,
+            "message": result.regression_guard.message,
+        },
         "steps": [
             {
                 "name": step.name,
