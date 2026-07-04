@@ -153,6 +153,62 @@ def test_config_command_with_valid_config(tmp_path: Path) -> None:
     assert "pytest -q" in result.output
     assert "max_patch_lines" in result.output
 
+
+def test_config_command_example_outputs_starter_yaml(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app, ["config", "--project-root", str(tmp_path), "--example"]
+    )
+
+    assert result.exit_code == 0
+    assert "project:" in result.output
+    assert "checks:" in result.output
+    assert "compare:" in result.output
+    assert "fail_on_regression" in result.output
+
+
+def test_config_command_write_example_writes_yaml_file(tmp_path: Path) -> None:
+    output = tmp_path / "config.example.yaml"
+
+    result = runner.invoke(
+        app,
+        [
+            "config",
+            "--project-root",
+            str(tmp_path),
+            "--write-example",
+            str(output),
+        ],
+    )
+
+    written = output.read_text(encoding="utf-8")
+    assert result.exit_code == 0
+    assert f"Config example written: {output}" in result.output
+    assert "compare:" in written
+    assert "fail_on_regression: false" in written
+    assert written.endswith("\n")
+
+
+def test_config_command_write_example_missing_parent_fails_clearly(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "missing" / "config.example.yaml"
+
+    result = runner.invoke(
+        app,
+        [
+            "config",
+            "--project-root",
+            str(tmp_path),
+            "--write-example",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "parent does not exist" in result.output
+    assert not output.exists()
+
+
 def test_config_command_json_is_valid(tmp_path: Path) -> None:
     result = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--json"])
 

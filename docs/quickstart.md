@@ -36,9 +36,11 @@ python -m vibebench config --validate
 python -m vibebench config --check
 python -m vibebench config --check --advice
 python -m vibebench config --show-source
+python3 -m vibebench config --example
+python3 -m vibebench config --write-example .vibebench/config.example.yaml
 ```
 
-`vibebench config` shows the effective project, checks, gate, and risk settings. It uses `.vibebench/config.yaml` when present and falls back to built-in defaults when no config file exists.
+`vibebench config` shows the effective project, checks, gate, and risk settings. It uses `.vibebench/config.yaml` when present and falls back to built-in defaults when no config file exists. Use `python3 -m vibebench config --example` to view a starter config, or `python3 -m vibebench config --write-example .vibebench/config.example.yaml` to write one; the example includes `compare.fail_on_regression`.
 
 ## Diagnose Project Readiness
 

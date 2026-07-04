@@ -185,6 +185,25 @@ def default_config_yaml() -> str:
     return yaml.safe_dump(DEFAULT_CONFIG, sort_keys=False)
 
 
+def config_example_yaml() -> str:
+    """Return a concise starter config example as YAML."""
+    payload: dict[str, Any] = {
+        "project": {"name": "vibebench-project"},
+        "checks": {
+            "test": ["pytest -q"],
+            "lint": ["ruff check ."],
+        },
+        "gate": {
+            "min_score": 80,
+            "max_risk": "medium",
+            "allow_findings": 0,
+            "require_status_passed": True,
+        },
+        "compare": {"fail_on_regression": False},
+    }
+    return yaml.safe_dump(payload, sort_keys=False)
+
+
 def load_config(path: Path | None = None) -> VibeBenchConfig:
     """Load and validate a VibeBench config file."""
     config_path = path or config_file()

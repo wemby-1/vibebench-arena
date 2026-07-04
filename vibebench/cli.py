@@ -38,6 +38,7 @@ from vibebench.compare import (
 from vibebench.config import (
     ConfigError,
     EffectiveConfigResult,
+    config_example_yaml,
     default_config_yaml,
     effective_config_payload,
     load_config,
@@ -349,10 +350,36 @@ def config_command(
         bool,
         typer.Option("--show-source", help="Show config file/default sources."),
     ] = False,
+    example: Annotated[
+        bool,
+        typer.Option("--example", help="Print a starter config example."),
+    ] = False,
+    write_example: Annotated[
+        Path | None,
+        typer.Option("--write-example", help="Write a starter config example to PATH."),
+    ] = None,
 ) -> None:
     """Inspect and validate the effective VibeBench configuration."""
     root = project_root.resolve()
     target = config_file(root)
+    if example or write_example is not None:
+        example_yaml = config_example_yaml()
+        if write_example is not None:
+            try:
+                written_path = write_config_example(
+                    resolve_output_path(root, write_example),
+                    example_yaml,
+                )
+            except ConfigError as exc:
+                target_console = err_console if as_json else console
+                target_console.print(str(exc))
+                raise typer.Exit(code=1) from exc
+            if not example:
+                print(f"Config example written: {written_path}")
+                return
+        print(example_yaml, end="")
+        return
+
     try:
         if (show or check_config) and not target.exists():
             raise ConfigError(
@@ -427,6 +454,18 @@ def config_command(
         return
 
     render_config_summary(result, show_source=show_source)
+
+
+def write_config_example(output_path: Path, content: str) -> Path:
+    """Write a starter config example to a requested path."""
+    if output_path.exists() and output_path.is_dir():
+        raise ConfigError(f"Config example output path is a directory: {output_path}")
+    if not output_path.parent.exists():
+        raise ConfigError(
+            f"Config example output parent does not exist: {output_path.parent}"
+        )
+    output_path.write_text(content, encoding="utf-8")
+    return output_path
 
 
 def config_show_payload(result: EffectiveConfigResult) -> dict[str, object]:
