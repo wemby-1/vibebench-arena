@@ -358,10 +358,40 @@ def config_command(
         Path | None,
         typer.Option("--write-example", help="Write a starter config example to PATH."),
     ] = None,
+    init_config: Annotated[
+        bool,
+        typer.Option(
+            "--init",
+            help="Create .vibebench/config.yaml from the starter example.",
+        ),
+    ] = False,
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force",
+            help="Overwrite .vibebench/config.yaml when using --init.",
+        ),
+    ] = False,
 ) -> None:
     """Inspect and validate the effective VibeBench configuration."""
     root = project_root.resolve()
     target = config_file(root)
+    if init_config:
+        example_yaml = config_example_yaml()
+        try:
+            written_path, overwritten = write_config_init(
+                target,
+                example_yaml,
+                force=force,
+            )
+        except ConfigError as exc:
+            target_console = err_console if as_json else console
+            target_console.print(str(exc))
+            raise typer.Exit(code=1) from exc
+        action = "overwritten" if overwritten else "written"
+        print(f"Config {action}: {written_path}")
+        return
+
     if example or write_example is not None:
         example_yaml = config_example_yaml()
         if write_example is not None:
@@ -454,6 +484,26 @@ def config_command(
         return
 
     render_config_summary(result, show_source=show_source)
+
+
+def write_config_init(
+    output_path: Path,
+    content: str,
+    *,
+    force: bool,
+) -> tuple[Path, bool]:
+    """Initialize .vibebench/config.yaml from the starter example."""
+    if output_path.exists() and output_path.is_dir():
+        raise ConfigError(f"Config path is a directory: {output_path}")
+    if output_path.exists() and not force:
+        raise ConfigError(
+            f"Config already exists at {output_path}. "
+            "Use --force to overwrite it intentionally."
+        )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    overwritten = output_path.exists()
+    output_path.write_text(content, encoding="utf-8")
+    return output_path, overwritten
 
 
 def write_config_example(output_path: Path, content: str) -> Path:

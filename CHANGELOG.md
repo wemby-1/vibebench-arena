@@ -25,7 +25,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 - CI pipeline contract tests covering import safety, canonical step order, skip flags, dry-run JSON, and release-check integration.
 - `vibebench release-check` for read-only pre-release readiness checks across config, strict doctor, latest run, manifest, artifacts, CI plan, and `git diff --check`.
 - Release-check artifacts with `release-check.json` and `release-check.md`, including generation from `vibebench ci`.
-- Config inspection, starter config examples with `config --example` / `config --write-example`, consistency diagnostics with `config --show`, `config --check`, `config --check --advice`, and persisted `config-check.json` / `config-check.md` artifacts.
+- Config inspection, safe config initialization with `config --init`, starter config examples with `config --example` / `config --write-example`, consistency diagnostics with `config --show`, `config --check`, `config --check --advice`, and persisted `config-check.json` / `config-check.md` artifacts.
 - Strict doctor checks, JSON output, and actionable advice with `vibebench doctor --strict`, `--json`, and `--advice`.
 - Run manifest generation and consistency checks with `vibebench manifest` and `vibebench manifest --check`.
 - Run discovery and artifact inspection commands including `latest`, `latest --all-paths`, `artifacts`, `history`, `trend`, `compare`, and `baseline`.

@@ -209,6 +209,47 @@ def test_config_command_write_example_missing_parent_fails_clearly(
     assert not output.exists()
 
 
+
+def test_config_command_init_creates_starter_config(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
+
+    generated = config_path(tmp_path).read_text(encoding="utf-8")
+    assert result.exit_code == 0
+    assert f"Config written: {config_path(tmp_path)}" in result.output
+    assert "compare:" in generated
+    assert "fail_on_regression" in generated
+    assert generated.endswith("\n")
+
+
+def test_config_command_init_refuses_existing_config(tmp_path: Path) -> None:
+    config_path(tmp_path).parent.mkdir(parents=True)
+    config_path(tmp_path).write_text("existing: true\n", encoding="utf-8")
+
+    result = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
+
+    assert result.exit_code == 1
+    assert "Config already exists" in result.output
+    assert "--force" in result.output
+    assert config_path(tmp_path).read_text(encoding="utf-8") == "existing: true\n"
+
+
+def test_config_command_init_force_overwrites_existing_config(tmp_path: Path) -> None:
+    config_path(tmp_path).parent.mkdir(parents=True)
+    config_path(tmp_path).write_text("existing: true\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--init", "--force"],
+    )
+
+    generated = config_path(tmp_path).read_text(encoding="utf-8")
+    assert result.exit_code == 0
+    assert f"Config overwritten: {config_path(tmp_path)}" in result.output
+    assert "existing: true" not in generated
+    assert "compare:" in generated
+    assert "fail_on_regression: false" in generated
+
+
 def test_config_command_json_is_valid(tmp_path: Path) -> None:
     result = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--json"])
 

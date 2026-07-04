@@ -111,7 +111,7 @@ python -m vibebench package-check --json
 
 `package-check` 会检查本地 package metadata、import、console script 入口和关键文档文件；它不会访问网络、不会发布到 PyPI，也不会调用 GitHub API。加上 `--write-json PATH` 或 `--write-summary PATH` 可持久化 `package-check.json` 和 `package-check.md`，方便 CI 和发布检查复用。
 
-`vibebench config` 会输出最终生效的 project、checks、gate 和 risk 配置。`--json` 可输出机器可读 JSON，`--validate` 只做校验，`--check` 会执行一致性诊断，`--check --advice` 会给出修复建议，`--show-source` 会显示主要配置区域来自配置文件还是内置默认值。 使用 `python3 -m vibebench config --example` 可以查看 starter config，使用 `python3 -m vibebench config --write-example .vibebench/config.example.yaml` 可以写入示例文件；示例包含 `compare.fail_on_regression`。
+`vibebench config` 会输出最终生效的 project、checks、gate 和 risk 配置。`--json` 可输出机器可读 JSON，`--validate` 只做校验，`--check` 会执行一致性诊断，`--check --advice` 会给出修复建议，`--show-source` 会显示主要配置区域来自配置文件还是内置默认值。 使用 `python3 -m vibebench config --init` 可以从 starter config 创建 `.vibebench/config.yaml`；默认拒绝覆盖，只有明确使用 `--force` 才会替换文件。使用 `python3 -m vibebench config --example` 可以查看 starter config，使用 `python3 -m vibebench config --write-example .vibebench/config.example.yaml` 可以写入示例副本；starter 包含 `compare.fail_on_regression`。
 
 默认配置示例：
 
@@ -260,7 +260,7 @@ python -m vibebench gh-summary
 python -m vibebench compare
 ```
 
-`vibebench config --show` 会校验并汇总当前 `.vibebench/config.yaml`，包括项目名、配置的命令、gate 策略和 risk 策略。 使用 `python3 -m vibebench config --example` 可以查看 starter config，使用 `python3 -m vibebench config --write-example .vibebench/config.example.yaml` 可以写入示例文件；示例包含 `compare.fail_on_regression`。`python -m vibebench config --show --json` 可输出机器可读配置摘要。`python -m vibebench config --check`、`python -m vibebench config --check --advice` 或 `python -m vibebench config --check --json --advice` 可在完整流水线前执行配置一致性诊断并按需显示修复建议。加上 `--write-json PATH` 或 `--write-summary PATH` 可持久化 `config-check.json` 或 `config-check.md` artifact。
+`vibebench config --show` 会校验并汇总当前 `.vibebench/config.yaml`，包括项目名、配置的命令、gate 策略和 risk 策略。 使用 `python3 -m vibebench config --init` 可以从 starter config 创建 `.vibebench/config.yaml`；默认拒绝覆盖，只有明确使用 `--force` 才会替换文件。使用 `python3 -m vibebench config --example` 可以查看 starter config，使用 `python3 -m vibebench config --write-example .vibebench/config.example.yaml` 可以写入示例副本；starter 包含 `compare.fail_on_regression`。`python -m vibebench config --show --json` 可输出机器可读配置摘要。`python -m vibebench config --check`、`python -m vibebench config --check --advice` 或 `python -m vibebench config --check --json --advice` 可在完整流水线前执行配置一致性诊断并按需显示修复建议。加上 `--write-json PATH` 或 `--write-summary PATH` 可持久化 `config-check.json` 或 `config-check.md` artifact。
 
 `vibebench doctor` 是轻量环境检查，会检查 Python、Git、配置有效性、配置命令是否可找到，以及 `.vibebench/runs/` 是否可写。它不会真正运行配置里的 test/lint 命令。`python -m vibebench doctor --strict` 会执行更强的发布/CI 预检，额外要求最近运行具备 manifest、bundle 和 report 等产物。加上 `--advice` 会显示简短修复建议但不会修改文件，例如 `python -m vibebench doctor --strict --advice`。可用 `python -m vibebench doctor --json`、`python -m vibebench doctor --json --strict` 或 `python -m vibebench doctor --json --strict --advice` 输出机器可读诊断结果。`vibebench release-check` 会把配置一致性、package readiness、strict doctor、最新运行、manifest 一致性、artifact inventory、CI plan 生成和 `git diff --check` 汇总成一个只读的发布前检查；`--json` 适合自动化，`--write-json PATH` 和 `--write-summary PATH` 可持久化 `release-check.json` 与 `release-check.md`。
 
