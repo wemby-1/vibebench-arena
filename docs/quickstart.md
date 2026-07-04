@@ -185,6 +185,28 @@ python -m vibebench ci
 
 `vibebench ci` runs check, gate, config check artifacts, report, PR comment, explain, export, badge, status block, trend summaries, run-index artifacts, compare artifacts, manifest, GitHub annotations, bundle, and GitHub summary. Check and gate decide the final exit code by default, but artifact steps are still attempted on failure so CI logs and artifacts remain useful. Add `--fail-on-regression` when CI should also fail on a compare verdict of `regressed`; `--skip-compare` skips that compare step and overrides the guard. Add `--json` for machine-readable stdout or `--json-output PATH` to save the same payload while keeping normal human output. Use `--dry-run` or `--plan` to inspect the CI step order and skip behavior without executing checks or writing artifacts. Add `--write-plan` to write `ci-plan.json` and `ci-plan.md` under `.vibebench/runs/<timestamp>_plan/`; those files then work with `artifacts`, `bundle`, `manifest`, and `latest --artifact ci-plan-json`.
 
+A practical compare policy flow:
+
+```bash
+# Normal CI: compare artifacts are reporting-only
+python -m vibebench ci
+
+# Enforce compare regression failure once
+python -m vibebench ci --fail-on-regression
+
+# Enable the same guard persistently in .vibebench/config.yaml
+```
+
+```yaml
+compare:
+  fail_on_regression: true
+```
+
+```bash
+# Temporarily disable the configured guard for one run
+python -m vibebench ci --no-fail-on-regression
+```
+
 Useful options:
 
 ```bash
@@ -202,6 +224,7 @@ python -m vibebench ci --dry-run --write-plan
 python -m vibebench ci --dry-run --write-plan --json
 python -m vibebench ci --json
 python -m vibebench ci --fail-on-regression
+python -m vibebench ci --no-fail-on-regression
 python -m vibebench ci --json-output /tmp/vibebench-ci.json
 python -m vibebench ci --skip-annotate
 python -m vibebench ci --bundle-include-report-assets

@@ -274,6 +274,15 @@ python -m vibebench compare
 
 `vibebench compare` 会把最新有效运行和上一个有效运行进行比较，并在 head 运行目录写入 `compare.json` 和 `compare.md`。默认它只是报告命令，即使 verdict 是 `regressed` 或 `insufficient-data` 也会成功退出。需要让自动化阻止退化时，加上 `--fail-on-regression`；只有 `regressed` 会非零退出，`insufficient-data`、`improved`、`stable` 和 `mixed` 仍会通过。`--json` 输出纯 JSON，`--write-json PATH` / `--write-summary PATH` 可指定输出位置，`--runs-dir PATH` 可指定运行目录，也可用 `--base-run-dir PATH` 和 `--head-run-dir PATH`，或 `--base RUN_ID` 和 `--head RUN_ID` 精确选择。
 
+对 `vibebench ci` 来说，compare 退化失败是显式开启的策略。默认 CI 只报告 compare 结果。严格模式可以使用 `python -m vibebench ci --fail-on-regression`，也可以在 `.vibebench/config.yaml` 中持久配置：
+
+```yaml
+compare:
+  fail_on_regression: true
+```
+
+需要临时关闭配置中的 guard 时，使用 `python -m vibebench ci --no-fail-on-regression`。`--skip-compare` 会完全跳过 compare，因此也会关闭 compare 退化失败。
+
 `vibebench baseline --set latest` 会把某次运行保存为 `.vibebench/baseline.json` 中的 baseline。`vibebench compare --baseline` 会用这个 baseline 和最新运行对比。
 
 `vibebench clean` 会安全预览旧运行记录的清理计划。默认只是 dry-run，只有显式传入 `--yes` 才会删除。
@@ -341,9 +350,9 @@ python -m vibebench compare
 
 ## 一键 CI 流水线
 
-`vibebench ci` 是推荐的 CI 入口。它会按顺序运行 check、gate、config check artifact、package-check artifacts、report、PR comment、explain、export、badge、status block、trend summaries、run-index artifacts、compare artifacts、manifest 检查、release-check artifacts、GitHub annotations、bundle 和 GitHub summary。默认最终通过/失败由 check 和 gate 决定；即使门禁失败，后续产物步骤也会尽量继续生成，方便排查。团队希望 CI 阻止 compare verdict 为 `regressed` 的情况时，可以加 `--fail-on-regression`；`--skip-compare` 会跳过 compare step，因此也会覆盖这个 guard。默认仍输出适合人看的 Rich 表格；`--json` 适合自动化，`--json-output PATH` 可把同一份机器可读流水线结果写入文件。使用 `--dry-run` 或 `--plan` 可以只查看流水线顺序和 skip flag 效果，不运行检查也不写产物。加上 `--write-plan` 会把 `ci-plan.json` 和 `ci-plan.md` 写入类似运行目录的 `.vibebench/runs/<timestamp>_plan/`，也可以用 `--plan-json-output PATH` 和 `--plan-summary-output PATH` 指定输出位置。
+`vibebench ci` 是推荐的 CI 入口。它会按顺序运行 check、gate、config check artifact、package-check artifacts、report、PR comment、explain、export、badge、status block、trend summaries、run-index artifacts、compare artifacts、manifest 检查、release-check artifacts、GitHub annotations、bundle 和 GitHub summary。默认最终通过/失败由 check 和 gate 决定；即使门禁失败，后续产物步骤也会尽量继续生成，方便排查。团队希望 CI 阻止 compare verdict 为 `regressed` 的情况时，可以加 `--fail-on-regression`，或在配置中设置 `compare.fail_on_regression: true`；`--no-fail-on-regression` 可临时关闭配置策略，`--skip-compare` 会跳过 compare step，因此也会覆盖这个 guard。默认仍输出适合人看的 Rich 表格；`--json` 适合自动化，`--json-output PATH` 可把同一份机器可读流水线结果写入文件。使用 `--dry-run` 或 `--plan` 可以只查看流水线顺序和 skip flag 效果，不运行检查也不写产物。加上 `--write-plan` 会把 `ci-plan.json` 和 `ci-plan.md` 写入类似运行目录的 `.vibebench/runs/<timestamp>_plan/`，也可以用 `--plan-json-output PATH` 和 `--plan-summary-output PATH` 指定输出位置。
 
-常用选项包括 `--dry-run`、`--plan`、`--write-plan`、`--plan-json-output PATH`、`--plan-summary-output PATH`、`--json`、`--json-output PATH`、`--fail-on-regression`、`--skip-report`、`--skip-pr-comment`、`--skip-explain`、`--skip-export`、`--skip-badge`、`--skip-status-block`、`--skip-trend`、`--skip-run-index`、`--skip-compare`、`--skip-config-check`、`--skip-package-check`、`--skip-release-check`、`--skip-bundle`、`--skip-annotate`、`--skip-gh-summary`、`--bundle-include-report-assets` 和 `--bundle-strict`。`--min-score`、`--max-risk`、`--allow-findings`、`--no-require-status-passed` 会传递给 gate。使用 `--run-dir .vibebench/runs/<run-id>` 可以针对已有运行生成产物并执行门禁，不再创建新的 check run。
+常用选项包括 `--dry-run`、`--plan`、`--write-plan`、`--plan-json-output PATH`、`--plan-summary-output PATH`、`--json`、`--json-output PATH`、`--fail-on-regression`、`--no-fail-on-regression`、`--skip-report`、`--skip-pr-comment`、`--skip-explain`、`--skip-export`、`--skip-badge`、`--skip-status-block`、`--skip-trend`、`--skip-run-index`、`--skip-compare`、`--skip-config-check`、`--skip-package-check`、`--skip-release-check`、`--skip-bundle`、`--skip-annotate`、`--skip-gh-summary`、`--bundle-include-report-assets` 和 `--bundle-strict`。`--min-score`、`--max-risk`、`--allow-findings`、`--no-require-status-passed` 会传递给 gate。使用 `--run-dir .vibebench/runs/<run-id>` 可以针对已有运行生成产物并执行门禁，不再创建新的 check run。
 
 ## HTML 报告展示什么？
 

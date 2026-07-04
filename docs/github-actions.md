@@ -37,7 +37,7 @@ The example workflow:
 
 ## Add A Quality Gate
 
-Use `vibebench ci` when CI should fail on explicit score, risk, and finding thresholds while still producing debugging artifacts. Add `--fail-on-regression` when your team also wants CI to block a compare verdict of `regressed`; `--skip-compare` skips the compare step and therefore overrides that guard. The default output is human-readable; `--json` emits a pure machine-readable CI payload and `--json-output PATH` saves that payload for automation. Use `--dry-run` or `--plan` locally to inspect the same step order and skip behavior without executing checks or writing artifacts. Add `--write-plan` when you want `ci-plan.json` and `ci-plan.md` saved as discoverable plan artifacts:
+Use `vibebench ci` when CI should fail on explicit score, risk, and finding thresholds while still producing debugging artifacts. Compare regression failure is opt-in so existing projects do not start failing on historical comparisons. For stricter CI, add `compare.fail_on_regression: true` to `.vibebench/config.yaml`; for one-off workflow enforcement, pass `--fail-on-regression`. `--skip-compare` skips the compare step and therefore overrides that guard. The default output is human-readable; `--json` emits a pure machine-readable CI payload and `--json-output PATH` saves that payload for automation. Use `--dry-run` or `--plan` locally to inspect the same step order and skip behavior without executing checks or writing artifacts. Add `--write-plan` when you want `ci-plan.json` and `ci-plan.md` saved as discoverable plan artifacts:
 
 ```yaml
       - name: Run VibeBench CI pipeline
