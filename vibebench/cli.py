@@ -1,6 +1,8 @@
 """Command-line interface for VibeBench Arena."""
 
 import json
+import subprocess
+import tomllib
 from pathlib import Path
 from typing import Annotated
 
@@ -1956,6 +1958,338 @@ def release_check_command(
         render_release_check_summary(result)
     if not result.ready:
         raise typer.Exit(code=1)
+
+
+@app.command("release-checklist")
+def release_checklist_command(
+    project_root: ProjectRootOption = Path("."),
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print release checklist as JSON."),
+    ] = False,
+    version: Annotated[
+        str | None,
+        typer.Option("--version", help="Target release version, for example v0.3.0."),
+    ] = None,
+) -> None:
+    """Inspect local release readiness without creating tags or releases."""
+    root = project_root.resolve()
+    payload = release_checklist_payload(root, requested_version=version)
+    if as_json:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    else:
+        render_release_checklist(payload)
+    if payload["overall_status"] == "failed":
+        raise typer.Exit(code=1)
+
+
+def release_checklist_payload(
+    project_root: Path,
+    *,
+    requested_version: str | None,
+) -> dict[str, object]:
+    """Return JSON-safe release checklist output."""
+    package_version = read_project_version(project_root)
+    target_version = normalize_release_version(requested_version or package_version)
+    checks: list[dict[str, str]] = []
+
+    checks.append(working_tree_clean_check(project_root))
+    checks.append(package_version_check(package_version, target_version))
+    checks.append(release_notes_check(project_root, target_version))
+    checks.append(local_tag_check(project_root, target_version))
+    checks.append(remote_tag_check(project_root, target_version))
+    checks.append(package_check_can_run(project_root))
+    checks.append(release_check_can_run(project_root))
+    checks.append(strict_doctor_can_run(project_root))
+    checks.append(
+        checklist_check(
+            "github_release_page",
+            "warning",
+            "GitHub Release page is manual unless explicitly automated.",
+            "Create or update the GitHub Release page manually after verification.",
+        )
+    )
+
+    return {
+        "overall_status": release_checklist_status(checks),
+        "target_version": target_version,
+        "package_version": package_version,
+        "checks": checks,
+    }
+
+
+def normalize_release_version(version: str | None) -> str:
+    """Normalize release versions to a leading-v tag."""
+    if not version:
+        return "unknown"
+    normalized = version.strip()
+    if not normalized:
+        return "unknown"
+    return normalized if normalized.startswith("v") else f"v{normalized}"
+
+
+def release_version_number(target_version: str) -> str:
+    """Return the bare semantic version for a normalized release target."""
+    return target_version[1:] if target_version.startswith("v") else target_version
+
+
+def read_project_version(project_root: Path) -> str | None:
+    """Read project.version from pyproject.toml if available."""
+    pyproject = project_root / "pyproject.toml"
+    if not pyproject.exists():
+        return None
+    try:
+        payload = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        return None
+    version = payload.get("project", {}).get("version")
+    return version if isinstance(version, str) and version else None
+
+
+def checklist_check(
+    name: str,
+    status: str,
+    message: str,
+    advice: str,
+) -> dict[str, str]:
+    """Return one release checklist check."""
+    return {
+        "name": name,
+        "status": status,
+        "message": message,
+        "advice": advice,
+    }
+
+
+def release_checklist_status(checks: list[dict[str, str]]) -> str:
+    """Summarize checklist status."""
+    statuses = {check["status"] for check in checks}
+    if "failed" in statuses:
+        return "failed"
+    if "warning" in statuses or "skipped" in statuses:
+        return "warning"
+    return "ready"
+
+
+def release_checklist_git(
+    project_root: Path,
+    args: list[str],
+) -> subprocess.CompletedProcess[str]:
+    """Run a local git command for release checklist inspection."""
+    return subprocess.run(
+        ["git", *args],
+        cwd=project_root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
+def working_tree_clean_check(project_root: Path) -> dict[str, str]:
+    """Check whether git status reports a clean working tree."""
+    result = release_checklist_git(project_root, ["status", "--porcelain"])
+    if result.returncode != 0:
+        return checklist_check(
+            "working_tree_clean",
+            "failed",
+            "Could not inspect working tree status.",
+            "Run git status and resolve repository errors before release.",
+        )
+    if result.stdout.strip():
+        return checklist_check(
+            "working_tree_clean",
+            "warning",
+            "Working tree has uncommitted changes.",
+            "Commit or discard local changes before creating a release tag.",
+        )
+    return checklist_check(
+        "working_tree_clean",
+        "passed",
+        "Working tree is clean.",
+        "No action needed.",
+    )
+
+
+def package_version_check(
+    package_version: str | None,
+    target_version: str,
+) -> dict[str, str]:
+    """Check package metadata version availability and target alignment."""
+    if package_version is None:
+        return checklist_check(
+            "package_metadata_version",
+            "failed",
+            "Package metadata version was not found.",
+            "Set project.version in pyproject.toml.",
+        )
+    expected = release_version_number(target_version)
+    if expected != "unknown" and package_version != expected:
+        return checklist_check(
+            "package_metadata_version",
+            "warning",
+            (
+                f"Package metadata version is {package_version}; "
+                f"target is {target_version}."
+            ),
+            "Update package metadata or choose the matching --version target.",
+        )
+    return checklist_check(
+        "package_metadata_version",
+        "passed",
+        f"Package metadata version is {package_version}.",
+        "No action needed.",
+    )
+
+
+def release_notes_check(project_root: Path, target_version: str) -> dict[str, str]:
+    """Check whether release notes exist for the target version."""
+    notes_path = project_root / f"RELEASE_NOTES_{target_version}.md"
+    if notes_path.exists():
+        return checklist_check(
+            "release_notes_file",
+            "passed",
+            f"Release notes found: {notes_path.name}.",
+            "No action needed.",
+        )
+    return checklist_check(
+        "release_notes_file",
+        "failed",
+        f"Release notes missing: {notes_path.name}.",
+        "Create release notes before tagging.",
+    )
+
+
+def local_tag_check(project_root: Path, target_version: str) -> dict[str, str]:
+    """Check whether the target tag exists locally."""
+    result = release_checklist_git(project_root, ["tag", "--list", target_version])
+    if result.returncode != 0:
+        return checklist_check(
+            "local_tag_exists",
+            "warning",
+            "Could not inspect local tags.",
+            "Run git tag --list locally before release.",
+        )
+    if result.stdout.strip() == target_version:
+        return checklist_check(
+            "local_tag_exists",
+            "passed",
+            f"Local tag exists: {target_version}.",
+            "No action needed.",
+        )
+    return checklist_check(
+        "local_tag_exists",
+        "warning",
+        f"Local tag does not exist yet: {target_version}.",
+        "Create the annotated tag only after final verification passes.",
+    )
+
+
+def remote_tag_check(project_root: Path, target_version: str) -> dict[str, str]:
+    """Check whether the target tag exists on origin."""
+    result = release_checklist_git(
+        project_root,
+        ["ls-remote", "origin", f"refs/tags/{target_version}"],
+    )
+    if result.returncode != 0:
+        return checklist_check(
+            "remote_tag_exists",
+            "warning",
+            "Could not inspect remote tag through git.",
+            "Check network access and run git ls-remote origin manually.",
+        )
+    if result.stdout.strip():
+        return checklist_check(
+            "remote_tag_exists",
+            "passed",
+            f"Remote tag exists: {target_version}.",
+            "No action needed.",
+        )
+    return checklist_check(
+        "remote_tag_exists",
+        "warning",
+        f"Remote tag does not exist yet: {target_version}.",
+        "Push the tag only after final verification passes.",
+    )
+
+
+def package_check_can_run(project_root: Path) -> dict[str, str]:
+    """Check whether package-check passes."""
+    result = run_package_check(project_root)
+    if result.ready:
+        return checklist_check(
+            "package_check",
+            "passed",
+            "package-check passed.",
+            "No action needed.",
+        )
+    return checklist_check(
+        "package_check",
+        "failed",
+        "package-check did not pass.",
+        "Run python -m vibebench package-check and address reported issues.",
+    )
+
+
+def release_check_can_run(project_root: Path) -> dict[str, str]:
+    """Check whether release-check passes."""
+    result = run_release_check(project_root)
+    if result.ready:
+        return checklist_check(
+            "release_check",
+            "passed",
+            "release-check passed.",
+            "No action needed.",
+        )
+    return checklist_check(
+        "release_check",
+        "failed",
+        "release-check did not pass.",
+        "Run python -m vibebench release-check and address reported issues.",
+    )
+
+
+def strict_doctor_can_run(project_root: Path) -> dict[str, str]:
+    """Check whether doctor --strict passes."""
+    result = run_doctor(project_root, strict=True, advice=False)
+    if result.overall_status != "failed":
+        return checklist_check(
+            "doctor_strict",
+            "passed",
+            "doctor --strict passed.",
+            "No action needed.",
+        )
+    return checklist_check(
+        "doctor_strict",
+        "failed",
+        "doctor --strict did not pass.",
+        "Run python -m vibebench doctor --strict and address reported issues.",
+    )
+
+
+def render_release_checklist(payload: dict[str, object]) -> None:
+    """Render release checklist as a concise table."""
+    console.print(f"[bold]VibeBench release checklist[/] ({payload['target_version']})")
+    console.print(f"Overall status: {payload['overall_status']}")
+    console.print(f"Package version: {payload['package_version'] or 'unknown'}")
+    table = Table(title="Release checklist")
+    table.add_column("Check")
+    table.add_column("Status")
+    table.add_column("Message")
+    table.add_column("Advice")
+    for check in payload["checks"]:
+        status = check["status"]
+        style = "green" if status == "passed" else "yellow"
+        if status == "failed":
+            style = "red"
+        table.add_row(
+            check["name"],
+            f"[{style}]{status}[/]",
+            check["message"],
+            check["advice"],
+        )
+    console.print(table)
+
+
 
 
 @app.command()

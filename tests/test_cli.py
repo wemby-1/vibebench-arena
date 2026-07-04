@@ -2,6 +2,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 from typer.testing import CliRunner
 
@@ -856,3 +857,210 @@ checks:
     markdown = output.read_text(encoding="utf-8")
     assert "## Advice" in markdown
     assert "Replace empty command entries" in markdown
+
+
+def write_release_checklist_project(
+    root: Path,
+    *,
+    version: str = "0.3.0",
+    notes_version: str | None = "v0.3.0",
+) -> None:
+    root.joinpath("pyproject.toml").write_text(
+        '[project]\n'
+        'name = "vibebench-arena"\n'
+        f'version = "{version}"\n',
+        encoding="utf-8",
+    )
+    if notes_version is not None:
+        root.joinpath(f"RELEASE_NOTES_{notes_version}.md").write_text(
+            "# Release notes\n",
+            encoding="utf-8",
+        )
+
+
+def stub_release_checklist_dependencies(
+    monkeypatch,
+    *,
+    local_tag: bool = True,
+    remote_tag: bool = True,
+    remote_error: bool = False,
+) -> None:
+    monkeypatch.setattr(
+        "vibebench.cli.run_package_check",
+        lambda root: SimpleNamespace(ready=True),
+    )
+    monkeypatch.setattr(
+        "vibebench.cli.run_release_check",
+        lambda root: SimpleNamespace(ready=True),
+    )
+    monkeypatch.setattr(
+        "vibebench.cli.run_doctor",
+        lambda root, strict, advice: SimpleNamespace(overall_status="passed"),
+    )
+
+    def fake_git(root: Path, args: list[str]) -> SimpleNamespace:
+        if args == ["status", "--porcelain"]:
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+        if args[:2] == ["tag", "--list"]:
+            tag = args[2]
+            return SimpleNamespace(
+                returncode=0,
+                stdout=f"{tag}\n" if local_tag else "",
+                stderr="",
+            )
+        if args[:2] == ["ls-remote", "origin"]:
+            if remote_error:
+                return SimpleNamespace(returncode=128, stdout="", stderr="offline")
+            tag = args[2].removeprefix("refs/tags/")
+            return SimpleNamespace(
+                returncode=0,
+                stdout=f"abc123\trefs/tags/{tag}\n" if remote_tag else "",
+                stderr="",
+            )
+        return SimpleNamespace(returncode=1, stdout="", stderr="unexpected git args")
+
+    monkeypatch.setattr("vibebench.cli.release_checklist_git", fake_git)
+
+
+def test_release_checklist_human_output(tmp_path: Path, monkeypatch) -> None:
+    write_release_checklist_project(tmp_path)
+    stub_release_checklist_dependencies(monkeypatch)
+
+    result = runner.invoke(app, ["release-checklist", "--project-root", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert "VibeBench release checklist" in result.output
+    assert "working_tree_clean" in result.output
+    assert "GitHub Release page" in result.output
+
+
+def test_release_checklist_json_output_is_clean(tmp_path: Path, monkeypatch) -> None:
+    write_release_checklist_project(tmp_path)
+    stub_release_checklist_dependencies(monkeypatch)
+
+    result = runner.invoke(
+        app,
+        ["release-checklist", "--project-root", str(tmp_path), "--json"],
+    )
+
+    assert result.exit_code == 0
+    assert result.stderr == ""
+    payload = json.loads(result.stdout)
+    assert payload["overall_status"] == "warning"
+    assert payload["target_version"] == "v0.3.0"
+    assert payload["package_version"] == "0.3.0"
+    assert {check["name"] for check in payload["checks"]} >= {
+        "working_tree_clean",
+        "package_metadata_version",
+        "release_notes_file",
+        "local_tag_exists",
+        "remote_tag_exists",
+        "package_check",
+        "release_check",
+        "doctor_strict",
+        "github_release_page",
+    }
+
+
+def test_release_checklist_infers_target_version(tmp_path: Path, monkeypatch) -> None:
+    write_release_checklist_project(tmp_path, version="0.3.0", notes_version="v0.3.0")
+    stub_release_checklist_dependencies(monkeypatch)
+
+    result = runner.invoke(
+        app,
+        ["release-checklist", "--project-root", str(tmp_path), "--json"],
+    )
+    payload = json.loads(result.stdout)
+
+    assert result.exit_code == 0
+    assert payload["target_version"] == "v0.3.0"
+
+
+def test_release_checklist_explicit_version(tmp_path: Path, monkeypatch) -> None:
+    write_release_checklist_project(tmp_path, version="0.3.0", notes_version="v0.4.0")
+    stub_release_checklist_dependencies(monkeypatch)
+
+    result = runner.invoke(
+        app,
+        [
+            "release-checklist",
+            "--project-root",
+            str(tmp_path),
+            "--version",
+            "v0.4.0",
+            "--json",
+        ],
+    )
+    payload = json.loads(result.stdout)
+    version_check = next(
+        check
+        for check in payload["checks"]
+        if check["name"] == "package_metadata_version"
+    )
+
+    assert result.exit_code == 0
+    assert payload["target_version"] == "v0.4.0"
+    assert version_check["status"] == "warning"
+
+
+def test_release_checklist_missing_release_notes_fails(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_release_checklist_project(tmp_path, notes_version=None)
+    stub_release_checklist_dependencies(monkeypatch)
+
+    result = runner.invoke(
+        app,
+        ["release-checklist", "--project-root", str(tmp_path), "--json"],
+    )
+    payload = json.loads(result.stdout)
+    notes_check = next(
+        check for check in payload["checks"] if check["name"] == "release_notes_file"
+    )
+
+    assert result.exit_code == 1
+    assert payload["overall_status"] == "failed"
+    assert notes_check["status"] == "failed"
+    assert "RELEASE_NOTES_v0.3.0.md" in notes_check["message"]
+
+
+def test_release_checklist_remote_lookup_failure_is_warning(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_release_checklist_project(tmp_path)
+    stub_release_checklist_dependencies(monkeypatch, remote_error=True)
+
+    result = runner.invoke(
+        app,
+        ["release-checklist", "--project-root", str(tmp_path), "--json"],
+    )
+    payload = json.loads(result.stdout)
+    remote_check = next(
+        check for check in payload["checks"] if check["name"] == "remote_tag_exists"
+    )
+
+    assert result.exit_code == 0
+    assert remote_check["status"] == "warning"
+    assert "Could not inspect remote tag" in remote_check["message"]
+
+
+def test_release_checklist_does_not_modify_files(tmp_path: Path, monkeypatch) -> None:
+    write_release_checklist_project(tmp_path)
+    stub_release_checklist_dependencies(monkeypatch)
+    before = {
+        path.relative_to(tmp_path): path.read_text(encoding="utf-8")
+        for path in tmp_path.rglob("*")
+        if path.is_file()
+    }
+
+    result = runner.invoke(app, ["release-checklist", "--project-root", str(tmp_path)])
+
+    after = {
+        path.relative_to(tmp_path): path.read_text(encoding="utf-8")
+        for path in tmp_path.rglob("*")
+        if path.is_file()
+    }
+    assert result.exit_code == 0
+    assert after == before
