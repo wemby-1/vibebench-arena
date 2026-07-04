@@ -78,6 +78,8 @@ python -m vibebench manifest --check
 
 For v0.2.0 details, see [../RELEASE_NOTES_v0.2.0.md](../RELEASE_NOTES_v0.2.0.md). In GitHub Actions, download `vibebench-run-artifacts` from the workflow run to inspect reports, manifests, bundles, config-check summaries, package-check summaries, trend artifacts, and `release-check.json`/`release-check.md`.
 
+When planning future Codex milestones, use the [Codex task template](codex-task-template.md) to keep prompts bounded, cheap, and auditable.
+
 ## Show Run History
 
 ```bash

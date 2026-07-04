@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Low-cost Codex task template in [docs/codex-task-template.md](docs/codex-task-template.md) for bounded, auditable milestone prompts.
 - Read-only `vibebench release-checklist` command for target-version release preparation checks without creating tags or GitHub releases.
 - Package metadata prepared for v0.3.0 without creating a tag or GitHub release.
 - Final v0.3.0 release notes in [RELEASE_NOTES_v0.3.0.md](RELEASE_NOTES_v0.3.0.md), covering GitHub-native review workflows, artifacts, config UX, readiness checks, and release maintenance.

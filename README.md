@@ -28,6 +28,8 @@ review, commit, and ship.
 
 The project remains local-first and pragmatic. v0.2.0 adds stronger CI orchestration, release readiness checks, machine-readable artifacts, and downloadable GitHub Actions outputs on top of the original local quality gate. v0.3.0 is the current stable release, with notes available in [RELEASE_NOTES_v0.3.0.md](RELEASE_NOTES_v0.3.0.md).
 
+For bounded, low-cost Codex milestones, use the [Codex task template](docs/codex-task-template.md).
+
 ## Why VibeBench?
 
 AI coding agents can produce useful changes quickly, but speed creates review
