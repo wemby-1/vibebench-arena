@@ -39,6 +39,8 @@ ARTIFACT_ALIASES = {
     "trend-json": Path("trend.json"),
     "run-index-json": Path("run-index.json"),
     "run-index-md": Path("run-index.md"),
+    "compare-json": Path("compare.json"),
+    "compare-md": Path("compare.md"),
     "gate-summary": Path("gate-summary.md"),
     "bundle": Path(BUNDLE_FILENAME),
 }

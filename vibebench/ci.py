@@ -12,6 +12,7 @@ from typing import Literal
 from vibebench.annotate import generate_annotations
 from vibebench.badge import generate_ci_badges
 from vibebench.bundle import create_bundle
+from vibebench.compare import compare_runs
 from vibebench.config import ConfigError, load_config, load_effective_config
 from vibebench.config_check import (
     CONFIG_CHECK_JSON,
@@ -98,6 +99,7 @@ def plan_ci_pipeline(
     skip_status_block: bool = False,
     skip_trend: bool = False,
     skip_run_index: bool = False,
+    skip_compare: bool = False,
     skip_config_check: bool = False,
     skip_manifest: bool = False,
     skip_annotate: bool = False,
@@ -120,6 +122,7 @@ def plan_ci_pipeline(
         skip_status_block=skip_status_block,
         skip_trend=skip_trend,
         skip_run_index=skip_run_index,
+        skip_compare=skip_compare,
         skip_config_check=skip_config_check,
         skip_manifest=skip_manifest,
         skip_annotate=skip_annotate,
@@ -169,6 +172,7 @@ def ci_artifact_step_flags(
     skip_status_block: bool,
     skip_trend: bool,
     skip_run_index: bool,
+    skip_compare: bool,
     skip_config_check: bool,
     skip_manifest: bool,
     skip_annotate: bool,
@@ -188,6 +192,7 @@ def ci_artifact_step_flags(
         ("status-block", skip_status_block, "--skip-status-block"),
         ("trend", skip_trend, "--skip-trend"),
         ("run-index", skip_run_index, "--skip-run-index"),
+        ("compare", skip_compare, "--skip-compare"),
         ("manifest", skip_manifest, "--skip-manifest"),
         ("manifest-check", skip_manifest, "--skip-manifest"),
         ("release-check", skip_release_check, "--skip-release-check"),
@@ -390,6 +395,7 @@ def run_ci_pipeline(
     skip_status_block: bool = False,
     skip_trend: bool = False,
     skip_run_index: bool = False,
+    skip_compare: bool = False,
     skip_config_check: bool = False,
     skip_manifest: bool = False,
     skip_annotate: bool = False,
@@ -436,6 +442,7 @@ def run_ci_pipeline(
             skip_status_block=skip_status_block,
             skip_trend=skip_trend,
             skip_run_index=skip_run_index,
+            skip_compare=skip_compare,
             skip_config_check=skip_config_check,
             skip_manifest=skip_manifest,
             skip_annotate=skip_annotate,
@@ -503,6 +510,11 @@ def run_ci_pipeline(
             lambda: generated_run_index_path(root, selected_run_dir),
         ),
         (
+            "compare",
+            skip_compare,
+            lambda: generated_compare_path(root, selected_run_dir),
+        ),
+        (
             "manifest",
             skip_manifest,
             lambda: generate_manifest(root, selected_run_dir).output_path,
@@ -567,6 +579,7 @@ def append_unavailable_artifact_steps(
     skip_status_block: bool,
     skip_trend: bool,
     skip_run_index: bool,
+    skip_compare: bool,
     skip_config_check: bool,
     skip_manifest: bool,
     skip_annotate: bool,
@@ -584,6 +597,7 @@ def append_unavailable_artifact_steps(
         ("status-block", skip_status_block),
         ("trend", skip_trend),
         ("run-index", skip_run_index),
+        ("compare", skip_compare),
         ("config-check", skip_config_check),
         ("package-check", skip_package_check),
         ("manifest", skip_manifest),
@@ -837,6 +851,14 @@ def generated_run_index_path(project_root: Path, run_dir: Path | None) -> Path |
     write_run_index_json(result, json_path)
     write_run_index_summary(result, summary_path)
     return json_path
+
+
+def generated_compare_path(project_root: Path, run_dir: Path | None) -> Path | None:
+    """Generate compare artifacts and return the JSON path."""
+    if run_dir is None:
+        return None
+    result = compare_runs(project_root, head_run=run_dir)
+    return result.json_path
 
 
 def generated_trend_path(project_root: Path, run_dir: Path | None) -> Path | None:

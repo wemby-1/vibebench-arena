@@ -67,6 +67,8 @@ def test_default_latest_run_artifact_listing(tmp_path: Path) -> None:
     assert "package-check.md" in artifacts
     assert "run-index.json" in artifacts
     assert "run-index.md" in artifacts
+    assert "compare.json" in artifacts
+    assert "compare.md" in artifacts
 
 
 def test_explicit_run_dir_is_used(tmp_path: Path) -> None:

@@ -28,7 +28,11 @@ from vibebench.ci import (
     write_ci_plan_artifacts,
 )
 from vibebench.clean import CleanResult, clean_runs
-from vibebench.compare import CompareResult, compare_runs
+from vibebench.compare import (
+    CompareResult,
+    compare_json_payload,
+    compare_runs,
+)
 from vibebench.config import (
     ConfigError,
     EffectiveConfigResult,
@@ -202,6 +206,8 @@ jobs:
             .vibebench/runs/**/trend.md
             .vibebench/runs/**/run-index.json
             .vibebench/runs/**/run-index.md
+            .vibebench/runs/**/compare.json
+            .vibebench/runs/**/compare.md
             .vibebench/runs/**/report/**
           if-no-files-found: ignore
 """
@@ -1352,6 +1358,10 @@ def ci_command(
         bool,
         typer.Option("--skip-run-index", help="Skip run-index artifact generation."),
     ] = False,
+    skip_compare: Annotated[
+        bool,
+        typer.Option("--skip-compare", help="Skip run comparison artifacts."),
+    ] = False,
     skip_config_check: Annotated[
         bool,
         typer.Option("--skip-config-check", help="Skip config check artifacts."),
@@ -1499,6 +1509,7 @@ def ci_command(
                 skip_status_block=skip_status_block,
                 skip_trend=skip_trend,
                 skip_run_index=skip_run_index,
+                skip_compare=skip_compare,
                 skip_config_check=skip_config_check,
                 skip_manifest=skip_manifest,
                 skip_annotate=skip_annotate,
@@ -1527,6 +1538,7 @@ def ci_command(
                 skip_status_block=skip_status_block,
                 skip_trend=skip_trend,
                 skip_run_index=skip_run_index,
+                skip_compare=skip_compare,
                 skip_config_check=skip_config_check,
                 skip_manifest=skip_manifest,
                 skip_annotate=skip_annotate,
@@ -1879,42 +1891,89 @@ def history(
 @app.command()
 def compare(
     project_root: ProjectRootOption = Path("."),
-    current_run: Annotated[
+    runs_dir: Annotated[
         Path | None,
-        typer.Option(
-            "--current-run",
-            help="Current .vibebench/runs/<timestamp> directory.",
-        ),
+        typer.Option("--runs-dir", help="Directory containing VibeBench run dirs."),
     ] = None,
-    base_run: Annotated[
+    base_run_dir: Annotated[
         Path | None,
         typer.Option(
+            "--base-run-dir",
             "--base-run",
             help="Base .vibebench/runs/<timestamp> directory.",
         ),
+    ] = None,
+    head_run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--head-run-dir",
+            "--head-run",
+            "--current-run",
+            help="Head .vibebench/runs/<timestamp> directory.",
+        ),
+    ] = None,
+    base: Annotated[
+        str | None,
+        typer.Option("--base", help="Base run id under --runs-dir."),
+    ] = None,
+    head: Annotated[
+        str | None,
+        typer.Option("--head", help="Head run id under --runs-dir."),
     ] = None,
     baseline: Annotated[
         bool,
         typer.Option(
             "--baseline",
-            help="Compare the saved baseline against the latest or current run.",
+            help="Compare the saved baseline against the latest or head run.",
         ),
     ] = False,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print comparison as pure JSON."),
+    ] = False,
+    write_json: Annotated[
+        Path | None,
+        typer.Option("--write-json", help="Write compare JSON to this path."),
+    ] = None,
+    write_summary: Annotated[
+        Path | None,
+        typer.Option("--write-summary", help="Write compare Markdown to this path."),
+    ] = None,
 ) -> None:
     """Compare VibeBench runs."""
     root = project_root.resolve()
+    selected_runs_dir = resolve_optional_output_path(root, runs_dir)
+    selected_json_path = resolve_optional_output_path(root, write_json)
+    selected_summary_path = resolve_optional_output_path(root, write_summary)
+    selected_base_run = resolve_optional_output_path(root, base_run_dir)
+    selected_head_run = resolve_optional_output_path(root, head_run_dir)
     try:
         result = compare_runs(
             root,
-            current_run=current_run,
-            base_run=base_run,
+            head_run=selected_head_run,
+            base_run=selected_base_run,
             use_baseline=baseline,
+            runs_dir=selected_runs_dir,
+            base_run_id=base,
+            head_run_id=head,
+            write_json_path=selected_json_path,
+            write_summary_path=selected_summary_path,
+            write_default_artifacts=True,
         )
     except ReportError as exc:
-        console.print(f"[red]{exc}[/]")
+        target_console = err_console if as_json else console
+        target_console.print(f"[red]{exc}[/]")
         raise typer.Exit(code=1) from exc
 
+    if as_json:
+        print(json.dumps(compare_json_payload(result), indent=2, sort_keys=True))
+        return
+
     render_compare_summary(result)
+    if selected_json_path is not None:
+        console.print(f"Compare JSON: {selected_json_path}")
+    if selected_summary_path is not None:
+        console.print(f"Compare summary: {selected_summary_path}")
 
 
 def render_check_summary(result: CheckRunResult) -> None:
@@ -2646,26 +2705,45 @@ def render_compare_summary(result: CompareResult) -> None:
         "improved": "green",
         "stable": "blue",
         "regressed": "red",
+        "mixed": "yellow",
+        "insufficient-data": "yellow",
     }[result.verdict]
 
     console.print()
     console.print("[bold]VibeBench compare[/]")
-    console.print(f"Base run: {result.base_run}")
-    console.print(f"Current run: {result.current_run}")
+    console.print(f"Base run: {result.base_run_id or 'n/a'}")
+    console.print(f"Head run: {result.head_run_id or 'n/a'}")
     console.print(f"Verdict: [{verdict_style}]{result.verdict}[/]")
-    console.print(f"Score delta: {format_signed(result.score_delta)}")
-    console.print(f"Risk delta: {result.risk_delta}")
+    if result.status == "insufficient-data":
+        for warning in result.skipped_runs:
+            console.print(f"[yellow]{warning}[/]")
+        console.print(f"Recommendation: {result.recommendation}")
+        return
+
+    console.print(f"Score delta: {format_optional_signed(result.score_delta)}")
+    console.print(f"Risk level change: {result.risk_level_change}")
 
     table = Table(show_header=True, header_style="bold")
     table.add_column("Metric")
     table.add_column("Base")
-    table.add_column("Current")
+    table.add_column("Head")
     table.add_column("Delta")
     for metric in result.metrics:
-        table.add_row(metric.name, metric.base, metric.current, metric.delta)
+        table.add_row(metric.name, metric.base, metric.head, metric.delta)
     console.print(table)
+
+    if result.command_status_changes:
+        console.print(f"Command status changes: {len(result.command_status_changes)}")
+    if result.artifact_availability_changes:
+        console.print(
+            "Artifact availability changes: "
+            f"{len(result.artifact_availability_changes)}"
+        )
     console.print(f"Recommendation: {result.recommendation}")
-    console.print(f"Comparison: {result.output_path}")
+    if result.summary_path is not None:
+        console.print(f"Comparison summary: {result.summary_path}")
+    if result.json_path is not None:
+        console.print(f"Comparison JSON: {result.json_path}")
 
 
 def format_signed(value: int) -> str:
@@ -2673,6 +2751,13 @@ def format_signed(value: int) -> str:
     if value > 0:
         return f"+{value}"
     return str(value)
+
+
+def format_optional_signed(value: int | None) -> str:
+    """Format an optional signed integer for terminal output."""
+    if value is None:
+        return "n/a"
+    return format_signed(value)
 
 
 def render_findings(result: CheckRunResult) -> None:

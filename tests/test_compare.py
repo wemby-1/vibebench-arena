@@ -119,9 +119,10 @@ def test_compare_latest_against_previous_writes_markdown(tmp_path: Path) -> None
     markdown = compare_path.read_text(encoding="utf-8")
     assert result.output_path == compare_path
     assert result.verdict == "improved"
-    assert "# VibeBench Compare" in markdown
+    assert "# VibeBench Run Comparison" in markdown
     assert "| VibeScore | 92 | 100 | +8 |" in markdown
-    assert "Quality improved compared with the previous run." in markdown
+    assert "Quality improved compared with the base run." in markdown
+    assert (current / "compare.json").exists()
 
 
 def test_compare_explicit_run_dirs(tmp_path: Path) -> None:
@@ -162,13 +163,14 @@ def test_compare_cli_supports_explicit_run_dirs(tmp_path: Path) -> None:
     assert (current / "compare.md").exists()
 
 
-def test_compare_requires_two_runs_without_explicit_dirs(tmp_path: Path) -> None:
+def test_compare_reports_insufficient_data_successfully(tmp_path: Path) -> None:
     write_run(tmp_path, "20260627_120000")
 
     result = runner.invoke(app, ["compare", "--project-root", str(tmp_path)])
 
-    assert result.exit_code == 1
-    assert "Need at least two VibeBench runs with metrics.json" in result.output
+    assert result.exit_code == 0
+    assert "insufficient-data" in result.output
+    assert "Need at least two valid VibeBench runs" in result.output
 
 
 def test_invalid_explicit_run_dir_has_helpful_error(tmp_path: Path) -> None:
@@ -187,3 +189,152 @@ def test_verdict_rules_handle_unknown_risk_without_crashing(tmp_path: Path) -> N
     current = load_run_snapshot(current_dir)
 
     assert verdict_for(base, current) == "stable"
+
+
+def test_compare_cli_json_output_is_clean(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260627_120000", metrics_payload(score=90))
+    write_run(tmp_path, "20260627_130000", metrics_payload(score=95))
+
+    result = runner.invoke(app, ["compare", "--project-root", str(tmp_path), "--json"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["verdict"] == "improved"
+    assert payload["score_delta"] == 5
+    assert payload["base_run_id"] == "20260627_120000"
+    assert payload["head_run_id"] == "20260627_130000"
+
+
+def test_compare_cli_write_json(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260627_120000", metrics_payload(score=90))
+    write_run(tmp_path, "20260627_130000", metrics_payload(score=95))
+    output = tmp_path / "compare-output.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "compare",
+            "--project-root",
+            str(tmp_path),
+            "--write-json",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["score_delta"] == 5
+
+
+def test_compare_cli_write_summary(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260627_120000", metrics_payload(score=90))
+    write_run(tmp_path, "20260627_130000", metrics_payload(score=95))
+    output = tmp_path / "compare-output.md"
+
+    result = runner.invoke(
+        app,
+        [
+            "compare",
+            "--project-root",
+            str(tmp_path),
+            "--write-summary",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "# VibeBench Run Comparison" in output.read_text(encoding="utf-8")
+
+
+def test_compare_json_stdout_stays_clean_with_write_json(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260627_120000", metrics_payload(score=90))
+    write_run(tmp_path, "20260627_130000", metrics_payload(score=95))
+    output = tmp_path / "compare-output.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "compare",
+            "--project-root",
+            str(tmp_path),
+            "--json",
+            "--write-json",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(result.output)["score_delta"] == 5
+    assert json.loads(output.read_text(encoding="utf-8"))["score_delta"] == 5
+
+
+def test_compare_skips_corrupt_and_partial_old_runs(tmp_path: Path) -> None:
+    partial = tmp_path / ".vibebench" / "runs" / "20260627_110000"
+    partial.mkdir(parents=True)
+    corrupt = tmp_path / ".vibebench" / "runs" / "20260627_115000"
+    corrupt.mkdir(parents=True)
+    corrupt.joinpath("metrics.json").write_text("{nope", encoding="utf-8")
+    write_run(tmp_path, "20260627_120000", metrics_payload(score=90))
+    write_run(tmp_path, "20260627_130000", metrics_payload(score=95))
+
+    result = runner.invoke(app, ["compare", "--project-root", str(tmp_path), "--json"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["verdict"] == "improved"
+    assert len(payload["skipped_runs"]) == 2
+
+
+def test_compare_status_and_artifact_deltas(tmp_path: Path) -> None:
+    base_payload = metrics_payload(score=90, risk="medium", findings=1)
+    base_payload["command_results"] = [{"command": "pytest", "status": "failed"}]
+    head_payload = metrics_payload(score=95, risk="low", findings=0)
+    head_payload["command_results"] = [{"command": "pytest", "status": "passed"}]
+    base = write_run(tmp_path, "20260627_120000", base_payload)
+    head = write_run(tmp_path, "20260627_130000", head_payload)
+    base.joinpath("compare.md").write_text("old\n", encoding="utf-8")
+
+    result = compare_runs(tmp_path, base_run=base, head_run=head)
+
+    assert result.score_delta == 5
+    assert result.risk_level_change == "medium -> low"
+    assert result.risk_findings_delta == -1
+    assert result.command_status_changes[0].base_status == "failed"
+    assert result.command_status_changes[0].head_status == "passed"
+    assert any(
+        item.artifact == "compare.md"
+        and item.base_available
+        and not item.head_available
+        for item in result.artifact_availability_changes
+    )
+
+
+def test_compare_supports_run_ids_and_runs_dir(tmp_path: Path) -> None:
+    runs_dir = tmp_path / "custom-runs"
+    base = runs_dir / "base"
+    head = runs_dir / "head"
+    for run_dir, score in [(base, 90), (head, 95)]:
+        run_dir.mkdir(parents=True)
+        run_dir.joinpath("metrics.json").write_text(
+            json.dumps(metrics_payload(score=score)),
+            encoding="utf-8",
+        )
+
+    result = runner.invoke(
+        app,
+        [
+            "compare",
+            "--project-root",
+            str(tmp_path),
+            "--runs-dir",
+            str(runs_dir),
+            "--base",
+            "base",
+            "--head",
+            "head",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(result.output)["score_delta"] == 5

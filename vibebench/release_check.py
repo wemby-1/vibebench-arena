@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Literal
 
 from vibebench.artifacts import collect_artifact_inventory
+from vibebench.compare import compare_runs
 from vibebench.config import ConfigError, load_effective_config
 from vibebench.config_check import config_check_payload, config_consistency_checks
 from vibebench.doctor import run_doctor
@@ -74,6 +75,7 @@ def run_release_check(project_root: Path) -> ReleaseReadinessResult:
     checks.append(check_manifest_consistency(root, latest_run_dir))
     checks.append(check_artifact_inventory(root, latest_run_dir))
     checks.append(check_run_index(root))
+    checks.append(check_compare_readiness(root))
     checks.append(check_ci_plan())
     checks.append(check_git_diff_whitespace(root))
 
@@ -208,6 +210,25 @@ def check_run_index(project_root: Path) -> ReleaseReadinessCheck:
             f"Run index generated ({len(result.runs)} indexed, "
             f"{result.total_runs_seen} seen)"
         ),
+    )
+
+
+def check_compare_readiness(project_root: Path) -> ReleaseReadinessCheck:
+    """Check that run comparison can be produced without requiring two runs."""
+    try:
+        result = compare_runs(project_root, write_default_artifacts=False)
+    except ReportError as exc:
+        return ReleaseReadinessCheck("compare", "failed", str(exc))
+    if result.verdict == "insufficient-data":
+        return ReleaseReadinessCheck(
+            "compare",
+            "passed",
+            "Compare readiness checked; insufficient data is non-fatal",
+        )
+    return ReleaseReadinessCheck(
+        "compare",
+        "passed",
+        f"Compare readiness checked ({result.base_run_id} -> {result.head_run_id})",
     )
 
 
