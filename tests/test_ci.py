@@ -727,6 +727,121 @@ def test_ci_dry_run_json_outputs_plan_payload(tmp_path: Path) -> None:
         assert step["duration_seconds"] is None
 
 
+
+def test_ci_dry_run_fail_on_regression_mentions_compare_guard(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--dry-run", "--fail-on-regression"],
+    )
+
+    assert result.exit_code == 0
+    assert "compare" in result.output
+    assert "Would run compare with" in result.output
+    assert "regression guard" in result.output
+
+
+def test_ci_dry_run_skip_compare_overrides_fail_on_regression(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--skip-compare",
+            "--fail-on-regression",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["compare"]["status"] == "skipped"
+    assert steps["compare"]["message"] == "Skipped by --skip-compare"
+
+
+def test_ci_dry_run_fail_on_regression_json_stays_clean(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--fail-on-regression",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert payload["status"] == "planned"
+    assert steps["compare"]["status"] == "planned"
+    assert steps["compare"]["message"] == "Would run compare with regression guard"
+
+
+def test_ci_default_dry_run_compare_step_remains_reporting_only(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--dry-run", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["compare"]["message"] == "Would run compare"
+
+
+def test_ci_fail_on_regression_fails_compare_step_after_writing_artifacts(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    write_run(tmp_path, "20260629_120000", metrics=sample_metrics(score=100))
+    head = write_run(tmp_path, "20260629_130000", metrics=sample_metrics(score=90))
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(head),
+            "--fail-on-regression",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    compare_payload = json.loads(head.joinpath("compare.json").read_text())
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert steps["compare"]["status"] == "failed"
+    assert steps["compare"]["exit_code"] == 1
+    assert steps["compare"]["artifact"] == str(head / "compare.json")
+    assert "Regression guard failed" in steps["compare"]["message"]
+    assert compare_payload["verdict"] == "regressed"
+    assert compare_payload["regression_guard"]["status"] == "failed"
+
 def test_ci_plan_alias_json_outputs_plan_payload(tmp_path: Path) -> None:
     write_config(tmp_path)
 

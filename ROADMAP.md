@@ -12,6 +12,7 @@ v0.2.0 established VibeBench as a local and CI verification tool with a complete
 - Configurable `gate` and `risk` policies in `.vibebench/config.yaml`.
 - Machine-readable outputs for CI, config checks, doctor, release checks, artifacts, trend, latest run lookup, and exports.
 - Dry-run / plan mode with persistent `ci-plan.json` and `ci-plan.md` artifacts.
+- Opt-in compare regression guard via `compare --fail-on-regression` and `ci --fail-on-regression`; default compare remains reporting-only.
 - Release readiness checks and release-check artifacts.
 - Manifest generation and manifest consistency checks.
 - GitHub Actions annotations, step summaries, and downloadable `vibebench-run-artifacts`.
@@ -128,6 +129,7 @@ v0.3.0 should be considered ready when:
 - GitHub Actions CI stays green.
 - `python -m vibebench release-check` passes.
 - `python -m vibebench ci` passes locally and in CI.
+- Teams that want regression blocking can opt into `python -m vibebench ci --fail-on-regression`; release-check remains read-only.
 - GitHub Actions artifacts remain downloadable as `vibebench-run-artifacts`.
 - New PR comment behavior has dry-run support and focused tests.
 - PR comment integration avoids duplicate comments.

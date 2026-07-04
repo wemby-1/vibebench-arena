@@ -1389,6 +1389,13 @@ def ci_command(
             help="Skip release-check artifact generation.",
         ),
     ] = False,
+    fail_on_regression: Annotated[
+        bool,
+        typer.Option(
+            "--fail-on-regression",
+            help="Fail CI when the compare step verdict is regressed.",
+        ),
+    ] = False,
     as_json: Annotated[
         bool,
         typer.Option("--json", help="Print CI result as JSON."),
@@ -1516,6 +1523,7 @@ def ci_command(
                 skip_gh_summary=skip_gh_summary,
                 skip_release_check=skip_release_check,
                 skip_package_check=skip_package_check,
+                fail_on_regression=fail_on_regression,
             )
             plan_artifacts = write_ci_plan_artifacts(
                 root,
@@ -1552,6 +1560,7 @@ def ci_command(
                 max_risk=max_risk,
                 allow_findings=allow_findings,
                 require_status_passed=require_status_passed,
+                fail_on_regression=fail_on_regression,
             )
         if selected_json_output is not None:
             write_ci_json(result, selected_json_output)
@@ -1939,6 +1948,13 @@ def compare(
         Path | None,
         typer.Option("--write-summary", help="Write compare Markdown to this path."),
     ] = None,
+    fail_on_regression: Annotated[
+        bool,
+        typer.Option(
+            "--fail-on-regression",
+            help="Exit non-zero when the comparison verdict is regressed.",
+        ),
+    ] = False,
 ) -> None:
     """Compare VibeBench runs."""
     root = project_root.resolve()
@@ -1959,6 +1975,7 @@ def compare(
             write_json_path=selected_json_path,
             write_summary_path=selected_summary_path,
             write_default_artifacts=True,
+            fail_on_regression=fail_on_regression,
         )
     except ReportError as exc:
         target_console = err_console if as_json else console
@@ -1967,6 +1984,8 @@ def compare(
 
     if as_json:
         print(json.dumps(compare_json_payload(result), indent=2, sort_keys=True))
+        if result.regression_guard.status == "failed":
+            raise typer.Exit(code=1)
         return
 
     render_compare_summary(result)
@@ -1974,6 +1993,8 @@ def compare(
         console.print(f"Compare JSON: {selected_json_path}")
     if selected_summary_path is not None:
         console.print(f"Compare summary: {selected_summary_path}")
+    if result.regression_guard.status == "failed":
+        raise typer.Exit(code=1)
 
 
 def render_check_summary(result: CheckRunResult) -> None:
@@ -2302,7 +2323,7 @@ def render_ci_summary(result: CiResult) -> None:
     table.add_column("Status")
     table.add_column("Exit")
     table.add_column("Artifact")
-    table.add_column("Message")
+    table.add_column("Message", overflow="fold")
     status_style = {
         "passed": "green",
         "failed": "red",
@@ -2714,6 +2735,15 @@ def render_compare_summary(result: CompareResult) -> None:
     console.print(f"Base run: {result.base_run_id or 'n/a'}")
     console.print(f"Head run: {result.head_run_id or 'n/a'}")
     console.print(f"Verdict: [{verdict_style}]{result.verdict}[/]")
+    if result.regression_guard.enabled:
+        guard_style = (
+            "red" if result.regression_guard.status == "failed" else "green"
+        )
+        console.print(
+            "Regression guard: "
+            f"[{guard_style}]{result.regression_guard.status}[/] - "
+            f"{result.regression_guard.message}"
+        )
     if result.status == "insufficient-data":
         for warning in result.skipped_runs:
             console.print(f"[yellow]{warning}[/]")

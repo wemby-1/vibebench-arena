@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from vibebench.artifacts import KNOWN_ARTIFACTS
 from vibebench.baseline import show_baseline
@@ -17,6 +17,7 @@ from vibebench.report import ReportError, load_metrics
 COMPARE_JSON = "compare.json"
 COMPARE_SUMMARY = "compare.md"
 Verdict = Literal["improved", "stable", "regressed", "mixed", "insufficient-data"]
+RegressionGuardStatus = Literal["passed", "failed", "not_evaluated"]
 
 RISK_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
 
@@ -67,6 +68,16 @@ class ArtifactChange(BaseModel):
     artifact: str
     base_available: bool
     head_available: bool
+
+
+class RegressionGuard(BaseModel):
+    """Opt-in compare regression guard status."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool
+    status: RegressionGuardStatus
+    message: str
 
 
 class RunSnapshot(BaseModel):
@@ -120,6 +131,9 @@ class CompareResult(BaseModel):
     json_path: Path | None = None
     summary_path: Path | None = None
     skipped_runs: list[str] = []
+    regression_guard: RegressionGuard = Field(
+        default_factory=lambda: regression_guard_for("stable", enabled=False)
+    )
 
     @property
     def output_path(self) -> Path | None:
@@ -239,6 +253,7 @@ def compare_runs(
     write_json_path: Path | None = None,
     write_summary_path: Path | None = None,
     write_default_artifacts: bool = True,
+    fail_on_regression: bool = False,
 ) -> CompareResult:
     """Compare two runs and optionally write compare artifacts."""
     root = project_root.resolve()
@@ -261,6 +276,10 @@ def compare_runs(
         head = load_run_snapshot(selection.head_run)
         result = build_compare_result(base, head, skipped_runs=selection.skipped_runs)
 
+    result.regression_guard = regression_guard_for(
+        result.verdict,
+        enabled=fail_on_regression,
+    )
     write_compare_outputs(
         result,
         write_json_path=write_json_path,
@@ -604,7 +623,7 @@ def compare_json_payload(result: CompareResult) -> dict[str, object]:
         item.model_dump() for item in result.artifact_availability_changes
     ]
     command_changes = [item.model_dump() for item in result.command_status_changes]
-    return {
+    payload: dict[str, object] = {
         "added_lines_delta": result.added_lines_delta,
         "artifact_availability_changes": artifact_changes,
         "base_created_at": result.base_created_at,
@@ -631,6 +650,9 @@ def compare_json_payload(result: CompareResult) -> dict[str, object]:
         ),
         "verdict": result.verdict,
     }
+    if result.regression_guard.enabled:
+        payload["regression_guard"] = result.regression_guard.model_dump()
+    return payload
 
 
 def write_compare_json(result: CompareResult, output_path: Path) -> Path:
@@ -679,6 +701,8 @@ def render_markdown(result: CompareResult) -> str:
         f"- Base run: `{result.base_run_id or 'n/a'}`",
         f"- Head run: `{result.head_run_id or 'n/a'}`",
     ]
+    if result.regression_guard.enabled:
+        lines.append(f"- Regression guard: **{result.regression_guard.status}**")
     if result.status == "insufficient-data":
         lines.extend(["", f"Recommendation: {result.recommendation}", ""])
         return "\n".join(lines)
@@ -744,6 +768,31 @@ def validate_output_path(output_path: Path) -> None:
         raise ReportError(f"Compare output path is a directory: {output_path}")
     if not output_path.parent.exists():
         raise ReportError(f"Compare output parent does not exist: {output_path.parent}")
+
+
+def regression_guard_for(
+    verdict: Verdict,
+    *,
+    enabled: bool,
+) -> RegressionGuard:
+    """Return deterministic regression guard status for a compare verdict."""
+    if not enabled:
+        return RegressionGuard(
+            enabled=False,
+            status="not_evaluated",
+            message="Regression guard disabled.",
+        )
+    if verdict == "regressed":
+        return RegressionGuard(
+            enabled=True,
+            status="failed",
+            message="Regression guard failed: comparison verdict is regressed.",
+        )
+    return RegressionGuard(
+        enabled=True,
+        status="passed",
+        message=f"Regression guard passed: comparison verdict is {verdict}.",
+    )
 
 
 def format_risk_delta(base: str, current: str) -> str:

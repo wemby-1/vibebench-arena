@@ -173,6 +173,138 @@ def test_compare_reports_insufficient_data_successfully(tmp_path: Path) -> None:
     assert "Need at least two valid VibeBench runs" in result.output
 
 
+
+def test_compare_fail_on_regression_exits_nonzero_for_regressed(
+    tmp_path: Path,
+) -> None:
+    base = write_run(tmp_path, "20260627_120000", metrics_payload(score=100))
+    current = write_run(tmp_path, "20260627_130000", metrics_payload(score=80))
+
+    result = runner.invoke(
+        app,
+        [
+            "compare",
+            "--project-root",
+            str(tmp_path),
+            "--base-run",
+            str(base),
+            "--current-run",
+            str(current),
+            "--fail-on-regression",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "Verdict:" in result.output
+    assert "regressed" in result.output
+    assert "Regression guard:" in result.output
+    assert "failed" in result.output
+
+
+@pytest.mark.parametrize(
+    ("head_payload", "expected_verdict"),
+    [
+        (metrics_payload(score=95), "improved"),
+        (metrics_payload(score=90), "stable"),
+        (metrics_payload(score=95, risk="high"), "mixed"),
+    ],
+)
+def test_compare_fail_on_regression_passes_for_non_regressed_verdicts(
+    tmp_path: Path,
+    head_payload: dict[str, object],
+    expected_verdict: str,
+) -> None:
+    base = write_run(tmp_path, "20260627_120000", metrics_payload(score=90))
+    current = write_run(tmp_path, "20260627_130000", head_payload)
+
+    result = runner.invoke(
+        app,
+        [
+            "compare",
+            "--project-root",
+            str(tmp_path),
+            "--base-run",
+            str(base),
+            "--current-run",
+            str(current),
+            "--fail-on-regression",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert expected_verdict in result.output
+    assert "Regression guard:" in result.output
+    assert "passed" in result.output
+
+
+def test_compare_fail_on_regression_passes_for_insufficient_data(
+    tmp_path: Path,
+) -> None:
+    write_run(tmp_path, "20260627_120000")
+
+    result = runner.invoke(
+        app,
+        [
+            "compare",
+            "--project-root",
+            str(tmp_path),
+            "--fail-on-regression",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "insufficient-data" in result.output
+    assert "Regression guard:" in result.output
+    assert "passed" in result.output
+
+
+def test_compare_json_fail_on_regression_includes_guard_and_stays_clean(
+    tmp_path: Path,
+) -> None:
+    write_run(tmp_path, "20260627_120000", metrics_payload(score=90))
+    write_run(tmp_path, "20260627_130000", metrics_payload(score=90))
+
+    result = runner.invoke(
+        app,
+        [
+            "compare",
+            "--project-root",
+            str(tmp_path),
+            "--json",
+            "--fail-on-regression",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["verdict"] == "stable"
+    assert payload["regression_guard"] == {
+        "enabled": True,
+        "status": "passed",
+        "message": "Regression guard passed: comparison verdict is stable.",
+    }
+
+
+def test_compare_default_regressed_behavior_remains_reporting_only(
+    tmp_path: Path,
+) -> None:
+    write_run(tmp_path, "20260627_120000", metrics_payload(score=100))
+    write_run(tmp_path, "20260627_130000", metrics_payload(score=80))
+
+    human = runner.invoke(app, ["compare", "--project-root", str(tmp_path)])
+    as_json = runner.invoke(
+        app,
+        ["compare", "--project-root", str(tmp_path), "--json"],
+    )
+
+    assert human.exit_code == 0
+    assert "regressed" in human.output
+    assert "Regression guard:" not in human.output
+    payload = json.loads(as_json.output)
+    assert as_json.exit_code == 0
+    assert payload["verdict"] == "regressed"
+    assert "regression_guard" not in payload
+
 def test_invalid_explicit_run_dir_has_helpful_error(tmp_path: Path) -> None:
     base = tmp_path / ".vibebench" / "runs" / "20260627_120000"
     base.mkdir(parents=True)

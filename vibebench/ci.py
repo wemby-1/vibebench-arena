@@ -106,6 +106,7 @@ def plan_ci_pipeline(
     skip_gh_summary: bool = False,
     skip_release_check: bool = False,
     skip_package_check: bool = False,
+    fail_on_regression: bool = False,
 ) -> CiResult:
     """Return the CI pipeline plan without running commands or writing artifacts."""
     steps = [
@@ -132,6 +133,8 @@ def plan_ci_pipeline(
     ):
         if skipped:
             steps.append(skipped_plan_step(name, flag))
+        elif name == "compare" and fail_on_regression:
+            steps.append(planned_step(name, "Would run compare with regression guard"))
         else:
             steps.append(planned_step(name, f"Would run {name}"))
     return CiResult(run_dir=None, steps=steps, passed=True, dry_run=True)
@@ -409,6 +412,7 @@ def run_ci_pipeline(
     max_risk: str | None = None,
     allow_findings: int | None = None,
     require_status_passed: bool | None = None,
+    fail_on_regression: bool = False,
 ) -> CiResult:
     """Run the complete local CI pipeline."""
     root = project_root.resolve()
@@ -557,6 +561,15 @@ def run_ci_pipeline(
     for name, skipped, callback in artifact_steps:
         if skipped:
             steps.append(CiStepResult(name, "skipped", 0, message="skipped by flag"))
+            continue
+        if name == "compare":
+            steps.append(
+                run_compare_artifact_step(
+                    root,
+                    selected_run_dir,
+                    fail_on_regression=fail_on_regression,
+                )
+            )
             continue
         steps.append(run_artifact_step(name, callback))
 
@@ -730,6 +743,50 @@ def run_artifact_step(name: str, callback: object) -> CiStepResult:
         "passed",
         0,
         artifact_path=artifact_path,
+        duration_seconds=elapsed_since(started),
+    )
+
+
+def run_compare_artifact_step(
+    project_root: Path,
+    run_dir: Path | None,
+    *,
+    fail_on_regression: bool,
+) -> CiStepResult:
+    """Generate compare artifacts and optionally fail on a regressed verdict."""
+    started = time.perf_counter()
+    try:
+        result = compare_runs(
+            project_root,
+            head_run=run_dir,
+            fail_on_regression=fail_on_regression,
+        )
+    except Exception as exc:
+        return CiStepResult(
+            "compare",
+            "failed",
+            1,
+            message=str(exc),
+            duration_seconds=elapsed_since(started),
+        )
+
+    if result.regression_guard.status == "failed":
+        return CiStepResult(
+            "compare",
+            "failed",
+            1,
+            artifact_path=result.json_path,
+            message=result.regression_guard.message,
+            duration_seconds=elapsed_since(started),
+        )
+
+    message = result.regression_guard.message if result.regression_guard.enabled else ""
+    return CiStepResult(
+        "compare",
+        "passed",
+        0,
+        artifact_path=result.json_path,
+        message=message,
         duration_seconds=elapsed_since(started),
     )
 

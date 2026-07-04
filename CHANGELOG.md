@@ -12,6 +12,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 - GitHub PR comment posting via `python -m vibebench pr-comment --post`, with dry-run mode, JSON output, marker-based update behavior, tested create/update decisions, and pull-request-only GitHub Actions wiring.
 - Local package/install readiness checks with `python -m vibebench package-check`, `--json`, `--advice`, persisted `package-check.json` / `package-check.md` artifacts, CI generation, and release-check integration.
 - Run index artifacts with `python -m vibebench run-index`, `run-index.json`, `run-index.md`, CI generation, artifact discovery, manifest/bundle/GitHub summary integration, and `--skip-run-index`.
+- Opt-in compare regression guard with `vibebench compare --fail-on-regression` and `vibebench ci --fail-on-regression`; default compare remains reporting-only, `insufficient-data` does not fail, and `--skip-compare` overrides the CI guard.
 
 ## [0.2.0] - 2026-07-03
 
