@@ -24,7 +24,7 @@
 
 VibeBench Arena 是一个面向 Codex-first 和 AI 辅助开发流程的本地验证工具。AI coding agent 可以很快生成代码，但开发者仍然需要一个清晰的本地质量门禁，判断这些改动是否适合进入 review、commit 和交付流程。
 
-当前项目仍然坚持本地优先和小步迭代。v0.2.0 在原有本地质量门禁基础上，补充了更完整的 CI 编排、发布就绪检查、机器可读 artifacts，以及 GitHub Actions 可下载产物。
+当前项目仍然坚持本地优先和小步迭代。v0.2.0 在原有本地质量门禁基础上，补充了更完整的 CI 编排、发布就绪检查、机器可读 artifacts，以及 GitHub Actions 可下载产物。v0.3.0 候选发布说明见 [RELEASE_NOTES_v0.3.0.md](RELEASE_NOTES_v0.3.0.md)。
 
 ## 为什么需要 VibeBench？
 

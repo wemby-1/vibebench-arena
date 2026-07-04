@@ -26,7 +26,7 @@ VibeBench Arena is a local verification tool for Codex-first and AI-assisted
 coding workflows. It helps developers check whether AI-generated code is safe to
 review, commit, and ship.
 
-The project remains local-first and pragmatic. v0.2.0 adds stronger CI orchestration, release readiness checks, machine-readable artifacts, and downloadable GitHub Actions outputs on top of the original local quality gate.
+The project remains local-first and pragmatic. v0.2.0 adds stronger CI orchestration, release readiness checks, machine-readable artifacts, and downloadable GitHub Actions outputs on top of the original local quality gate. v0.3.0 release candidate notes are available in [RELEASE_NOTES_v0.3.0.md](RELEASE_NOTES_v0.3.0.md).
 
 ## Why VibeBench?
 

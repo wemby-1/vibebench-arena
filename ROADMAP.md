@@ -26,6 +26,8 @@ The project is still intentionally local-first. It can now post/update PR commen
 
 v0.3.0 should make VibeBench easier to use in real code review loops while preserving the small, inspectable, local-first design that made v0.2.0 reliable.
 
+Release candidate readiness: the M60-M69 feature set is now documented as nearly ready for v0.3.0 in [RELEASE_NOTES_v0.3.0.md](RELEASE_NOTES_v0.3.0.md). The release has not been published or tagged; final tagging should wait for release-check, strict doctor, and green GitHub Actions.
+
 ## Priority Areas
 
 ### A. GitHub PR Comment Integration
