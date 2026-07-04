@@ -250,6 +250,59 @@ def test_config_command_init_force_overwrites_existing_config(tmp_path: Path) ->
     assert "fail_on_regression: false" in generated
 
 
+def test_config_command_path_outputs_expected_config_path(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--path"])
+
+    assert result.exit_code == 0
+    assert ".vibebench/config.yaml" in result.output.replace("\\", "/")
+    assert result.output.strip() == str(config_path(tmp_path))
+
+
+def test_config_command_path_json_before_and_after_init(tmp_path: Path) -> None:
+    before = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--path", "--json"],
+    )
+    before_payload = json.loads(before.output)
+
+    assert before.exit_code == 0
+    assert before_payload == {
+        "project_root": str(tmp_path),
+        "config_path": str(config_path(tmp_path)),
+        "exists": False,
+    }
+
+    init_result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--init"],
+    )
+    after = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--path", "--json"],
+    )
+    after_payload = json.loads(after.output)
+
+    assert init_result.exit_code == 0
+    assert after.exit_code == 0
+    assert after_payload["project_root"] == str(tmp_path)
+    assert after_payload["config_path"] == str(config_path(tmp_path))
+    assert after_payload["exists"] is True
+
+
+def test_config_command_path_respects_project_root(tmp_path: Path) -> None:
+    project_root = tmp_path / "example"
+    result = runner.invoke(
+        app,
+        ["config", "--project-root", str(project_root), "--path", "--json"],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 0
+    assert payload["project_root"] == str(project_root)
+    assert payload["config_path"] == str(config_path(project_root))
+    assert payload["exists"] is False
+
+
 def test_config_command_json_is_valid(tmp_path: Path) -> None:
     result = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--json"])
 

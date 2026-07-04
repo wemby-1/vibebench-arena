@@ -350,6 +350,10 @@ def config_command(
         bool,
         typer.Option("--show-source", help="Show config file/default sources."),
     ] = False,
+    show_path: Annotated[
+        bool,
+        typer.Option("--path", help="Print the expected config file path."),
+    ] = False,
     example: Annotated[
         bool,
         typer.Option("--example", help="Print a starter config example."),
@@ -376,6 +380,14 @@ def config_command(
     """Inspect and validate the effective VibeBench configuration."""
     root = project_root.resolve()
     target = config_file(root)
+    if show_path:
+        payload = config_path_payload(root, target)
+        if as_json:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print(payload["config_path"])
+        return
+
     if init_config:
         example_yaml = config_example_yaml()
         try:
@@ -484,6 +496,15 @@ def config_command(
         return
 
     render_config_summary(result, show_source=show_source)
+
+
+def config_path_payload(project_root: Path, path: Path) -> dict[str, object]:
+    """Return JSON-safe config path inspection output."""
+    return {
+        "project_root": str(project_root),
+        "config_path": str(path),
+        "exists": path.exists(),
+    }
 
 
 def write_config_init(
