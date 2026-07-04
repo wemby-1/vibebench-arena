@@ -1,10 +1,10 @@
-# VibeBench Arena v0.3.0 Release Candidate
+# VibeBench Arena v0.3.0
 
 GitHub-native review workflows, richer artifacts, and safer release readiness for local-first AI-assisted coding.
 
 ## Release Status
 
-This is a release candidate note for v0.3.0. Package metadata is prepared for version 0.3.0, but the release has not been tagged yet, and this milestone must not create the v0.3.0 tag or GitHub release.
+v0.3.0 is the current stable release. Package metadata, the annotated v0.3.0 tag, GitHub Release, and release-readiness checks are aligned.
 
 ## Highlights
 
@@ -35,7 +35,7 @@ v0.3.0 is focused on making VibeBench useful inside normal GitHub review loops. 
 
 ## Artifact And Release Readiness
 
-The v0.3.0 candidate strengthens the artifact loop:
+v0.3.0 strengthens the artifact loop:
 
 - `package-check.json` and `package-check.md` capture package readiness.
 - `run-index.json` and `run-index.md` make run history inspectable even when some run directories are incomplete.
@@ -65,7 +65,7 @@ Config workflows are safer and more transparent:
 
 ## Verification Checklist
 
-Before tagging v0.3.0, verify:
+For future release maintenance, verify:
 
 - `python3 -m ruff check .`
 - `python3 -m pytest -q`
@@ -96,7 +96,5 @@ Before tagging v0.3.0, verify:
 1. Run `python3 -m vibebench release-check`.
 2. Run `python3 -m vibebench doctor --strict`.
 3. Confirm GitHub Actions is green on `main`.
-4. Review this release candidate note and `CHANGELOG.md`.
-5. Only then tag `v0.3.0`.
-
-Do not tag v0.3.0 from this milestone.
+4. Review this release note and `CHANGELOG.md`.
+5. Update the GitHub Release page body manually if this file changes after publication.
