@@ -36,6 +36,8 @@ STANDARD_ARTIFACTS = [
     Path("status-block.md"),
     Path("trend.md"),
     Path("trend.json"),
+    Path("run-index.json"),
+    Path("run-index.md"),
     Path("compare.md"),
 ]
 

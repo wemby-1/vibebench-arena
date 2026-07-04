@@ -24,6 +24,7 @@ CANONICAL_CI_STEPS = [
     "badge",
     "status-block",
     "trend",
+    "run-index",
     "manifest",
     "manifest-check",
     "release-check",
@@ -100,6 +101,7 @@ def test_ci_dry_run_skip_flag_contract(tmp_path: Path) -> None:
             "--skip-config-check",
             "--skip-package-check",
             "--skip-manifest",
+            "--skip-run-index",
             "--skip-release-check",
             "--skip-bundle",
             "--skip-gh-summary",
@@ -112,6 +114,7 @@ def test_ci_dry_run_skip_flag_contract(tmp_path: Path) -> None:
     expected_skips = {
         "config-check": "--skip-config-check",
         "package-check": "--skip-package-check",
+        "run-index": "--skip-run-index",
         "manifest": "--skip-manifest",
         "manifest-check": "--skip-manifest",
         "release-check": "--skip-release-check",
@@ -138,6 +141,7 @@ def test_plan_ci_pipeline_default_contract() -> None:
 def test_plan_ci_pipeline_skip_contract() -> None:
     result = plan_ci_pipeline(
         skip_package_check=True,
+        skip_run_index=True,
         skip_release_check=True,
         skip_manifest=True,
     )
@@ -145,6 +149,8 @@ def test_plan_ci_pipeline_skip_contract() -> None:
 
     assert steps["package-check"].status == "skipped"
     assert steps["package-check"].message == "Skipped by --skip-package-check"
+    assert steps["run-index"].status == "skipped"
+    assert steps["run-index"].message == "Skipped by --skip-run-index"
     assert steps["release-check"].status == "skipped"
     assert steps["release-check"].message == "Skipped by --skip-release-check"
     assert steps["manifest"].status == "skipped"

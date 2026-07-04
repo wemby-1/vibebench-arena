@@ -95,6 +95,7 @@ python -m vibebench badge --format markdown
 python -m vibebench badge --format url
 python -m vibebench status-block
 python -m vibebench manifest
+python -m vibebench run-index
 python -m vibebench artifacts
 python -m vibebench annotate
 python -m vibebench gh-summary
@@ -243,7 +244,9 @@ python -m vibebench status-block --output README-status.md
 python -m vibebench status-block --readme README.md --write-readme
 python -m vibebench status-block --readme README.md --check-readme
 
-# List known artifacts for a run
+# Index recent runs and list known artifacts for a run
+python -m vibebench run-index
+python -m vibebench run-index --json
 python -m vibebench artifacts
 python -m vibebench artifacts --json
 python -m vibebench artifacts --run-dir .vibebench/runs/<run-id>
@@ -268,6 +271,8 @@ python -m vibebench compare
 `vibebench latest` locates the newest valid run and its known artifacts. Use `--json` for automation, `--all-paths` to print every available artifact path for scripts or local debugging, `--artifact NAME` to inspect one artifact, and `--path-only` with `--artifact` for scripts that only need one available artifact path.
 
 `vibebench trend` summarizes recent runs newest first and reports whether quality is `improved`, `stable`, or `regressed` across the selected window. The verdict compares latest vs oldest score, risk level, and finding count. Use `--json`, `--limit N`, or `--runs-dir PATH` for automation and archived run directories. Use `--write-summary` to persist human-readable `.vibebench/runs/<timestamp>/trend.md`, `--write-json` to persist machine-readable `trend.json`, `--output PATH` for a custom Markdown destination, or `--json-output PATH` for a custom JSON destination.
+
+`vibebench run-index` builds a tolerant index of recent run directories, including valid, partial, and corrupt run folders. Use `--json` for automation, `--limit N` or `--runs-dir PATH` to select the window, and `--write-json PATH` / `--write-summary PATH` to persist `run-index.json` and `run-index.md`. `vibebench ci` writes both by default unless `--skip-run-index` is used.
 
 `vibebench baseline --set latest` saves a baseline run in `.vibebench/baseline.json`. `vibebench compare --baseline` compares that saved baseline against the latest run.
 
@@ -318,7 +323,7 @@ It packages standard run artifacts for sharing or CI download. Use `--run-dir` f
 
 `vibebench status-block` writes `.vibebench/runs/<timestamp>/status-block.md`, a copy-pasteable README section with status, score, risk, diff size, findings, badge, and generated artifacts. Use `--title`, `--no-include-badge`, `--no-include-artifacts`, or `--output` to customize it. Add `<!-- VIBEBENCH_STATUS_START -->` and `<!-- VIBEBENCH_STATUS_END -->` markers to a README, then run `python -m vibebench status-block --readme README.md --write-readme` to update only the marked region. Use `--check-readme` in read-only workflows to fail when the committed block is stale.
 
-`vibebench artifacts` lists known files for the latest run, including metrics, logs, reports, config check artifacts, package-check artifacts, release-check artifacts, summaries, trend summaries, badges, status blocks, bundles, and comparisons. Use `--json` for automation, `--run-dir .vibebench/runs/<run-id>` for a specific run, `--only-available` to hide missing optional files, and `--strict` when every known artifact must exist.
+`vibebench artifacts` lists known files for the latest run, including metrics, logs, reports, config check artifacts, package-check artifacts, release-check artifacts, summaries, trend summaries, run-index artifacts, badges, status blocks, bundles, and comparisons. Use `--json` for automation, `--run-dir .vibebench/runs/<run-id>` for a specific run, `--only-available` to hide missing optional files, and `--strict` when every known artifact must exist.
 
 `vibebench annotate` emits GitHub Actions annotations for command failures and risk findings from the latest run. Use `--no-github-actions` for readable plain text output. It is reporting-only and exits 0 when annotations are emitted; `vibebench gate` remains responsible for pass/fail decisions.
 
@@ -332,9 +337,9 @@ It compares the latest run with the previous run, including score, risk level, c
 
 ## One-Shot CI Pipeline
 
-`vibebench ci` is the recommended CI entrypoint. It runs check, gate, config check artifact generation, package-check artifacts, report, PR comment, explanation, export, badge, status block, trend summaries, manifest checks, release-check artifacts, GitHub annotations, bundle, and GitHub summary in order. The check and gate steps decide the final pass/fail verdict, while artifact steps are still attempted even when the quality gate fails. Human-readable Rich output remains the default; use `--json` for automation or `--json-output PATH` to save the same machine-readable pipeline result to a file. Use `--dry-run` or `--plan` to inspect the ordered pipeline and skip flags without running checks or writing artifacts. Add `--write-plan` to persist `ci-plan.json` and `ci-plan.md` in a run-like `.vibebench/runs/<timestamp>_plan/` directory, or use `--plan-json-output PATH` and `--plan-summary-output PATH` for explicit destinations.
+`vibebench ci` is the recommended CI entrypoint. It runs check, gate, config check artifact generation, package-check artifacts, report, PR comment, explanation, export, badge, status block, trend summaries, run-index artifacts, manifest checks, release-check artifacts, GitHub annotations, bundle, and GitHub summary in order. The check and gate steps decide the final pass/fail verdict, while artifact steps are still attempted even when the quality gate fails. Human-readable Rich output remains the default; use `--json` for automation or `--json-output PATH` to save the same machine-readable pipeline result to a file. Use `--dry-run` or `--plan` to inspect the ordered pipeline and skip flags without running checks or writing artifacts. Add `--write-plan` to persist `ci-plan.json` and `ci-plan.md` in a run-like `.vibebench/runs/<timestamp>_plan/` directory, or use `--plan-json-output PATH` and `--plan-summary-output PATH` for explicit destinations.
 
-Useful options include `--dry-run`, `--plan`, `--write-plan`, `--plan-json-output PATH`, `--plan-summary-output PATH`, `--json`, `--json-output PATH`, `--skip-report`, `--skip-pr-comment`, `--skip-explain`, `--skip-export`, `--skip-badge`, `--skip-status-block`, `--skip-trend`, `--skip-config-check`, `--skip-package-check`, `--skip-release-check`, `--skip-bundle`, `--skip-annotate`, `--skip-gh-summary`, `--bundle-include-report-assets`, and `--bundle-strict`. Gate overrides such as `--min-score`, `--max-risk`, `--allow-findings`, and `--no-require-status-passed` are passed through to the gate step. Use `--run-dir .vibebench/runs/<run-id>` to generate artifacts and enforce the gate against an existing run without creating a fresh check run.
+Useful options include `--dry-run`, `--plan`, `--write-plan`, `--plan-json-output PATH`, `--plan-summary-output PATH`, `--json`, `--json-output PATH`, `--skip-report`, `--skip-pr-comment`, `--skip-explain`, `--skip-export`, `--skip-badge`, `--skip-status-block`, `--skip-trend`, `--skip-run-index`, `--skip-config-check`, `--skip-package-check`, `--skip-release-check`, `--skip-bundle`, `--skip-annotate`, `--skip-gh-summary`, `--bundle-include-report-assets`, and `--bundle-strict`. Gate overrides such as `--min-score`, `--max-risk`, `--allow-findings`, and `--no-require-status-passed` are passed through to the gate step. Use `--run-dir .vibebench/runs/<run-id>` to generate artifacts and enforce the gate against an existing run without creating a fresh check run.
 
 ## What The HTML Report Shows
 
@@ -377,13 +382,13 @@ fork PRs do not override the core VibeBench quality gate.
 
 `vibebench annotate` emits GitHub Actions annotations for visible risk findings and command failures. `vibebench gh-summary` writes a concise Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is set. The workflow posts or updates VibeBench PR comments only on `pull_request` events.
 
-This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml` and generates config-check/report/comment/explanation/export/badge/status-block/trend output, including `config-check.json`, `config-check.md`, `trend.md`, and `trend.json`, emits annotations, bundles run artifacts, writes summaries, and uploads selected `.vibebench/runs` outputs as the `vibebench-run-artifacts` artifact. `vibebench init` can generate a starter workflow at `.github/workflows/vibebench.yml`; see [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) and [docs/github-actions.md](docs/github-actions.md) for details.
+This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml` and generates config-check/report/comment/explanation/export/badge/status-block/trend/run-index output, including `config-check.json`, `config-check.md`, `trend.md`, `trend.json`, `run-index.json`, and `run-index.md`, emits annotations, bundles run artifacts, writes summaries, and uploads selected `.vibebench/runs` outputs as the `vibebench-run-artifacts` artifact. `vibebench init` can generate a starter workflow at `.github/workflows/vibebench.yml`; see [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) and [docs/github-actions.md](docs/github-actions.md) for details.
 
 ## Release Readiness And CI Artifacts
 
 For v0.2.0 details, see [RELEASE_NOTES_v0.2.0.md](RELEASE_NOTES_v0.2.0.md). For future release readiness, before tagging or publishing, run `python -m vibebench ci`, `python -m vibebench release-check`, and `python -m vibebench doctor --strict`. Use `python -m vibebench ci --dry-run` or `python -m vibebench ci --dry-run --write-plan` to inspect the pipeline before executing it.
 
-GitHub Actions uploads a downloadable artifact named `vibebench-run-artifacts` from workflow runs. It can include the run manifest, bundle zip, HTML report, GitHub summary, config-check artifacts, package-check artifacts, trend artifacts, and `release-check.json`/`release-check.md` for review after CI completes.
+GitHub Actions uploads a downloadable artifact named `vibebench-run-artifacts` from workflow runs. It can include the run manifest, bundle zip, HTML report, GitHub summary, config-check artifacts, package-check artifacts, trend artifacts, run-index artifacts, and `release-check.json`/`release-check.md` for review after CI completes.
 
 ## Try The Risk Demo
 

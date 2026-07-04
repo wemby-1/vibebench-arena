@@ -94,6 +94,13 @@ from vibebench.report import (
     load_metrics,
     recommendation_for,
 )
+from vibebench.run_index import (
+    RunIndexResult,
+    build_run_index,
+    run_index_payload,
+    write_run_index_json,
+    write_run_index_summary,
+)
 from vibebench.runner import CheckRunResult, run_checks
 from vibebench.status_block import (
     DEFAULT_STATUS_TITLE,
@@ -193,6 +200,8 @@ jobs:
             .vibebench/runs/**/package-check.md
             .vibebench/runs/**/trend.json
             .vibebench/runs/**/trend.md
+            .vibebench/runs/**/run-index.json
+            .vibebench/runs/**/run-index.md
             .vibebench/runs/**/report/**
           if-no-files-found: ignore
 """
@@ -1339,6 +1348,10 @@ def ci_command(
         bool,
         typer.Option("--skip-trend", help="Skip trend summary generation."),
     ] = False,
+    skip_run_index: Annotated[
+        bool,
+        typer.Option("--skip-run-index", help="Skip run-index artifact generation."),
+    ] = False,
     skip_config_check: Annotated[
         bool,
         typer.Option("--skip-config-check", help="Skip config check artifacts."),
@@ -1485,6 +1498,7 @@ def ci_command(
                 skip_badge=skip_badge,
                 skip_status_block=skip_status_block,
                 skip_trend=skip_trend,
+                skip_run_index=skip_run_index,
                 skip_config_check=skip_config_check,
                 skip_manifest=skip_manifest,
                 skip_annotate=skip_annotate,
@@ -1512,6 +1526,7 @@ def ci_command(
                 skip_badge=skip_badge,
                 skip_status_block=skip_status_block,
                 skip_trend=skip_trend,
+                skip_run_index=skip_run_index,
                 skip_config_check=skip_config_check,
                 skip_manifest=skip_manifest,
                 skip_annotate=skip_annotate,
@@ -1544,6 +1559,56 @@ def ci_command(
 
     if not result.passed:
         raise typer.Exit(code=1)
+
+
+@app.command("run-index")
+def run_index_command(
+    project_root: ProjectRootOption = Path("."),
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print run index as JSON."),
+    ] = False,
+    limit: Annotated[
+        int,
+        typer.Option("--limit", help="Maximum number of recent runs to index."),
+    ] = 10,
+    runs_dir: Annotated[
+        Path | None,
+        typer.Option("--runs-dir", help="Custom runs directory to index."),
+    ] = None,
+    write_json: Annotated[
+        Path | None,
+        typer.Option("--write-json", help="Write run index JSON to this path."),
+    ] = None,
+    write_summary: Annotated[
+        Path | None,
+        typer.Option("--write-summary", help="Write run index Markdown to this path."),
+    ] = None,
+) -> None:
+    """Index recent VibeBench run directories and artifacts."""
+    root = project_root.resolve()
+    selected_runs_dir = resolve_optional_output_path(root, runs_dir)
+    selected_json_path = resolve_optional_output_path(root, write_json)
+    selected_summary_path = resolve_optional_output_path(root, write_summary)
+    try:
+        result = build_run_index(root, runs_dir=selected_runs_dir, limit=limit)
+        if selected_json_path is not None:
+            write_run_index_json(result, selected_json_path)
+        if selected_summary_path is not None:
+            write_run_index_summary(result, selected_summary_path)
+    except ReportError as exc:
+        target_console = err_console if as_json else console
+        target_console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if as_json:
+        print(json.dumps(run_index_payload(result), indent=2, sort_keys=True))
+    else:
+        render_run_index_summary(result)
+        if selected_json_path is not None:
+            console.print(f"Run index JSON: {selected_json_path}")
+        if selected_summary_path is not None:
+            console.print(f"Run index summary: {selected_summary_path}")
 
 
 @app.command()
@@ -2243,6 +2308,39 @@ def resolve_optional_output_path(root: Path, output_path: Path | None) -> Path |
     if output_path.is_absolute():
         return output_path.resolve()
     return (root / output_path).resolve()
+
+
+def render_run_index_summary(result: RunIndexResult) -> None:
+    """Render run index summary."""
+    console.print()
+    console.print("[bold]VibeBench Run Index[/]")
+    console.print(f"Runs directory: {result.runs_dir}")
+    console.print(f"Total run directories seen: {result.total_runs_seen}")
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Run")
+    table.add_column("Status")
+    table.add_column("Score", justify="right")
+    table.add_column("Risk")
+    table.add_column("Artifacts", justify="right")
+    table.add_column("Path")
+    table.add_column("Message")
+    for index, item in enumerate(result.runs):
+        run_id = f"{item.run_id} (latest)" if index == 0 else item.run_id
+        score = "" if item.score is None else str(item.score)
+        artifacts = f"{item.available_artifacts}/{item.total_artifacts}"
+        table.add_row(
+            run_id,
+            item.status,
+            score,
+            item.risk_level,
+            artifacts,
+            item.path.as_posix(),
+            item.message,
+        )
+    if result.runs:
+        console.print(table)
+    else:
+        console.print("No VibeBench run directories found.")
 
 
 def render_package_check_summary(result: PackageReadinessResult) -> None:

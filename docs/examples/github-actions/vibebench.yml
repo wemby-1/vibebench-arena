@@ -63,5 +63,7 @@ jobs:
             .vibebench/runs/**/package-check.md
             .vibebench/runs/**/trend.json
             .vibebench/runs/**/trend.md
+            .vibebench/runs/**/run-index.json
+            .vibebench/runs/**/run-index.md
             .vibebench/runs/**/report/**
           if-no-files-found: ignore

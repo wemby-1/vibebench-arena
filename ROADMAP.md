@@ -104,7 +104,7 @@ Planned direction:
   Improve `vibebench init`, generated workflow/config guidance, and a minimal example project for first-run clarity.
 
 - **M63: Artifact/report UX polish**
-  Improve report and bundle usability, artifact navigation, and screenshot/readme readiness.
+  Improve report, bundle, and run-index usability, artifact navigation, and screenshot/readme readiness.
 
 - **M64: v0.3.0 release candidate docs**
   Prepare release notes, changelog updates, readiness checklist, and final verification for v0.3.0.

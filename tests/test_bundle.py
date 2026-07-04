@@ -70,6 +70,8 @@ def write_run(
         (run_dir / "status-block.md").write_text("status\n", encoding="utf-8")
         (run_dir / "trend.md").write_text("trend\n", encoding="utf-8")
         (run_dir / "trend.json").write_text("{}\n", encoding="utf-8")
+        (run_dir / "run-index.json").write_text("{}\n", encoding="utf-8")
+        (run_dir / "run-index.md").write_text("run index\n", encoding="utf-8")
         (run_dir / "config-check.json").write_text("{}\n", encoding="utf-8")
         (run_dir / "config-check.md").write_text("config check\n", encoding="utf-8")
         (run_dir / "package-check.json").write_text("{}\n", encoding="utf-8")
@@ -103,6 +105,8 @@ def test_latest_run_bundle_is_created(tmp_path: Path) -> None:
     assert "status-block.md" in names
     assert "trend.md" in names
     assert "trend.json" in names
+    assert "run-index.json" in names
+    assert "run-index.md" in names
     assert "config-check.json" in names
     assert "config-check.md" in names
     assert "package-check.json" in names

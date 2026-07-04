@@ -42,6 +42,11 @@ from vibebench.release_check import (
     write_release_check_summary,
 )
 from vibebench.report import ReportError, generate_report, load_metrics
+from vibebench.run_index import (
+    build_run_index,
+    write_run_index_json,
+    write_run_index_summary,
+)
 from vibebench.runner import run_checks
 from vibebench.status_block import generate_status_block
 from vibebench.trend import analyze_trend, write_trend_json, write_trend_summary
@@ -92,6 +97,7 @@ def plan_ci_pipeline(
     skip_badge: bool = False,
     skip_status_block: bool = False,
     skip_trend: bool = False,
+    skip_run_index: bool = False,
     skip_config_check: bool = False,
     skip_manifest: bool = False,
     skip_annotate: bool = False,
@@ -113,6 +119,7 @@ def plan_ci_pipeline(
         skip_badge=skip_badge,
         skip_status_block=skip_status_block,
         skip_trend=skip_trend,
+        skip_run_index=skip_run_index,
         skip_config_check=skip_config_check,
         skip_manifest=skip_manifest,
         skip_annotate=skip_annotate,
@@ -161,6 +168,7 @@ def ci_artifact_step_flags(
     skip_badge: bool,
     skip_status_block: bool,
     skip_trend: bool,
+    skip_run_index: bool,
     skip_config_check: bool,
     skip_manifest: bool,
     skip_annotate: bool,
@@ -179,6 +187,7 @@ def ci_artifact_step_flags(
         ("badge", skip_badge, "--skip-badge"),
         ("status-block", skip_status_block, "--skip-status-block"),
         ("trend", skip_trend, "--skip-trend"),
+        ("run-index", skip_run_index, "--skip-run-index"),
         ("manifest", skip_manifest, "--skip-manifest"),
         ("manifest-check", skip_manifest, "--skip-manifest"),
         ("release-check", skip_release_check, "--skip-release-check"),
@@ -380,6 +389,7 @@ def run_ci_pipeline(
     skip_badge: bool = False,
     skip_status_block: bool = False,
     skip_trend: bool = False,
+    skip_run_index: bool = False,
     skip_config_check: bool = False,
     skip_manifest: bool = False,
     skip_annotate: bool = False,
@@ -425,6 +435,7 @@ def run_ci_pipeline(
             skip_badge=skip_badge,
             skip_status_block=skip_status_block,
             skip_trend=skip_trend,
+            skip_run_index=skip_run_index,
             skip_config_check=skip_config_check,
             skip_manifest=skip_manifest,
             skip_annotate=skip_annotate,
@@ -485,6 +496,11 @@ def run_ci_pipeline(
             "trend",
             skip_trend,
             lambda: generated_trend_path(root, selected_run_dir),
+        ),
+        (
+            "run-index",
+            skip_run_index,
+            lambda: generated_run_index_path(root, selected_run_dir),
         ),
         (
             "manifest",
@@ -550,6 +566,7 @@ def append_unavailable_artifact_steps(
     skip_badge: bool,
     skip_status_block: bool,
     skip_trend: bool,
+    skip_run_index: bool,
     skip_config_check: bool,
     skip_manifest: bool,
     skip_annotate: bool,
@@ -566,6 +583,7 @@ def append_unavailable_artifact_steps(
         ("badge", skip_badge),
         ("status-block", skip_status_block),
         ("trend", skip_trend),
+        ("run-index", skip_run_index),
         ("config-check", skip_config_check),
         ("package-check", skip_package_check),
         ("manifest", skip_manifest),
@@ -807,6 +825,18 @@ def generated_annotations(
 def generated_explanation_path(project_root: Path, run_dir: Path | None) -> Path | None:
     """Generate explanation and return its path."""
     return generate_explanation(project_root, run_dir).output_path
+
+
+def generated_run_index_path(project_root: Path, run_dir: Path | None) -> Path | None:
+    """Generate run index artifacts and return the JSON path."""
+    result = build_run_index(project_root)
+    if run_dir is None:
+        return None
+    json_path = run_dir / "run-index.json"
+    summary_path = run_dir / "run-index.md"
+    write_run_index_json(result, json_path)
+    write_run_index_summary(result, summary_path)
+    return json_path
 
 
 def generated_trend_path(project_root: Path, run_dir: Path | None) -> Path | None:

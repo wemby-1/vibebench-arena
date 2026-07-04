@@ -412,6 +412,36 @@ def test_manifest_check_missing_artifact_entry_fails(tmp_path: Path) -> None:
     assert "artifact check.log: missing entry" in result.output
 
 
+def test_manifest_check_allows_missing_unavailable_new_artifact_entry(
+    tmp_path: Path,
+) -> None:
+    run_dir = write_run(tmp_path)
+    payload = write_manifest(tmp_path, run_dir)
+    artifacts = payload["artifacts"]
+    assert isinstance(artifacts, list)
+    payload["artifacts"] = [
+        item
+        for item in artifacts
+        if isinstance(item, dict) and item["name"] != "run-index.json"
+    ]
+    overwrite_manifest(run_dir, payload)
+
+    result = runner.invoke(
+        app,
+        [
+            "manifest",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--check",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Manifest is consistent" in result.output
+
+
 def test_manifest_check_mismatched_run_id_and_score_fail(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path)
     payload = write_manifest(tmp_path, run_dir)

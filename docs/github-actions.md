@@ -5,7 +5,7 @@ VibeBench can run inside GitHub Actions with a local-first CI flow and optional 
 
 ## VibeBench Dogfoods Itself
 
-This repository's active CI runs direct `ruff` and `pytest` checks first, then runs VibeBench itself. CI now runs `python -m vibebench ci`, which enforces the policy in `.vibebench/config.yaml`; if check or gate fails, the job fails. The command still attempts to generate the HTML report, PR-ready Markdown comment, human-readable explanation, machine-readable export, badge artifacts, README status block, config check artifacts, trend summaries, machine-readable manifest plus consistency check, zip artifact bundle, GitHub annotations, GitHub step summary, and uploads `.vibebench/runs` as artifacts.
+This repository's active CI runs direct `ruff` and `pytest` checks first, then runs VibeBench itself. CI now runs `python -m vibebench ci`, which enforces the policy in `.vibebench/config.yaml`; if check or gate fails, the job fails. The command still attempts to generate the HTML report, PR-ready Markdown comment, human-readable explanation, machine-readable export, badge artifacts, README status block, config check artifacts, trend summaries, run-index artifacts, machine-readable manifest plus consistency check, zip artifact bundle, GitHub annotations, GitHub step summary, and uploads `.vibebench/runs` as artifacts.
 
 ## Generate The Workflow
 
@@ -32,7 +32,7 @@ The example workflow:
 - runs `python -m vibebench ci` as the recommended VibeBench CI entrypoint
 - posts or updates a VibeBench PR comment only on `pull_request` events
 - uses check and gate as the final VibeBench pass/fail decision
-- still attempts config check, report, PR comment, explanation, export, badge, status block, trend summaries, manifest, GitHub annotations, bundle, and GitHub summary artifacts on failure
+- still attempts config check, report, PR comment, explanation, export, badge, status block, trend summaries, run-index artifacts, manifest, GitHub annotations, bundle, and GitHub summary artifacts on failure
 - uploads selected `.vibebench/runs` outputs as the `vibebench-run-artifacts` workflow artifact
 
 ## Add A Quality Gate
@@ -48,7 +48,7 @@ The command writes `.vibebench/runs/<timestamp>/gate-summary.md` and supports on
 
 ## Why `if: always()` Is Used
 
-`vibebench ci` should fail the workflow when check or gate fails. It internally still attempts config check artifacts, package-check artifacts, report, comment, explanation, export, badge, status block, trend summaries, release-check artifacts, annotation output, bundle, and summary generation so reviewers can inspect VibeBench output after a failed check or gate. The artifact upload step remains `if: always()`. Automation can consume `python -m vibebench ci --json` directly, save the same payload with `python -m vibebench ci --json-output .vibebench-ci.json`, or inspect a non-executing plan with `python -m vibebench ci --dry-run --json`. Plan artifacts can be written with `python -m vibebench ci --dry-run --write-plan`. For release branches, `python -m vibebench release-check --json` provides a read-only pre-release readiness payload without creating tags, releases, commits, or pushes; CI also writes `package-check.json` / `package-check.md` unless `--skip-package-check` is used, and `release-check.json` / `release-check.md` unless `--skip-release-check` is used.
+`vibebench ci` should fail the workflow when check or gate fails. It internally still attempts config check artifacts, package-check artifacts, report, comment, explanation, export, badge, status block, trend summaries, run-index artifacts, release-check artifacts, annotation output, bundle, and summary generation so reviewers can inspect VibeBench output after a failed check or gate. The artifact upload step remains `if: always()`. Automation can consume `python -m vibebench ci --json` directly, save the same payload with `python -m vibebench ci --json-output .vibebench-ci.json`, or inspect a non-executing plan with `python -m vibebench ci --dry-run --json`. Plan artifacts can be written with `python -m vibebench ci --dry-run --write-plan`. For release branches, `python -m vibebench release-check --json` provides a read-only pre-release readiness payload without creating tags, releases, commits, or pushes; CI also writes `package-check.json` / `package-check.md` unless `--skip-package-check` is used, and `release-check.json` / `release-check.md` unless `--skip-release-check` is used.
 
 ## Packaging Readiness
 
@@ -86,6 +86,8 @@ The workflow uploads a downloadable artifact named `vibebench-run-artifacts` fro
 .vibebench/runs/**/package-check.md
 .vibebench/runs/**/trend.json
 .vibebench/runs/**/trend.md
+.vibebench/runs/**/run-index.json
+.vibebench/runs/**/run-index.md
 .vibebench/runs/**/report/**
 ```
 

@@ -270,11 +270,15 @@ def compare_manifest_payload(
     current_artifacts = artifacts_by_name(current.get("artifacts"))
     for name in sorted(current_artifacts):
         if name not in stored_artifacts:
+            if artifact_missing_but_unavailable(current_artifacts[name]):
+                continue
             differences.append(f"artifact {name}: missing entry")
             continue
         stored_item = stored_artifacts[name]
         current_item = current_artifacts[name]
         for field in ARTIFACT_FIELDS:
+            if manifest_self_size_drift(name, field):
+                continue
             if stored_item.get(field) != current_item.get(field):
                 differences.append(
                     f"artifact {name} {field}: "
@@ -297,6 +301,16 @@ def artifacts_by_name(value: object) -> dict[str, dict[str, Any]]:
         if name:
             artifacts[name] = artifact
     return artifacts
+
+
+def artifact_missing_but_unavailable(artifact: dict[str, Any]) -> bool:
+    """Return whether a missing old manifest entry is harmless compatibility drift."""
+    return artifact.get("available") is False and artifact.get("size_bytes") is None
+
+
+def manifest_self_size_drift(name: str, field: str) -> bool:
+    """Return whether an artifact drift is the manifest tracking its own size."""
+    return name == MANIFEST_FILENAME and field == "size_bytes"
 
 
 def format_value(value: object) -> str:

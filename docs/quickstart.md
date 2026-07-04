@@ -183,7 +183,7 @@ python -m vibebench gate --baseline --write-gate-summary
 python -m vibebench ci
 ```
 
-`vibebench ci` runs check, gate, config check artifacts, report, PR comment, explain, export, badge, status block, trend summaries, manifest, GitHub annotations, bundle, and GitHub summary. Check and gate decide the final exit code, but artifact steps are still attempted on failure so CI logs and artifacts remain useful. Add `--json` for machine-readable stdout or `--json-output PATH` to save the same payload while keeping normal human output. Use `--dry-run` or `--plan` to inspect the CI step order and skip behavior without executing checks or writing artifacts. Add `--write-plan` to write `ci-plan.json` and `ci-plan.md` under `.vibebench/runs/<timestamp>_plan/`; those files then work with `artifacts`, `bundle`, `manifest`, and `latest --artifact ci-plan-json`.
+`vibebench ci` runs check, gate, config check artifacts, report, PR comment, explain, export, badge, status block, trend summaries, run-index artifacts, manifest, GitHub annotations, bundle, and GitHub summary. Check and gate decide the final exit code, but artifact steps are still attempted on failure so CI logs and artifacts remain useful. Add `--json` for machine-readable stdout or `--json-output PATH` to save the same payload while keeping normal human output. Use `--dry-run` or `--plan` to inspect the CI step order and skip behavior without executing checks or writing artifacts. Add `--write-plan` to write `ci-plan.json` and `ci-plan.md` under `.vibebench/runs/<timestamp>_plan/`; those files then work with `artifacts`, `bundle`, `manifest`, and `latest --artifact ci-plan-json`.
 
 Useful options:
 
@@ -304,6 +304,7 @@ This writes `.vibebench/runs/<timestamp>/status-block.md`, a copy-pasteable READ
 
 ```bash
 python -m vibebench manifest
+python -m vibebench run-index
 python -m vibebench artifacts
 python -m vibebench artifacts --json
 python -m vibebench artifacts --run-dir .vibebench/runs/<run-id>
@@ -312,7 +313,9 @@ python -m vibebench artifacts --only-available
 
 `vibebench manifest` writes `.vibebench/runs/<timestamp>/manifest.json`, a machine-readable index of run metadata and artifact availability. `vibebench manifest --check` verifies that an existing manifest has not drifted from the run directory.
 
-This lists known run artifacts, including config check artifacts, with availability and file sizes. Missing optional artifacts do not fail the command unless `--strict` is used. JSON output is intended for lightweight automation and dashboards.
+`vibebench run-index` summarizes recent run directories and can persist `run-index.json` / `run-index.md` with `--write-json PATH` and `--write-summary PATH`. It is tolerant of partial or corrupt older run folders and marks them instead of crashing.
+
+This lists known run artifacts, including config check artifacts and run-index artifacts, with availability and file sizes. Missing optional artifacts do not fail the command unless `--strict` is used. JSON output is intended for lightweight automation and dashboards.
 
 ## Emit GitHub Actions Annotations
 
@@ -372,7 +375,7 @@ The risk demo intentionally creates critical findings, so `vibebench check` is e
 
 ## CI Artifacts
 
-VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml`, generates `config-check.json`, `config-check.md`, `explain.md`, writes `export.json`, `badge.json`, `badge.md`, `status-block.md`, `trend.md`, and `trend.json`, bundles run artifacts, emits GitHub annotations, writes the GitHub Actions job summary, and uploads selected `.vibebench/runs` outputs as the `vibebench-run-artifacts` artifact for review.
+VibeBench Arena dogfoods itself in this repository's CI. The workflow runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml`, generates `config-check.json`, `config-check.md`, `explain.md`, writes `export.json`, `badge.json`, `badge.md`, `status-block.md`, `trend.md`, `trend.json`, `run-index.json`, and `run-index.md`, bundles run artifacts, emits GitHub annotations, writes the GitHub Actions job summary, and uploads selected `.vibebench/runs` outputs as the `vibebench-run-artifacts` artifact for review.
 
 ## Generated Files
 

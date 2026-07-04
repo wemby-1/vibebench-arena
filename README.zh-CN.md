@@ -91,6 +91,7 @@ python -m vibebench badge --format markdown
 python -m vibebench badge --format url
 python -m vibebench status-block
 python -m vibebench manifest
+python -m vibebench run-index
 python -m vibebench artifacts
 python -m vibebench annotate
 python -m vibebench gh-summary
@@ -239,7 +240,9 @@ python -m vibebench status-block --output README-status.md
 python -m vibebench status-block --readme README.md --write-readme
 python -m vibebench status-block --readme README.md --check-readme
 
-# 查看一次运行生成了哪些 artifact
+# 索引最近运行，并查看一次运行生成了哪些 artifact
+python -m vibebench run-index
+python -m vibebench run-index --json
 python -m vibebench artifacts
 python -m vibebench artifacts --json
 python -m vibebench artifacts --run-dir .vibebench/runs/<run-id>
@@ -264,6 +267,8 @@ python -m vibebench compare
 `vibebench latest` 会定位最新的有效运行及其已知产物。`--json` 适合自动化，`--all-paths` 可一次输出所有可用产物路径，方便脚本、本地排查和查看下载后的 CI artifacts；`--artifact NAME` 可查看单个产物，`--path-only` 配合 `--artifact` 可只输出一个可用产物路径。
 
 `vibebench trend` 会按最新优先汇总最近多次运行，并判断选定窗口内的质量趋势是 `improved`、`stable` 还是 `regressed`。它会比较最新与最旧运行的分数、风险等级和风险发现数量。`--json`、`--limit N` 和 `--runs-dir PATH` 适合自动化和分析归档运行；`--write-summary` 会把面向阅读的 Markdown 摘要写入 `.vibebench/runs/<timestamp>/trend.md`，`--write-json` 会写入机器可读的 `trend.json`；`--output PATH` 和 `--json-output PATH` 可分别指定 Markdown 和 JSON 输出位置。
+
+`vibebench run-index` 会生成最近运行目录的宽容索引：有效运行、半成品目录和损坏 metrics 都会被清楚标记，而不是让命令崩溃。`--json` 适合自动化，`--limit N` 和 `--runs-dir PATH` 可选择索引范围，`--write-json PATH` / `--write-summary PATH` 可持久化 `run-index.json` 和 `run-index.md`。`vibebench ci` 默认会生成这两个文件，除非使用 `--skip-run-index`。
 
 `vibebench baseline --set latest` 会把某次运行保存为 `.vibebench/baseline.json` 中的 baseline。`vibebench compare --baseline` 会用这个 baseline 和最新运行对比。
 
@@ -314,7 +319,7 @@ python -m vibebench compare
 
 `vibebench status-block` 会写入 `.vibebench/runs/<timestamp>/status-block.md`，内容是可直接复制到 README 的状态区块，包含状态、分数、风险等级、diff 规模、风险发现、badge 和已生成产物。可用 `--title`、`--no-include-badge`、`--no-include-artifacts` 或 `--output` 自定义。也可以在 README 中加入 `<!-- VIBEBENCH_STATUS_START -->` 和 `<!-- VIBEBENCH_STATUS_END -->` 标记，然后运行 `python -m vibebench status-block --readme README.md --write-readme` 只更新标记之间的内容；在只读校验场景中可用 `--check-readme` 检查状态块是否过期。
 
-`vibebench artifacts` 会列出最新运行的已知文件，包括 metrics、日志、报告、config check、package-check、release-check、summary、trend summary、badge、status block、bundle 和 compare。`--json` 适合自动化，`--run-dir .vibebench/runs/<run-id>` 可指定运行，`--only-available` 只显示已存在文件，`--strict` 则会在任何已知 artifact 缺失时失败。
+`vibebench artifacts` 会列出最新运行的已知文件，包括 metrics、日志、报告、config check、package-check、release-check、summary、trend summary、run-index、badge、status block、bundle 和 compare。`--json` 适合自动化，`--run-dir .vibebench/runs/<run-id>` 可指定运行，`--only-available` 只显示已存在文件，`--strict` 则会在任何已知 artifact 缺失时失败。
 
 `vibebench annotate` 会根据最新运行中的命令失败和风险发现输出 GitHub Actions annotations。使用 `--no-github-actions` 可以输出普通文本。它只负责展示，不决定通过/失败；真正的门禁仍由 `vibebench gate` 负责。
 
@@ -328,9 +333,9 @@ python -m vibebench compare
 
 ## 一键 CI 流水线
 
-`vibebench ci` 是推荐的 CI 入口。它会按顺序运行 check、gate、config check artifact、package-check artifacts、report、PR comment、explain、export、badge、status block、trend summaries、manifest 检查、release-check artifacts、GitHub annotations、bundle 和 GitHub summary。最终通过/失败由 check 和 gate 决定；即使门禁失败，后续产物步骤也会尽量继续生成，方便排查。默认仍输出适合人看的 Rich 表格；`--json` 适合自动化，`--json-output PATH` 可把同一份机器可读流水线结果写入文件。使用 `--dry-run` 或 `--plan` 可以只查看流水线顺序和 skip flag 效果，不运行检查也不写产物。加上 `--write-plan` 会把 `ci-plan.json` 和 `ci-plan.md` 写入类似运行目录的 `.vibebench/runs/<timestamp>_plan/`，也可以用 `--plan-json-output PATH` 和 `--plan-summary-output PATH` 指定输出位置。
+`vibebench ci` 是推荐的 CI 入口。它会按顺序运行 check、gate、config check artifact、package-check artifacts、report、PR comment、explain、export、badge、status block、trend summaries、run-index artifacts、manifest 检查、release-check artifacts、GitHub annotations、bundle 和 GitHub summary。最终通过/失败由 check 和 gate 决定；即使门禁失败，后续产物步骤也会尽量继续生成，方便排查。默认仍输出适合人看的 Rich 表格；`--json` 适合自动化，`--json-output PATH` 可把同一份机器可读流水线结果写入文件。使用 `--dry-run` 或 `--plan` 可以只查看流水线顺序和 skip flag 效果，不运行检查也不写产物。加上 `--write-plan` 会把 `ci-plan.json` 和 `ci-plan.md` 写入类似运行目录的 `.vibebench/runs/<timestamp>_plan/`，也可以用 `--plan-json-output PATH` 和 `--plan-summary-output PATH` 指定输出位置。
 
-常用选项包括 `--dry-run`、`--plan`、`--write-plan`、`--plan-json-output PATH`、`--plan-summary-output PATH`、`--json`、`--json-output PATH`、`--skip-report`、`--skip-pr-comment`、`--skip-explain`、`--skip-export`、`--skip-badge`、`--skip-status-block`、`--skip-trend`、`--skip-config-check`、`--skip-package-check`、`--skip-release-check`、`--skip-bundle`、`--skip-annotate`、`--skip-gh-summary`、`--bundle-include-report-assets` 和 `--bundle-strict`。`--min-score`、`--max-risk`、`--allow-findings`、`--no-require-status-passed` 会传递给 gate。使用 `--run-dir .vibebench/runs/<run-id>` 可以针对已有运行生成产物并执行门禁，不再创建新的 check run。
+常用选项包括 `--dry-run`、`--plan`、`--write-plan`、`--plan-json-output PATH`、`--plan-summary-output PATH`、`--json`、`--json-output PATH`、`--skip-report`、`--skip-pr-comment`、`--skip-explain`、`--skip-export`、`--skip-badge`、`--skip-status-block`、`--skip-trend`、`--skip-run-index`、`--skip-config-check`、`--skip-package-check`、`--skip-release-check`、`--skip-bundle`、`--skip-annotate`、`--skip-gh-summary`、`--bundle-include-report-assets` 和 `--bundle-strict`。`--min-score`、`--max-risk`、`--allow-findings`、`--no-require-status-passed` 会传递给 gate。使用 `--run-dir .vibebench/runs/<run-id>` 可以针对已有运行生成产物并执行门禁，不再创建新的 check run。
 
 ## HTML 报告展示什么？
 
@@ -365,13 +370,13 @@ GitHub PR comment 发布已经接入 GitHub Actions workflow，并且只在 `pul
 
 `vibebench annotate` 会把可见的风险发现和命令失败输出成 GitHub Actions annotations。`vibebench gh-summary` 会在 `GITHUB_STEP_SUMMARY` 存在时写入 GitHub Actions step summary。workflow 只会在 `pull_request` 事件中发布或更新 VibeBench PR comment。
 
-这个仓库已经在自己的 CI 里 dogfood VibeBench：直接运行 Ruff 和 pytest 后，CI 会继续运行 `vibebench ci`，按 `.vibebench/config.yaml` 中的策略执行明确门禁，并生成 config-check/report/comment/explanation/export/badge/status-block/trend，包含 `config-check.json`、`config-check.md`、`trend.md` 和 `trend.json`，输出 annotations，打包运行产物，写入 summary，并把选定的 `.vibebench/runs` 输出上传为 `vibebench-run-artifacts` artifact。`vibebench init` 可以生成 `.github/workflows/vibebench.yml` starter workflow；可参考 [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml)，更多说明见 [docs/github-actions.md](docs/github-actions.md)。
+这个仓库已经在自己的 CI 里 dogfood VibeBench：直接运行 Ruff 和 pytest 后，CI 会继续运行 `vibebench ci`，按 `.vibebench/config.yaml` 中的策略执行明确门禁，并生成 config-check/report/comment/explanation/export/badge/status-block/trend/run-index，包含 `config-check.json`、`config-check.md`、`trend.md`、`trend.json`、`run-index.json` 和 `run-index.md`，输出 annotations，打包运行产物，写入 summary，并把选定的 `.vibebench/runs` 输出上传为 `vibebench-run-artifacts` artifact。`vibebench init` 可以生成 `.github/workflows/vibebench.yml` starter workflow；可参考 [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml)，更多说明见 [docs/github-actions.md](docs/github-actions.md)。
 
 ## 发布就绪与 CI Artifacts
 
 v0.2.0 的发布说明见 [RELEASE_NOTES_v0.2.0.md](RELEASE_NOTES_v0.2.0.md)。后续准备新的 tag 或发布前，建议先运行 `python -m vibebench ci`、`python -m vibebench release-check` 和 `python -m vibebench doctor --strict`。如果只想查看流水线计划，可以先用 `python -m vibebench ci --dry-run` 或 `python -m vibebench ci --dry-run --write-plan`。
 
-GitHub Actions 会上传名为 `vibebench-run-artifacts` 的可下载 artifact。里面可能包含 run manifest、bundle zip、HTML report、GitHub summary、config-check artifacts、package-check artifacts、trend artifacts，以及用于发布前检查的 `release-check.json` 和 `release-check.md`。
+GitHub Actions 会上传名为 `vibebench-run-artifacts` 的可下载 artifact。里面可能包含 run manifest、bundle zip、HTML report、GitHub summary、config-check artifacts、package-check artifacts、trend artifacts、run-index artifacts，以及用于发布前检查的 `release-check.json` 和 `release-check.md`。
 
 ## 试运行风险检测 Demo
 

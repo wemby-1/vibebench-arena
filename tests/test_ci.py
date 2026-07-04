@@ -194,6 +194,8 @@ def test_ci_command_creates_standard_artifacts(tmp_path: Path) -> None:
     assert run_dir.joinpath("status-block.md").exists()
     assert run_dir.joinpath("trend.md").exists()
     assert run_dir.joinpath("trend.json").exists()
+    assert run_dir.joinpath("run-index.json").exists()
+    assert run_dir.joinpath("run-index.md").exists()
     assert run_dir.joinpath("config-check.json").exists()
     assert run_dir.joinpath("config-check.md").exists()
     assert run_dir.joinpath("package-check.json").exists()
@@ -226,6 +228,8 @@ def test_ci_attempts_artifacts_when_gate_fails(tmp_path: Path) -> None:
     assert run_dir.joinpath("status-block.md").exists()
     assert run_dir.joinpath("trend.md").exists()
     assert run_dir.joinpath("trend.json").exists()
+    assert run_dir.joinpath("run-index.json").exists()
+    assert run_dir.joinpath("run-index.md").exists()
     assert run_dir.joinpath("config-check.json").exists()
     assert run_dir.joinpath("config-check.md").exists()
     assert run_dir.joinpath("manifest.json").exists()
@@ -251,6 +255,7 @@ def test_skip_flags_skip_artifact_generation(tmp_path: Path) -> None:
             "--skip-badge",
             "--skip-status-block",
             "--skip-trend",
+            "--skip-run-index",
             "--skip-config-check",
             "--skip-package-check",
             "--skip-manifest",
@@ -269,6 +274,8 @@ def test_skip_flags_skip_artifact_generation(tmp_path: Path) -> None:
     assert not run_dir.joinpath("status-block.md").exists()
     assert not run_dir.joinpath("trend.md").exists()
     assert not run_dir.joinpath("trend.json").exists()
+    assert not run_dir.joinpath("run-index.json").exists()
+    assert not run_dir.joinpath("run-index.md").exists()
     assert not run_dir.joinpath("config-check.json").exists()
     assert not run_dir.joinpath("config-check.md").exists()
     assert not run_dir.joinpath("package-check.json").exists()
@@ -650,6 +657,7 @@ def test_ci_dry_run_human_output_includes_ordered_steps(tmp_path: Path) -> None:
         "badge",
         "status-block",
         "trend",
+        "run-index",
         "manifest",
         "manifest-check",
         "release-check",
@@ -687,6 +695,7 @@ def test_ci_dry_run_json_outputs_plan_payload(tmp_path: Path) -> None:
         "badge",
         "status-block",
         "trend",
+        "run-index",
         "manifest",
         "manifest-check",
         "release-check",
@@ -1003,6 +1012,7 @@ def test_ci_json_outputs_parseable_payload(tmp_path: Path) -> None:
         "badge",
         "status-block",
         "trend",
+        "run-index",
         "manifest",
         "manifest-check",
         "release-check",
@@ -1270,6 +1280,49 @@ def test_ci_skip_config_check_skips_config_check_generation(tmp_path: Path) -> N
     assert "skipped" in result.output
 
 
+def test_ci_dry_run_skip_run_index_marks_step_skipped(tmp_path: Path) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--skip-run-index",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["run-index"]["status"] == "skipped"
+    assert steps["run-index"]["message"] == "Skipped by --skip-run-index"
+
+
+def test_ci_skip_run_index_skips_artifacts(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--skip-run-index",
+        ],
+    )
+
+    assert result.exit_code == 0
+    run_dir = latest_run(tmp_path)
+    assert not run_dir.joinpath("run-index.json").exists()
+    assert not run_dir.joinpath("run-index.md").exists()
+    assert "run-index" in result.output
+
+
 def test_ci_dry_run_skip_package_check_marks_step_skipped(tmp_path: Path) -> None:
     write_config(tmp_path)
 
@@ -1418,5 +1471,7 @@ def test_ci_bundle_includes_release_check_artifacts(tmp_path: Path) -> None:
     names = zip_names(run_dir / "vibebench-bundle.zip")
     assert "package-check.json" in names
     assert "package-check.md" in names
+    assert "run-index.json" in names
+    assert "run-index.md" in names
     assert "release-check.json" in names
     assert "release-check.md" in names

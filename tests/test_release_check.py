@@ -178,6 +178,8 @@ def test_release_check_json_output_is_pure(tmp_path: Path) -> None:
         set(check) == {"name", "status", "message"}
         for check in payload["checks"]
     )
+    checks = {check["name"]: check for check in payload["checks"]}
+    assert checks["run_index"]["status"] == "passed"
 
 
 def test_release_check_missing_config_fails(tmp_path: Path) -> None:

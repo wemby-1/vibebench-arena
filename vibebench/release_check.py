@@ -17,6 +17,7 @@ from vibebench.manifest import check_manifest
 from vibebench.package_check import run_package_check
 from vibebench.paths import config_file
 from vibebench.report import ReportError
+from vibebench.run_index import build_run_index
 
 RELEASE_CHECK_JSON = "release-check.json"
 RELEASE_CHECK_SUMMARY = "release-check.md"
@@ -72,6 +73,7 @@ def run_release_check(project_root: Path) -> ReleaseReadinessResult:
 
     checks.append(check_manifest_consistency(root, latest_run_dir))
     checks.append(check_artifact_inventory(root, latest_run_dir))
+    checks.append(check_run_index(root))
     checks.append(check_ci_plan())
     checks.append(check_git_diff_whitespace(root))
 
@@ -190,6 +192,22 @@ def check_artifact_inventory(
         "artifacts",
         "passed",
         f"Artifact inventory generated ({available} available)",
+    )
+
+
+def check_run_index(project_root: Path) -> ReleaseReadinessCheck:
+    """Check that a useful run index can be generated."""
+    try:
+        result = build_run_index(project_root)
+    except ReportError as exc:
+        return ReleaseReadinessCheck("run_index", "failed", str(exc))
+    return ReleaseReadinessCheck(
+        "run_index",
+        "passed",
+        (
+            f"Run index generated ({len(result.runs)} indexed, "
+            f"{result.total_runs_seen} seen)"
+        ),
     )
 
 

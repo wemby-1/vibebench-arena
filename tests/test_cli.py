@@ -68,6 +68,8 @@ def test_init_generated_workflow_contains_required_commands(tmp_path: Path) -> N
     assert ".vibebench/runs/**/release-check.json" in workflow
     assert ".vibebench/runs/**/package-check.json" in workflow
     assert ".vibebench/runs/**/package-check.md" in workflow
+    assert ".vibebench/runs/**/run-index.json" in workflow
+    assert ".vibebench/runs/**/run-index.md" in workflow
     assert ".vibebench/runs/**/report/**" in workflow
     assert workflow.count("if: always()") >= 1
 
