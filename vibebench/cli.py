@@ -105,6 +105,11 @@ from vibebench.release_audit import (
     release_audit_verify_json,
     verify_release_audit,
 )
+from vibebench.release_body import (
+    ReleaseBodyResult,
+    export_release_body,
+    release_body_json,
+)
 from vibebench.release_check import (
     ReleaseReadinessResult,
     release_check_json,
@@ -1988,6 +1993,55 @@ def publish_check_command(
         raise typer.Exit(code=1)
 
 
+@app.command("release-body")
+def release_body_command(
+    project_root: ProjectRootOption = Path("."),
+    version: Annotated[
+        str,
+        typer.Option("--version", help="Release version, for example v0.3.0."),
+    ] = "",
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Write the release body Markdown to this path."),
+    ] = None,
+    check_only: Annotated[
+        bool,
+        typer.Option(
+            "--check",
+            help="Validate the release body without writing files.",
+        ),
+    ] = False,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print release body result as JSON."),
+    ] = False,
+) -> None:
+    """Export a local GitHub Release body from release notes."""
+    root = project_root.resolve()
+    selected_output_path = resolve_optional_output_path(root, output)
+    try:
+        result = export_release_body(
+            root,
+            version=version,
+            output_path=None if check_only else selected_output_path,
+        )
+    except ReportError as exc:
+        target_console = err_console if as_json else console
+        target_console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if as_json:
+        print(release_body_json(result))
+    elif check_only:
+        render_release_body_check_summary(result)
+    elif selected_output_path is not None:
+        console.print(f"Release body written: {selected_output_path}")
+    else:
+        print(result.body or "", end="")
+    if result.status == "failed":
+        raise typer.Exit(code=1)
+
+
 @app.command("release-audit")
 def release_audit_command(
     project_root: ProjectRootOption = Path("."),
@@ -3304,6 +3358,15 @@ def render_release_audit_verify_summary(result: ReleaseAuditVerifyResult) -> Non
 
     style = "green" if result.status == "passed" else "red"
     console.print(f"Release audit verification: [{style}]{result.status}[/]")
+
+
+def render_release_body_check_summary(result: ReleaseBodyResult) -> None:
+    """Render a concise release body validation summary."""
+    style = "green" if result.status == "passed" else "red"
+    console.print(f"Release body check: [{style}]{result.status}[/]")
+    for check in result.checks:
+        if check.status == "failed":
+            console.print(f"- {check.message}")
 
 
 def render_release_audit_summary(result: ReleaseAuditResult) -> None:

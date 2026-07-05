@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Local-only `python3 -m vibebench release-body` export for copy/paste GitHub Release bodies from `RELEASE_NOTES_vX.Y.Z.md`, with `--check` for stale release-candidate wording and no tag, release, upload, publish, version bump, or dependency install side effects.
 - `release-audit` now writes `release-audit-manifest.json` checksums and `release-audit --verify PATH` validates them when present, without tags, GitHub Releases, package uploads/publishes, version bumps, or dependency installs.
 - Read-only `python3 -m vibebench release-audit --verify PATH` mode for validating local release audit directories or zip archives without creating tags, GitHub Releases, package uploads/publishes, version bumps, or dependency installs.
 - Local-only release-audit archive output with `python3 -m vibebench release-audit --zip` and `python3 -m vibebench release-audit --zip-output PATH`, without creating tags, GitHub Releases, package uploads/publishes, or version bumps.
