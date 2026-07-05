@@ -6,6 +6,8 @@ VibeBench Arena is a Codex-first / vibe-coding quality console for local-first A
 
 It is built for the practical layer between "the agent changed code" and "a human or team is ready to trust, review, merge, or release it."
 
+For the fuller product thesis, see [product strategy](product-strategy.md), [public roadmap](roadmap-public.md), and [commercial potential](commercial-potential.md).
+
 ## The Problem
 
 AI coding is becoming easier. Reviewing, auditing, comparing, and trusting AI-generated changes is still painful.

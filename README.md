@@ -46,12 +46,18 @@ VibeBench is the evidence layer around AI-assisted coding. It does not try to re
 
 That makes it useful for new GitHub visitors as well as maintainers: the repository can show its quality console, one-command demo, artifact gallery, and release-readiness flow without asking for a hosted account or external service.
 
+## Product Thesis
+
+VibeBench is not a toy CLI; it is an early local-first product direction for AI coding quality control. The current CLI, demo, artifact gallery, release readiness checks, and public docs are the foundation for a broader Codex-first / vibe-coding quality console.
+
+Read the [product strategy](docs/product-strategy.md), [public roadmap](docs/roadmap-public.md), and [commercial potential](docs/commercial-potential.md) for the problem, product thesis, possible growth paths, and honest limitations. The project is ambitious, but it does not claim fake traction, fake revenue, fake investors, or promised outcomes.
+
 ## Start Here
 
 1. Run the one-command demo: `python3 -m vibebench demo`.
 2. Open the [demo guide](docs/demo.md) and [artifact gallery](docs/artifact-gallery.md).
 3. Inspect the checked-in [sample artifact pack](examples/showcase-artifacts/sample/README.md) or copy it with `python3 -m vibebench demo --copy-to /tmp/vibebench-demo`.
-4. Read the [positioning](docs/positioning.md) and [use cases](docs/use-cases.md) to see why this matters for Codex-first / vibe-coding engineering.
+4. Read the [positioning](docs/positioning.md), [use cases](docs/use-cases.md), [product strategy](docs/product-strategy.md), [public roadmap](docs/roadmap-public.md), and [commercial potential](docs/commercial-potential.md) to see why this matters for Codex-first / vibe-coding engineering.
 5. Use the GitHub issue templates to share a use case, report demo feedback, or propose a focused PR.
 
 For bounded, low-cost Codex milestones, use the [Codex task template](docs/codex-task-template.md).
@@ -494,6 +500,9 @@ See [examples/risk-demo/README.md](examples/risk-demo/README.md) for details.
 
 - [Quickstart](docs/quickstart.md)
 - [Risk rules](docs/risk-rules.md)
+- [Product strategy](docs/product-strategy.md)
+- [Public roadmap](docs/roadmap-public.md)
+- [Commercial potential](docs/commercial-potential.md)
 - [GitHub Actions](docs/github-actions.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)
