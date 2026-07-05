@@ -47,6 +47,16 @@ For bounded, low-cost Codex milestones, use the [Codex task template](docs/codex
 - Run `python3 -m vibebench release-check` to inspect release readiness.
 - Run `python3 -m vibebench release-audit --zip --output-dir /tmp/vibebench-release-audit-demo` to create a local audit bundle without publishing, tagging, or creating a GitHub Release.
 
+## What VibeBench Produces
+
+VibeBench does not stop at a single status line. It leaves evidence that can move through local review, GitHub Actions, release audit, and human decision-making. See the [artifact gallery](docs/artifact-gallery.md), [public demo](docs/demo.md), [quickstart demo](examples/quickstart-demo/README.md), and [showcase artifacts](examples/showcase-artifacts/README.md).
+
+| Artifact / Output | Purpose | Command | Why it matters |
+| --- | --- | --- | --- |
+| CI plan and run outputs | Preview or run the quality pipeline. | `python3 -m vibebench ci --dry-run --json` / `python3 -m vibebench ci` | Makes checks reproducible locally and in CI. |
+| Artifact inventory and compare | Locate outputs and compare run movement. | `python3 -m vibebench artifacts --json` / `python3 -m vibebench compare --json` | Turns AI-assisted changes into reviewable evidence. |
+| Release readiness and audit bundle | Record package, publish, checklist, release-body, and audit evidence. | `python3 -m vibebench release-check` / `python3 -m vibebench release-audit --zip` | Supports release decisions without publishing, tagging, or creating a GitHub Release. |
+
 ## What It Checks Today
 
 Current VibeBench supports:

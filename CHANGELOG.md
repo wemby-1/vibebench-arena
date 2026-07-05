@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added an artifact gallery and showcase docs for GitHub visitors.
 - Added public GitHub-facing quickstart demo and positioning docs for VibeBench Arena.
 - `release-audit` bundles `release-body.md` and `release-body.json` in directories, zips, manifests, and verification checks for local-only release handoff/audit records without tags, GitHub Releases, GitHub API calls, uploads, publishes, version bumps, or dependency installs.
 - Local-only `python3 -m vibebench release-body` export for copy/paste GitHub Release bodies from `RELEASE_NOTES_vX.Y.Z.md`, with `--check` for stale release-candidate wording and no tag, release, upload, publish, version bump, or dependency install side effects.
