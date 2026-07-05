@@ -33,7 +33,7 @@ VibeBench Arena is a Codex-first / vibe-coding quality console for turning AI-as
 - Clear command output.
 - Machine-readable JSON.
 - Artifacts that explain decisions and review context.
-- A VibeBench Proof Packet with `proof.md`, `proof.json`, `proof-manifest.json`, and optional `proof.zip`.
+- A VibeBench Proof Packet with `proof.md`, `proof.json`, a self-contained local `proof.html`, `proof-manifest.json`, and optional `proof.zip`.
 - Verification with `python3 -m vibebench proof --verify /tmp/vibebench-proof/proof.zip`.
 - Release/readiness checks that stay local unless a user chooses otherwise.
 - Docs that map product direction to engineering proof.

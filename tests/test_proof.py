@@ -5,6 +5,7 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from vibebench.cli import app
+from vibebench.proof import proof_html
 
 runner = CliRunner()
 REQUIRED_KEYS = {
@@ -29,7 +30,7 @@ VERIFY_KEYS = {
     "files",
     "errors",
 }
-PACKET_FILES = {"proof.md", "proof.json", "proof-manifest.json"}
+PACKET_FILES = {"proof.md", "proof.json", "proof.html", "proof-manifest.json"}
 
 
 def proof_texts(payload: dict[str, object], *extra: str) -> str:
@@ -104,24 +105,27 @@ def test_proof_json_payload_has_required_stable_keys(tmp_path: Path) -> None:
     assert REQUIRED_KEYS <= set(payload)
     assert payload["local_first"]["enabled"] is True
     assert payload["evidence_first"]["enabled"] is True
-    assert "python3 -m vibebench ci --dry-run --json" in payload[
-        "recommended_commands"
-    ]
+    assert "python3 -m vibebench ci --dry-run --json" in payload["recommended_commands"]
     assert "docs/evaluate.md" in payload["recommended_docs"]
-    assert "examples/showcase-artifacts/sample/manifest.json" in payload[
-        "recommended_artifacts"
-    ]
+    assert (
+        "examples/showcase-artifacts/sample/manifest.json"
+        in payload["recommended_artifacts"]
+    )
 
 
-def test_proof_output_dir_writes_markdown_json_and_manifest(tmp_path: Path) -> None:
+def test_proof_output_dir_writes_markdown_json_html_and_manifest(
+    tmp_path: Path,
+) -> None:
     output_dir, result = make_packet(tmp_path)
 
     assert result.exit_code == 0
     summary = output_dir / "proof.md"
     data = output_dir / "proof.json"
+    html_report = output_dir / "proof.html"
     manifest = output_dir / "proof-manifest.json"
     assert summary.is_file()
     assert data.is_file()
+    assert html_report.is_file()
     assert manifest.is_file()
     markdown = summary.read_text(encoding="utf-8")
     assert markdown.startswith("# VibeBench Proof Packet")
@@ -196,7 +200,7 @@ def test_proof_manifest_contains_sha256_and_size_for_expected_files(
     assert manifest["status"] == "ready"
     assert manifest["project"]["name"] == "VibeBench Arena"
     files = {item["name"]: item for item in manifest["files"]}
-    assert set(files) == {"proof.md", "proof.json"}
+    assert set(files) == {"proof.md", "proof.json", "proof.html"}
     for item in files.values():
         assert item["size_bytes"] > 0
         assert len(item["sha256"]) == 64
@@ -282,9 +286,128 @@ def test_proof_output_dir_zip_json_keeps_stdout_pure_json(tmp_path: Path) -> Non
     assert payload["status"] == "ready"
     assert output_dir.joinpath("proof.md").is_file()
     assert output_dir.joinpath("proof.json").is_file()
+    assert output_dir.joinpath("proof.html").is_file()
     assert output_dir.joinpath("proof-manifest.json").is_file()
     assert output_dir.joinpath("proof.zip").is_file()
     assert "Proof archive" not in result.output
+
+
+def test_proof_html_output_writes_non_empty_html_file(tmp_path: Path) -> None:
+    html_path = tmp_path / "proof-report.html"
+
+    result = runner.invoke(
+        app,
+        [
+            "proof",
+            "--project-root",
+            str(tmp_path),
+            "--html-output",
+            str(html_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    html = html_path.read_text(encoding="utf-8")
+    assert html.startswith("<!doctype html>")
+    assert "VibeBench Proof Packet" in html
+
+
+def test_proof_html_contains_title_and_core_sections(tmp_path: Path) -> None:
+    output_dir, result = make_packet(tmp_path)
+
+    assert result.exit_code == 0
+    html = output_dir.joinpath("proof.html").read_text(encoding="utf-8")
+    assert "<title>VibeBench Proof Packet</title>" in html
+    assert "Codex-first / vibe-coding quality evidence" in html
+    assert "Summary" in html
+    assert "CI dry-run / plan evidence" in html
+    assert "Release readiness evidence" in html
+    assert "Doctor / strict readiness evidence" in html
+    assert "Artifact or proof packet outputs" in html
+    assert "Verification / checksum status" in html
+
+
+def test_proof_html_has_no_remote_or_absolute_local_references(tmp_path: Path) -> None:
+    output_dir, result = make_packet(tmp_path)
+
+    assert result.exit_code == 0
+    html = output_dir.joinpath("proof.html").read_text(encoding="utf-8")
+    assert "http://" not in html
+    assert "https://" not in html
+    assert "/tmp/" not in html
+    assert "/home/" not in html
+    assert "/data/code/" not in html
+
+
+def test_proof_json_with_html_output_keeps_stdout_pure_json(tmp_path: Path) -> None:
+    html_path = tmp_path / "proof.html"
+
+    result = runner.invoke(
+        app,
+        [
+            "proof",
+            "--project-root",
+            str(tmp_path),
+            "--json",
+            "--html-output",
+            str(html_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["status"] == "ready"
+    assert html_path.is_file()
+    assert "Proof HTML" not in result.output
+
+
+def test_proof_verify_fails_when_required_html_is_missing(tmp_path: Path) -> None:
+    output_dir, write_result = make_packet(tmp_path)
+    output_dir.joinpath("proof.html").unlink()
+
+    result = runner.invoke(app, ["proof", "--verify", str(output_dir)])
+
+    assert write_result.exit_code == 0
+    assert result.exit_code == 1
+    assert "proof.html" in result.output
+    assert "missing required" in result.output.lower()
+
+
+def test_proof_html_escapes_dynamic_payload_content() -> None:
+    payload = {
+        "status": "ready<script>",
+        "project": {"name": "Name <unsafe>"},
+        "summary": "ignored",
+        "positioning": {"description": "Codex <first> & safe"},
+        "local_first": {"description": "Local <only>"},
+        "evidence_first": {"description": "Evidence & review"},
+        "recommended_commands": ["python3 -m example --name '<x>'"],
+        "recommended_docs": ["docs/<guide>.md"],
+        "recommended_artifacts": ["artifact<script>.json"],
+        "honest_limits": ["No <claims>"],
+        "next_steps": ["Review & share"],
+    }
+
+    html = proof_html(payload)
+
+    assert "ready&lt;script&gt;" in html
+    assert "Name &lt;unsafe&gt;" in html
+    assert "&#x27;&lt;x&gt;&#x27;" in html
+    assert "No &lt;claims&gt;" in html
+    assert "ready<script>" not in html
+    assert "Name <unsafe>" not in html
+
+
+def test_proof_verify_fails_when_html_is_modified(tmp_path: Path) -> None:
+    output_dir, write_result = make_packet(tmp_path)
+    output_dir.joinpath("proof.html").write_text("changed\n", encoding="utf-8")
+
+    result = runner.invoke(app, ["proof", "--verify", str(output_dir)])
+
+    assert write_result.exit_code == 0
+    assert result.exit_code == 1
+    assert "proof.html" in result.output
+    assert "mismatch" in result.output.lower()
 
 
 def test_proof_output_dir_file_fails_clearly(tmp_path: Path) -> None:
@@ -330,6 +453,7 @@ def test_proof_generated_outputs_avoid_banned_hype_and_safety_phrases(
         output_dir.joinpath("proof.md").read_text(encoding="utf-8"),
         output_dir.joinpath("proof.json").read_text(encoding="utf-8"),
         output_dir.joinpath("proof-manifest.json").read_text(encoding="utf-8"),
+        output_dir.joinpath("proof.html").read_text(encoding="utf-8"),
     )
     for phrase in banned_phrases():
         assert phrase not in combined

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import html
 import json
 import zipfile
 from datetime import UTC, datetime
@@ -11,10 +12,11 @@ from typing import Any
 
 PROOF_MARKDOWN = "proof.md"
 PROOF_JSON = "proof.json"
+PROOF_HTML = "proof.html"
 PROOF_MANIFEST = "proof-manifest.json"
 PROOF_ZIP = "proof.zip"
-MANIFEST_CONTENT_FILES = [PROOF_MARKDOWN, PROOF_JSON]
-REQUIRED_PACKET_FILES = [PROOF_MARKDOWN, PROOF_JSON, PROOF_MANIFEST]
+MANIFEST_CONTENT_FILES = [PROOF_MARKDOWN, PROOF_JSON, PROOF_HTML]
+REQUIRED_PACKET_FILES = [PROOF_MARKDOWN, PROOF_JSON, PROOF_HTML, PROOF_MANIFEST]
 
 RECOMMENDED_COMMANDS = [
     "python3 -m vibebench demo",
@@ -178,6 +180,256 @@ def proof_markdown(payload: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def proof_html(payload: dict[str, Any]) -> str:
+    """Render a self-contained static HTML proof packet report."""
+    generated_at = datetime.now(UTC).replace(microsecond=0).isoformat()
+    project = payload.get("project") if isinstance(payload.get("project"), dict) else {}
+    positioning = (
+        payload.get("positioning")
+        if isinstance(payload.get("positioning"), dict)
+        else {}
+    )
+    local_first = (
+        payload.get("local_first")
+        if isinstance(payload.get("local_first"), dict)
+        else {}
+    )
+    evidence_first = (
+        payload.get("evidence_first")
+        if isinstance(payload.get("evidence_first"), dict)
+        else {}
+    )
+
+    commands = list_items(payload.get("recommended_commands"))
+    docs = list_items(payload.get("recommended_docs"))
+    artifacts = list_items(payload.get("recommended_artifacts"))
+    limits = list_items(payload.get("honest_limits"))
+    next_steps = list_items(payload.get("next_steps"))
+
+    summary_rows = [
+        ("status", payload.get("status", "")),
+        ("project", project.get("name", "")),
+        ("generated time", generated_at),
+        ("risk / status", "local-first, evidence-first proof packet"),
+        ("artifact / check summary", artifact_check_summary(artifacts, commands)),
+    ]
+    if commands:
+        summary_rows.insert(4, ("command used", neutralize_local_paths(commands[-1])))
+
+    return "\n".join(
+        [
+            "<!doctype html>",
+            '<html lang="en">',
+            "<head>",
+            '  <meta charset="utf-8">',
+            '  <meta name="viewport" content="width=device-width, initial-scale=1">',
+            "  <title>VibeBench Proof Packet</title>",
+            "  <style>",
+            css_text(),
+            "  </style>",
+            "</head>",
+            "<body>",
+            '  <main class="page">',
+            "    <header>",
+            "      <h1>VibeBench Proof Packet</h1>",
+            (
+                "      <p>Codex-first / vibe-coding quality evidence for "
+                "local AI-assisted development.</p>"
+            ),
+            "    </header>",
+            section_html("Summary", definition_list(summary_rows)),
+            section_html(
+                "CI dry-run / plan evidence",
+                bullet_list(
+                    [command for command in commands if "ci --dry-run" in command]
+                )
+                or paragraph("No CI dry-run command is present in this proof payload."),
+            ),
+            section_html(
+                "Release readiness evidence",
+                bullet_list(
+                    [command for command in commands if "release-check" in command]
+                    + [doc for doc in docs if "release" in doc or "evaluate" in doc]
+                )
+                or paragraph(
+                    "No release readiness evidence is present in this proof payload."
+                ),
+            ),
+            section_html(
+                "Doctor / strict readiness evidence",
+                bullet_list(
+                    [command for command in commands if "doctor --strict" in command]
+                )
+                or paragraph(
+                    "No strict doctor command is present in this proof payload."
+                ),
+            ),
+            section_html(
+                "Artifact or proof packet outputs",
+                bullet_list(
+                    artifacts + [command for command in commands if "proof" in command]
+                )
+                or paragraph("No artifact outputs are present in this proof payload."),
+            ),
+            section_html(
+                "Verification / checksum status",
+                bullet_list(
+                    [
+                        (
+                            "proof-manifest.json records relative packet files "
+                            "and checksums."
+                        ),
+                        (
+                            "proof verification validates required files and "
+                            "manifest checksums."
+                        ),
+                    ]
+                ),
+            ),
+            section_html(
+                "Local and Evidence-First Notes",
+                bullet_list(
+                    [
+                        value
+                        for value in [
+                            positioning.get("description", ""),
+                            local_first.get("description", ""),
+                            evidence_first.get("description", ""),
+                        ]
+                        if value
+                    ]
+                ),
+            ),
+            section_html("Honest Limitations / Non-claims", bullet_list(limits)),
+            section_html("Next Steps", bullet_list(next_steps)),
+            "  </main>",
+            "</body>",
+            "</html>",
+            "",
+        ]
+    )
+
+
+def css_text() -> str:
+    """Return inline CSS for the self-contained proof report."""
+    return """
+    :root { color-scheme: light; }
+    body {
+      margin: 0;
+      background: #f6f7f9;
+      color: #20242a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 40px 20px 56px;
+    }
+    header {
+      border-bottom: 3px solid #2f6f73;
+      margin-bottom: 28px;
+      padding-bottom: 18px;
+    }
+    h1, h2 { line-height: 1.2; margin: 0; }
+    h1 { font-size: 2.25rem; }
+    h2 { font-size: 1.25rem; margin-bottom: 12px; }
+    header p { color: #49515a; font-size: 1.05rem; margin: 10px 0 0; }
+    section {
+      background: #ffffff;
+      border: 1px solid #d8dde3;
+      border-radius: 8px;
+      margin: 16px 0;
+      padding: 18px;
+    }
+    dl {
+      display: grid;
+      grid-template-columns: minmax(140px, 220px) 1fr;
+      gap: 8px 16px;
+      margin: 0;
+    }
+    dt { color: #49515a; font-weight: 700; }
+    dd { margin: 0; overflow-wrap: anywhere; }
+    ul { margin: 0; padding-left: 1.25rem; }
+    li + li { margin-top: 6px; }
+    code {
+      background: #eef1f4;
+      border-radius: 4px;
+      padding: 0.1rem 0.3rem;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    @media (max-width: 640px) {
+      .page { padding: 24px 14px 40px; }
+      h1 { font-size: 1.8rem; }
+      dl { grid-template-columns: 1fr; }
+      dt { margin-top: 8px; }
+    }
+    """.strip()
+
+
+def section_html(title: str, body: str) -> str:
+    """Render an escaped section title with already escaped body HTML."""
+    return f"    <section>\n      <h2>{escape_text(title)}</h2>\n{body}\n    </section>"
+
+
+def definition_list(rows: list[tuple[str, object]]) -> str:
+    """Render escaped key-value rows."""
+    items: list[str] = ["      <dl>"]
+    for key, value in rows:
+        items.append(f"        <dt>{escape_text(key)}</dt>")
+        items.append(f"        <dd>{inline_code_or_text(value)}</dd>")
+    items.append("      </dl>")
+    return "\n".join(items)
+
+
+def bullet_list(values: list[object]) -> str:
+    """Render escaped list values, returning an empty string when no values exist."""
+    if not values:
+        return ""
+    items = ["      <ul>"]
+    for value in values:
+        items.append(f"        <li>{inline_code_or_text(value)}</li>")
+    items.append("      </ul>")
+    return "\n".join(items)
+
+
+def paragraph(value: object) -> str:
+    """Render one escaped paragraph."""
+    return f"      <p>{escape_text(value)}</p>"
+
+
+def inline_code_or_text(value: object) -> str:
+    """Render command-like values as escaped inline code."""
+    text = neutralize_local_paths(str(value))
+    escaped = escape_text(text)
+    if text.startswith("python") or text.endswith(".json") or text.endswith(".md"):
+        return f"<code>{escaped}</code>"
+    return escaped
+
+
+def escape_text(value: object) -> str:
+    """Escape dynamic text for safe HTML output."""
+    return html.escape(str(value), quote=True)
+
+
+def list_items(value: object) -> list[str]:
+    """Return a list of string items from a payload value."""
+    if not isinstance(value, list):
+        return []
+    return [str(item) for item in value]
+
+
+def neutralize_local_paths(value: str) -> str:
+    """Avoid exposing absolute local paths in the HTML report."""
+    return value.replace("/tmp/vibebench-proof", "PATH")
+
+
+def artifact_check_summary(artifacts: list[str], commands: list[str]) -> str:
+    """Summarize available artifact and command evidence."""
+    return f"{len(artifacts)} artifact path(s), {len(commands)} recommended command(s)"
+
+
 def proof_manifest(
     payload: dict[str, Any],
     content: dict[str, bytes],
@@ -192,7 +444,7 @@ def proof_manifest(
         ],
         "notes": [
             "Manifest paths are relative to the proof packet root.",
-            "Checksums cover proof.md and proof.json.",
+            "Checksums cover proof.md, proof.json, and proof.html.",
             "Verification also requires proof-manifest.json to be present and valid.",
         ],
     }
@@ -226,6 +478,7 @@ def write_proof_packet(
     output_dir: Path | None = None,
     json_output: Path | None = None,
     summary_output: Path | None = None,
+    html_output: Path | None = None,
     create_zip: bool = False,
     zip_output: Path | None = None,
 ) -> dict[str, Path]:
@@ -236,9 +489,11 @@ def write_proof_packet(
 
     summary_text = proof_markdown(payload)
     json_text = proof_json(payload) + "\n"
+    html_text = proof_html(payload)
     packet_content = {
         PROOF_MARKDOWN: summary_text.encode("utf-8"),
         PROOF_JSON: json_text.encode("utf-8"),
+        PROOF_HTML: html_text.encode("utf-8"),
     }
     manifest_text = proof_manifest_json(proof_manifest(payload, packet_content)) + "\n"
 
@@ -249,6 +504,7 @@ def write_proof_packet(
         packet_dir.mkdir(parents=True, exist_ok=True)
         written["summary"] = packet_dir / PROOF_MARKDOWN
         written["json"] = packet_dir / PROOF_JSON
+        written["html"] = packet_dir / PROOF_HTML
         written["manifest"] = packet_dir / PROOF_MANIFEST
 
     if summary_output is not None:
@@ -261,6 +517,11 @@ def write_proof_packet(
         ensure_output_file(json_path)
         written["json"] = json_path
 
+    if html_output is not None:
+        html_path = resolve_output_path(root, html_output)
+        ensure_output_file(html_path)
+        written["html"] = html_path
+
     if create_zip or zip_output is not None:
         if packet_dir is None:
             message = "--zip requires --output-dir so packet files can be built."
@@ -272,6 +533,8 @@ def write_proof_packet(
         written["summary"].write_text(summary_text, encoding="utf-8")
     if "json" in written:
         written["json"].write_text(json_text, encoding="utf-8")
+    if "html" in written:
+        written["html"].write_text(html_text, encoding="utf-8")
     if "manifest" in written:
         written["manifest"].write_text(manifest_text, encoding="utf-8")
     if "zip" in written and packet_dir is not None:
@@ -430,7 +693,7 @@ def verify_packet_bytes(
     listed = set(manifest_by_name)
     expected = set(MANIFEST_CONTENT_FILES)
     if listed != expected:
-        message = "Manifest must list proof.md and proof.json."
+        message = "Manifest must list proof.md, proof.json, and proof.html."
         checks.append(failed_check("manifest_expected_files", message))
         errors.append(message)
     else:

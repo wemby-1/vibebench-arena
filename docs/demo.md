@@ -77,7 +77,7 @@ If `/tmp/vibebench-release-audit-demo` already exists, remove it first or choose
 - `config --path` prints the expected `.vibebench/config.yaml` path.
 - `config --show --json` prints machine-readable project and policy configuration.
 - `ci --dry-run` prints the planned check, gate, artifact, manifest, release-check, bundle, and summary steps.
-- `proof` prints a concise Codex-first / vibe-coding, local-first, evidence-first proof packet summary; add `--output-dir --zip` to write `proof.md`, `proof.json`, `proof-manifest.json`, and `proof.zip`. Verify a proof packet with `proof --verify PATH`.
+- `proof` prints a concise Codex-first / vibe-coding, local-first, evidence-first proof packet summary; add `--output-dir --zip` to write `proof.md`, `proof.json`, self-contained `proof.html`, `proof-manifest.json`, and `proof.zip`. Verify a proof packet with `proof --verify PATH`.
 - `ci` runs the local pipeline and writes a timestamped run directory.
 - `latest --all-paths` lists the newest run and artifact paths.
 - `artifacts --json` prints machine-readable artifact availability.

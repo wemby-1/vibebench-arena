@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added a self-contained local HTML proof report (`proof.html`) to proof packets, manifests, archives, and verification.
+
 - Added proof packet manifests, zip archive output, and local verification for shareable proof packets.
 
 - Added `python3 -m vibebench proof` for generating a local proof packet with visitor-facing Markdown and JSON evidence.

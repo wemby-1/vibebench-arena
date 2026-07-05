@@ -1366,6 +1366,10 @@ def proof_command(
         Path | None,
         typer.Option("--summary-output", help="Write proof Markdown to PATH."),
     ] = None,
+    html_output: Annotated[
+        Path | None,
+        typer.Option("--html-output", help="Write self-contained proof HTML to PATH."),
+    ] = None,
     create_zip: Annotated[
         bool,
         typer.Option("--zip", help="Write proof.zip with relative packet files."),
@@ -1403,6 +1407,7 @@ def proof_command(
             output_dir=output_dir,
             json_output=json_output,
             summary_output=summary_output,
+            html_output=html_output,
             create_zip=create_zip,
             zip_output=zip_output,
         )
@@ -1425,6 +1430,8 @@ def proof_command(
         console.print(f"Proof Markdown: {written['summary']}")
     if "json" in written:
         console.print(f"Proof JSON: {written['json']}")
+    if "html" in written:
+        console.print(f"Proof HTML: {written['html']}")
     if "manifest" in written:
         console.print(f"Proof manifest: {written['manifest']}")
     if "zip" in written:
