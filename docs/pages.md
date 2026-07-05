@@ -20,6 +20,8 @@ python3 -m vibebench site-check --json
 
 This checks the Pages entry for required proof/evaluation links and obvious unsafe publishing markers. It is local-only. GitHub Pages is not enabled automatically by this command.
 
+In CI, GitHub Actions also runs `python3 -m vibebench site-check`, writes `.vibebench/site-preview/site-check.json`, and uploads `vibebench-site-preview` as a downloadable static preview bundle. This still does not enable GitHub Pages automatically; manual setup remains the step below.
+
 ## Proof packet command
 
 The Pages entry points visitors to the same local proof packet command used by CI:

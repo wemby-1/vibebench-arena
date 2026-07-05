@@ -18,7 +18,7 @@ VibeBench Arena helps individuals and small teams make AI-assisted coding work r
 4. Inspect the sample artifacts.
 5. Run `python3 -m vibebench ci --dry-run --json`.
 6. Generate a shareable proof packet with `python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip`; inspect the self-contained evidence-first `proof.html` before sharing, or use the GitHub Actions proof packet summary card and download `vibebench-proof-packet` after CI runs.
-7. Run `python3 -m vibebench site-check` or `python3 -m vibebench site-check --json` before publishing or editing the static Pages entry.
+7. Run `python3 -m vibebench site-check` or `python3 -m vibebench site-check --json` before publishing or editing the static Pages entry; CI also uploads `vibebench-site-preview` as a downloadable static preview bundle without enabling GitHub Pages automatically.
 8. Read the [comparison](comparison.md) and [FAQ](faq.md).
 
 ## First day

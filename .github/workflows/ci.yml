@@ -80,6 +80,57 @@ jobs:
           path: .vibebench/proof-packet
           if-no-files-found: error
 
+      - name: Prepare static site preview
+        run: |
+          mkdir -p .vibebench/site-preview
+          python3 -m vibebench site-check
+          python3 -m vibebench site-check --json-output .vibebench/site-preview/site-check.json
+          cp docs/index.html .vibebench/site-preview/index.html
+          cp docs/showcase.html .vibebench/site-preview/showcase.html
+          cp docs/pages.md .vibebench/site-preview/pages.md
+          cp docs/evaluate.md .vibebench/site-preview/evaluate.md
+          cp docs/adoption.md .vibebench/site-preview/adoption.md
+          cp docs/demo.md .vibebench/site-preview/demo.md
+          cp docs/product-strategy.md .vibebench/site-preview/product-strategy.md
+          cp docs/commercial-potential.md .vibebench/site-preview/commercial-potential.md
+          cp docs/comparison.md .vibebench/site-preview/comparison.md
+          cp docs/faq.md .vibebench/site-preview/faq.md
+
+      - name: Add static site preview summary
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          ## VibeBench Static Site Preview
+
+          **Status:** Static site readiness check passed
+
+          **Artifact:** `vibebench-site-preview`
+
+          **Included entry:** `index.html`
+
+          **Product page:** `showcase.html`
+
+          **Setup guide:** `pages.md`
+
+          **Preview locally:**
+
+          ```bash
+          python3 -m http.server 8000 --directory docs
+          ```
+
+          **Readiness command:**
+
+          ```bash
+          python3 -m vibebench site-check
+          ```
+          EOF
+
+      - name: Upload VibeBench static site preview
+        uses: actions/upload-artifact@v7
+        with:
+          name: vibebench-site-preview
+          path: .vibebench/site-preview
+          if-no-files-found: error
+
       - name: Upload VibeBench artifacts
         if: always()
         uses: actions/upload-artifact@v7

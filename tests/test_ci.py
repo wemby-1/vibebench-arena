@@ -1551,6 +1551,29 @@ def test_active_github_workflow_uploads_proof_packet_artifact() -> None:
     assert "proof-manifest.json" in workflow
     assert "proof.zip" in workflow
 
+
+def test_active_github_workflow_uploads_static_site_preview_artifact() -> None:
+    workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+    assert "python3 -m vibebench site-check" in workflow
+    assert ".vibebench/site-preview" in workflow
+    assert "site-check.json" in workflow
+    assert "vibebench-site-preview" in workflow
+    assert "actions/upload-artifact@v7" in workflow
+    assert "GITHUB_STEP_SUMMARY" in workflow
+    assert "python3 -m http.server 8000 --directory docs" in workflow
+    assert "docs/index.html" in workflow
+    assert "docs/showcase.html" in workflow
+    assert "docs/pages.md" in workflow
+    assert "docs/evaluate.md" in workflow
+    assert "docs/adoption.md" in workflow
+    assert "docs/demo.md" in workflow
+    assert "docs/product-strategy.md" in workflow
+    assert "docs/commercial-potential.md" in workflow
+    assert "docs/comparison.md" in workflow
+    assert "docs/faq.md" in workflow
+
+
 def test_example_github_workflow_posts_pr_comments_safely() -> None:
     workflow = Path("docs/examples/github-actions/vibebench.yml").read_text(
         encoding="utf-8"

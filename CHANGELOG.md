@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added CI static site readiness checking and a downloadable `vibebench-site-preview` artifact for reviewing the GitHub Pages-ready docs without enabling Pages automatically.
+
 - Added `python3 -m vibebench site-check` with JSON output to verify the static GitHub Pages entry, required proof/evaluation links, and unsafe publishing markers before manual Pages setup.
 
 - Added a GitHub Pages-ready site entry and manual setup guide for serving the public docs from `docs/`.

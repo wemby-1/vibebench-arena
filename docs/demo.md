@@ -82,7 +82,7 @@ If `/tmp/vibebench-release-audit-demo` already exists, remove it first or choose
 - `config --show --json` prints machine-readable project and policy configuration.
 - `ci --dry-run` prints the planned check, gate, artifact, manifest, release-check, bundle, and summary steps.
 - `proof` prints a concise Codex-first / vibe-coding, local-first, evidence-first proof packet summary; run `python3 -m vibebench proof --output-dir PATH --zip` to write `proof.md`, `proof.json`, self-contained `proof.html`, `proof-manifest.json`, and `proof.zip`. GitHub Actions shows a proof packet summary card and uploads the same packet as `vibebench-proof-packet`.
-- `site-check` verifies the static GitHub Pages entry for required proof/evaluation links and obvious unsafe publishing markers; `site-check --json` prints the same result as machine-readable JSON. It does not enable GitHub Pages automatically.
+- `site-check` verifies the static GitHub Pages entry for required proof/evaluation links and obvious unsafe publishing markers; `site-check --json` prints the same result as machine-readable JSON. In CI, GitHub Actions runs the same readiness check and uploads `vibebench-site-preview` as a downloadable static preview bundle. It does not enable GitHub Pages automatically.
 - `ci` runs the local pipeline and writes a timestamped run directory.
 - `latest --all-paths` lists the newest run and artifact paths.
 - `artifacts --json` prints machine-readable artifact availability.
