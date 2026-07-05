@@ -179,6 +179,8 @@ def test_release_check_json_output_is_pure(tmp_path: Path) -> None:
         for check in payload["checks"]
     )
     checks = {check["name"]: check for check in payload["checks"]}
+    assert checks["package_build"]["status"] == "passed"
+    assert "package-check --build" in checks["package_build"]["message"]
     assert checks["run_index"]["status"] == "passed"
     assert checks["compare"]["status"] == "passed"
     assert "insufficient data" in checks["compare"]["message"]

@@ -1877,6 +1877,13 @@ def package_check_command(
         bool,
         typer.Option("--advice", help="Show advice for failed package checks."),
     ] = False,
+    build: Annotated[
+        bool,
+        typer.Option(
+            "--build",
+            help="Run an opt-in local-only package build readiness check.",
+        ),
+    ] = False,
     write_json: Annotated[
         Path | None,
         typer.Option("--write-json", help="Write package readiness JSON."),
@@ -1888,7 +1895,7 @@ def package_check_command(
 ) -> None:
     """Check local package and install readiness without network access."""
     root = project_root.resolve()
-    result = run_package_check(root, advice=advice)
+    result = run_package_check(root, advice=advice, build=build)
     selected_json_path = resolve_optional_output_path(root, write_json)
     selected_summary_path = resolve_optional_output_path(root, write_summary)
     try:
@@ -2990,6 +2997,11 @@ def render_package_check_summary(result: PackageReadinessResult) -> None:
             row.append(check.advice or "")
         table.add_row(*row)
     console.print(table)
+    if result.build is not None:
+        tool = result.build.tool or "unavailable"
+        console.print(f"Build readiness: {result.build.status} ({tool})")
+        if result.build.advice and result.build.status == "failed":
+            console.print(f"Build advice: {result.build.advice}")
     status_style_name = "green" if result.ready else "red"
     console.print(f"Package readiness: [{status_style_name}]{result.status}[/]")
 

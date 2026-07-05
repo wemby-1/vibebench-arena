@@ -64,6 +64,7 @@ def run_release_check(project_root: Path) -> ReleaseReadinessResult:
     checks = [
         check_config_consistency(root),
         check_package_readiness(root),
+        check_package_build_readiness_opt_in(),
         check_doctor_strict(root),
     ]
 
@@ -121,6 +122,18 @@ def check_package_readiness(project_root: Path) -> ReleaseReadinessCheck:
         "package_check",
         "failed",
         message or "Package readiness check failed",
+    )
+
+
+def check_package_build_readiness_opt_in() -> ReleaseReadinessCheck:
+    """Report that local build readiness is an explicit package-check opt-in."""
+    return ReleaseReadinessCheck(
+        "package_build",
+        "passed",
+        (
+            "Local package build readiness is opt-in; run "
+            "python -m vibebench package-check --build before publishing."
+        ),
     )
 
 

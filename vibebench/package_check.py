@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import importlib
+import importlib.util
 import json
+import re
+import subprocess
+import sys
+import tempfile
 import tomllib
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -36,6 +44,20 @@ class PackageReadinessCheck:
 
 
 @dataclass(frozen=True)
+class PackageBuildReadiness:
+    """Local package build readiness details."""
+
+    requested: bool
+    status: PackageCheckStatus
+    tool: str | None
+    tool_available: bool
+    artifacts: list[str]
+    output_dir: Path | None
+    message: str
+    advice: str | None = None
+
+
+@dataclass(frozen=True)
 class PackageReadinessResult:
     """Complete package readiness result."""
 
@@ -44,6 +66,7 @@ class PackageReadinessResult:
     version: str | None
     checks: list[PackageReadinessCheck]
     advice: bool = False
+    build: PackageBuildReadiness | None = None
 
     @property
     def ready(self) -> bool:
@@ -60,6 +83,7 @@ def run_package_check(
     project_root: Path,
     *,
     advice: bool = False,
+    build: bool = False,
 ) -> PackageReadinessResult:
     """Run local package readiness checks without network access."""
     root = project_root.resolve()
@@ -96,6 +120,18 @@ def run_package_check(
     checks.extend(import_checks())
     checks.extend(documentation_checks(root))
 
+    build_result: PackageBuildReadiness | None = None
+    if build:
+        build_result = run_build_readiness_check(root)
+        checks.append(
+            PackageReadinessCheck(
+                name="build_readiness",
+                status=build_result.status,
+                message=build_result.message,
+                advice=build_result.advice,
+            )
+        )
+
     if advice:
         checks = [with_advice(check) for check in checks]
 
@@ -105,7 +141,395 @@ def run_package_check(
         version=version,
         checks=checks,
         advice=advice,
+        build=build_result,
     )
+
+
+def run_build_readiness_check(project_root: Path) -> PackageBuildReadiness:
+    """Run an opt-in local-only build readiness check."""
+    tools = select_build_tools(project_root)
+    if not tools:
+        message = "No local build tool is available"
+        return PackageBuildReadiness(
+            requested=True,
+            status="failed",
+            tool=None,
+            tool_available=False,
+            artifacts=[],
+            output_dir=None,
+            message=message,
+            advice=(
+                "Install local build tooling such as the 'build' module and the "
+                "project build backend, then rerun package-check --build."
+            ),
+        )
+
+    last_failure: PackageBuildReadiness | None = None
+    with tempfile.TemporaryDirectory(prefix="vibebench-package-build-") as temp_dir:
+        output_dir = Path(temp_dir)
+        for tool in tools:
+            if tool == "stdlib wheel":
+                return run_stdlib_wheel_build(project_root, output_dir, last_failure)
+            result = run_subprocess_build_tool(project_root, output_dir, tool)
+            if result.status == "passed":
+                return result
+            last_failure = result
+            if not can_try_stdlib_after_failure(result):
+                return result
+
+    return last_failure or PackageBuildReadiness(
+        requested=True,
+        status="failed",
+        tool=None,
+        tool_available=False,
+        artifacts=[],
+        output_dir=None,
+        message="No local build tool is available",
+        advice="Install local build tooling and rerun package-check --build.",
+    )
+
+
+def select_build_tools(project_root: Path) -> list[str]:
+    """Select local-only build commands to try in preference order."""
+    tools: list[str] = []
+    if importlib.util.find_spec("build") is not None:
+        tools.append("python -m build")
+    if importlib.util.find_spec("pip") is not None:
+        tools.append("python -m pip wheel")
+    if supports_stdlib_wheel_build(project_root):
+        tools.append("stdlib wheel")
+    return tools
+
+
+def run_subprocess_build_tool(
+    project_root: Path,
+    output_dir: Path,
+    tool: str,
+) -> PackageBuildReadiness:
+    """Run a subprocess-backed local build command."""
+    command = build_command(tool, output_dir)
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=project_root,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=120,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return PackageBuildReadiness(
+            requested=True,
+            status="failed",
+            tool=tool,
+            tool_available=True,
+            artifacts=[],
+            output_dir=None,
+            message=f"Local build failed with {tool}: {exc}",
+            advice=build_failure_advice(tool),
+        )
+
+    artifacts = sorted(path.name for path in output_dir.iterdir() if path.is_file())
+    if completed.returncode != 0:
+        detail = build_failure_detail(completed)
+        return PackageBuildReadiness(
+            requested=True,
+            status="failed",
+            tool=tool,
+            tool_available=True,
+            artifacts=artifacts,
+            output_dir=None,
+            message=f"Local build failed with {tool}: {detail}",
+            advice=build_failure_advice(tool),
+        )
+    if not artifacts:
+        return PackageBuildReadiness(
+            requested=True,
+            status="failed",
+            tool=tool,
+            tool_available=True,
+            artifacts=[],
+            output_dir=None,
+            message=f"Local build with {tool} produced no artifacts",
+            advice=(
+                "Check pyproject build configuration and rerun "
+                "package-check --build."
+            ),
+        )
+
+    artifact_text = ", ".join(artifacts)
+    return PackageBuildReadiness(
+        requested=True,
+        status="passed",
+        tool=tool,
+        tool_available=True,
+        artifacts=artifacts,
+        output_dir=None,
+        message=(
+            f"Local build produced {artifact_text}; temporary output was cleaned up"
+        ),
+    )
+
+
+def build_command(tool: str, output_dir: Path) -> list[str]:
+    """Return the local-only build command for the selected tool."""
+    if tool == "python -m build":
+        return [
+            sys.executable,
+            "-m",
+            "build",
+            "--sdist",
+            "--wheel",
+            "--outdir",
+            str(output_dir),
+            "--no-isolation",
+        ]
+    return [
+        sys.executable,
+        "-m",
+        "pip",
+        "wheel",
+        ".",
+        "--no-deps",
+        "--no-index",
+        "--no-build-isolation",
+        "--wheel-dir",
+        str(output_dir),
+    ]
+
+
+def build_failure_detail(completed: subprocess.CompletedProcess[str]) -> str:
+    """Return a concise build failure detail."""
+    output = (completed.stderr or completed.stdout or "").strip()
+    if output:
+        lines = [line.strip() for line in output.splitlines() if line.strip()]
+        if lines:
+            return f"exit code {completed.returncode}; {lines[-1]}"
+    return f"exit code {completed.returncode}"
+
+
+def build_failure_advice(tool: str) -> str:
+    """Return advice for a local build failure."""
+    if tool == "python -m build":
+        return (
+            "Ensure the 'build' module and pyproject build backend are installed "
+            "locally; package-check --build uses --no-isolation and will not "
+            "install missing tools."
+        )
+    return (
+        "Ensure pip and the pyproject build backend are installed locally; the "
+        "pip fallback uses --no-index and --no-build-isolation, so it will not "
+        "download or install missing build tools."
+    )
+
+
+def can_try_stdlib_after_failure(result: PackageBuildReadiness) -> bool:
+    """Return whether a backend/tooling failure can fall back to stdlib wheel."""
+    if result.status == "passed":
+        return False
+    message = result.message.lower()
+    backend_missing = "cannot import" in message or "no module named" in message
+    return backend_missing and result.tool in {"python -m build", "python -m pip wheel"}
+
+
+def supports_stdlib_wheel_build(project_root: Path) -> bool:
+    """Return whether the project has enough metadata for a stdlib wheel build."""
+    try:
+        payload = tomllib.loads(
+            project_root.joinpath("pyproject.toml").read_text(encoding="utf-8")
+        )
+    except (OSError, tomllib.TOMLDecodeError):
+        return False
+    metadata = payload.get("project")
+    if not isinstance(metadata, dict):
+        return False
+    return bool(
+        value_as_str(metadata, "name")
+        and wheel_package_paths(project_root, payload)
+    )
+
+
+def run_stdlib_wheel_build(
+    project_root: Path,
+    output_dir: Path,
+    previous_failure: PackageBuildReadiness | None,
+) -> PackageBuildReadiness:
+    """Build a pure-Python wheel with stdlib packaging primitives."""
+    try:
+        artifact = build_stdlib_wheel(project_root, output_dir)
+    except (OSError, tomllib.TOMLDecodeError, ValueError) as exc:
+        return PackageBuildReadiness(
+            requested=True,
+            status="failed",
+            tool="stdlib wheel",
+            tool_available=True,
+            artifacts=[],
+            output_dir=None,
+            message=f"Local stdlib wheel build failed: {exc}",
+            advice="Install pyproject build tooling and rerun package-check --build.",
+        )
+
+    note = ""
+    if previous_failure is not None:
+        note = f" after {previous_failure.tool} was unavailable locally"
+    return PackageBuildReadiness(
+        requested=True,
+        status="passed",
+        tool="stdlib wheel",
+        tool_available=True,
+        artifacts=[artifact.name],
+        output_dir=None,
+        message=(
+            f"Local stdlib wheel build produced {artifact.name}{note}; "
+            "temporary output was cleaned up"
+        ),
+    )
+
+
+def build_stdlib_wheel(project_root: Path, output_dir: Path) -> Path:
+    """Create a minimal pure-Python wheel without network or installed tooling."""
+    payload = tomllib.loads(
+        project_root.joinpath("pyproject.toml").read_text(encoding="utf-8")
+    )
+    metadata = payload.get("project")
+    if not isinstance(metadata, dict):
+        raise ValueError("[project] metadata is missing")
+    package_name = value_as_str(metadata, "name")
+    version = value_as_str(metadata, "version")
+    if not package_name or not version:
+        raise ValueError("project name and version are required")
+
+    packages = wheel_package_paths(project_root, payload)
+    if not packages:
+        raise ValueError("no pure-Python package paths are available")
+
+    wheel_name = f"{wheel_safe_name(package_name)}-{version}-py3-none-any.whl"
+    output_path = output_dir / wheel_name
+    dist_info = f"{wheel_safe_name(package_name)}-{version}.dist-info"
+    records: list[str] = []
+
+    with zipfile.ZipFile(output_path, "w", compression=zipfile.ZIP_DEFLATED) as wheel:
+        for package_path in packages:
+            for file_path in sorted(package_path.rglob("*.py")):
+                relative = file_path.relative_to(project_root).as_posix()
+                write_wheel_file(wheel, records, relative, file_path.read_bytes())
+        write_wheel_file(
+            wheel,
+            records,
+            f"{dist_info}/METADATA",
+            wheel_metadata(metadata).encode("utf-8"),
+        )
+        write_wheel_file(
+            wheel,
+            records,
+            f"{dist_info}/WHEEL",
+            wheel_file_metadata().encode("utf-8"),
+        )
+        scripts = metadata.get("scripts")
+        if isinstance(scripts, dict) and scripts:
+            write_wheel_file(
+                wheel,
+                records,
+                f"{dist_info}/entry_points.txt",
+                wheel_entry_points(scripts).encode("utf-8"),
+            )
+        record_path = f"{dist_info}/RECORD"
+        records.append(f"{record_path},,")
+        wheel.writestr(record_path, "\n".join(records) + "\n")
+    return output_path
+
+
+def wheel_package_paths(project_root: Path, pyproject: dict[str, Any]) -> list[Path]:
+    """Return package directories for the stdlib wheel fallback."""
+    packages = hatch_wheel_packages(pyproject)
+    if not packages:
+        project = pyproject.get("project")
+        if isinstance(project, dict):
+            name = value_as_str(project, "name")
+            if name:
+                packages = [name.replace("-", "_")]
+    paths = [project_root / package for package in packages]
+    return [path for path in paths if path.is_dir()]
+
+
+def hatch_wheel_packages(pyproject: dict[str, Any]) -> list[str]:
+    """Return hatch wheel package paths when configured."""
+    tool = pyproject.get("tool")
+    if not isinstance(tool, dict):
+        return []
+    hatch = tool.get("hatch")
+    if not isinstance(hatch, dict):
+        return []
+    build = hatch.get("build")
+    if not isinstance(build, dict):
+        return []
+    targets = build.get("targets")
+    if not isinstance(targets, dict):
+        return []
+    wheel = targets.get("wheel")
+    if not isinstance(wheel, dict):
+        return []
+    packages = wheel.get("packages")
+    if not isinstance(packages, list):
+        return []
+    return [package for package in packages if isinstance(package, str)]
+
+
+def write_wheel_file(
+    wheel: zipfile.ZipFile,
+    records: list[str],
+    path: str,
+    data: bytes,
+) -> None:
+    """Write one wheel file and append its RECORD entry."""
+    wheel.writestr(path, data)
+    digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest())
+    encoded_digest = digest.rstrip(b"=").decode("ascii")
+    records.append(f"{path},sha256={encoded_digest},{len(data)}")
+
+
+def wheel_metadata(metadata: dict[str, Any]) -> str:
+    """Return minimal wheel METADATA content."""
+    lines = [
+        "Metadata-Version: 2.1",
+        f"Name: {value_as_str(metadata, 'name') or ''}",
+        f"Version: {value_as_str(metadata, 'version') or ''}",
+    ]
+    description = value_as_str(metadata, "description")
+    if description:
+        lines.append(f"Summary: {description}")
+    requires_python = value_as_str(metadata, "requires-python")
+    if requires_python:
+        lines.append(f"Requires-Python: {requires_python}")
+    return "\n".join(lines) + "\n"
+
+
+def wheel_file_metadata() -> str:
+    """Return minimal WHEEL metadata."""
+    return "\n".join(
+        [
+            "Wheel-Version: 1.0",
+            "Generator: vibebench package-check",
+            "Root-Is-Purelib: true",
+            "Tag: py3-none-any",
+            "",
+        ]
+    )
+
+
+def wheel_entry_points(scripts: dict[object, object]) -> str:
+    """Return console script entry points."""
+    lines = ["[console_scripts]"]
+    for name, target in sorted(scripts.items()):
+        if isinstance(name, str) and isinstance(target, str):
+            lines.append(f"{name} = {target}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def wheel_safe_name(name: str) -> str:
+    """Return a wheel filename-safe distribution name."""
+    return re.sub(r"[^A-Za-z0-9.]+", "_", name).strip("_")
 
 
 def metadata_checks(
@@ -241,7 +665,7 @@ def documentation_checks(project_root: Path) -> list[PackageReadinessCheck]:
 
 def package_check_json_payload(result: PackageReadinessResult) -> dict[str, object]:
     """Return a deterministic JSON payload for package readiness."""
-    return {
+    payload: dict[str, object] = {
         "status": result.status,
         "project_root": str(result.project_root),
         "package_name": result.package_name,
@@ -250,6 +674,23 @@ def package_check_json_payload(result: PackageReadinessResult) -> dict[str, obje
             package_check_payload(check, include_advice=result.advice)
             for check in result.checks
         ],
+    }
+    if result.build is not None:
+        payload["build"] = package_build_payload(result.build)
+    return payload
+
+
+def package_build_payload(build: PackageBuildReadiness) -> dict[str, object]:
+    """Return a JSON-safe package build readiness payload."""
+    return {
+        "requested": build.requested,
+        "status": build.status,
+        "tool": build.tool,
+        "tool_available": build.tool_available,
+        "artifacts": build.artifacts,
+        "output_dir": str(build.output_dir) if build.output_dir else None,
+        "message": build.message,
+        "advice": build.advice,
     }
 
 
@@ -347,7 +788,7 @@ def with_advice(check: PackageReadinessCheck) -> PackageReadinessCheck:
         name=check.name,
         status=check.status,
         message=check.message,
-        advice=advice_for_check(check),
+        advice=check.advice or advice_for_check(check),
     )
 
 
@@ -377,6 +818,11 @@ def advice_for_check(check: PackageReadinessCheck) -> str:
         return "Fix import errors before packaging or installing VibeBench."
     if check.name.startswith("doc:"):
         return "Restore the missing documentation file or update the docs checklist."
+    if check.name == "build_readiness":
+        return (
+            check.advice
+            or "Install local build tooling and rerun package-check --build."
+        )
     return "Fix this package metadata issue and rerun package-check."
 
 

@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Opt-in local-only package build readiness check with `python -m vibebench package-check --build`, including JSON build metadata and release-check guidance before PyPI or GitHub Package publishing.
 - Low-cost Codex task template in [docs/codex-task-template.md](docs/codex-task-template.md) for bounded, auditable milestone prompts.
 - Read-only `vibebench release-checklist` command for target-version release preparation checks without creating tags or GitHub releases.
 - Package metadata prepared for v0.3.0 without creating a tag or GitHub release.
