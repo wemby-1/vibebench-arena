@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "run_id": "sample-current",
+  "created_at": "2026-01-01T00:00:00Z",
+  "artifacts": [
+    {
+      "name": "ci_summary",
+      "kind": "markdown",
+      "path": "examples/showcase-artifacts/sample/ci-summary.md",
+      "exists": true
+    },
+    {
+      "name": "ci_plan",
+      "kind": "json",
+      "path": "examples/showcase-artifacts/sample/ci-plan.json",
+      "exists": true
+    },
+    {
+      "name": "compare_summary",
+      "kind": "markdown",
+      "path": "examples/showcase-artifacts/sample/compare-summary.md",
+      "exists": true
+    },
+    {
+      "name": "release_audit_summary",
+      "kind": "markdown",
+      "path": "examples/showcase-artifacts/sample/release-audit-summary.md",
+      "exists": true
+    },
+    {
+      "name": "manifest",
+      "kind": "json",
+      "path": "examples/showcase-artifacts/sample/manifest.json",
+      "exists": true
+    }
+  ]
+}

@@ -2,6 +2,8 @@
 
 This folder is a lightweight tour of what VibeBench produces. It is for GitHub visitors who want to understand the artifact surface before running a full project workflow.
 
+For the fastest browseable preview, open the checked-in [sample artifact pack](sample/README.md).
+
 ## Artifact Tour
 
 VibeBench turns Codex-first / vibe-coding changes into a quality console of local evidence:

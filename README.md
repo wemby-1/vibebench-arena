@@ -26,7 +26,7 @@ AI-assisted coding can feel fast but hard to trust, review, compare, and release
 
 VibeBench Arena is not another AI chat app and not just a benchmark leaderboard. It is a local quality console for Codex-first work: a way to record what changed, check it, compare it, audit release readiness, and keep humans in the review loop.
 
-Start with the [public demo guide](docs/demo.md), the [quickstart demo](examples/quickstart-demo/README.md), or the current [v0.3.0 release notes](RELEASE_NOTES_v0.3.0.md).
+Start with the [public demo guide](docs/demo.md), the [sample artifact pack](examples/showcase-artifacts/sample/README.md), the [quickstart demo](examples/quickstart-demo/README.md), or the current [v0.3.0 release notes](RELEASE_NOTES_v0.3.0.md).
 
 ## Why This Exists
 
@@ -49,7 +49,7 @@ For bounded, low-cost Codex milestones, use the [Codex task template](docs/codex
 
 ## What VibeBench Produces
 
-VibeBench does not stop at a single status line. It leaves evidence that can move through local review, GitHub Actions, release audit, and human decision-making. See the [artifact gallery](docs/artifact-gallery.md), [public demo](docs/demo.md), [quickstart demo](examples/quickstart-demo/README.md), and [showcase artifacts](examples/showcase-artifacts/README.md).
+VibeBench does not stop at a single status line. It leaves evidence that can move through local review, GitHub Actions, release audit, and human decision-making. See the [artifact gallery](docs/artifact-gallery.md), [sample artifact pack](examples/showcase-artifacts/sample/README.md), [public demo](docs/demo.md), [quickstart demo](examples/quickstart-demo/README.md), and [showcase artifacts](examples/showcase-artifacts/README.md).
 
 | Artifact / Output | Purpose | Command | Why it matters |
 | --- | --- | --- | --- |
