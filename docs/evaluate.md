@@ -12,12 +12,13 @@ VibeBench Arena is a Codex-first / vibe-coding quality console for turning AI-as
 ## 5-minute path
 
 1. Read the README positioning to understand the local-first evidence model.
-2. Run `python3 -m vibebench demo`.
-3. Run `python3 -m vibebench demo --json`.
-4. Run `python3 -m vibebench ci --dry-run --json`.
-5. Run `python3 -m vibebench proof --output-dir /tmp/vibebench-proof --zip` to generate a shareable proof packet; in GitHub Actions, CI shows a proof packet summary card and uploads the same evidence-first packet as `vibebench-proof-packet`.
-6. Inspect the sample [artifact gallery](artifact-gallery.md).
-7. Inspect the [case study](case-study.md).
+2. Skim the GitHub Pages-ready [product showcase](showcase.html).
+3. Run `python3 -m vibebench demo`.
+4. Run `python3 -m vibebench demo --json`.
+5. Run `python3 -m vibebench ci --dry-run --json`.
+6. Run `python3 -m vibebench proof --output-dir /tmp/vibebench-proof --zip` to generate a shareable proof packet; in GitHub Actions, CI shows a proof packet summary card and uploads the same evidence-first packet as `vibebench-proof-packet`.
+7. Inspect the sample [artifact gallery](artifact-gallery.md).
+8. Inspect the [case study](case-study.md).
 
 ## What to look for
 

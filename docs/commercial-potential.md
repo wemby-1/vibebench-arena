@@ -6,7 +6,7 @@ This commercial potential narrative describes possible directions. It is not a c
 
 For an evidence-first public walkthrough that avoids inflated claims, see the [case study](case-study.md).
 
-For a concise scope check and adoption path, see [evaluate in 5 minutes](evaluate.md), [adoption](adoption.md), the [comparison](comparison.md), and [FAQ](faq.md).
+For a concise scope check and adoption path, see the [product showcase](showcase.html), [evaluate in 5 minutes](evaluate.md), [adoption](adoption.md), the [comparison](comparison.md), and [FAQ](faq.md).
 
 ## Why This Could Matter Commercially
 

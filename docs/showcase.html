@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VibeBench Arena - Product Showcase</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f4ef;
+      --surface: #ffffff;
+      --ink: #1f252b;
+      --muted: #5a646e;
+      --line: #d9d3ca;
+      --teal: #256d6a;
+      --blue: #2d5f88;
+      --green: #4b7c45;
+      --rust: #9a563c;
+      --amber: #b17a25;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family:
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+      line-height: 1.55;
+    }
+
+    a {
+      color: var(--blue);
+      font-weight: 700;
+      text-decoration-thickness: 0.08em;
+      text-underline-offset: 0.18em;
+    }
+
+    .page {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero {
+      min-height: 72vh;
+      display: grid;
+      gap: 28px;
+      align-content: center;
+      border-bottom: 1px solid var(--line);
+      padding: 36px 0 42px;
+    }
+
+    .eyebrow {
+      color: var(--teal);
+      font-size: 0.85rem;
+      font-weight: 800;
+      letter-spacing: 0;
+      margin: 0 0 14px;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3 {
+      line-height: 1.15;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(3rem, 7vw, 5.7rem);
+      max-width: 8ch;
+    }
+
+    .hero h2 {
+      color: var(--rust);
+      font-size: clamp(1.45rem, 3vw, 2.2rem);
+      margin-top: 16px;
+      max-width: 14ch;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 1.15rem;
+      margin: 22px 0 0;
+      max-width: 62ch;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .button {
+      align-items: center;
+      border: 1px solid var(--teal);
+      border-radius: 8px;
+      display: inline-flex;
+      min-height: 44px;
+      padding: 10px 14px;
+      text-decoration: none;
+    }
+
+    .button.primary {
+      background: var(--teal);
+      color: #ffffff;
+    }
+
+    .showcase-panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      max-width: 920px;
+      padding: 18px;
+    }
+
+    .panel-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .status {
+      color: var(--green);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .proof-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .proof-row {
+      align-items: center;
+      border-left: 4px solid var(--teal);
+      display: grid;
+      gap: 4px;
+      grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1.2fr);
+      padding: 10px 12px;
+    }
+
+    .proof-row:nth-child(2) {
+      border-color: var(--blue);
+    }
+
+    .proof-row:nth-child(3) {
+      border-color: var(--green);
+    }
+
+    .proof-row:nth-child(4) {
+      border-color: var(--amber);
+    }
+
+    .proof-row:nth-child(5) {
+      border-color: var(--rust);
+    }
+
+    .proof-row strong,
+    code {
+      font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Consolas,
+        "Liberation Mono",
+        monospace;
+    }
+
+    code {
+      background: #ece7df;
+      border: 1px solid #ddd4c8;
+      border-radius: 6px;
+      color: #27313a;
+      padding: 0.12rem 0.32rem;
+      overflow-wrap: anywhere;
+    }
+
+    section {
+      padding: 46px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section-head {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 24px;
+      max-width: 760px;
+    }
+
+    .section-head h2 {
+      font-size: clamp(1.8rem, 3.4vw, 2.8rem);
+    }
+
+    .section-head p {
+      color: var(--muted);
+      font-size: 1.05rem;
+      margin: 0;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+
+    .card h3 {
+      font-size: 1.08rem;
+      margin-bottom: 8px;
+    }
+
+    .card p,
+    .card li {
+      color: var(--muted);
+    }
+
+    .card p {
+      margin: 0;
+    }
+
+    .loop {
+      counter-reset: step;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    .loop .card {
+      min-height: 150px;
+      position: relative;
+    }
+
+    .loop .card::before {
+      color: var(--teal);
+      content: counter(step, decimal-leading-zero);
+      counter-increment: step;
+      display: block;
+      font-weight: 900;
+      margin-bottom: 18px;
+    }
+
+    .stack-list,
+    .command-list,
+    .link-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .stack-list {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .stack-list li {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      min-height: 64px;
+      padding: 14px;
+    }
+
+    .command-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .command-list li {
+      background: #272f36;
+      border-radius: 8px;
+      color: #ffffff;
+      padding: 13px 14px;
+      overflow-wrap: anywhere;
+    }
+
+    .command-list code {
+      background: transparent;
+      border: 0;
+      color: inherit;
+      padding: 0;
+    }
+
+    .limits {
+      border-left: 5px solid var(--rust);
+    }
+
+    .cta {
+      border-bottom: 0;
+      padding-bottom: 24px;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .link-list a {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: block;
+      min-height: 60px;
+      padding: 14px;
+      text-decoration: none;
+    }
+
+    .fine-print {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-top: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .two,
+      .three,
+      .loop,
+      .stack-list,
+      .link-list {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: auto;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .page {
+        padding: 18px;
+      }
+
+      .proof-row {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero" aria-labelledby="showcase-title">
+      <div>
+        <p class="eyebrow">Local-first AI coding evidence</p>
+        <h1 id="showcase-title">VibeBench Arena</h1>
+        <h2>Codex-first quality console for vibe-coding projects</h2>
+        <p class="subtitle">
+          VibeBench Arena turns AI-assisted code changes into checks, artifacts,
+          proof packets, and reviewable evidence that developers can inspect
+          locally or in GitHub Actions.
+        </p>
+        <nav class="hero-actions" aria-label="Primary showcase links">
+          <a class="button primary" href="../README.md">Read the README</a>
+          <a class="button" href="evaluate.md">Evaluate in 5 minutes</a>
+          <a class="button" href="artifact-gallery.md">Browse artifacts</a>
+        </nav>
+      </div>
+      <div class="showcase-panel" aria-label="Proof packet preview">
+        <div class="panel-title">
+          <strong>Proof packet</strong>
+          <span class="status">Evidence ready</span>
+        </div>
+        <div class="proof-grid">
+          <div class="proof-row">
+            <strong>proof.html</strong>
+            <span>Self-contained evidence-first report</span>
+          </div>
+          <div class="proof-row">
+            <strong>proof.json</strong>
+            <span>Machine-readable proof payload</span>
+          </div>
+          <div class="proof-row">
+            <strong>proof.md</strong>
+            <span>GitHub-readable proof summary</span>
+          </div>
+          <div class="proof-row">
+            <strong>manifest</strong>
+            <span>Checksums and relative packet paths</span>
+          </div>
+          <div class="proof-row">
+            <strong>CI card</strong>
+            <span>Actions summary plus downloadable artifact</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="problem-title">
+      <div class="section-head">
+        <h2 id="problem-title">AI coding is fast. Review evidence is scattered.</h2>
+        <p>
+          A vibe-coded patch can look plausible before anyone has checked the
+          diff, risk surface, command output, release readiness, or artifacts.
+          Vibe-coding needs reproducible checks, local artifacts, and shareable
+          proof that humans can review before trusting the change.
+        </p>
+      </div>
+      <div class="grid two">
+        <article class="card">
+          <h3>The problem</h3>
+          <p>
+            AI agents can produce code quickly, but the evidence around the
+            change often lives across terminals, chat notes, CI logs, and memory.
+          </p>
+        </article>
+        <article class="card">
+          <h3>The response</h3>
+          <p>
+            VibeBench collects the local quality trail into commands, summaries,
+            packets, manifests, comparisons, and release audit records.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="loop-title">
+      <div class="section-head">
+        <h2 id="loop-title">The product loop</h2>
+        <p>
+          VibeBench is built around the moment after an agent changes files and
+          before a person decides what to trust, merge, or release.
+        </p>
+      </div>
+      <div class="grid loop">
+        <article class="card">
+          <h3>Change</h3>
+          <p>Start with an AI-assisted diff from Codex or another coding agent.</p>
+        </article>
+        <article class="card">
+          <h3>Check</h3>
+          <p>Run configured checks, gates, dry-runs, and readiness commands.</p>
+        </article>
+        <article class="card">
+          <h3>Explain</h3>
+          <p>Turn outcomes into readable summaries and review context.</p>
+        </article>
+        <article class="card">
+          <h3>Package</h3>
+          <p>Bundle artifacts, manifests, reports, and release audit records.</p>
+        </article>
+        <article class="card">
+          <h3>Prove</h3>
+          <p>Create proof packets with HTML, JSON, Markdown, and checksums.</p>
+        </article>
+        <article class="card">
+          <h3>Review</h3>
+          <p>Inspect evidence locally or from the GitHub Actions artifact.</p>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="evidence-title">
+      <div class="section-head">
+        <h2 id="evidence-title">Evidence stack</h2>
+        <p>
+          The proof packet connects the local CLI, CI proof summary, artifacts,
+          and review docs into one inspectable surface.
+        </p>
+      </div>
+      <ul class="stack-list">
+        <li><code>proof.html</code><br>Self-contained report</li>
+        <li><code>proof.json</code><br>Structured payload</li>
+        <li><code>proof.md</code><br>Readable summary</li>
+        <li><code>proof-manifest.json</code><br>Checksum manifest</li>
+        <li><code>proof.zip</code><br>Shareable packet archive</li>
+        <li>CI summary card<br>Actions run overview</li>
+        <li>Artifact gallery<br>Concrete review outputs</li>
+        <li>Release audit<br>Local release evidence</li>
+        <li>Comparison and FAQ<br>Scope and tradeoffs</li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="evaluate-title">
+      <div class="section-head">
+        <h2 id="evaluate-title">Evaluate it in 5 minutes</h2>
+        <p>
+          Run the demo, inspect JSON, generate a proof packet, and check strict
+          readiness without depending on a hosted service.
+        </p>
+      </div>
+      <ul class="command-list">
+        <li><code>python3 -m vibebench demo</code></li>
+        <li><code>python3 -m vibebench demo --json</code></li>
+        <li><code>python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip</code></li>
+        <li><code>python3 -m vibebench doctor --strict</code></li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="adoption-title">
+      <div class="section-head">
+        <h2 id="adoption-title">Who can use it</h2>
+        <p>
+          VibeBench is useful when teams want AI-assisted coding to leave a
+          review trail, not just a patch.
+        </p>
+      </div>
+      <div class="grid two">
+        <article class="card">
+          <h3>Solo developers</h3>
+          <p>Builders using Codex or AI coding agents can run a local quality gate before committing.</p>
+        </article>
+        <article class="card">
+          <h3>Reviewing teams</h3>
+          <p>Teams reviewing AI-assisted pull requests can ask for evidence packets and CI artifacts.</p>
+        </article>
+        <article class="card">
+          <h3>Maintainers</h3>
+          <p>Maintainers can compare generated work against checks, summaries, and release readiness.</p>
+        </article>
+        <article class="card">
+          <h3>AI tooling builders</h3>
+          <p>Tool builders can use local quality gates and proof artifacts around agent workflows.</p>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="limits-title">
+      <div class="section-head">
+        <h2 id="limits-title">Honest limits</h2>
+        <p>
+          VibeBench is intentionally careful about what the current project
+          proves.
+        </p>
+      </div>
+      <div class="card limits">
+        <ul>
+          <li>It is not a replacement for SWE-bench.</li>
+          <li>It is not a hosted enterprise product yet.</li>
+          <li>It does not guarantee correctness, funding, stars, or adoption.</li>
+          <li>It is a local-first quality-control layer for AI-assisted coding workflows.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="cta" aria-labelledby="next-title">
+      <div class="section-head">
+        <h2 id="next-title">Start with the evidence</h2>
+        <p>
+          Use these relative links to inspect the product shape, evaluate it
+          locally, and understand the project direction without inflated claims.
+        </p>
+      </div>
+      <nav aria-label="Showcase links">
+        <ul class="link-list">
+          <li><a href="../README.md">README</a></li>
+          <li><a href="evaluate.md">Evaluate in 5 minutes</a></li>
+          <li><a href="adoption.md">Adoption guide</a></li>
+          <li><a href="demo.md">Proof packet commands</a></li>
+          <li><a href="comparison.md">Comparison</a></li>
+          <li><a href="faq.md">FAQ</a></li>
+          <li><a href="case-study.md">Case study</a></li>
+          <li><a href="artifact-gallery.md">Artifact gallery</a></li>
+          <li><a href="product-strategy.md">Product strategy</a></li>
+          <li><a href="commercial-potential.md">Commercial potential</a></li>
+        </ul>
+      </nav>
+      <p class="fine-print">
+        Static page: inline CSS only, no script, no external media, and no
+        hosted-service requirement for the core local proof path.
+      </p>
+    </section>
+  </main>
+</body>
+</html>

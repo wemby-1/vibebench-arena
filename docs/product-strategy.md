@@ -6,7 +6,7 @@ AI coding is becoming easier, but engineering trust is becoming harder. Develope
 
 Generated code needs more than a chat transcript. It needs local checks, diff review, risk review, artifact-backed summaries, release readiness, and reproducible audit trails that humans can inspect.
 
-For quick evaluation and safe rollout, see [evaluate in 5 minutes](evaluate.md), [adoption](adoption.md), the [comparison](comparison.md), [FAQ](faq.md), and [case study](case-study.md).
+For quick evaluation and safe rollout, see the [product showcase](showcase.html), [evaluate in 5 minutes](evaluate.md), [adoption](adoption.md), the [comparison](comparison.md), [FAQ](faq.md), and [case study](case-study.md).
 
 ## Product Thesis
 
@@ -27,7 +27,7 @@ VibeBench Arena is currently:
 - Git diff and risk review for generated changes
 - run artifacts, reports, summaries, manifests, comparisons, and bundles
 - release and publish readiness checks that stay local
-- demo and showcase artifacts that make the evidence surface inspectable from GitHub
+- a GitHub Pages-ready showcase page and demo artifacts that make the evidence surface inspectable from GitHub
 
 ## What It Is Not
 

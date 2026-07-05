@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added a GitHub Pages-ready static product showcase page for the CLI, CI proof packet, artifacts, and honest evaluation path.
+
 - Improved the GitHub Actions proof packet summary card with file details, the local reproduction command, and artifact download guidance.
 
 - Added GitHub Actions proof packet generation and upload as the `vibebench-proof-packet` artifact.
