@@ -20,12 +20,15 @@ from vibebench.publish_check import (
     write_publish_check_json,
     write_publish_check_summary,
 )
+from vibebench.release_body import export_release_body, release_body_json
 from vibebench.report import ReportError
 
 RELEASE_AUDIT_JSON = "release-audit.json"
 RELEASE_AUDIT_SUMMARY = "release-audit.md"
 RELEASE_AUDIT_ARCHIVE = "release-audit.zip"
 RELEASE_AUDIT_MANIFEST = "release-audit-manifest.json"
+RELEASE_BODY_JSON = "release-body.json"
+RELEASE_BODY_SUMMARY = "release-body.md"
 RELEASE_AUDIT_REQUIRED_FILES = [
     "package-check.json",
     "package-check.md",
@@ -33,6 +36,8 @@ RELEASE_AUDIT_REQUIRED_FILES = [
     "publish-check.md",
     "release-checklist.json",
     "release-checklist.md",
+    RELEASE_BODY_JSON,
+    RELEASE_BODY_SUMMARY,
     RELEASE_AUDIT_JSON,
     RELEASE_AUDIT_SUMMARY,
 ]
@@ -40,12 +45,14 @@ RELEASE_AUDIT_JSON_FILES = [
     "package-check.json",
     "publish-check.json",
     "release-checklist.json",
+    RELEASE_BODY_JSON,
     RELEASE_AUDIT_JSON,
 ]
 RELEASE_AUDIT_MARKDOWN_FILES = [
     "package-check.md",
     "publish-check.md",
     "release-checklist.md",
+    RELEASE_BODY_SUMMARY,
     RELEASE_AUDIT_SUMMARY,
 ]
 SAFETY_NOTES = [
@@ -142,6 +149,11 @@ def create_release_audit(
         or value_as_str(release_checklist_payload.get("package_version"))
         or "unknown"
     )
+    release_body_result = export_release_body(
+        root,
+        version=selected_version,
+        output_path=selected_output_dir / RELEASE_BODY_SUMMARY,
+    )
 
     generated_files: list[ReleaseAuditFile] = []
     generated_files.append(
@@ -201,6 +213,23 @@ def create_release_audit(
                 render_release_checklist_markdown(release_checklist_payload),
                 selected_output_dir / "release-checklist.md",
             ),
+            "markdown",
+        )
+    )
+    generated_files.append(
+        generated_file(
+            RELEASE_BODY_JSON,
+            write_text(
+                release_body_json(release_body_result) + "\n",
+                selected_output_dir / RELEASE_BODY_JSON,
+            ),
+            "json",
+        )
+    )
+    generated_files.append(
+        generated_file(
+            RELEASE_BODY_SUMMARY,
+            selected_output_dir / RELEASE_BODY_SUMMARY,
             "markdown",
         )
     )
