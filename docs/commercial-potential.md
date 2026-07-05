@@ -4,6 +4,8 @@ VibeBench Arena may become commercially valuable because AI coding adoption crea
 
 This commercial potential narrative describes possible directions. It is not a claim of revenue, customers, financing, or promised outcomes.
 
+For an evidence-first public walkthrough that avoids inflated claims, see the [case study](case-study.md).
+
 ## Why This Could Matter Commercially
 
 AI coding shifts more work into agent-assisted sessions. That creates demand for infrastructure that helps teams answer practical questions:

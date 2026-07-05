@@ -6,6 +6,8 @@ AI coding is becoming easier, but engineering trust is becoming harder. Develope
 
 Generated code needs more than a chat transcript. It needs local checks, diff review, risk review, artifact-backed summaries, release readiness, and reproducible audit trails that humans can inspect.
 
+For a concrete artifact-driven walkthrough, see the [case study](case-study.md).
+
 ## Product Thesis
 
 VibeBench Arena is a Codex-first / vibe-coding quality console. It turns AI coding from a black-box chat process into a local, inspectable, auditable engineering workflow.

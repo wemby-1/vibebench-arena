@@ -37,6 +37,10 @@ It is not a generic chatbot, RAG demo, benchmark-only project, prompt collection
 
 See the [architecture](docs/architecture.md), [artifact gallery](docs/artifact-gallery.md), [product strategy](docs/product-strategy.md), [commercial potential](docs/commercial-potential.md), and [public roadmap](docs/roadmap-public.md).
 
+## See The Case Study
+
+Read [Case Study: From Vibe-Coded Change to Reviewable Evidence](docs/case-study.md) to see how an AI-assisted change can become a review packet with checks, risk scoring, artifacts, comparison, and release readiness evidence. The checked-in [case-study artifact folder](examples/showcase-artifacts/case-study/README.md) shows the small static example behind the walkthrough.
+
 ```bash
 python3 -m vibebench demo
 ```

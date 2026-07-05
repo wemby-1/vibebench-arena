@@ -43,6 +43,8 @@ Representative artifacts include:
 
 See the [artifact gallery](artifact-gallery.md) for a broader tour.
 
+For a concrete end-to-end example, see the [case study](case-study.md).
+
 ## How GitHub Users Inspect The Result
 
 GitHub users can review VibeBench output through:
@@ -77,6 +79,7 @@ VibeBench does not:
 ## Related Docs
 
 - [Demo guide](demo.md)
+- [Case study](case-study.md)
 - [Artifact gallery](artifact-gallery.md)
 - [Product strategy](product-strategy.md)
 - [Commercial potential](commercial-potential.md)

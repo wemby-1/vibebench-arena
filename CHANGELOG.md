@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added an evidence-first public case study showing how AI-assisted changes become reviewable VibeBench artifacts.
+
 - Added visual architecture and artifact evidence diagrams for the GitHub landing page.
 
 - Added public product strategy, roadmap, and commercial potential docs that explain the Codex-first / vibe-coding quality console narrative without fake traction or promised outcomes.

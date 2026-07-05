@@ -1,0 +1,48 @@
+{
+  "project": "VibeBench Arena illustrative case study",
+  "scenario": "AI-assisted small feature change reviewed with local evidence",
+  "ai_change": {
+    "request": "Use an AI coding agent to add a small feature.",
+    "review_concern": "The code may look plausible but still needs review evidence.",
+    "scope": "Synthetic documentation-oriented example"
+  },
+  "checks": [
+    {
+      "name": "lint",
+      "command": "python3 -m ruff check .",
+      "status": "planned"
+    },
+    {
+      "name": "demo",
+      "command": "python3 -m vibebench demo",
+      "status": "planned"
+    },
+    {
+      "name": "release readiness",
+      "command": "python3 -m vibebench release-check",
+      "status": "planned"
+    }
+  ],
+  "artifacts": [
+    "ci-plan.json",
+    "ci-summary.md",
+    "artifact-inventory.json",
+    "compare-summary.md",
+    "release-audit-summary.md"
+  ],
+  "reviewer_decision": {
+    "options": [
+      "merge",
+      "request changes",
+      "reject"
+    ],
+    "illustrative_decision": "request changes",
+    "reason": "A real merge decision requires review of the actual patch."
+  },
+  "limitations": [
+    "Static illustrative data only",
+    "No private repository data",
+    "No real production customer dataset",
+    "Does not replace human review"
+  ]
+}

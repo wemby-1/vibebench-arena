@@ -4,6 +4,8 @@ VibeBench Arena is a Codex-first / vibe-coding quality console for local-first A
 
 For a skim-friendly map of the concrete outputs, see the [artifact gallery](artifact-gallery.md).
 
+For an evidence-first walkthrough, see the [case study](case-study.md) and its checked-in [case-study artifacts](../examples/showcase-artifacts/case-study/README.md).
+
 To browse the output shape without running commands, open the checked-in [sample artifact pack](../examples/showcase-artifacts/sample/README.md). To try the one-command local demo, run `python3 -m vibebench demo` or copy the pack with `python3 -m vibebench demo --copy-to /tmp/vibebench-demo`.
 
 For the broader product thesis and practical workflows, see [positioning](positioning.md), [use cases](use-cases.md), [product strategy](product-strategy.md), [public roadmap](roadmap-public.md), and [commercial potential](commercial-potential.md).

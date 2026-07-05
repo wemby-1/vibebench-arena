@@ -4,6 +4,8 @@ This folder is a lightweight tour of what VibeBench produces. It is for GitHub v
 
 For the fastest browseable preview, run `python3 -m vibebench demo`, copy the pack with `python3 -m vibebench demo --copy-to /tmp/vibebench-demo`, or open the checked-in [sample artifact pack](sample/README.md).
 
+For a narrative example of an AI-assisted change becoming reviewable evidence, open the [case-study artifact folder](case-study/README.md) and the full [case study](../../docs/case-study.md).
+
 These showcase artifacts support the project positioning: VibeBench makes AI-assisted coding reviewable, auditable, reproducible, and easier to evaluate from GitHub.
 
 ## Artifact Tour

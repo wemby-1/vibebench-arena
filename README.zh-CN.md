@@ -37,6 +37,10 @@ AI coding 正在变得更容易；真正困难的是 review、审计、对比和
 
 继续查看 [architecture](docs/architecture.md)、[artifact gallery](docs/artifact-gallery.md)、[product strategy](docs/product-strategy.md)、[commercial potential](docs/commercial-potential.md) 和 [public roadmap](docs/roadmap-public.md)。
 
+## 案例研究
+
+阅读 [案例研究：从 vibe-coding 改动到可审计证据](docs/case-study.md)，了解一次 AI 辅助改动如何通过 checks、risk scoring、artifacts、comparison 和 release readiness 变成可检查、可审计、可复现的 review packet。也可以直接查看已提交的 [case-study artifact folder](examples/showcase-artifacts/case-study/README.md)，它是一个静态示例，不夸大融资、高 star、客户或收入结果。
+
 ```bash
 python3 -m vibebench demo
 ```

@@ -10,6 +10,8 @@ VibeBench artifacts make AI-assisted changes reviewable by leaving local, CI-rea
 
 They are the proof layer behind the broader [project positioning](positioning.md), [product strategy](product-strategy.md), [public roadmap](roadmap-public.md), and [commercial potential](commercial-potential.md): VibeBench makes AI-assisted coding reviewable, auditable, and reproducible.
 
+For a concrete workflow from AI-assisted change to reviewable evidence, read the [case study](case-study.md) and browse the checked-in [case-study artifacts](../examples/showcase-artifacts/case-study/README.md).
+
 Want the quickest preview? Run the one-command demo with `python3 -m vibebench demo`, copy the pack with `python3 -m vibebench demo --copy-to /tmp/vibebench-demo`, or browse the checked-in [sample artifacts](../examples/showcase-artifacts/sample/README.md) before running the full quality console locally. This artifact gallery is the fastest way to evaluate the local-first evidence trail from GitHub.
 
 For a visual version of this evidence model, see the [artifact evidence stack](assets/artifact-evidence-stack.svg) and the [architecture](architecture.md) doc.
