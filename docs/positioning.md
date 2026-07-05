@@ -8,6 +8,10 @@ It is built for the practical layer between "the agent changed code" and "a huma
 
 For the fuller product thesis, see [product strategy](product-strategy.md), [public roadmap](roadmap-public.md), and [commercial potential](commercial-potential.md).
 
+## Visual Architecture
+
+For the product architecture and diagrams, see [architecture](architecture.md), [VibeBench flow](assets/vibebench-flow.svg), and the [artifact evidence stack](assets/artifact-evidence-stack.svg).
+
 ## The Problem
 
 AI coding is becoming easier. Reviewing, auditing, comparing, and trusting AI-generated changes is still painful.

@@ -8,6 +8,8 @@ To browse the output shape without running commands, open the checked-in [sample
 
 For the broader product thesis and practical workflows, see [positioning](positioning.md), [use cases](use-cases.md), [product strategy](product-strategy.md), [public roadmap](roadmap-public.md), and [commercial potential](commercial-potential.md).
 
+For a visual map of the local-first flow, see the [architecture](architecture.md) doc and [VibeBench flow](assets/vibebench-flow.svg).
+
 ## Start Here
 
 1. Run the one-command demo: `python3 -m vibebench demo`.

@@ -26,6 +26,17 @@ AI coding 正在变得更容易；真正困难的是 review、审计、对比和
 
 它不是通用聊天机器人、RAG demo、纯 benchmark 项目、prompt 合集或 leaderboard。VibeBench 位于“agent 写完代码”和“人类决定合并或发布”之间，把“感觉能跑”变成检查、风险审阅、artifact-backed 摘要和 release readiness 记录。
 
+![VibeBench flow](docs/assets/vibebench-flow.svg)
+
+## 工作方式
+
+1. 运行本地 showcase 或 CI plan：`python3 -m vibebench demo` 或 `python3 -m vibebench ci --dry-run`。
+2. 检查 score、risk、diff 变化和 findings。
+3. 审阅生成的 artifacts，把 AI coding changes 变成可检查、可审计、可复现的工程证据。
+4. 使用 release audit 输出做发布就绪审查。
+
+继续查看 [architecture](docs/architecture.md)、[artifact gallery](docs/artifact-gallery.md)、[product strategy](docs/product-strategy.md)、[commercial potential](docs/commercial-potential.md) 和 [public roadmap](docs/roadmap-public.md)。
+
 ```bash
 python3 -m vibebench demo
 ```
@@ -57,7 +68,7 @@ VibeBench 不是玩具 CLI，而是一个早期的本地优先产品方向：面
 1. 运行一条命令 demo：`python3 -m vibebench demo`。
 2. 打开 [demo guide](docs/demo.md) 和 [artifact gallery](docs/artifact-gallery.md)。
 3. 检查已提交的 [示例 artifact pack](examples/showcase-artifacts/sample/README.md)，或用 `python3 -m vibebench demo --copy-to /tmp/vibebench-demo` 复制到本地。
-4. 阅读 [positioning](docs/positioning.md)、[use cases](docs/use-cases.md)、[product strategy](docs/product-strategy.md)、[public roadmap](docs/roadmap-public.md) 和 [commercial potential](docs/commercial-potential.md)，理解它为什么面向 Codex-first / vibe-coding 和 AI coding 工程化。
+4. 阅读 [architecture](docs/architecture.md)、[positioning](docs/positioning.md)、[use cases](docs/use-cases.md)、[product strategy](docs/product-strategy.md)、[public roadmap](docs/roadmap-public.md) 和 [commercial potential](docs/commercial-potential.md)，理解它为什么面向 Codex-first / vibe-coding 和 AI coding 工程化。
 5. 通过 GitHub issue templates 提交真实使用场景、demo feedback，或发起小范围 PR。
 
 编写有边界、低成本的 Codex 里程碑时，可以使用 [Codex task template](docs/codex-task-template.md)。
@@ -492,6 +503,7 @@ python -m vibebench bundle
 
 - [Quickstart](docs/quickstart.md)
 - [Risk rules](docs/risk-rules.md)
+- [Architecture](docs/architecture.md)
 - [Product strategy](docs/product-strategy.md)
 - [Public roadmap](docs/roadmap-public.md)
 - [Commercial potential](docs/commercial-potential.md)

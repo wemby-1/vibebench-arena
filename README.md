@@ -26,6 +26,17 @@ AI coding is getting easier; reviewing, auditing, comparing, and trusting AI-gen
 
 It is not a generic chatbot, RAG demo, benchmark-only project, prompt collection, or leaderboard. VibeBench sits after the agent writes code and before humans merge or release it, so "seems to work" becomes something inspectable, auditable, and reproducible.
 
+![VibeBench flow](docs/assets/vibebench-flow.svg)
+
+## How It Works
+
+1. Run a local showcase or CI plan with `python3 -m vibebench demo` or `python3 -m vibebench ci --dry-run`.
+2. Inspect score, risk, diff movement, and findings.
+3. Review generated artifacts for GitHub-ready evidence.
+4. Use release audit outputs for release readiness review.
+
+See the [architecture](docs/architecture.md), [artifact gallery](docs/artifact-gallery.md), [product strategy](docs/product-strategy.md), [commercial potential](docs/commercial-potential.md), and [public roadmap](docs/roadmap-public.md).
+
 ```bash
 python3 -m vibebench demo
 ```
@@ -57,7 +68,7 @@ Read the [product strategy](docs/product-strategy.md), [public roadmap](docs/roa
 1. Run the one-command demo: `python3 -m vibebench demo`.
 2. Open the [demo guide](docs/demo.md) and [artifact gallery](docs/artifact-gallery.md).
 3. Inspect the checked-in [sample artifact pack](examples/showcase-artifacts/sample/README.md) or copy it with `python3 -m vibebench demo --copy-to /tmp/vibebench-demo`.
-4. Read the [positioning](docs/positioning.md), [use cases](docs/use-cases.md), [product strategy](docs/product-strategy.md), [public roadmap](docs/roadmap-public.md), and [commercial potential](docs/commercial-potential.md) to see why this matters for Codex-first / vibe-coding engineering.
+4. Read the [architecture](docs/architecture.md), [positioning](docs/positioning.md), [use cases](docs/use-cases.md), [product strategy](docs/product-strategy.md), [public roadmap](docs/roadmap-public.md), and [commercial potential](docs/commercial-potential.md) to see why this matters for Codex-first / vibe-coding engineering.
 5. Use the GitHub issue templates to share a use case, report demo feedback, or propose a focused PR.
 
 For bounded, low-cost Codex milestones, use the [Codex task template](docs/codex-task-template.md).
@@ -500,6 +511,7 @@ See [examples/risk-demo/README.md](examples/risk-demo/README.md) for details.
 
 - [Quickstart](docs/quickstart.md)
 - [Risk rules](docs/risk-rules.md)
+- [Architecture](docs/architecture.md)
 - [Product strategy](docs/product-strategy.md)
 - [Public roadmap](docs/roadmap-public.md)
 - [Commercial potential](docs/commercial-potential.md)

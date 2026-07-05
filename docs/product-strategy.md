@@ -12,6 +12,10 @@ VibeBench Arena is a Codex-first / vibe-coding quality console. It turns AI codi
 
 The product thesis is simple: AI agents can accelerate code creation, but engineering teams still need a quality console that records what changed, what ran, what risks appeared, and which artifacts support the next decision.
 
+## Visual Architecture
+
+For the product architecture and diagrams, see [architecture](architecture.md), [VibeBench flow](assets/vibebench-flow.svg), and the [artifact evidence stack](assets/artifact-evidence-stack.svg).
+
 ## What It Is
 
 VibeBench Arena is currently:
