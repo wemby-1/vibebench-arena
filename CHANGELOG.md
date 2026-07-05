@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Read-only `python3 -m vibebench release-audit --verify PATH` mode for validating local release audit directories or zip archives without creating tags, GitHub Releases, package uploads/publishes, version bumps, or dependency installs.
 - Local-only release-audit archive output with `python3 -m vibebench release-audit --zip` and `python3 -m vibebench release-audit --zip-output PATH`, without creating tags, GitHub Releases, package uploads/publishes, or version bumps.
 - Local-only `python -m vibebench release-audit` command for generating package, publish, release checklist, and aggregate audit artifacts without creating tags, releases, package uploads, or version bumps.
 - Persistent `release-checklist --write-json` and `release-checklist --write-summary` audit records for local release preparation without creating tags, releases, package uploads, or version bumps.

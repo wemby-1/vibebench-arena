@@ -526,3 +526,221 @@ def test_release_audit_default_does_not_create_archive(
     assert not output_dir.joinpath("release-audit.zip").exists()
     assert payload["archive"]["requested"] is False
     assert payload["archive"]["status"] == "not_requested"
+
+
+def test_release_audit_verify_generated_directory_passes(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+    create_result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+
+    result = runner.invoke(app, ["release-audit", "--verify", str(output_dir)])
+
+    assert create_result.exit_code == 0
+    assert result.exit_code == 0
+    assert "Release audit verification: passed" in result.output
+
+
+def test_release_audit_verify_generated_zip_passes(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+    create_result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+            "--zip",
+        ],
+    )
+
+    result = runner.invoke(
+        app,
+        ["release-audit", "--verify", str(output_dir / "release-audit.zip")],
+    )
+
+    assert create_result.exit_code == 0
+    assert result.exit_code == 0
+    assert "Release audit verification: passed" in result.output
+
+
+def test_release_audit_verify_json_stdout_is_pure_json(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+    create_result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+
+    result = runner.invoke(
+        app,
+        ["release-audit", "--verify", str(output_dir), "--json"],
+    )
+
+    payload = json.loads(result.output)
+    assert create_result.exit_code == 0
+    assert result.exit_code == 0
+    assert payload["status"] == "passed"
+    assert payload["target_type"] == "directory"
+    assert set(payload["required_files"]) == EXPECTED_FILES
+
+
+def test_release_audit_verify_missing_required_file_fails(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+    create_result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+    output_dir.joinpath("publish-check.md").unlink()
+
+    result = runner.invoke(app, ["release-audit", "--verify", str(output_dir)])
+
+    assert create_result.exit_code == 0
+    assert result.exit_code == 1
+    assert "Missing publish-check.md" in result.output
+
+
+def test_release_audit_verify_invalid_json_fails(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+    create_result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+    output_dir.joinpath("package-check.json").write_text("{", encoding="utf-8")
+
+    result = runner.invoke(app, ["release-audit", "--verify", str(output_dir)])
+
+    assert create_result.exit_code == 0
+    assert result.exit_code == 1
+    assert "Invalid JSON in package-check.json" in result.output
+
+
+def test_release_audit_verify_empty_markdown_fails(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+    create_result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+    output_dir.joinpath("release-audit.md").write_text("", encoding="utf-8")
+
+    result = runner.invoke(app, ["release-audit", "--verify", str(output_dir)])
+
+    assert create_result.exit_code == 0
+    assert result.exit_code == 1
+    assert "Empty Markdown in release-audit.md" in result.output
+
+
+def test_release_audit_verify_unsafe_zip_entry_fails(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+    create_result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+            "--zip",
+        ],
+    )
+    with ZipFile(output_dir / "release-audit.zip", "a") as archive:
+        archive.writestr("../unsafe.txt", "bad")
+
+    result = runner.invoke(
+        app,
+        ["release-audit", "--verify", str(output_dir / "release-audit.zip")],
+    )
+
+    assert create_result.exit_code == 0
+    assert result.exit_code == 1
+    assert "Unsafe zip entries" in result.output
+    assert "../unsafe.txt" in result.output
+
+
+def test_release_audit_verify_nonexistent_path_fails(
+    tmp_path: Path,
+) -> None:
+    missing = tmp_path / "missing-audit"
+
+    result = runner.invoke(app, ["release-audit", "--verify", str(missing)])
+
+    assert result.exit_code == 1
+    assert "Path does not exist" in result.output
+
+
+def test_release_audit_verify_plain_file_fails(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "release-audit.txt"
+    target.write_text("not an audit", encoding="utf-8")
+
+    result = runner.invoke(app, ["release-audit", "--verify", str(target)])
+
+    assert result.exit_code == 1
+    assert "neither a release audit directory nor a .zip file" in result.output

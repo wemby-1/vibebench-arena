@@ -99,8 +99,11 @@ from vibebench.publish_check import (
 )
 from vibebench.release_audit import (
     ReleaseAuditResult,
+    ReleaseAuditVerifyResult,
     create_release_audit,
     release_audit_json,
+    release_audit_verify_json,
+    verify_release_audit,
 )
 from vibebench.release_check import (
     ReleaseReadinessResult,
@@ -2007,13 +2010,31 @@ def release_audit_command(
         Path | None,
         typer.Option("--zip-output", help="Write the release audit zip to this path."),
     ] = None,
+    verify: Annotated[
+        Path | None,
+        typer.Option(
+            "--verify",
+            help="Verify an existing release audit directory or zip archive.",
+        ),
+    ] = None,
     as_json: Annotated[
         bool,
         typer.Option("--json", help="Print release audit result as JSON."),
     ] = False,
 ) -> None:
-    """Create a local release audit folder without release side effects."""
+    """Create or verify a local release audit without release side effects."""
     root = project_root.resolve()
+    selected_verify_path = resolve_optional_output_path(root, verify)
+    if selected_verify_path is not None:
+        verify_result = verify_release_audit(selected_verify_path)
+        if as_json:
+            print(release_audit_verify_json(verify_result))
+        else:
+            render_release_audit_verify_summary(verify_result)
+        if verify_result.status == "failed":
+            raise typer.Exit(code=1)
+        return
+
     selected_output_dir = resolve_optional_output_path(root, output_dir)
     selected_zip_output = resolve_optional_output_path(root, zip_output)
     checklist_payload = release_checklist_payload(root, requested_version=version)
@@ -3258,6 +3279,31 @@ def render_publish_check_summary(result: PublishReadinessResult) -> None:
         "failed": "red",
     }[result.overall_status]
     console.print(f"Publish readiness: [{final_style}]{result.overall_status}[/]")
+
+
+def render_release_audit_verify_summary(result: ReleaseAuditVerifyResult) -> None:
+    """Render a concise release audit verification summary."""
+    console.print()
+    console.print("[bold]VibeBench Release Audit Verification[/]")
+    console.print(f"Target: {result.target}")
+    console.print(f"Target type: {result.target_type}")
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Check")
+    table.add_column("Status")
+    table.add_column("Message")
+    for check in result.checks:
+        table.add_row(check.name, check.status, check.message)
+    console.print(table)
+
+    failed_checks = [check for check in result.checks if check.status == "failed"]
+    if failed_checks:
+        console.print("Failures:")
+        for check in failed_checks:
+            console.print(f"- {check.message}")
+
+    style = "green" if result.status == "passed" else "red"
+    console.print(f"Release audit verification: [{style}]{result.status}[/]")
 
 
 def render_release_audit_summary(result: ReleaseAuditResult) -> None:

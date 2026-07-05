@@ -23,6 +23,28 @@ from vibebench.report import ReportError
 RELEASE_AUDIT_JSON = "release-audit.json"
 RELEASE_AUDIT_SUMMARY = "release-audit.md"
 RELEASE_AUDIT_ARCHIVE = "release-audit.zip"
+RELEASE_AUDIT_REQUIRED_FILES = [
+    "package-check.json",
+    "package-check.md",
+    "publish-check.json",
+    "publish-check.md",
+    "release-checklist.json",
+    "release-checklist.md",
+    RELEASE_AUDIT_JSON,
+    RELEASE_AUDIT_SUMMARY,
+]
+RELEASE_AUDIT_JSON_FILES = [
+    "package-check.json",
+    "publish-check.json",
+    "release-checklist.json",
+    RELEASE_AUDIT_JSON,
+]
+RELEASE_AUDIT_MARKDOWN_FILES = [
+    "package-check.md",
+    "publish-check.md",
+    "release-checklist.md",
+    RELEASE_AUDIT_SUMMARY,
+]
 SAFETY_NOTES = [
     "No tag is created.",
     "No GitHub Release is created.",
@@ -48,6 +70,26 @@ class ReleaseAuditArchive:
     path: Path | None
     included_files: list[str]
     status: str
+
+
+@dataclass(frozen=True)
+class ReleaseAuditVerifyCheck:
+    """One release audit verification check."""
+
+    name: str
+    status: str
+    message: str
+
+
+@dataclass(frozen=True)
+class ReleaseAuditVerifyResult:
+    """Release audit verification result."""
+
+    target: Path
+    target_type: str
+    status: str
+    checks: list[ReleaseAuditVerifyCheck]
+    required_files: list[str]
 
 
 @dataclass(frozen=True)
@@ -174,7 +216,7 @@ def create_release_audit(
             "markdown",
         )
     )
-    included_archive_files = sorted(item.name for item in generated_files)
+    included_archive_files = sorted(RELEASE_AUDIT_REQUIRED_FILES)
     archive = ReleaseAuditArchive(
         requested=archive_requested,
         path=selected_zip_path if archive_requested else None,
@@ -269,6 +311,184 @@ def prepare_zip_output_path(output_path: Path) -> None:
         raise ReportError(
             f"Release-audit zip output parent does not exist: {output_path.parent}"
         )
+
+
+def verify_release_audit(target: Path) -> ReleaseAuditVerifyResult:
+    """Verify a release audit directory or zip archive."""
+    selected_target = target.resolve()
+    checks: list[ReleaseAuditVerifyCheck] = []
+    if not selected_target.exists():
+        checks.append(failed_check("target_exists", f"Path does not exist: {target}"))
+        return release_audit_verify_result(selected_target, "unknown", checks)
+    if selected_target.is_dir():
+        verify_release_audit_directory(selected_target, checks)
+        return release_audit_verify_result(selected_target, "directory", checks)
+    if selected_target.is_file() and selected_target.suffix.lower() == ".zip":
+        verify_release_audit_zip(selected_target, checks)
+        return release_audit_verify_result(selected_target, "zip", checks)
+    checks.append(
+        failed_check(
+            "target_type",
+            f"Path is neither a release audit directory nor a .zip file: {target}",
+        )
+    )
+    return release_audit_verify_result(selected_target, "unknown", checks)
+
+
+def verify_release_audit_directory(
+    target: Path,
+    checks: list[ReleaseAuditVerifyCheck],
+) -> None:
+    """Verify a release audit directory."""
+    for name in RELEASE_AUDIT_REQUIRED_FILES:
+        file_path = target / name
+        if file_path.is_file():
+            checks.append(passed_check(f"required_file:{name}", f"Found {name}"))
+        else:
+            checks.append(failed_check(f"required_file:{name}", f"Missing {name}"))
+    for name in RELEASE_AUDIT_JSON_FILES:
+        file_path = target / name
+        if file_path.is_file():
+            verify_json_bytes(name, file_path.read_bytes(), checks)
+    for name in RELEASE_AUDIT_MARKDOWN_FILES:
+        file_path = target / name
+        if file_path.is_file():
+            verify_markdown_bytes(name, file_path.read_bytes(), checks)
+
+
+def verify_release_audit_zip(
+    target: Path,
+    checks: list[ReleaseAuditVerifyCheck],
+) -> None:
+    """Verify a release audit zip without extracting it."""
+    try:
+        with ZipFile(target) as archive:
+            names = archive.namelist()
+            file_names = {name for name in names if not name.endswith("/")}
+            verify_zip_entry_safety(names, checks)
+            for name in RELEASE_AUDIT_REQUIRED_FILES:
+                if name in file_names:
+                    checks.append(
+                        passed_check(f"required_file:{name}", f"Found {name}")
+                    )
+                else:
+                    checks.append(
+                        failed_check(f"required_file:{name}", f"Missing {name}")
+                    )
+            for name in RELEASE_AUDIT_JSON_FILES:
+                if name in file_names:
+                    verify_json_bytes(name, archive.read(name), checks)
+            for name in RELEASE_AUDIT_MARKDOWN_FILES:
+                if name in file_names:
+                    verify_markdown_bytes(name, archive.read(name), checks)
+    except (OSError, BadZipFile, LargeZipFile) as exc:
+        checks.append(failed_check("zip_read", f"Unable to read zip archive: {exc}"))
+
+
+def verify_zip_entry_safety(
+    names: list[str],
+    checks: list[ReleaseAuditVerifyCheck],
+) -> None:
+    """Verify zip entries are safe relative names."""
+    unsafe_entries = sorted(name for name in names if is_unsafe_zip_entry(name))
+    if unsafe_entries:
+        checks.append(
+            failed_check(
+                "zip_safety",
+                f"Unsafe zip entries: {', '.join(unsafe_entries)}",
+            )
+        )
+    else:
+        checks.append(passed_check("zip_safety", "Zip entries are safe"))
+
+
+def is_unsafe_zip_entry(name: str) -> bool:
+    """Return whether a zip entry name is unsafe."""
+    return not name or name.startswith("/") or ".." in Path(name).parts
+
+
+def verify_json_bytes(
+    name: str,
+    content: bytes,
+    checks: list[ReleaseAuditVerifyCheck],
+) -> None:
+    """Verify JSON bytes parse successfully."""
+    try:
+        json.loads(content.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        checks.append(failed_check(f"json:{name}", f"Invalid JSON in {name}: {exc}"))
+    else:
+        checks.append(passed_check(f"json:{name}", f"Valid JSON in {name}"))
+
+
+def verify_markdown_bytes(
+    name: str,
+    content: bytes,
+    checks: list[ReleaseAuditVerifyCheck],
+) -> None:
+    """Verify Markdown bytes are non-empty text."""
+    try:
+        text = content.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        checks.append(
+            failed_check(f"markdown:{name}", f"Invalid UTF-8 in {name}: {exc}")
+        )
+        return
+    if text.strip():
+        checks.append(passed_check(f"markdown:{name}", f"Non-empty Markdown in {name}"))
+    else:
+        checks.append(failed_check(f"markdown:{name}", f"Empty Markdown in {name}"))
+
+
+def release_audit_verify_result(
+    target: Path,
+    target_type: str,
+    checks: list[ReleaseAuditVerifyCheck],
+) -> ReleaseAuditVerifyResult:
+    """Build a verification result from checks."""
+    status = "failed" if any(check.status == "failed" for check in checks) else "passed"
+    return ReleaseAuditVerifyResult(
+        target=target,
+        target_type=target_type,
+        status=status,
+        checks=checks,
+        required_files=list(RELEASE_AUDIT_REQUIRED_FILES),
+    )
+
+
+def passed_check(name: str, message: str) -> ReleaseAuditVerifyCheck:
+    """Build a passed verification check."""
+    return ReleaseAuditVerifyCheck(name=name, status="passed", message=message)
+
+
+def failed_check(name: str, message: str) -> ReleaseAuditVerifyCheck:
+    """Build a failed verification check."""
+    return ReleaseAuditVerifyCheck(name=name, status="failed", message=message)
+
+
+def release_audit_verify_json_payload(
+    result: ReleaseAuditVerifyResult,
+) -> dict[str, object]:
+    """Return a JSON-safe release audit verification payload."""
+    return {
+        "checks": [
+            {"name": check.name, "status": check.status, "message": check.message}
+            for check in result.checks
+        ],
+        "required_files": result.required_files,
+        "status": result.status,
+        "target": str(result.target),
+        "target_type": result.target_type,
+    }
+
+
+def release_audit_verify_json(result: ReleaseAuditVerifyResult) -> str:
+    """Return deterministic JSON for release audit verification."""
+    return json.dumps(
+        release_audit_verify_json_payload(result),
+        indent=2,
+        sort_keys=True,
+    )
 
 
 def release_audit_json_payload(result: ReleaseAuditResult) -> dict[str, object]:
