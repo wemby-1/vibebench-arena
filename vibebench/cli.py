@@ -97,6 +97,11 @@ from vibebench.publish_check import (
     write_publish_check_json,
     write_publish_check_summary,
 )
+from vibebench.release_audit import (
+    ReleaseAuditResult,
+    create_release_audit,
+    release_audit_json,
+)
 from vibebench.release_check import (
     ReleaseReadinessResult,
     release_check_json,
@@ -1980,6 +1985,46 @@ def publish_check_command(
         raise typer.Exit(code=1)
 
 
+@app.command("release-audit")
+def release_audit_command(
+    project_root: ProjectRootOption = Path("."),
+    output_dir: Annotated[
+        Path | None,
+        typer.Option("--output-dir", help="Write audit artifacts to this directory."),
+    ] = None,
+    version: Annotated[
+        str | None,
+        typer.Option("--version", help="Target release version, for example v0.3.0."),
+    ] = None,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print release audit result as JSON."),
+    ] = False,
+) -> None:
+    """Create a local release audit folder without release side effects."""
+    root = project_root.resolve()
+    selected_output_dir = resolve_optional_output_path(root, output_dir)
+    checklist_payload = release_checklist_payload(root, requested_version=version)
+    try:
+        result = create_release_audit(
+            root,
+            output_dir=selected_output_dir,
+            version=version,
+            release_checklist_payload=checklist_payload,
+        )
+    except ReportError as exc:
+        target_console = err_console if as_json else console
+        target_console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if as_json:
+        print(release_audit_json(result))
+    else:
+        render_release_audit_summary(result)
+    if result.status == "failed":
+        raise typer.Exit(code=1)
+
+
 @app.command("release-check")
 def release_check_command(
     project_root: ProjectRootOption = Path("."),
@@ -3199,6 +3244,39 @@ def render_publish_check_summary(result: PublishReadinessResult) -> None:
         "failed": "red",
     }[result.overall_status]
     console.print(f"Publish readiness: [{final_style}]{result.overall_status}[/]")
+
+
+def render_release_audit_summary(result: ReleaseAuditResult) -> None:
+    """Render a concise release audit summary."""
+    console.print()
+    console.print("[bold]VibeBench Release Audit[/]")
+    console.print(f"Output directory: {result.output_dir}")
+    console.print(f"Version: {result.version}")
+    console.print(f"Generated at: {result.generated_at}")
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("File")
+    table.add_column("Kind")
+    table.add_column("Path")
+    for item in result.files:
+        table.add_row(item.name, item.kind, str(item.path))
+    console.print(table)
+
+    summary = Table(title="Status summary")
+    summary.add_column("Check")
+    summary.add_column("Status")
+    summary.add_row("package-check", result.package_status)
+    summary.add_row("publish-check", result.publish_status)
+    summary.add_row("release-checklist", result.release_checklist_status)
+    console.print(summary)
+
+    console.print(
+        "Local-only safety: no tag, GitHub Release, package upload, or version bump."
+    )
+    style = "red" if result.status == "failed" else "yellow"
+    if result.status == "ready":
+        style = "green"
+    console.print(f"Release audit: [{style}]{result.status}[/]")
 
 
 def render_release_check_summary(result: ReleaseReadinessResult) -> None:
