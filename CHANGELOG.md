@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added `python3 -m vibebench proof` for generating a local proof packet with visitor-facing Markdown and JSON evidence.
+
 - Added a 5-minute evaluation path and adoption guide for GitHub visitors and teams evaluating Codex-first/vibe-coding quality workflows.
 
 - Added honest comparison and FAQ pages explaining how VibeBench Arena differs from CI, benchmarks, chatbots, and code review assistants.

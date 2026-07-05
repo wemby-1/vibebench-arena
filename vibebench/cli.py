@@ -91,6 +91,12 @@ from vibebench.pr_comment import (
     post_pr_comment,
     pr_comment_post_json,
 )
+from vibebench.proof import (
+    ProofError,
+    proof_json,
+    proof_payload,
+    write_proof_packet,
+)
 from vibebench.publish_check import (
     PublishReadinessResult,
     publish_check_json,
@@ -1337,6 +1343,59 @@ def demo_command(
     render_demo_summary(payload)
     if copy_result is not None and copy_result.conflicts:
         raise typer.Exit(code=1)
+
+
+@app.command("proof")
+def proof_command(
+    project_root: ProjectRootOption = Path("."),
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print local proof packet details as JSON."),
+    ] = False,
+    output_dir: Annotated[
+        Path | None,
+        typer.Option("--output-dir", help="Write proof.md and proof.json under PATH."),
+    ] = None,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write proof JSON to PATH."),
+    ] = None,
+    summary_output: Annotated[
+        Path | None,
+        typer.Option("--summary-output", help="Write proof Markdown to PATH."),
+    ] = None,
+) -> None:
+    """Generate a local proof packet for evaluating VibeBench Arena."""
+    root = project_root.resolve()
+    payload = proof_payload(root)
+    try:
+        written = write_proof_packet(
+            payload,
+            project_root=root,
+            output_dir=output_dir,
+            json_output=json_output,
+            summary_output=summary_output,
+        )
+    except ProofError as exc:
+        if as_json:
+            error_payload = dict(payload)
+            error_payload["status"] = "error"
+            error_payload["message"] = str(exc)
+            print(proof_json(error_payload))
+        else:
+            console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if as_json:
+        print(proof_json(payload))
+        return
+
+    render_proof_summary(payload)
+    if "summary" in written:
+        console.print(f"Proof Markdown: {written['summary']}")
+    if "json" in written:
+        console.print(f"Proof JSON: {written['json']}")
+
 
 @app.command("manifest")
 def manifest_command(
@@ -3097,6 +3156,27 @@ def render_latest_summary(
         )
         table.add_row(item.name, item.display_path.as_posix(), availability, size)
     console.print(table)
+
+
+def render_proof_summary(payload: dict[str, object]) -> None:
+    """Render the visitor-facing local proof packet summary."""
+    console.print("\n[bold]VibeBench Proof Packet[/]")
+    console.print(str(payload["summary"]))
+    console.print(
+        "Codex-first / vibe-coding quality console; local-first and "
+        "evidence-first."
+    )
+    console.print("\nRecommended next commands:")
+    for command in payload["recommended_commands"]:
+        console.print(f"- {command}")
+    console.print("\nDocs and artifacts to inspect:")
+    for doc in payload["recommended_docs"]:
+        console.print(f"- {doc}")
+    for artifact in payload["recommended_artifacts"][:3]:
+        console.print(f"- {artifact}")
+    console.print("\nHonest limitations:")
+    for limit in payload["honest_limits"]:
+        console.print(f"- {limit}")
 
 
 def render_demo_summary(payload: dict[str, object]) -> None:

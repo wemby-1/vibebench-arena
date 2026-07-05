@@ -15,8 +15,9 @@ VibeBench Arena is a Codex-first / vibe-coding quality console for turning AI-as
 2. Run `python3 -m vibebench demo`.
 3. Run `python3 -m vibebench demo --json`.
 4. Run `python3 -m vibebench ci --dry-run --json`.
-5. Inspect the sample [artifact gallery](artifact-gallery.md).
-6. Inspect the [case study](case-study.md).
+5. Run `python3 -m vibebench proof --output-dir /tmp/vibebench-proof` to generate a local proof packet.
+6. Inspect the sample [artifact gallery](artifact-gallery.md).
+7. Inspect the [case study](case-study.md).
 
 ## What to look for
 
@@ -32,6 +33,7 @@ VibeBench Arena is a Codex-first / vibe-coding quality console for turning AI-as
 - Clear command output.
 - Machine-readable JSON.
 - Artifacts that explain decisions and review context.
+- A VibeBench Proof Packet with `proof.md` and `proof.json`.
 - Release/readiness checks that stay local unless a user chooses otherwise.
 - Docs that map product direction to engineering proof.
 

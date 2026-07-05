@@ -42,6 +42,7 @@ See the [architecture](docs/architecture.md), [artifact gallery](docs/artifact-g
 - [Evaluate in 5 minutes](docs/evaluate.md): a compact path for developers, teams, maintainers, and observers to verify the local-first, evidence-first workflow.
 - [Adoption guide](docs/adoption.md): a safe first-week path for Codex-first / vibe-coding teams.
 - [Demo guide](docs/demo.md): commands that prove the core local workflow without external service dependency.
+- Generate a local proof packet: `python3 -m vibebench proof --output-dir /tmp/vibebench-proof` writes `proof.md` and `proof.json` for audit-friendly review.
 - [Comparison](docs/comparison.md): where VibeBench fits beside CI, tests, benchmarks, chatbots, and review assistants.
 - [FAQ](docs/faq.md): direct answers about scope, limits, artifacts, and local-first review.
 - [Case study](docs/case-study.md): how an AI-assisted change becomes reviewable evidence.
@@ -108,6 +109,7 @@ If you care about better AI coding review, audit tooling, and artifacts, starrin
 - Run `python3 -m vibebench demo` to inspect the local showcase demo and checked-in artifact pack.
 - Run `python3 -m vibebench demo --json` or `python3 -m vibebench demo --copy-to /tmp/vibebench-demo` to script or copy the sample evidence pack.
 - Run `python3 -m vibebench ci --dry-run` to see the planned quality pipeline.
+- Run `python3 -m vibebench proof` or `python3 -m vibebench proof --output-dir /tmp/vibebench-proof` to generate a local proof packet.
 - Run `python3 -m vibebench ci` to generate local run artifacts.
 - Run `python3 -m vibebench latest --all-paths` to inspect the newest outputs.
 - Run `python3 -m vibebench release-check` to inspect release readiness.
