@@ -94,6 +94,8 @@ from vibebench.publish_check import (
     PublishReadinessResult,
     publish_check_json,
     run_publish_check,
+    write_publish_check_json,
+    write_publish_check_summary,
 )
 from vibebench.release_check import (
     ReleaseReadinessResult,
@@ -1942,13 +1944,38 @@ def publish_check_command(
         bool,
         typer.Option("--advice", help="Show advice for publish readiness checks."),
     ] = False,
+    write_json: Annotated[
+        Path | None,
+        typer.Option("--write-json", help="Write publish readiness JSON."),
+    ] = None,
+    write_summary: Annotated[
+        Path | None,
+        typer.Option("--write-summary", help="Write publish readiness Markdown."),
+    ] = None,
 ) -> None:
     """Run a local-only package publishing readiness dry-run."""
-    result = run_publish_check(project_root, advice=advice)
+    root = project_root.resolve()
+    result = run_publish_check(root, advice=advice)
+    selected_json_path = resolve_optional_output_path(root, write_json)
+    selected_summary_path = resolve_optional_output_path(root, write_summary)
+    try:
+        if selected_json_path is not None:
+            write_publish_check_json(result, selected_json_path)
+        if selected_summary_path is not None:
+            write_publish_check_summary(result, selected_summary_path)
+    except ReportError as exc:
+        target_console = err_console if as_json else console
+        target_console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
     if as_json:
         print(publish_check_json(result))
     else:
         render_publish_check_summary(result)
+        if selected_json_path is not None:
+            console.print(f"Publish-check JSON: {selected_json_path}")
+        if selected_summary_path is not None:
+            console.print(f"Publish-check summary: {selected_summary_path}")
     if result.overall_status == "failed":
         raise typer.Exit(code=1)
 

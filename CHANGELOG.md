@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Persistent `publish-check --write-json` and `publish-check --write-summary` audit records for local-only package publishing readiness without uploading packages or creating releases.
 - Local-only `python -m vibebench publish-check` dry-run for package publishing readiness, covering metadata, release notes, tags, package-check, package-check --build, and release-check without uploading packages or creating releases.
 - Opt-in local-only package build readiness check with `python -m vibebench package-check --build`, including JSON build metadata and release-check guidance before PyPI or GitHub Package publishing.
 - Low-cost Codex task template in [docs/codex-task-template.md](docs/codex-task-template.md) for bounded, auditable milestone prompts.

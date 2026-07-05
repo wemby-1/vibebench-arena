@@ -113,9 +113,11 @@ python -m vibebench package-check
 python -m vibebench package-check --json
 python -m vibebench package-check --build
 python -m vibebench publish-check
+python -m vibebench publish-check --write-json publish-check.json
+python -m vibebench publish-check --write-summary publish-check.md
 ```
 
-`package-check` 会检查本地 package metadata、import、console script 入口和关键文档文件；它不会访问网络、不会发布到 PyPI，也不会调用 GitHub API。加上 `--build` 可在发布到 PyPI 或 GitHub Packages 前选择执行本地 package build readiness 检查；它默认写入临时目录并清理输出，不会上传或发布任何内容。`publish-check` 是发布 package 前的本地 dry-run readiness 检查，会检查 metadata、release notes、tag、package-check、package-check --build 和 release-check，但不会上传 package、创建 tag、创建 release 或 bump version。加上 `--write-json PATH` 或 `--write-summary PATH` 可持久化 `package-check.json` 和 `package-check.md`，方便 CI 和发布检查复用。
+`package-check` 会检查本地 package metadata、import、console script 入口和关键文档文件；它不会访问网络、不会发布到 PyPI，也不会调用 GitHub API。加上 `--build` 可在发布到 PyPI 或 GitHub Packages 前选择执行本地 package build readiness 检查；它默认写入临时目录并清理输出，不会上传或发布任何内容。`publish-check` 是发布 package 前的本地 dry-run readiness 检查，会检查 metadata、release notes、tag、package-check、package-check --build 和 release-check，但不会上传 package、创建 tag、创建 release 或 bump version。使用 `publish-check --write-json PATH` 或 `publish-check --write-summary PATH` 可保存本地 audit record，且不会发布或上传。加上 `package-check --write-json PATH` 或 `package-check --write-summary PATH` 可持久化 `package-check.json` 和 `package-check.md`，方便 CI 和发布检查复用。
 
 `vibebench config` 会输出最终生效的 project、checks、gate 和 risk 配置。`--json` 可输出机器可读 JSON，`--validate` 只做校验，`--check` 会执行一致性诊断，`--check --advice` 会给出修复建议，`--show-source` 会显示主要配置区域来自配置文件还是内置默认值。 使用 `python3 -m vibebench config --init --dry-run` 可预览配置初始化；加上 `--json` 可输出机器可读 dry-run JSON。使用 `python3 -m vibebench config --init` 可以从 starter config 创建 `.vibebench/config.yaml`；默认拒绝覆盖。只有明确想让真实 init 覆盖已有配置时，才使用 `--force`。使用 `python3 -m vibebench config --example` 可以查看 starter config，使用 `python3 -m vibebench config --write-example .vibebench/config.example.yaml` 可以写入示例副本；starter 包含 `compare.fail_on_regression`。使用 `python3 -m vibebench config --path` 可在 `--init` 前后查看预期配置路径；加上 `--json` 会输出 `project_root`、`config_path` 和 `exists`。
 

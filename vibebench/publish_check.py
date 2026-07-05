@@ -11,6 +11,7 @@ from typing import Literal
 
 from vibebench.package_check import PackageReadinessResult, run_package_check
 from vibebench.release_check import run_release_check
+from vibebench.report import ReportError
 
 PublishCheckStatus = Literal["passed", "warning", "failed"]
 
@@ -98,6 +99,76 @@ def publish_check_json_payload(result: PublishReadinessResult) -> dict[str, obje
 def publish_check_json(result: PublishReadinessResult) -> str:
     """Return deterministic JSON for publish readiness."""
     return json.dumps(publish_check_json_payload(result), indent=2, sort_keys=True)
+
+
+def write_publish_check_json(
+    result: PublishReadinessResult,
+    output_path: Path,
+) -> Path:
+    """Write publish readiness JSON to a selected path."""
+    validate_output_path(output_path)
+    output_path.write_text(publish_check_json(result) + "\n", encoding="utf-8")
+    return output_path
+
+
+def write_publish_check_summary(
+    result: PublishReadinessResult,
+    output_path: Path,
+) -> Path:
+    """Write publish readiness Markdown to a selected path."""
+    validate_output_path(output_path)
+    output_path.write_text(render_publish_check_markdown(result), encoding="utf-8")
+    return output_path
+
+
+def validate_output_path(output_path: Path) -> None:
+    """Validate a requested publish-check output path."""
+    if output_path.exists() and output_path.is_dir():
+        raise ReportError(f"Publish-check output path is a directory: {output_path}")
+    if not output_path.parent.exists():
+        raise ReportError(
+            f"Publish-check output parent does not exist: {output_path.parent}"
+        )
+
+
+def render_publish_check_markdown(result: PublishReadinessResult) -> str:
+    """Render a concise Markdown publish readiness summary."""
+    lines = [
+        "# VibeBench Publish Check",
+        "",
+        f"- Project root: `{markdown_cell(result.project_root)}`",
+        f"- Package version: `{markdown_cell(result.package_version or 'unknown')}`",
+        f"- Overall status: `{markdown_cell(result.overall_status)}`",
+        "",
+        "| Check | Status | Message | Advice |",
+        "| --- | --- | --- | --- |",
+    ]
+    for check in result.checks:
+        lines.append(
+            "| "
+            f"{markdown_cell(check.name)} | "
+            f"{markdown_cell(check.status)} | "
+            f"{markdown_cell(check.message)} | "
+            f"{markdown_cell(check.advice or '')} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Local-Only Safety",
+            "",
+            "- No package upload is performed.",
+            "- No publishing is performed.",
+            "- No tag or release is created.",
+            "- No version bump is performed.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def markdown_cell(value: object) -> str:
+    """Escape Markdown table-sensitive content."""
+    return str(value).replace("|", "\\|").replace("\n", " ")
 
 
 def read_project_version(project_root: Path) -> str | None:

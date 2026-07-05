@@ -138,6 +138,169 @@ def test_publish_check_json_is_valid_pure_json(
     assert isinstance(payload["checks"], list)
 
 
+def test_publish_check_write_json_writes_valid_json(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_publish_project(tmp_path)
+    install_ready_mocks(monkeypatch)
+    output_path = tmp_path / "publish-check.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "publish-check",
+            "--project-root",
+            str(tmp_path),
+            "--write-json",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["overall_status"] == "ready"
+    assert payload["package_version"] == "0.3.0"
+    assert output_path.read_text(encoding="utf-8").endswith("\n")
+
+
+def test_publish_check_write_summary_writes_markdown(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_publish_project(tmp_path)
+    install_ready_mocks(monkeypatch)
+    output_path = tmp_path / "publish-check.md"
+
+    result = runner.invoke(
+        app,
+        [
+            "publish-check",
+            "--project-root",
+            str(tmp_path),
+            "--write-summary",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    markdown = output_path.read_text(encoding="utf-8")
+    assert "# VibeBench Publish Check" in markdown
+    assert "- Overall status: `ready`" in markdown
+    assert "| Check | Status | Message | Advice |" in markdown
+    assert "No package upload is performed" in markdown
+    assert "No tag or release is created" in markdown
+
+
+def test_publish_check_json_stdout_stays_pure_when_writing_json(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_publish_project(tmp_path)
+    install_ready_mocks(monkeypatch)
+    output_path = tmp_path / "publish-check.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "publish-check",
+            "--project-root",
+            str(tmp_path),
+            "--json",
+            "--write-json",
+            str(output_path),
+        ],
+    )
+
+    stdout_payload = json.loads(result.output)
+    file_payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert result.exit_code == 0
+    assert stdout_payload == file_payload
+    assert stdout_payload["overall_status"] == "ready"
+
+
+def test_publish_check_advice_write_json_includes_advice_fields(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_publish_project(tmp_path)
+    install_ready_mocks(monkeypatch)
+    output_path = tmp_path / "publish-check.json"
+
+    def fake_warning_git(
+        project_root: Path,
+        args: list[str],
+    ) -> subprocess.CompletedProcess[str]:
+        if args[:2] == ["tag", "--list"]:
+            return subprocess.CompletedProcess(["git", *args], 0, stdout="", stderr="")
+        return fake_clean_git(project_root, args)
+
+    monkeypatch.setattr(publish_check_module, "git_inspect", fake_warning_git)
+
+    result = runner.invoke(
+        app,
+        [
+            "publish-check",
+            "--project-root",
+            str(tmp_path),
+            "--advice",
+            "--write-json",
+            str(output_path),
+        ],
+    )
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    checks = {check["name"]: check for check in payload["checks"]}
+    assert result.exit_code == 0
+    assert payload["overall_status"] == "warning"
+    assert checks["local_tag_exists"]["advice"]
+
+
+def test_publish_check_missing_output_parent_fails(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_publish_project(tmp_path)
+    install_ready_mocks(monkeypatch)
+    output_path = tmp_path / "missing" / "publish-check.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "publish-check",
+            "--project-root",
+            str(tmp_path),
+            "--write-json",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "output parent does not exist" in result.output
+
+
+def test_publish_check_output_directory_fails(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_publish_project(tmp_path)
+    install_ready_mocks(monkeypatch)
+
+    result = runner.invoke(
+        app,
+        [
+            "publish-check",
+            "--project-root",
+            str(tmp_path),
+            "--write-summary",
+            str(tmp_path),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "output path is a directory" in result.output
+
+
 def test_publish_check_reports_dirty_working_tree(
     tmp_path: Path,
     monkeypatch,
