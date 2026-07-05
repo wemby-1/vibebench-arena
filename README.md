@@ -1,6 +1,6 @@
 # VibeBench Arena
 
-**Codex-first quality gate for vibe coding projects.**
+**Codex-first / vibe-coding quality console for local-first AI-assisted software projects.**
 
 > Codex writes code. VibeBench verifies it.
 
@@ -22,26 +22,30 @@
 
 <!-- VIBEBENCH_STATUS_END -->
 
-VibeBench Arena is a local verification tool for Codex-first and AI-assisted
-coding workflows. It helps developers check whether AI-generated code is safe to
-review, commit, and ship.
+AI-assisted coding can feel fast but hard to trust, review, compare, and release safely. VibeBench turns local AI coding sessions into repeatable checks, artifacts, summaries, release audits, and CI-readable outputs.
 
-The project remains local-first and pragmatic. v0.2.0 adds stronger CI orchestration, release readiness checks, machine-readable artifacts, and downloadable GitHub Actions outputs on top of the original local quality gate. v0.3.0 is the current stable release, with notes available in [RELEASE_NOTES_v0.3.0.md](RELEASE_NOTES_v0.3.0.md).
+VibeBench Arena is not another AI chat app and not just a benchmark leaderboard. It is a local quality console for Codex-first work: a way to record what changed, check it, compare it, audit release readiness, and keep humans in the review loop.
+
+Start with the [public demo guide](docs/demo.md), the [quickstart demo](examples/quickstart-demo/README.md), or the current [v0.3.0 release notes](RELEASE_NOTES_v0.3.0.md).
+
+## Why This Exists
+
+AI coding agents can produce useful changes quickly, but speed creates review pressure. VibeBench adds a local quality gate between generated code and shipping decisions so "seems to work" becomes something more inspectable:
+
+- reproducible local and CI checks
+- readable Markdown and JSON artifacts
+- latest-run, compare, package, release-check, and release-audit records
+- no replacement for human review, and no hidden publish/release side effects
 
 For bounded, low-cost Codex milestones, use the [Codex task template](docs/codex-task-template.md).
 
-## Why VibeBench?
+## What You Can See In 5 Minutes
 
-AI coding agents can produce useful changes quickly, but speed creates review
-pressure. VibeBench adds a local quality gate between generated code and shipping
-decisions.
-
-It is designed to be:
-
-- local-first and easy to run inside an existing repository
-- readable for developers who are new to Python tooling
-- useful in Codex-first workflows without replacing human review
-- incremental, with focused milestones instead of a large benchmark platform
+- Run `python3 -m vibebench ci --dry-run` to see the planned quality pipeline.
+- Run `python3 -m vibebench ci` to generate local run artifacts.
+- Run `python3 -m vibebench latest --all-paths` to inspect the newest outputs.
+- Run `python3 -m vibebench release-check` to inspect release readiness.
+- Run `python3 -m vibebench release-audit --zip --output-dir /tmp/vibebench-release-audit-demo` to create a local audit bundle without publishing, tagging, or creating a GitHub Release.
 
 ## What It Checks Today
 

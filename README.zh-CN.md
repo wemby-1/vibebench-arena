@@ -1,6 +1,6 @@
 # VibeBench Arena
 
-**AI 生成代码提交前的本地质量门禁。**
+**面向 Codex / vibe-coding 时代的本地质量控制台。**
 
 > Codex 负责写代码，VibeBench 负责验收。
 
@@ -22,22 +22,30 @@
 
 <!-- VIBEBENCH_STATUS_END -->
 
-VibeBench Arena 是一个面向 Codex-first 和 AI 辅助开发流程的本地验证工具。AI coding agent 可以很快生成代码，但开发者仍然需要一个清晰的本地质量门禁，判断这些改动是否适合进入 review、commit 和交付流程。
+AI 辅助写代码很快，但也容易让人陷入“感觉能跑”的黑箱：难信任、难 review、难对比、难审计，也难安全发布。VibeBench 把本地 AI coding session 变成可重复执行的检查、artifacts、摘要、release audit 和 CI 可读输出。
 
-当前项目仍然坚持本地优先和小步迭代。v0.2.0 在原有本地质量门禁基础上，补充了更完整的 CI 编排、发布就绪检查、机器可读 artifacts，以及 GitHub Actions 可下载产物。v0.3.0 是当前稳定版本，说明见 [RELEASE_NOTES_v0.3.0.md](RELEASE_NOTES_v0.3.0.md)。
+VibeBench Arena 不是又一个 AI 聊天应用，也不是简单的 benchmark / leaderboard。它是 Codex / vibe-coding 时代的本地质量控制台，让 AI 写代码从“感觉能跑”变成“可检查、可对比、可审计、可复现、可发布”。
+
+可以先看 [public demo guide](docs/demo.md)、[quickstart demo](examples/quickstart-demo/README.md)，或当前 [v0.3.0 release notes](RELEASE_NOTES_v0.3.0.md)。
+
+## 为什么存在？
+
+AI coding agent 可以很快生成有用改动，但速度也会制造审查压力。VibeBench 在“代码生成”和“准备交付”之间加上一个本地质量门禁，让团队看到证据，而不是只凭感觉：
+
+- 可复现的本地和 CI 检查
+- 易读的 Markdown / JSON artifacts
+- latest-run、compare、package、release-check 和 release-audit 记录
+- 不替代人工 review，也没有隐藏的发布、打 tag 或 GitHub Release 副作用
 
 编写有边界、低成本的 Codex 里程碑时，可以使用 [Codex task template](docs/codex-task-template.md)。
 
-## 为什么需要 VibeBench？
+## 5 分钟能看到什么？
 
-AI 生成代码提升了速度，也增加了审查压力。VibeBench 的目标是在“代码生成”和“准备提交”之间增加一个本地验收步骤，让开发者更快看见明显风险。
-
-它的设计取向是：
-
-- 本地优先，可以直接在现有仓库里运行
-- 输出清晰，对 Python 工具链新手也友好
-- 适合 Codex-first 工作流，但不替代人工 review
-- 小步迭代，每个里程碑只增加一个明确能力
+- 运行 `python3 -m vibebench ci --dry-run` 查看质量流水线计划。
+- 运行 `python3 -m vibebench ci` 生成本地 run artifacts。
+- 运行 `python3 -m vibebench latest --all-paths` 查看最新输出路径。
+- 运行 `python3 -m vibebench release-check` 查看发布就绪状态。
+- 运行 `python3 -m vibebench release-audit --zip --output-dir /tmp/vibebench-release-audit-demo` 生成本地 audit bundle，不会发布包、打 tag 或创建 GitHub Release。
 
 ## 现在会检查什么？
 
