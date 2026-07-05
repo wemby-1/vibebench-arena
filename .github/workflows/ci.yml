@@ -118,6 +118,48 @@ jobs:
           path: .vibebench/site-preview
           if-no-files-found: error
 
+      - name: Generate evidence room
+        run: python3 -m vibebench evidence-room --output-dir .vibebench/evidence-room --zip
+
+      - name: Add evidence room summary
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          ## VibeBench Evidence Room
+
+          **Status:** Generated successfully
+
+          **Artifact:** `vibebench-evidence-room`
+
+          **Main files:**
+          - `evidence-room.html`
+          - `evidence-room.json`
+          - `evidence-room.md`
+          - `evidence-room.zip`
+          - `proof-packet/`
+          - `site-preview/`
+
+          **Reproduce locally:**
+
+          ```bash
+          python3 -m vibebench evidence-room --output-dir .vibebench/evidence-room --zip
+          ```
+
+          **Verify locally:**
+
+          ```bash
+          python3 -m vibebench evidence-room --verify .vibebench/evidence-room
+          ```
+
+          Download `vibebench-evidence-room` from the GitHub Actions run artifacts area. This is a CI artifact, not an automatically published GitHub Pages deployment.
+          EOF
+
+      - name: Upload VibeBench evidence room
+        uses: actions/upload-artifact@v7
+        with:
+          name: vibebench-evidence-room
+          path: .vibebench/evidence-room
+          if-no-files-found: error
+
       - name: Upload VibeBench artifacts
         if: always()
         uses: actions/upload-artifact@v7

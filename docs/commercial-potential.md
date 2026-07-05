@@ -10,7 +10,7 @@ For a concise scope check and adoption path, see the [Pages site entry](index.ht
 
 For a local, shareable static preview of the public docs surface, run `python3 -m vibebench site-preview --output-dir /tmp/vibebench-site-preview --zip` and verify it with `python3 -m vibebench site-preview --verify /tmp/vibebench-site-preview/site-preview.zip`. CI reuses the same command for the downloadable `vibebench-site-preview` artifact, without enabling GitHub Pages automatically.
 
-For a single evidence package for external evaluation, run `python3 -m vibebench evidence-room --output-dir /tmp/vibebench-evidence-room --zip` and verify it with `python3 -m vibebench evidence-room --verify /tmp/vibebench-evidence-room/evidence-room.zip`. The evidence room combines the proof packet and static site preview without making traction, funding, revenue, customer, investor, or adoption claims.
+For a single evidence package for external evaluation, run `python3 -m vibebench evidence-room --output-dir PATH --zip` and verify it with `python3 -m vibebench evidence-room --verify PATH`. CI uploads the same package as `vibebench-evidence-room`. The evidence room combines the proof packet and static site preview without making traction, funding, revenue, customer, investor, or adoption claims.
 
 ## Why This Could Matter Commercially
 

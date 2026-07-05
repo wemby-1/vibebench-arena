@@ -1570,6 +1570,26 @@ def test_active_github_workflow_uploads_static_site_preview_artifact() -> None:
     assert "pages.md" in workflow
 
 
+def test_active_github_workflow_uploads_evidence_room_artifact() -> None:
+    workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+    assert "python3 -m vibebench evidence-room" in workflow
+    assert "--output-dir .vibebench/evidence-room" in workflow
+    assert "--zip" in workflow
+    assert "vibebench-evidence-room" in workflow
+    assert "actions/upload-artifact" in workflow
+    assert "GITHUB_STEP_SUMMARY" in workflow
+    assert "evidence-room.html" in workflow
+    assert "evidence-room.json" in workflow
+    assert "evidence-room.md" in workflow
+    assert "evidence-room.zip" in workflow
+    assert "proof-packet" in workflow
+    assert "site-preview" in workflow
+    assert "vibebench-proof-packet" in workflow
+    assert "vibebench-site-preview" in workflow
+    assert "not an automatically published GitHub Pages deployment" in workflow
+
+
 def test_example_github_workflow_posts_pr_comments_safely() -> None:
     workflow = Path("docs/examples/github-actions/vibebench.yml").read_text(
         encoding="utf-8"

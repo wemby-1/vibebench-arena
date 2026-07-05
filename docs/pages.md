@@ -37,11 +37,11 @@ python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip
 For a single external-evaluation package that combines the proof packet and static site preview, run:
 
 ```bash
-python3 -m vibebench evidence-room --output-dir /tmp/vibebench-evidence-room --zip
-python3 -m vibebench evidence-room --verify /tmp/vibebench-evidence-room/evidence-room.zip
+python3 -m vibebench evidence-room --output-dir PATH --zip
+python3 -m vibebench evidence-room --verify PATH
 ```
 
-The evidence room is local-first and evidence-first. It contains top-level HTML, Markdown, JSON, a nested proof packet, and a nested static site preview. It does not enable GitHub Pages automatically and does not claim traction, funding, customers, revenue, or adoption.
+The evidence room is local-first and evidence-first. It contains top-level HTML, Markdown, JSON, a nested proof packet, and a nested static site preview. CI uploads it as the downloadable `vibebench-evidence-room` artifact. It does not enable GitHub Pages automatically and does not claim traction, funding, customers, revenue, or adoption.
 
 ## Preview locally
 
