@@ -90,6 +90,11 @@ from vibebench.pr_comment import (
     post_pr_comment,
     pr_comment_post_json,
 )
+from vibebench.publish_check import (
+    PublishReadinessResult,
+    publish_check_json,
+    run_publish_check,
+)
 from vibebench.release_check import (
     ReleaseReadinessResult,
     release_check_json,
@@ -1926,6 +1931,28 @@ def package_check_command(
         raise typer.Exit(code=1)
 
 
+@app.command("publish-check")
+def publish_check_command(
+    project_root: ProjectRootOption = Path("."),
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print publish readiness as JSON."),
+    ] = False,
+    advice: Annotated[
+        bool,
+        typer.Option("--advice", help="Show advice for publish readiness checks."),
+    ] = False,
+) -> None:
+    """Run a local-only package publishing readiness dry-run."""
+    result = run_publish_check(project_root, advice=advice)
+    if as_json:
+        print(publish_check_json(result))
+    else:
+        render_publish_check_summary(result)
+    if result.overall_status == "failed":
+        raise typer.Exit(code=1)
+
+
 @app.command("release-check")
 def release_check_command(
     project_root: ProjectRootOption = Path("."),
@@ -3004,6 +3031,40 @@ def render_package_check_summary(result: PackageReadinessResult) -> None:
             console.print(f"Build advice: {result.build.advice}")
     status_style_name = "green" if result.ready else "red"
     console.print(f"Package readiness: [{status_style_name}]{result.status}[/]")
+
+
+def render_publish_check_summary(result: PublishReadinessResult) -> None:
+    """Render publish readiness summary."""
+    console.print()
+    console.print("[bold]VibeBench Publish Check[/]")
+    console.print(f"Project root: {result.project_root}")
+    console.print(f"Package version: {result.package_version or 'unknown'}")
+
+    show_advice = result.advice or result.overall_status != "ready"
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Check")
+    table.add_column("Status")
+    table.add_column("Message")
+    if show_advice:
+        table.add_column("Advice")
+    status_style = {"passed": "green", "warning": "yellow", "failed": "red"}
+    for check in result.checks:
+        row = [
+            check.name,
+            f"[{status_style[check.status]}]{check.status}[/]",
+            check.message,
+        ]
+        if show_advice:
+            row.append(check.advice or "")
+        table.add_row(*row)
+    console.print(table)
+
+    final_style = {
+        "ready": "green",
+        "warning": "yellow",
+        "failed": "red",
+    }[result.overall_status]
+    console.print(f"Publish readiness: [{final_style}]{result.overall_status}[/]")
 
 
 def render_release_check_summary(result: ReleaseReadinessResult) -> None:

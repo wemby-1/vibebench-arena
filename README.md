@@ -78,6 +78,7 @@ python -m vibebench doctor
 python -m vibebench release-check
 python -m vibebench release-checklist
 python -m vibebench package-check
+python -m vibebench publish-check
 python -m vibebench history
 python -m vibebench latest
 python -m vibebench latest --all-paths
@@ -115,9 +116,10 @@ python -m vibebench --help
 python -m vibebench package-check
 python -m vibebench package-check --json
 python -m vibebench package-check --build
+python -m vibebench publish-check
 ```
 
-`package-check` validates local metadata, imports, the console script entry point, and key docs without network calls, PyPI publishing, or GitHub API access. Add `--build` to opt in to a local-only package build readiness check before PyPI or GitHub Package publishing; it writes build output to a temporary directory, cleans it up by default, and never uploads or publishes anything. Add `--write-json PATH` or `--write-summary PATH` to persist `package-check.json` and `package-check.md` for CI/release review.
+`package-check` validates local metadata, imports, the console script entry point, and key docs without network calls, PyPI publishing, or GitHub API access. Add `--build` to opt in to a local-only package build readiness check before PyPI or GitHub Package publishing; it writes build output to a temporary directory, cleans it up by default, and never uploads or publishes anything. `publish-check` is a local-only dry-run readiness check for the final package publishing step; it checks metadata, release notes, tags, package-check, package-check --build, and release-check, but never uploads a package, creates a tag, creates a release, or bumps a version. Add `--write-json PATH` or `--write-summary PATH` to persist `package-check.json` and `package-check.md` for CI/release review.
 
 `vibebench config` prints the effective project, checks, gate, and risk configuration. Use `--json` for machine-readable output, `--validate` for a short validation result, `--check` for consistency diagnostics, `--check --advice` for repair guidance, and `--show-source` to see whether major sections came from the config file or built-in defaults. Use `python3 -m vibebench config --init --dry-run` to preview config initialization; add `--json` for machine-readable dry-run output. Use `python3 -m vibebench config --init` to create `.vibebench/config.yaml` from the starter config; it refuses to overwrite by default. Use `--force` only when you intentionally want a real init to overwrite an existing config. Use `python3 -m vibebench config --example` to view the starter config, or `python3 -m vibebench config --write-example .vibebench/config.example.yaml` to write a copy; the starter includes `compare.fail_on_regression`. Use `python3 -m vibebench config --path` to see the expected config path before or after `--init`; add `--json` for `project_root`, `config_path`, and `exists`.
 
