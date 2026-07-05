@@ -4,6 +4,8 @@ This folder is a lightweight tour of what VibeBench produces. It is for GitHub v
 
 For the fastest browseable preview, open the checked-in [sample artifact pack](sample/README.md).
 
+These showcase artifacts support the project positioning: VibeBench makes AI-assisted coding reviewable and auditable.
+
 ## Artifact Tour
 
 VibeBench turns Codex-first / vibe-coding changes into a quality console of local evidence:

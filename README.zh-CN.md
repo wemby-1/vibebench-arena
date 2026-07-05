@@ -1,6 +1,6 @@
 # VibeBench Arena
 
-**面向 Codex / vibe-coding 时代的本地质量控制台。**
+**面向 Codex / vibe-coding 时代，把 AI 辅助改动变成可检查证据的本地质量控制台。**
 
 > Codex 负责写代码，VibeBench 负责验收。
 
@@ -22,11 +22,11 @@
 
 <!-- VIBEBENCH_STATUS_END -->
 
-AI 辅助写代码很快，但也容易让人陷入“感觉能跑”的黑箱：难信任、难 review、难对比、难审计，也难安全发布。VibeBench 把本地 AI coding session 变成可重复执行的检查、artifacts、摘要、release audit 和 CI 可读输出。
+AI coding 正在变得更容易；真正困难的是 review、审计、对比和信任 AI 生成的改动。VibeBench 把本地 AI coding session 变成可复现的检查、artifacts、摘要、release audit 和 CI 可读输出，让 vibe-coding 不只停留在“感觉能跑”。
 
 VibeBench Arena 不是又一个 AI 聊天应用，也不是简单的 benchmark / leaderboard。它是 Codex / vibe-coding 时代的本地质量控制台，让 AI 写代码从“感觉能跑”变成“可检查、可对比、可审计、可复现、可发布”。
 
-可以先看 [public demo guide](docs/demo.md)、[示例 artifact pack](examples/showcase-artifacts/sample/README.md)、[quickstart demo](examples/quickstart-demo/README.md)，或当前 [v0.3.0 release notes](RELEASE_NOTES_v0.3.0.md)。
+可以先看 [positioning](docs/positioning.md)、[use cases](docs/use-cases.md)、[public demo guide](docs/demo.md)、[artifact gallery](docs/artifact-gallery.md)、[示例 artifact pack](examples/showcase-artifacts/sample/README.md)、[quickstart demo](examples/quickstart-demo/README.md)，或当前 [v0.3.0 release notes](RELEASE_NOTES_v0.3.0.md)。
 
 ## 为什么存在？
 

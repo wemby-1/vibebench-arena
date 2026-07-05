@@ -8,6 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added project positioning and use-case docs for evaluating VibeBench as a Codex-first / vibe-coding quality console.
 - Added a small checked-in sample artifact pack for GitHub visitors to browse VibeBench output shapes without running commands.
 - Added an artifact gallery and showcase docs for GitHub visitors.
 - Added public GitHub-facing quickstart demo and positioning docs for VibeBench Arena.

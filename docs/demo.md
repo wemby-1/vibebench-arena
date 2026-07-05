@@ -6,6 +6,8 @@ For a skim-friendly map of the concrete outputs, see the [artifact gallery](arti
 
 To browse the output shape without running commands, open the checked-in [sample artifact pack](../examples/showcase-artifacts/sample/README.md).
 
+For the broader product thesis and practical workflows, see [positioning](positioning.md) and [use cases](use-cases.md).
+
 ## Why Vibe Coding Needs A Quality Gate
 
 AI coding feels fast, but the hard part is trust. A useful local quality gate should make it easy to answer:

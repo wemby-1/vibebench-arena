@@ -1,6 +1,6 @@
 # VibeBench Arena
 
-**Codex-first / vibe-coding quality console for local-first AI-assisted software projects.**
+**The Codex-first / vibe-coding quality console for turning AI-assisted changes into reviewable evidence.**
 
 > Codex writes code. VibeBench verifies it.
 
@@ -22,11 +22,11 @@
 
 <!-- VIBEBENCH_STATUS_END -->
 
-AI-assisted coding can feel fast but hard to trust, review, compare, and release safely. VibeBench turns local AI coding sessions into repeatable checks, artifacts, summaries, release audits, and CI-readable outputs.
+AI coding is getting easier; reviewing, auditing, comparing, and trusting AI-generated changes is still the hard part. VibeBench exists to make local-first AI coding sessions inspectable through repeatable checks, artifacts, summaries, release audits, and CI-readable outputs.
 
 VibeBench Arena is not another AI chat app and not just a benchmark leaderboard. It is a local quality console for Codex-first work: a way to record what changed, check it, compare it, audit release readiness, and keep humans in the review loop.
 
-Start with the [public demo guide](docs/demo.md), the [sample artifact pack](examples/showcase-artifacts/sample/README.md), the [quickstart demo](examples/quickstart-demo/README.md), or the current [v0.3.0 release notes](RELEASE_NOTES_v0.3.0.md).
+Start with the [positioning](docs/positioning.md), [use cases](docs/use-cases.md), [public demo guide](docs/demo.md), [artifact gallery](docs/artifact-gallery.md), [sample artifact pack](examples/showcase-artifacts/sample/README.md), [quickstart demo](examples/quickstart-demo/README.md), or the current [v0.3.0 release notes](RELEASE_NOTES_v0.3.0.md).
 
 ## Why This Exists
 
