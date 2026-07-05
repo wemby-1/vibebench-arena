@@ -43,6 +43,25 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python -m vibebench pr-comment --post --no-fail-on-error
 
+      - name: Generate proof packet
+        run: python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip
+
+      - name: Add proof packet summary
+        run: |
+          {
+            echo "## VibeBench Proof Packet"
+            echo ""
+            echo "Download the \`vibebench-proof-packet\` artifact to inspect the local proof packet."
+            echo "It contains \`proof.html\`, \`proof.json\`, \`proof.md\`, \`proof-manifest.json\`, and \`proof.zip\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload VibeBench proof packet
+        uses: actions/upload-artifact@v7
+        with:
+          name: vibebench-proof-packet
+          path: .vibebench/proof-packet
+          if-no-files-found: error
+
       - name: Upload VibeBench artifacts
         if: always()
         uses: actions/upload-artifact@v7
