@@ -1,0 +1,54 @@
+name: Demo feedback
+description: Share feedback on the demo, artifact gallery, or sample outputs
+title: "demo feedback: "
+labels: [demo-feedback]
+body:
+  - type: dropdown
+    id: page
+    attributes:
+      label: Which page or demo did you view?
+      options:
+        - README
+        - Demo guide
+        - Artifact gallery
+        - Sample artifact pack
+        - Showcase artifacts
+        - Positioning or use cases
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: clear
+    attributes:
+      label: What was clear?
+      description: What made VibeBench easier to understand?
+    validations:
+      required: true
+  - type: textarea
+    id: confusing
+    attributes:
+      label: What was confusing?
+      description: What slowed you down or felt unclear?
+    validations:
+      required: true
+  - type: textarea
+    id: missing_artifact
+    attributes:
+      label: What artifact did you want to see?
+      description: Name any report, summary, audit output, compare view, or CI evidence that would help.
+  - type: textarea
+    id: convincing
+    attributes:
+      label: What would make the project more convincing?
+      description: Share the smallest demo, artifact, docs, or workflow improvement that would help you evaluate it.
+  - type: dropdown
+    id: followup
+    attributes:
+      label: Would you star, share, or use it?
+      description: This helps maintainers understand interest; no pressure.
+      options:
+        - I would star it
+        - I would share it
+        - I would try it locally
+        - Not yet; I need clearer evidence
+        - Unsure

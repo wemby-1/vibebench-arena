@@ -1,0 +1,67 @@
+name: Use case
+description: Share how you use AI coding tools and what evidence would help
+title: "use case: "
+labels: [use-case]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share the workflow, not private code. Remove credentials, private repo details, proprietary code, and confidential logs before posting.
+  - type: checkboxes
+    id: agent_tools
+    attributes:
+      label: AI coding agent or tool
+      options:
+        - label: Codex
+        - label: Cursor
+        - label: Claude Code
+        - label: GitHub Copilot
+        - label: Other local or hosted coding assistant
+    validations:
+      required: true
+  - type: dropdown
+    id: context
+    attributes:
+      label: Usage context
+      options:
+        - Solo
+        - Open-source
+        - Startup
+        - Enterprise
+        - Lab
+        - Education
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: team_size
+    attributes:
+      label: Team size or usage context
+      description: Keep this approximate; do not include private company details.
+      placeholder: solo, 2-5 developers, class project, maintainer group, etc.
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Workflow context
+      description: Where does AI coding enter your development flow?
+    validations:
+      required: true
+  - type: textarea
+    id: pain
+    attributes:
+      label: Current review or audit pain
+      description: What is hard to inspect, compare, verify, or explain today?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence or artifacts that would help
+      description: What summaries, reports, compare output, release checks, or CI records would make the workflow safer?
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else maintainers should understand?
+      description: Optional context, with private details removed.

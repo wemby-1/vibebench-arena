@@ -4,17 +4,12 @@ title: "feat: "
 labels: [enhancement]
 body:
   - type: textarea
-    id: use-case
+    id: problem
     attributes:
-      label: Use case
-      description: What workflow or problem would this improve?
+      label: Problem or pain point
+      description: What review, audit, CI, release, or artifact workflow is painful today?
     validations:
       required: true
-  - type: textarea
-    id: workaround
-    attributes:
-      label: Current workaround
-      description: How are you handling this today, if at all?
   - type: textarea
     id: proposal
     attributes:
@@ -22,15 +17,40 @@ body:
       description: Describe the smallest useful version of the feature.
     validations:
       required: true
-  - type: checkboxes
+  - type: dropdown
+    id: user_type
+    attributes:
+      label: User type
+      options:
+        - Solo developer
+        - Open-source maintainer
+        - Startup or small team
+        - Larger engineering team
+        - Release manager
+        - Education or lab
+        - Investor or technical evaluator
+        - Other
+    validations:
+      required: true
+  - type: input
     id: area
     attributes:
-      label: Related area
+      label: Affected command or artifact
+      placeholder: ci, compare, release-check, release-audit, manifest, report, docs, etc.
+  - type: textarea
+    id: auditability
+    attributes:
+      label: Why this improves AI coding review or auditability
+      description: How would this make AI-assisted changes easier to inspect, compare, or trust?
+    validations:
+      required: true
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you consider contributing this?
       options:
-        - label: check command
-        - label: HTML report
-        - label: PR comment
-        - label: risk rules
-        - label: config
-        - label: future agent arena
-        - label: documentation or examples
+        - Yes, I can open a focused PR
+        - Maybe, with maintainer guidance
+        - No, I am sharing the need only
+    validations:
+      required: true

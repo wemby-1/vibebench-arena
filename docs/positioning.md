@@ -99,4 +99,4 @@ Those directions are opportunities, not claims of current traction. The current 
 
 VibeBench Arena currently supports local configuration, checks, scoring, risk analysis, reports, PR summaries, manifests, run discovery, compare outputs, GitHub Actions summaries, package readiness checks, release readiness checks, release-body exports, and local release audit artifacts.
 
-It is useful as a practical engineering layer for making AI-assisted coding more reviewable and auditable, while still requiring human judgment for merge and release decisions.
+It is useful as a practical engineering layer for making AI-assisted coding more reviewable and auditable, while still requiring human judgment for merge and release decisions. Real use cases can be shared through the GitHub issue templates.

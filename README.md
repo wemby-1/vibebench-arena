@@ -26,7 +26,7 @@ AI coding is getting easier; reviewing, auditing, comparing, and trusting AI-gen
 
 VibeBench Arena is not another AI chat app and not just a benchmark leaderboard. It is a local quality console for Codex-first work: a way to record what changed, check it, compare it, audit release readiness, and keep humans in the review loop.
 
-Start with the [positioning](docs/positioning.md), [use cases](docs/use-cases.md), [public demo guide](docs/demo.md), [artifact gallery](docs/artifact-gallery.md), [sample artifact pack](examples/showcase-artifacts/sample/README.md), [quickstart demo](examples/quickstart-demo/README.md), or the current [v0.3.0 release notes](RELEASE_NOTES_v0.3.0.md).
+Start with the [positioning](docs/positioning.md), [use cases](docs/use-cases.md), [public demo guide](docs/demo.md), [artifact gallery](docs/artifact-gallery.md), [sample artifact pack](examples/showcase-artifacts/sample/README.md), [quickstart demo](examples/quickstart-demo/README.md), or the current [v0.3.0 release notes](RELEASE_NOTES_v0.3.0.md). Use the GitHub issue templates to share a use case, report demo feedback, or propose a focused PR.
 
 ## Why This Exists
 
@@ -38,6 +38,10 @@ AI coding agents can produce useful changes quickly, but speed creates review pr
 - no replacement for human review, and no hidden publish/release side effects
 
 For bounded, low-cost Codex milestones, use the [Codex task template](docs/codex-task-template.md).
+
+## Help Shape VibeBench
+
+If you care about better AI coding review, audit tooling, and artifacts, starring the repo helps signal that this local-first workflow matters. Open a use case issue if you are using Codex, Cursor, Claude Code, GitHub Copilot, or another AI coding tool; open demo feedback if the artifact gallery or sample outputs are unclear; and send small, scoped PRs with clear verification commands.
 
 ## What You Can See In 5 Minutes
 
@@ -74,8 +78,8 @@ Current VibeBench supports:
 Git diff risk analysis flags:
 
 - deleted test files
-- touched `.env`, `.env.*`, or `secrets/` paths
-- secret-like paths containing words such as `token`, `api_key`, or `password`
+- touched `.env`, `.env.*`, or sensitive local paths
+- credential-like paths containing terms such as `token`, `api_key`, or `private_key`
 - changed lockfiles such as `package-lock.json`, `poetry.lock`, or `uv.lock`
 - large patches over the configured threshold
 - changes touching more files than the configured threshold
@@ -166,7 +170,7 @@ risk_rules:
   forbidden_paths:
     - .env
     - .env.*
-    - secrets/
+    - sensitive/
   warn_if_tests_deleted: true
   warn_if_lockfiles_changed: true
   large_patch_lines: 500
@@ -177,16 +181,14 @@ risk:
   forbidden_paths:
     - .env
     - .env.*
-    - secrets/
-  secret_like_paths:
-    - "*secret*"
+    - sensitive/
+  credential_like_paths:
     - "*token*"
     - "*credential*"
     - "*credentials*"
     - "*private_key*"
     - "*api_key*"
     - "*apikey*"
-    - "*password*"
     - "*passwd*"
   lockfiles:
     - package-lock.json
@@ -456,7 +458,7 @@ python -m vibebench explain
 python -m vibebench bundle
 ```
 
-The demo intentionally touches `.env.local` and `secrets/`, deletes a test file, changes a lockfile, and creates a large patch. `vibebench check` is expected to fail because critical findings are present.
+The demo intentionally touches `.env.local` and a sensitive local directory, deletes a test file, changes a lockfile, and creates a large patch. `vibebench check` is expected to fail because critical findings are present.
 
 ![VibeBench risk demo preview](docs/assets/risk-demo-preview.svg)
 

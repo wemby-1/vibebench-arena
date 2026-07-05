@@ -6,33 +6,12 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting a bug. Please do not paste real secrets, private keys, tokens, or confidential logs.
-  - type: input
-    id: os
-    attributes:
-      label: OS
-      placeholder: Ubuntu 24.04, macOS 15, Windows 11
-    validations:
-      required: true
-  - type: input
-    id: python
-    attributes:
-      label: Python version
-      placeholder: Python 3.11.9
-    validations:
-      required: true
-  - type: input
-    id: version
-    attributes:
-      label: VibeBench version
-      placeholder: 0.1.0 or commit SHA
-    validations:
-      required: true
+        Thanks for reporting a bug. Share enough evidence to reproduce it, and remove credentials, private repo details, proprietary code, and confidential logs before posting.
   - type: textarea
     id: command
     attributes:
       label: Command run
-      description: The exact command that triggered the issue.
+      description: Paste the exact command that triggered the issue.
       render: shell
     validations:
       required: true
@@ -40,33 +19,53 @@ body:
     id: expected
     attributes:
       label: Expected behavior
+      description: What did you expect VibeBench to do?
     validations:
       required: true
   - type: textarea
     id: actual
     attributes:
       label: Actual behavior
+      description: What actually happened?
     validations:
       required: true
-  - type: textarea
-    id: config
+  - type: dropdown
+    id: area
     attributes:
-      label: Sanitized config
-      description: Paste `.vibebench/config.yaml` with secrets and private paths removed.
-      render: yaml
+      label: Where did this happen?
+      options:
+        - Local CLI
+        - GitHub Actions
+        - Release audit
+        - Package check
+        - Artifact generation
+        - Unsure or other
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: OS / environment
+      placeholder: Ubuntu 24.04, macOS 15, Windows 11, or GitHub Actions runner
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: VibeBench version or commit
+      placeholder: v0.3.0 or commit SHA
+    validations:
+      required: true
   - type: textarea
     id: output
     attributes:
-      label: Sanitized output
-      description: Paste relevant terminal output with secrets and private paths removed.
+      label: Relevant output or logs
+      description: Paste the smallest useful output with credentials and private paths removed.
       render: text
-  - type: dropdown
-    id: secrets
+  - type: checkboxes
+    id: privacy
     attributes:
-      label: Does this involve secrets or sensitive files?
+      label: Privacy check
       options:
-        - "No"
-        - "Yes, but this report is sanitized"
-        - "Unsure"
-    validations:
-      required: true
+        - label: I removed credentials, private repo details, proprietary code, and confidential logs.
+          required: true
