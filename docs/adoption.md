@@ -16,7 +16,7 @@ VibeBench Arena helps individuals and small teams make AI-assisted coding work r
 2. Run `python3 -m vibebench demo`.
 3. Inspect the sample artifacts.
 4. Run `python3 -m vibebench ci --dry-run --json`.
-5. Generate a local proof packet with `python3 -m vibebench proof --output-dir /tmp/vibebench-proof`.
+5. Generate a shareable proof packet with `python3 -m vibebench proof --output-dir /tmp/vibebench-proof --zip`.
 6. Read the [comparison](comparison.md) and [FAQ](faq.md).
 
 ## First day
@@ -29,7 +29,7 @@ VibeBench Arena helps individuals and small teams make AI-assisted coding work r
 ## First week
 
 - Run VibeBench on small changes.
-- Collect review packets and proof packet outputs.
+- Collect review packets and proof packet outputs, then verify a proof packet before sharing it.
 - Compare outcomes across runs.
 - Identify missing checks or unclear artifacts.
 - Decide whether to integrate VibeBench into the team workflow.

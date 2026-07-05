@@ -95,6 +95,8 @@ from vibebench.proof import (
     ProofError,
     proof_json,
     proof_payload,
+    verification_json,
+    verify_proof_packet,
     write_proof_packet,
 )
 from vibebench.publish_check import (
@@ -1354,7 +1356,7 @@ def proof_command(
     ] = False,
     output_dir: Annotated[
         Path | None,
-        typer.Option("--output-dir", help="Write proof.md and proof.json under PATH."),
+        typer.Option("--output-dir", help="Write proof packet files under PATH."),
     ] = None,
     json_output: Annotated[
         Path | None,
@@ -1364,9 +1366,35 @@ def proof_command(
         Path | None,
         typer.Option("--summary-output", help="Write proof Markdown to PATH."),
     ] = None,
+    create_zip: Annotated[
+        bool,
+        typer.Option("--zip", help="Write proof.zip with relative packet files."),
+    ] = False,
+    zip_output: Annotated[
+        Path | None,
+        typer.Option(
+            "--zip-output",
+            help="Write proof archive to PATH; implies --zip when --output-dir is set.",
+        ),
+    ] = None,
+    verify: Annotated[
+        Path | None,
+        typer.Option("--verify", help="Verify a proof packet directory or proof.zip."),
+    ] = None,
 ) -> None:
-    """Generate a local proof packet for evaluating VibeBench Arena."""
+    """Generate or verify a local proof packet for VibeBench Arena."""
     root = project_root.resolve()
+
+    if verify is not None:
+        result = verify_proof_packet(verify)
+        if as_json:
+            print(verification_json(result))
+        else:
+            render_proof_verification(result)
+        if not result["verified"]:
+            raise typer.Exit(code=1)
+        return
+
     payload = proof_payload(root)
     try:
         written = write_proof_packet(
@@ -1375,6 +1403,8 @@ def proof_command(
             output_dir=output_dir,
             json_output=json_output,
             summary_output=summary_output,
+            create_zip=create_zip,
+            zip_output=zip_output,
         )
     except ProofError as exc:
         if as_json:
@@ -1395,7 +1425,10 @@ def proof_command(
         console.print(f"Proof Markdown: {written['summary']}")
     if "json" in written:
         console.print(f"Proof JSON: {written['json']}")
-
+    if "manifest" in written:
+        console.print(f"Proof manifest: {written['manifest']}")
+    if "zip" in written:
+        console.print(f"Proof archive: {written['zip']}")
 
 @app.command("manifest")
 def manifest_command(
@@ -3177,6 +3210,26 @@ def render_proof_summary(payload: dict[str, object]) -> None:
     console.print("\nHonest limitations:")
     for limit in payload["honest_limits"]:
         console.print(f"- {limit}")
+
+
+def render_proof_verification(result: dict[str, object]) -> None:
+    """Render proof packet verification output."""
+    if result["verified"]:
+        console.print("[green]Proof packet verification passed.[/]")
+    else:
+        console.print("[red]Proof packet verification failed.[/]")
+    console.print(f"Target: {result['target']} ({result['target_type']})")
+    for check in result["checks"]:
+        item = check if isinstance(check, dict) else {}
+        status = str(item.get("status", "unknown"))
+        name = str(item.get("name", "check"))
+        message = str(item.get("message", ""))
+        console.print(f"- {status}: {name} - {message}")
+    errors = result.get("errors") or []
+    if errors:
+        console.print("Errors:")
+        for error in errors:
+            console.print(f"- {error}")
 
 
 def render_demo_summary(payload: dict[str, object]) -> None:

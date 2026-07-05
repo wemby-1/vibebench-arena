@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import zipfile
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 PROOF_MARKDOWN = "proof.md"
 PROOF_JSON = "proof.json"
+PROOF_MANIFEST = "proof-manifest.json"
+PROOF_ZIP = "proof.zip"
+MANIFEST_CONTENT_FILES = [PROOF_MARKDOWN, PROOF_JSON]
+REQUIRED_PACKET_FILES = [PROOF_MARKDOWN, PROOF_JSON, PROOF_MANIFEST]
 
 RECOMMENDED_COMMANDS = [
     "python3 -m vibebench demo",
@@ -171,6 +178,40 @@ def proof_markdown(payload: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def proof_manifest(
+    payload: dict[str, Any],
+    content: dict[str, bytes],
+) -> dict[str, Any]:
+    """Build a manifest for proof packet content files."""
+    return {
+        "status": "ready",
+        "generated_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
+        "project": payload["project"],
+        "files": [
+            file_manifest(name, content[name]) for name in MANIFEST_CONTENT_FILES
+        ],
+        "notes": [
+            "Manifest paths are relative to the proof packet root.",
+            "Checksums cover proof.md and proof.json.",
+            "Verification also requires proof-manifest.json to be present and valid.",
+        ],
+    }
+
+
+def proof_manifest_json(manifest: dict[str, Any]) -> str:
+    """Serialize a proof manifest as sorted, pretty JSON."""
+    return json.dumps(manifest, indent=2, sort_keys=True)
+
+
+def file_manifest(name: str, content: bytes) -> dict[str, Any]:
+    """Build one file entry for the proof manifest."""
+    return {
+        "name": name,
+        "size_bytes": len(content),
+        "sha256": hashlib.sha256(content).hexdigest(),
+    }
+
+
 def resolve_output_path(project_root: Path, output_path: Path) -> Path:
     """Resolve an output path relative to the project root."""
     if output_path.is_absolute():
@@ -185,18 +226,30 @@ def write_proof_packet(
     output_dir: Path | None = None,
     json_output: Path | None = None,
     summary_output: Path | None = None,
+    create_zip: bool = False,
+    zip_output: Path | None = None,
 ) -> dict[str, Path]:
     """Write proof packet files and return written paths."""
     root = project_root.resolve()
     written: dict[str, Path] = {}
+    packet_dir: Path | None = None
+
+    summary_text = proof_markdown(payload)
+    json_text = proof_json(payload) + "\n"
+    packet_content = {
+        PROOF_MARKDOWN: summary_text.encode("utf-8"),
+        PROOF_JSON: json_text.encode("utf-8"),
+    }
+    manifest_text = proof_manifest_json(proof_manifest(payload, packet_content)) + "\n"
 
     if output_dir is not None:
-        target_dir = resolve_output_path(root, output_dir)
-        if target_dir.exists() and not target_dir.is_dir():
-            raise ProofError(f"Output path exists as a file: {target_dir}")
-        target_dir.mkdir(parents=True, exist_ok=True)
-        written["summary"] = target_dir / PROOF_MARKDOWN
-        written["json"] = target_dir / PROOF_JSON
+        packet_dir = resolve_output_path(root, output_dir)
+        if packet_dir.exists() and not packet_dir.is_dir():
+            raise ProofError(f"Output path exists as a file: {packet_dir}")
+        packet_dir.mkdir(parents=True, exist_ok=True)
+        written["summary"] = packet_dir / PROOF_MARKDOWN
+        written["json"] = packet_dir / PROOF_JSON
+        written["manifest"] = packet_dir / PROOF_MANIFEST
 
     if summary_output is not None:
         summary_path = resolve_output_path(root, summary_output)
@@ -208,12 +261,49 @@ def write_proof_packet(
         ensure_output_file(json_path)
         written["json"] = json_path
 
+    if create_zip or zip_output is not None:
+        if packet_dir is None:
+            message = "--zip requires --output-dir so packet files can be built."
+            raise ProofError(message)
+        zip_path = resolve_zip_output(root, packet_dir, zip_output)
+        written["zip"] = zip_path
+
     if "summary" in written:
-        written["summary"].write_text(proof_markdown(payload), encoding="utf-8")
+        written["summary"].write_text(summary_text, encoding="utf-8")
     if "json" in written:
-        written["json"].write_text(proof_json(payload) + "\n", encoding="utf-8")
+        written["json"].write_text(json_text, encoding="utf-8")
+    if "manifest" in written:
+        written["manifest"].write_text(manifest_text, encoding="utf-8")
+    if "zip" in written and packet_dir is not None:
+        write_proof_zip(packet_dir, written["zip"])
 
     return written
+
+
+def resolve_zip_output(
+    project_root: Path,
+    packet_dir: Path,
+    zip_output: Path | None,
+) -> Path:
+    """Resolve and validate the archive output path."""
+    zip_path = packet_dir / PROOF_ZIP
+    if zip_output is not None:
+        zip_path = resolve_output_path(project_root, zip_output)
+        ensure_output_file(zip_path)
+    elif zip_path.exists() and zip_path.is_dir():
+        raise ProofError(f"Output path exists as a directory: {zip_path}")
+    return zip_path
+
+
+def write_proof_zip(packet_dir: Path, zip_path: Path) -> None:
+    """Write a proof archive with relative file names only."""
+    if not zip_path.parent.exists():
+        zip_path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(
+        zip_path, mode="w", compression=zipfile.ZIP_DEFLATED
+    ) as archive:
+        for name in REQUIRED_PACKET_FILES:
+            archive.write(packet_dir / name, arcname=name)
 
 
 def ensure_output_file(output_path: Path) -> None:
@@ -223,3 +313,227 @@ def ensure_output_file(output_path: Path) -> None:
     if not output_path.parent.exists():
         message = f"Output parent directory does not exist: {output_path.parent}"
         raise ProofError(message)
+
+
+def verify_proof_packet(target: Path) -> dict[str, Any]:
+    """Verify a proof packet directory or zip archive."""
+    selected = target.resolve()
+    if selected.is_dir():
+        return verify_packet_bytes(
+            load_directory_packet(selected),
+            target_label=selected.name,
+            target_type="directory",
+        )
+    if selected.is_file():
+        return verify_packet_bytes(
+            load_zip_packet(selected),
+            target_label=selected.name,
+            target_type="zip",
+        )
+    return verification_result(
+        target_label=selected.name or str(target),
+        target_type="missing",
+        checks=[failed_check("target_exists", "Verification target does not exist.")],
+        files=[],
+        errors=["Verification target does not exist."],
+    )
+
+
+def load_directory_packet(target: Path) -> dict[str, bytes]:
+    """Load packet files from a directory."""
+    files: dict[str, bytes] = {}
+    for name in REQUIRED_PACKET_FILES:
+        path = target / name
+        if path.is_file():
+            files[name] = path.read_bytes()
+    return files
+
+
+def load_zip_packet(target: Path) -> dict[str, bytes]:
+    """Load packet files from a zip archive without extracting local paths."""
+    files: dict[str, bytes] = {}
+    try:
+        with zipfile.ZipFile(target) as archive:
+            for name in archive.namelist():
+                if Path(name).is_absolute() or ".." in Path(name).parts:
+                    continue
+                if name in REQUIRED_PACKET_FILES:
+                    files[name] = archive.read(name)
+    except zipfile.BadZipFile:
+        return files
+    return files
+
+
+def verify_packet_bytes(
+    packet_files: dict[str, bytes],
+    *,
+    target_label: str,
+    target_type: str,
+) -> dict[str, Any]:
+    """Verify loaded proof packet bytes."""
+    checks: list[dict[str, str]] = []
+    errors: list[str] = []
+
+    missing = [name for name in REQUIRED_PACKET_FILES if name not in packet_files]
+    if missing:
+        message = "Missing required file(s): " + ", ".join(missing)
+        checks.append(failed_check("required_files", message))
+        errors.append(message)
+        return verification_result(
+            target_label=target_label,
+            target_type=target_type,
+            checks=checks,
+            files=[],
+            errors=errors,
+        )
+    checks.append(passed_check("required_files", "Required proof files are present."))
+
+    proof_json_payload = load_json_check(
+        packet_files[PROOF_JSON],
+        name=PROOF_JSON,
+        checks=checks,
+        errors=errors,
+    )
+    manifest_payload = load_json_check(
+        packet_files[PROOF_MANIFEST],
+        name=PROOF_MANIFEST,
+        checks=checks,
+        errors=errors,
+    )
+    if proof_json_payload is None or manifest_payload is None:
+        return verification_result(
+            target_label=target_label,
+            target_type=target_type,
+            checks=checks,
+            files=[],
+            errors=errors,
+        )
+
+    manifest_files = manifest_payload.get("files")
+    if not isinstance(manifest_files, list):
+        message = "Manifest files field is missing or invalid."
+        checks.append(failed_check("manifest_files", message))
+        errors.append(message)
+        return verification_result(
+            target_label=target_label,
+            target_type=target_type,
+            checks=checks,
+            files=[],
+            errors=errors,
+        )
+
+    manifest_by_name = {
+        str(item.get("name")): item
+        for item in manifest_files
+        if isinstance(item, dict) and "name" in item
+    }
+    listed = set(manifest_by_name)
+    expected = set(MANIFEST_CONTENT_FILES)
+    if listed != expected:
+        message = "Manifest must list proof.md and proof.json."
+        checks.append(failed_check("manifest_expected_files", message))
+        errors.append(message)
+    else:
+        checks.append(
+            passed_check(
+                "manifest_expected_files",
+                "Manifest lists expected proof content files.",
+            )
+        )
+
+    verified_files: list[dict[str, Any]] = []
+    for name in MANIFEST_CONTENT_FILES:
+        item = manifest_by_name.get(name)
+        if not isinstance(item, dict):
+            continue
+        content = packet_files[name]
+        actual_size = len(content)
+        actual_sha = hashlib.sha256(content).hexdigest()
+        expected_size = item.get("size_bytes")
+        expected_sha = item.get("sha256")
+        file_status = "passed"
+        if expected_size != actual_size or expected_sha != actual_sha:
+            file_status = "failed"
+            message = f"Checksum or size mismatch for {name}."
+            checks.append(failed_check(f"file_integrity:{name}", message))
+            errors.append(message)
+        else:
+            checks.append(
+                passed_check(f"file_integrity:{name}", f"{name} matches manifest.")
+            )
+        verified_files.append(
+            {
+                "name": name,
+                "status": file_status,
+                "size_bytes": actual_size,
+                "sha256": actual_sha,
+            }
+        )
+
+    return verification_result(
+        target_label=target_label,
+        target_type=target_type,
+        checks=checks,
+        files=verified_files,
+        errors=errors,
+    )
+
+
+def load_json_check(
+    content: bytes,
+    *,
+    name: str,
+    checks: list[dict[str, str]],
+    errors: list[str],
+) -> dict[str, Any] | None:
+    """Load JSON and record a verification check."""
+    try:
+        payload = json.loads(content.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        message = f"{name} is not valid JSON."
+        checks.append(failed_check(f"valid_json:{name}", message))
+        errors.append(message)
+        return None
+    if not isinstance(payload, dict):
+        message = f"{name} must contain a JSON object."
+        checks.append(failed_check(f"valid_json:{name}", message))
+        errors.append(message)
+        return None
+    checks.append(passed_check(f"valid_json:{name}", f"{name} is valid JSON."))
+    return payload
+
+
+def verification_result(
+    *,
+    target_label: str,
+    target_type: str,
+    checks: list[dict[str, str]],
+    files: list[dict[str, Any]],
+    errors: list[str],
+) -> dict[str, Any]:
+    """Build a stable verification result."""
+    verified = not errors and all(check["status"] == "passed" for check in checks)
+    return {
+        "status": "passed" if verified else "failed",
+        "verified": verified,
+        "target": target_label,
+        "target_type": target_type,
+        "checks": checks,
+        "files": files,
+        "errors": errors,
+    }
+
+
+def verification_json(result: dict[str, Any]) -> str:
+    """Serialize verification output as sorted, pretty JSON."""
+    return json.dumps(result, indent=2, sort_keys=True)
+
+
+def passed_check(name: str, message: str) -> dict[str, str]:
+    """Build a passed verification check."""
+    return {"name": name, "status": "passed", "message": message}
+
+
+def failed_check(name: str, message: str) -> dict[str, str]:
+    """Build a failed verification check."""
+    return {"name": name, "status": "failed", "message": message}
