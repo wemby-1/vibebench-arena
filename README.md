@@ -45,6 +45,7 @@ See the [architecture](docs/architecture.md), [artifact gallery](docs/artifact-g
 - [Adoption guide](docs/adoption.md): a safe first-week path for Codex-first / vibe-coding teams.
 - [Demo guide](docs/demo.md): commands that prove the core local workflow without external service dependency.
 - Generate a shareable proof packet: `python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip` writes Markdown, JSON, a self-contained evidence-first HTML report, a manifest, and `proof.zip`; GitHub Actions shows a proof packet summary card and uploads the downloadable `vibebench-proof-packet` artifact.
+- Check the static Pages entry before publishing edits: `python3 -m vibebench site-check` or `python3 -m vibebench site-check --json`.
 - [Comparison](docs/comparison.md): where VibeBench fits beside CI, tests, benchmarks, chatbots, and review assistants.
 - [FAQ](docs/faq.md): direct answers about scope, limits, artifacts, and local-first review.
 - [Case study](docs/case-study.md): how an AI-assisted change becomes reviewable evidence.

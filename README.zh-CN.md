@@ -45,6 +45,7 @@ AI coding 正在变得更容易；真正困难的是 review、审计、对比和
 - [采用指南](docs/adoption.md)：适合评估 Codex / vibe-coding / AI 辅助编程工作流的小团队，说明第一周如何安全试点。
 - [Demo guide](docs/demo.md)：用本地命令证明核心流程，不依赖外部服务。
 - 生成可分享的本地证据包：`python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip` 会写入 Markdown、JSON、自包含、证据优先的 HTML 报告、manifest 和 `proof.zip`。GitHub Actions 也会显示 proof packet summary card，并上传可下载的 `vibebench-proof-packet` artifact。
+- 发布或编辑静态 Pages 入口前，可运行 `python3 -m vibebench site-check` 或 `python3 -m vibebench site-check --json` 做本地检查。
 - [对比与定位](docs/comparison.md)：说明 VibeBench 不是普通 CI、不是聊天机器人、不是排行榜，而是面向 AI coding / vibe-coding 的本地质量控制台。
 - [常见问题](docs/faq.md)：直接说明范围、边界、artifacts、local-first 和人工 review 的关系。
 - [案例研究](docs/case-study.md)：展示 AI 生成代码如何变成可检查、可审计、可复现的证据。

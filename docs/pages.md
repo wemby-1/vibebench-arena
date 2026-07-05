@@ -9,6 +9,17 @@ VibeBench Arena now includes a small static site surface under `docs/`.
 
 Both pages are static files with inline CSS only. They do not need a build step.
 
+## Site readiness check
+
+Before publishing or editing the static entry, run:
+
+```bash
+python3 -m vibebench site-check
+python3 -m vibebench site-check --json
+```
+
+This checks the Pages entry for required proof/evaluation links and obvious unsafe publishing markers. It is local-only. GitHub Pages is not enabled automatically by this command.
+
 ## Proof packet command
 
 The Pages entry points visitors to the same local proof packet command used by CI:

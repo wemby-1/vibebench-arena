@@ -140,6 +140,11 @@ from vibebench.run_index import (
     write_run_index_summary,
 )
 from vibebench.runner import CheckRunResult, run_checks
+from vibebench.site_check import (
+    run_site_check,
+    site_check_json,
+    write_site_check_json,
+)
 from vibebench.status_block import (
     DEFAULT_STATUS_TITLE,
     ReadmeStatusBlockResult,
@@ -1436,6 +1441,47 @@ def proof_command(
         console.print(f"Proof manifest: {written['manifest']}")
     if "zip" in written:
         console.print(f"Proof archive: {written['zip']}")
+
+
+@app.command("site-check")
+def site_check_command(
+    project_root: ProjectRootOption = Path("."),
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print static site readiness as JSON."),
+    ] = False,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write static site readiness JSON to PATH."),
+    ] = None,
+    root: Annotated[
+        Path,
+        typer.Option("--root", help="Static site root to check."),
+    ] = Path("docs"),
+) -> None:
+    """Check the GitHub Pages-ready static docs site."""
+    project = project_root.resolve()
+    selected_root = root if root.is_absolute() else project / root
+    root_label = root.as_posix()
+    payload = run_site_check(selected_root, root_label=root_label)
+
+    selected_json_output = None
+    if json_output is not None:
+        selected_json_output = (
+            json_output if json_output.is_absolute() else project / json_output
+        )
+        write_site_check_json(payload, selected_json_output)
+
+    if as_json:
+        print(site_check_json(payload))
+    else:
+        render_site_check_summary(payload)
+        if selected_json_output is not None:
+            console.print(f"Site check JSON: {selected_json_output}")
+
+    if payload["status"] != "passed":
+        raise typer.Exit(code=1)
+
 
 @app.command("manifest")
 def manifest_command(
@@ -3195,6 +3241,35 @@ def render_latest_summary(
             else ""
         )
         table.add_row(item.name, item.display_path.as_posix(), availability, size)
+    console.print(table)
+
+
+def render_site_check_summary(payload: dict[str, object]) -> None:
+    """Render a concise static site readiness summary."""
+    status = str(payload["status"])
+    status_style = "green" if status == "passed" else "red"
+    checked_files = ", ".join(str(item) for item in payload["checked_files"])
+
+    console.print()
+    console.print("[bold]VibeBench site check[/]")
+    console.print(f"Status: [{status_style}]{status}[/]")
+    console.print(f"Root: {payload['root']}")
+    console.print(f"Checked files: {checked_files}")
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Check")
+    table.add_column("Status", no_wrap=True)
+    table.add_column("Message")
+    for check in payload["checks"]:
+        if not isinstance(check, dict):
+            continue
+        check_status = str(check["status"])
+        check_style = "green" if check_status == "passed" else "red"
+        table.add_row(
+            str(check["name"]),
+            f"[{check_style}]{check_status}[/]",
+            str(check["message"]),
+        )
     console.print(table)
 
 
