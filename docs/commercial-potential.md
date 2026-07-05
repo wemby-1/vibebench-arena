@@ -8,6 +8,8 @@ For an evidence-first public walkthrough that avoids inflated claims, see the [c
 
 For a concise scope check and adoption path, see the [Pages site entry](index.html), [product showcase](showcase.html), [evaluate in 5 minutes](evaluate.md), [adoption](adoption.md), the [comparison](comparison.md), and [FAQ](faq.md).
 
+For a local, shareable static preview of the public docs surface, run `python3 -m vibebench site-preview --output-dir /tmp/vibebench-site-preview --zip` and verify it with `python3 -m vibebench site-preview --verify /tmp/vibebench-site-preview/site-preview.zip`. CI reuses the same command for the downloadable `vibebench-site-preview` artifact, without enabling GitHub Pages automatically.
+
 ## Why This Could Matter Commercially
 
 AI coding shifts more work into agent-assisted sessions. That creates demand for infrastructure that helps teams answer practical questions:

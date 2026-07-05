@@ -145,6 +145,16 @@ from vibebench.site_check import (
     site_check_json,
     write_site_check_json,
 )
+from vibebench.site_preview import (
+    SitePreviewError,
+    site_preview_json,
+    site_preview_payload,
+    site_preview_verification_json,
+    verify_site_preview,
+    write_site_preview,
+    write_site_preview_json,
+    write_zip_only_preview,
+)
 from vibebench.status_block import (
     DEFAULT_STATUS_TITLE,
     ReadmeStatusBlockResult,
@@ -1480,6 +1490,134 @@ def site_check_command(
             console.print(f"Site check JSON: {selected_json_output}")
 
     if payload["status"] != "passed":
+        raise typer.Exit(code=1)
+
+
+@app.command("site-preview")
+def site_preview_command(
+    project_root: ProjectRootOption = Path("."),
+    output_dir: Annotated[
+        Path | None,
+        typer.Option("--output-dir", help="Write static site preview files to PATH."),
+    ] = None,
+    create_zip: Annotated[
+        bool,
+        typer.Option("--zip", help="Write site-preview.zip with relative files."),
+    ] = False,
+    zip_output: Annotated[
+        Path | None,
+        typer.Option("--zip-output", help="Write site preview archive to PATH."),
+    ] = None,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print static site preview details as JSON."),
+    ] = False,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write static site preview JSON to PATH."),
+    ] = None,
+    verify: Annotated[
+        Path | None,
+        typer.Option("--verify", help="Verify a site preview directory or zip."),
+    ] = None,
+    root: Annotated[
+        Path,
+        typer.Option("--root", help="Static site root to preview."),
+    ] = Path("docs"),
+) -> None:
+    """Plan, write, zip, or verify a static site preview packet."""
+    project = project_root.resolve()
+    selected_root = root if root.is_absolute() else project / root
+    root_label = root.as_posix()
+
+    if verify is not None:
+        result = verify_site_preview(verify)
+        selected_json_output = None
+        if json_output is not None:
+            selected_json_output = (
+                json_output if json_output.is_absolute() else project / json_output
+            )
+            write_site_preview_json(result, selected_json_output)
+        if as_json:
+            print(site_preview_verification_json(result))
+        else:
+            render_site_preview_verification(result)
+            if selected_json_output is not None:
+                console.print(f"Site preview JSON: {selected_json_output}")
+        if not result["verified"]:
+            raise typer.Exit(code=1)
+        return
+
+    selected_output_dir = None
+    if output_dir is not None:
+        selected_output_dir = (
+            output_dir if output_dir.is_absolute() else project / output_dir
+        )
+    selected_zip_output = None
+    if zip_output is not None:
+        selected_zip_output = (
+            zip_output if zip_output.is_absolute() else project / zip_output
+        )
+
+    try:
+        if selected_output_dir is not None:
+            payload = write_site_preview(
+                project_root=project,
+                site_root=selected_root,
+                root_label=root_label,
+                output_dir=selected_output_dir,
+                create_zip=create_zip,
+                zip_output=selected_zip_output,
+            )
+        elif selected_zip_output is not None:
+            payload = write_zip_only_preview(
+                project_root=project,
+                site_root=selected_root,
+                root_label=root_label,
+                zip_output=selected_zip_output,
+            )
+        else:
+            payload = site_preview_payload(
+                project,
+                site_root=selected_root,
+                root_label=root_label,
+            )
+            if create_zip:
+                raise SitePreviewError("--zip requires --output-dir or --zip-output.")
+            if payload["status"] != "ready":
+                raise SitePreviewError("Static site readiness check failed.")
+    except SitePreviewError as exc:
+        payload = site_preview_payload(
+            project,
+            site_root=selected_root,
+            root_label=root_label,
+            output_dir=selected_output_dir,
+            zip_output=selected_zip_output,
+        )
+        payload["status"] = "failed"
+        payload["message"] = str(exc)
+        if as_json:
+            print(site_preview_json(payload))
+        else:
+            console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if json_output is not None:
+        selected_json_output = (
+            json_output if json_output.is_absolute() else project / json_output
+        )
+        write_site_preview_json(payload, selected_json_output)
+    else:
+        selected_json_output = None
+
+    if as_json:
+        print(site_preview_json(payload))
+    else:
+        render_site_preview_summary(payload)
+        if selected_json_output is not None:
+            console.print(f"Site preview JSON: {selected_json_output}")
+
+    if payload["status"] == "failed":
         raise typer.Exit(code=1)
 
 
@@ -3271,6 +3409,50 @@ def render_site_check_summary(payload: dict[str, object]) -> None:
             str(check["message"]),
         )
     console.print(table)
+
+
+def render_site_preview_summary(payload: dict[str, object]) -> None:
+    """Render a concise static site preview summary."""
+    status = str(payload["status"])
+    status_style = "green" if status in {"ready", "passed"} else "red"
+    console.print()
+    console.print("[bold]VibeBench site preview[/]")
+    console.print(f"Status: [{status_style}]{status}[/]")
+    console.print(f"Root: {payload['root']}")
+    if payload.get("output_dir"):
+        console.print(f"Output directory: {payload['output_dir']}")
+    if payload.get("zip_output"):
+        console.print(f"Zip archive: {payload['zip_output']}")
+
+    files = payload.get("included_files")
+    if isinstance(files, list):
+        table = Table(show_header=True, header_style="bold")
+        table.add_column("Included file")
+        for item in files:
+            table.add_row(str(item))
+        console.print(table)
+
+    commands = payload.get("commands")
+    if isinstance(commands, dict):
+        console.print("Local preview: " + str(commands.get("local_preview", "")))
+        console.print("Docs preview: " + str(commands.get("docs_preview", "")))
+        console.print("Readiness: " + str(commands.get("readiness", "")))
+
+
+def render_site_preview_verification(result: dict[str, object]) -> None:
+    """Render static site preview verification output."""
+    if result["verified"]:
+        console.print("[green]Site preview verification passed.[/]")
+    else:
+        console.print("[red]Site preview verification failed.[/]")
+    console.print(f"Target: {result['target']} ({result['target_type']})")
+    for check in result["checks"]:
+        item = check if isinstance(check, dict) else {}
+        status = str(item.get("status", "unknown"))
+        name = str(item.get("name", "check"))
+        message = str(item.get("message", ""))
+        style = "green" if status == "passed" else "red"
+        console.print(f"- [{style}]{status}[/]: {name} - {message}")
 
 
 def render_proof_summary(payload: dict[str, object]) -> None:

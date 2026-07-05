@@ -16,11 +16,13 @@ Before publishing or editing the static entry, run:
 ```bash
 python3 -m vibebench site-check
 python3 -m vibebench site-check --json
+python3 -m vibebench site-preview --output-dir /tmp/vibebench-site-preview --zip
+python3 -m vibebench site-preview --verify /tmp/vibebench-site-preview/site-preview.zip
 ```
 
 This checks the Pages entry for required proof/evaluation links and obvious unsafe publishing markers. It is local-only. GitHub Pages is not enabled automatically by this command.
 
-In CI, GitHub Actions also runs `python3 -m vibebench site-check`, writes `.vibebench/site-preview/site-check.json`, and uploads `vibebench-site-preview` as a downloadable static preview bundle. This still does not enable GitHub Pages automatically; manual setup remains the step below.
+`site-preview` writes the same static preview bundle that CI uploads, including `site-check.json`, `site-preview.md`, and optional `site-preview.zip`. In CI, GitHub Actions runs `python3 -m vibebench site-preview --output-dir .vibebench/site-preview --zip` and uploads `vibebench-site-preview` as a downloadable artifact. This still does not enable GitHub Pages automatically; manual setup remains the step below.
 
 ## Proof packet command
 
