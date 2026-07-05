@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VibeBench Arena</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f2ec;
+      --panel: #ffffff;
+      --ink: #20262d;
+      --muted: #5d6872;
+      --line: #d8d0c5;
+      --teal: #246f6b;
+      --blue: #315f88;
+      --green: #4f7a48;
+      --rust: #94573f;
+      --gold: #aa7928;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family:
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+      line-height: 1.55;
+    }
+
+    a {
+      color: var(--blue);
+      font-weight: 800;
+      text-decoration-thickness: 0.08em;
+      text-underline-offset: 0.18em;
+    }
+
+    .page {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    header {
+      min-height: 68vh;
+      align-content: center;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      gap: 28px;
+      padding: 42px 0;
+    }
+
+    .eyebrow {
+      color: var(--teal);
+      font-size: 0.85rem;
+      font-weight: 900;
+      letter-spacing: 0;
+      margin: 0 0 12px;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3 {
+      line-height: 1.15;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(3rem, 7vw, 5.8rem);
+      max-width: 8ch;
+    }
+
+    header h2 {
+      color: var(--rust);
+      font-size: clamp(1.4rem, 3vw, 2.2rem);
+      margin-top: 14px;
+      max-width: 15ch;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 1.16rem;
+      margin: 22px 0 0;
+      max-width: 64ch;
+    }
+
+    .hero-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .button {
+      align-items: center;
+      border: 1px solid var(--teal);
+      border-radius: 8px;
+      display: inline-flex;
+      min-height: 44px;
+      padding: 10px 14px;
+      text-decoration: none;
+    }
+
+    .button.primary {
+      background: var(--teal);
+      color: #ffffff;
+    }
+
+    section {
+      border-bottom: 1px solid var(--line);
+      padding: 46px 0;
+    }
+
+    section:last-child {
+      border-bottom: 0;
+    }
+
+    .section-head {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 24px;
+      max-width: 760px;
+    }
+
+    .section-head h2 {
+      font-size: clamp(1.75rem, 3.4vw, 2.8rem);
+    }
+
+    .section-head p {
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .cards {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .people {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+
+    .card h3 {
+      font-size: 1.08rem;
+      margin-bottom: 8px;
+    }
+
+    .card p,
+    .card li {
+      color: var(--muted);
+    }
+
+    .card p {
+      margin: 0;
+    }
+
+    code {
+      background: #ebe4db;
+      border: 1px solid #ddd3c7;
+      border-radius: 6px;
+      color: #27313a;
+      font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Consolas,
+        "Liberation Mono",
+        monospace;
+      padding: 0.12rem 0.32rem;
+      overflow-wrap: anywhere;
+    }
+
+    .flow {
+      counter-reset: flow;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    .flow .card {
+      min-height: 142px;
+    }
+
+    .flow .card::before {
+      color: var(--teal);
+      content: counter(flow, decimal-leading-zero);
+      counter-increment: flow;
+      display: block;
+      font-weight: 900;
+      margin-bottom: 16px;
+    }
+
+    .path-command {
+      margin-top: 14px;
+    }
+
+    .limits {
+      border-left: 5px solid var(--rust);
+    }
+
+    .links {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .links a {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: block;
+      min-height: 58px;
+      padding: 14px;
+      text-decoration: none;
+    }
+
+    .note {
+      color: var(--muted);
+      margin-top: 18px;
+    }
+
+    @media (max-width: 980px) {
+      .cards,
+      .people,
+      .flow,
+      .links {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      header {
+        min-height: auto;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .page {
+        padding: 18px;
+      }
+
+      .cards,
+      .people,
+      .flow,
+      .links {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-links {
+        align-items: stretch;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <p class="eyebrow">GitHub Pages-ready entry</p>
+        <h1>VibeBench Arena</h1>
+        <h2>Codex-first quality console for vibe-coding projects</h2>
+        <p class="subtitle">
+          VibeBench Arena turns AI-assisted code changes into checks, artifacts,
+          proof packets, and reviewable evidence for local AI coding workflows
+          and GitHub Actions review.
+        </p>
+      </div>
+      <nav class="hero-links" aria-label="Primary entry links">
+        <a class="button primary" href="showcase.html">Open product showcase</a>
+        <a class="button" href="evaluate.md">Evaluate in 5 minutes</a>
+        <a class="button" href="pages.md">Pages setup guide</a>
+      </nav>
+    </header>
+
+    <section aria-labelledby="start-title">
+      <div class="section-head">
+        <h2 id="start-title">Start paths</h2>
+        <p>
+          Pick the route that matches how much time you have and what evidence
+          you want to inspect first.
+        </p>
+      </div>
+      <div class="grid cards">
+        <article class="card">
+          <h3><a href="showcase.html">Product showcase</a></h3>
+          <p>See how the CLI, CI proof packet, artifacts, and proof.html connect.</p>
+        </article>
+        <article class="card">
+          <h3><a href="evaluate.md">Evaluate in 5 minutes</a></h3>
+          <p>Run the shortest local path for demo output, JSON, and proof evidence.</p>
+        </article>
+        <article class="card">
+          <h3>Generate proof packet</h3>
+          <p>Reproduce the CI proof packet locally.</p>
+          <p class="path-command"><code>python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip</code></p>
+        </article>
+        <article class="card">
+          <h3><a href="adoption.md">Adopt in a real repo</a></h3>
+          <p>Use a cautious first-week rollout for AI-assisted pull requests.</p>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="flow-title">
+      <div class="section-head">
+        <h2 id="flow-title">Evidence-first workflow</h2>
+        <p>
+          The site entry points visitors toward the same loop the project uses
+          locally and in CI.
+        </p>
+      </div>
+      <div class="grid flow">
+        <article class="card">
+          <h3>local CLI</h3>
+          <p>Run proof, demo, doctor, and release readiness commands from the checkout.</p>
+        </article>
+        <article class="card">
+          <h3>dry-run CI plan</h3>
+          <p>Preview the quality pipeline before executing checks.</p>
+        </article>
+        <article class="card">
+          <h3>proof packet</h3>
+          <p>Package JSON, Markdown, HTML, manifest, and archive evidence.</p>
+        </article>
+        <article class="card">
+          <h3>self-contained proof.html</h3>
+          <p>Inspect the evidence-first HTML report without external assets.</p>
+        </article>
+        <article class="card">
+          <h3>CI artifact</h3>
+          <p>Download the proof packet from the GitHub Actions run artifact area.</p>
+        </article>
+        <article class="card">
+          <h3>reviewable evidence</h3>
+          <p>Use artifacts and docs to decide what needs human review next.</p>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="visitors-title">
+      <div class="section-head">
+        <h2 id="visitors-title">Visitor paths</h2>
+        <p>
+          VibeBench is meant for people who need AI coding output to leave a
+          checkable trail.
+        </p>
+      </div>
+      <div class="grid people">
+        <article class="card">
+          <h3>Developers</h3>
+          <p>Run local checks before committing agent-assisted changes.</p>
+        </article>
+        <article class="card">
+          <h3>Maintainers</h3>
+          <p>Ask for evidence packets around AI-assisted pull requests.</p>
+        </article>
+        <article class="card">
+          <h3>AI coding teams</h3>
+          <p>Standardize quality gates around vibe-coding workflows.</p>
+        </article>
+        <article class="card">
+          <h3>Reviewers / evaluators</h3>
+          <p>Inspect proof.html, artifacts, comparisons, and release audit notes.</p>
+        </article>
+        <article class="card">
+          <h3>Possible investors</h3>
+          <p>Review the product thesis and evidence surface without inflated claims.</p>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="limits-title">
+      <div class="section-head">
+        <h2 id="limits-title">Honest limits</h2>
+        <p>
+          The site should make the current scope clear before anyone evaluates
+          the project.
+        </p>
+      </div>
+      <div class="card limits">
+        <ul>
+          <li>VibeBench Arena is not a replacement for SWE-bench.</li>
+          <li>It is not a hosted enterprise platform yet.</li>
+          <li>It does not guarantee stars, funding, adoption, or correctness.</li>
+          <li>It is a local-first quality-control layer for AI-assisted coding workflows.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section aria-labelledby="links-title">
+      <div class="section-head">
+        <h2 id="links-title">Keep exploring</h2>
+        <p>All links are relative so the same files work from a checked-out repository or a Pages site served from the docs folder.</p>
+      </div>
+      <ul class="links">
+        <li><a href="showcase.html">Product showcase</a></li>
+        <li><a href="evaluate.md">Evaluate in 5 minutes</a></li>
+        <li><a href="adoption.md">Adoption guide</a></li>
+        <li><a href="demo.md">Demo guide</a></li>
+        <li><a href="artifact-gallery.md">Artifact gallery</a></li>
+        <li><a href="comparison.md">Comparison</a></li>
+        <li><a href="faq.md">FAQ</a></li>
+        <li><a href="case-study.md">Case study</a></li>
+        <li><a href="product-strategy.md">Product strategy</a></li>
+        <li><a href="commercial-potential.md">Commercial potential</a></li>
+        <li><a href="roadmap-public.md">Public roadmap</a></li>
+      </ul>
+      <p class="note">To preview this site locally, see <a href="pages.md">the Pages setup guide</a>.</p>
+    </section>
+  </main>
+</body>
+</html>

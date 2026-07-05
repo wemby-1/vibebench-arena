@@ -13,11 +13,11 @@ VibeBench Arena helps individuals and small teams make AI-assisted coding work r
 ## First 30 minutes
 
 1. Clone the project.
-2. Skim the [product showcase](showcase.html) for the CLI, CI proof packet, and artifact loop.
+2. Skim the [Pages site entry](index.html) and [product showcase](showcase.html) for the CLI, CI proof packet, and artifact loop.
 3. Run `python3 -m vibebench demo`.
 4. Inspect the sample artifacts.
 5. Run `python3 -m vibebench ci --dry-run --json`.
-6. Generate a shareable proof packet with `python3 -m vibebench proof --output-dir PATH --zip`; inspect the self-contained evidence-first `proof.html` before sharing, or use the GitHub Actions proof packet summary card and download `vibebench-proof-packet` after CI runs.
+6. Generate a shareable proof packet with `python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip`; inspect the self-contained evidence-first `proof.html` before sharing, or use the GitHub Actions proof packet summary card and download `vibebench-proof-packet` after CI runs.
 7. Read the [comparison](comparison.md) and [FAQ](faq.md).
 
 ## First day

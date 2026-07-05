@@ -2,7 +2,7 @@
 
 VibeBench Arena is a Codex-first / vibe-coding quality console for local-first AI-assisted software projects. It helps turn AI-generated changes into reproducible checks, artifacts, summaries, release audits, and CI-readable outputs.
 
-For a GitHub Pages-ready product overview, open the [showcase page](showcase.html).
+For the GitHub Pages-ready site entry and product overview, open the [site entry](index.html) and [showcase page](showcase.html).
 
 For a skim-friendly map of the concrete outputs, see the [artifact gallery](artifact-gallery.md).
 

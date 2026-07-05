@@ -40,10 +40,11 @@ See the [architecture](docs/architecture.md), [artifact gallery](docs/artifact-g
 ## Evaluate Quickly
 
 - [Evaluate in 5 minutes](docs/evaluate.md): a compact path for developers, teams, maintainers, and observers to verify the local-first, evidence-first workflow.
-- [Product showcase](docs/showcase.html): a GitHub Pages-ready overview of the CLI, CI proof packet, artifacts, and self-contained `proof.html`.
+- [Pages entry](docs/index.html): the GitHub Pages-ready public start page; see [Pages setup](docs/pages.md) for manual setup.
+- [Product showcase](docs/showcase.html): a GitHub Pages-ready Codex-first quality console overview of the CLI, CI proof packet, artifacts, and self-contained `proof.html`.
 - [Adoption guide](docs/adoption.md): a safe first-week path for Codex-first / vibe-coding teams.
 - [Demo guide](docs/demo.md): commands that prove the core local workflow without external service dependency.
-- Generate a shareable proof packet: `python3 -m vibebench proof --output-dir PATH --zip` writes Markdown, JSON, a self-contained evidence-first HTML report, a manifest, and `proof.zip`; GitHub Actions shows a proof packet summary card and uploads the downloadable `vibebench-proof-packet` artifact.
+- Generate a shareable proof packet: `python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip` writes Markdown, JSON, a self-contained evidence-first HTML report, a manifest, and `proof.zip`; GitHub Actions shows a proof packet summary card and uploads the downloadable `vibebench-proof-packet` artifact.
 - [Comparison](docs/comparison.md): where VibeBench fits beside CI, tests, benchmarks, chatbots, and review assistants.
 - [FAQ](docs/faq.md): direct answers about scope, limits, artifacts, and local-first review.
 - [Case study](docs/case-study.md): how an AI-assisted change becomes reviewable evidence.
