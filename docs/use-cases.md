@@ -1,6 +1,6 @@
 # VibeBench Arena Use Cases
 
-VibeBench Arena is a Codex-first / vibe-coding quality console for local-first AI-assisted software projects. These use cases show how it turns AI coding work into reviewable artifacts and evidence for local-first, inspectable, auditable, reproducible engineering workflows. For the broader product thesis, public roadmap, and commercial potential, see [product strategy](product-strategy.md), [public roadmap](roadmap-public.md), and [commercial potential](commercial-potential.md).
+VibeBench Arena is a Codex-first / vibe-coding quality console for local-first AI-assisted software projects. These use cases show how it turns AI coding work into reviewable artifacts and evidence for local-first, inspectable, auditable, reproducible engineering workflows. For the broader product thesis, public roadmap, and commercial potential, see [product strategy](product-strategy.md), [public roadmap](roadmap-public.md), and [commercial potential](commercial-potential.md). For scope and evaluation, see the [comparison](comparison.md), [FAQ](faq.md), and [case study](case-study.md).
 
 | Use case | Pain point | How VibeBench helps | Commands / artifacts | Evidence produced |
 | --- | --- | --- | --- | --- |

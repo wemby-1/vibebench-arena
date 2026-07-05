@@ -37,6 +37,14 @@ AI coding 正在变得更容易；真正困难的是 review、审计、对比和
 
 继续查看 [architecture](docs/architecture.md)、[artifact gallery](docs/artifact-gallery.md)、[product strategy](docs/product-strategy.md)、[commercial potential](docs/commercial-potential.md) 和 [public roadmap](docs/roadmap-public.md)。
 
+## 快速判断
+
+- [对比与定位](docs/comparison.md)：说明 VibeBench 不是普通 CI、不是聊天机器人、不是排行榜，而是面向 AI coding / vibe-coding 的本地质量控制台。
+- [常见问题](docs/faq.md)：直接说明范围、边界、artifacts、local-first 和人工 review 的关系。
+- [案例研究](docs/case-study.md)：展示 AI 生成代码如何变成可检查、可审计、可复现的证据。
+- [证据制品](docs/artifact-gallery.md)：浏览 reviewers 可以检查的具体输出。
+- [架构图](docs/architecture.md)：理解本地优先的 evidence flow。
+
 ## 案例研究
 
 阅读 [案例研究：从 vibe-coding 改动到可审计证据](docs/case-study.md)，了解一次 AI 辅助改动如何通过 checks、risk scoring、artifacts、comparison 和 release readiness 变成可检查、可审计、可复现的 review packet。也可以直接查看已提交的 [case-study artifact folder](examples/showcase-artifacts/case-study/README.md)，它是一个静态示例，不夸大融资、高 star、客户或收入结果。
@@ -72,7 +80,7 @@ VibeBench 不是玩具 CLI，而是一个早期的本地优先产品方向：面
 1. 运行一条命令 demo：`python3 -m vibebench demo`。
 2. 打开 [demo guide](docs/demo.md) 和 [artifact gallery](docs/artifact-gallery.md)。
 3. 检查已提交的 [示例 artifact pack](examples/showcase-artifacts/sample/README.md)，或用 `python3 -m vibebench demo --copy-to /tmp/vibebench-demo` 复制到本地。
-4. 阅读 [architecture](docs/architecture.md)、[positioning](docs/positioning.md)、[use cases](docs/use-cases.md)、[product strategy](docs/product-strategy.md)、[public roadmap](docs/roadmap-public.md) 和 [commercial potential](docs/commercial-potential.md)，理解它为什么面向 Codex-first / vibe-coding 和 AI coding 工程化。
+4. 阅读 [对比与定位](docs/comparison.md)、[常见问题](docs/faq.md)、[architecture](docs/architecture.md)、[positioning](docs/positioning.md)、[use cases](docs/use-cases.md)、[product strategy](docs/product-strategy.md)、[public roadmap](docs/roadmap-public.md) 和 [commercial potential](docs/commercial-potential.md)，理解它为什么面向 Codex-first / vibe-coding 和 AI coding 工程化。
 5. 通过 GitHub issue templates 提交真实使用场景、demo feedback，或发起小范围 PR。
 
 编写有边界、低成本的 Codex 里程碑时，可以使用 [Codex task template](docs/codex-task-template.md)。

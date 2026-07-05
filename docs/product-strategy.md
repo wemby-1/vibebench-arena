@@ -6,7 +6,7 @@ AI coding is becoming easier, but engineering trust is becoming harder. Develope
 
 Generated code needs more than a chat transcript. It needs local checks, diff review, risk review, artifact-backed summaries, release readiness, and reproducible audit trails that humans can inspect.
 
-For a concrete artifact-driven walkthrough, see the [case study](case-study.md).
+For quick evaluation, see the [comparison](comparison.md), [FAQ](faq.md), and [case study](case-study.md).
 
 ## Product Thesis
 
@@ -79,6 +79,7 @@ Start with:
 
 1. Run `python3 -m vibebench demo`.
 2. Open the [artifact gallery](artifact-gallery.md).
-3. Inspect the [sample artifact pack](../examples/showcase-artifacts/sample/README.md).
-4. Read the [public roadmap](roadmap-public.md) and [commercial potential](commercial-potential.md).
-5. Share real workflow feedback through the GitHub issue templates.
+3. Read the [comparison](comparison.md), [FAQ](faq.md), and [case study](case-study.md).
+4. Inspect the [sample artifact pack](../examples/showcase-artifacts/sample/README.md).
+5. Read the [public roadmap](roadmap-public.md) and [commercial potential](commercial-potential.md).
+6. Share real workflow feedback through the GitHub issue templates.

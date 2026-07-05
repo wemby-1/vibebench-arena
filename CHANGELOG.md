@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added honest comparison and FAQ pages explaining how VibeBench Arena differs from CI, benchmarks, chatbots, and code review assistants.
+
 - Added an evidence-first public case study showing how AI-assisted changes become reviewable VibeBench artifacts.
 
 - Added visual architecture and artifact evidence diagrams for the GitHub landing page.

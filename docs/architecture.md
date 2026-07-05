@@ -79,6 +79,8 @@ VibeBench does not:
 ## Related Docs
 
 - [Demo guide](demo.md)
+- [Comparison](comparison.md)
+- [FAQ](faq.md)
 - [Case study](case-study.md)
 - [Artifact gallery](artifact-gallery.md)
 - [Product strategy](product-strategy.md)

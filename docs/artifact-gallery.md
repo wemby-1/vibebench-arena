@@ -12,6 +12,8 @@ They are the proof layer behind the broader [project positioning](positioning.md
 
 For a concrete workflow from AI-assisted change to reviewable evidence, read the [case study](case-study.md) and browse the checked-in [case-study artifacts](../examples/showcase-artifacts/case-study/README.md).
 
+For how this differs from CI, benchmarks, chatbots, and review assistants, see the [comparison](comparison.md) and [FAQ](faq.md).
+
 Want the quickest preview? Run the one-command demo with `python3 -m vibebench demo`, copy the pack with `python3 -m vibebench demo --copy-to /tmp/vibebench-demo`, or browse the checked-in [sample artifacts](../examples/showcase-artifacts/sample/README.md) before running the full quality console locally. This artifact gallery is the fastest way to evaluate the local-first evidence trail from GitHub.
 
 For a visual version of this evidence model, see the [artifact evidence stack](assets/artifact-evidence-stack.svg) and the [architecture](architecture.md) doc.

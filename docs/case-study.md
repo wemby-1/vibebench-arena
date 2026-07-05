@@ -129,6 +129,8 @@ python3 -m vibebench release-check
 Then inspect:
 
 - [Demo guide](demo.md)
+- [Comparison](comparison.md)
+- [FAQ](faq.md)
 - [Artifact gallery](artifact-gallery.md)
 - [Architecture](architecture.md)
 - [Static case-study artifacts](../examples/showcase-artifacts/case-study/README.md)
