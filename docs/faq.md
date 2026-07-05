@@ -1,5 +1,7 @@
 # FAQ
 
+For a quick proof path and safe rollout checklist, start with [evaluate in 5 minutes](evaluate.md) and [adoption](adoption.md).
+
 ## Is VibeBench Arena a benchmark?
 
 No. VibeBench Arena is not a benchmark leaderboard. It is a local-first quality console for reviewing AI-assisted code changes in a real repository.
@@ -96,6 +98,8 @@ Those are product directions, not claims of current traction. The current projec
 
 ## Related
 
+- [Evaluate in 5 minutes](evaluate.md)
+- [Adoption guide](adoption.md)
 - [Comparison](comparison.md)
 - [Case study](case-study.md)
 - [Product strategy](product-strategy.md)

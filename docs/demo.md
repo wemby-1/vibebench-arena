@@ -4,6 +4,8 @@ VibeBench Arena is a Codex-first / vibe-coding quality console for local-first A
 
 For a skim-friendly map of the concrete outputs, see the [artifact gallery](artifact-gallery.md).
 
+For a visitor-facing proof path and safe team rollout, see [evaluate in 5 minutes](evaluate.md) and [adoption](adoption.md).
+
 For an evidence-first walkthrough, see the [case study](case-study.md) and its checked-in [case-study artifacts](../examples/showcase-artifacts/case-study/README.md).
 
 For scope and positioning, see the [comparison](comparison.md) and [FAQ](faq.md).

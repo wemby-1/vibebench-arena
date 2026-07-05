@@ -39,11 +39,16 @@ See the [architecture](docs/architecture.md), [artifact gallery](docs/artifact-g
 
 ## Evaluate Quickly
 
+- [Evaluate in 5 minutes](docs/evaluate.md): a compact path for developers, teams, maintainers, and observers to verify the local-first, evidence-first workflow.
+- [Adoption guide](docs/adoption.md): a safe first-week path for Codex-first / vibe-coding teams.
+- [Demo guide](docs/demo.md): commands that prove the core local workflow without external service dependency.
 - [Comparison](docs/comparison.md): where VibeBench fits beside CI, tests, benchmarks, chatbots, and review assistants.
 - [FAQ](docs/faq.md): direct answers about scope, limits, artifacts, and local-first review.
 - [Case study](docs/case-study.md): how an AI-assisted change becomes reviewable evidence.
 - [Artifact gallery](docs/artifact-gallery.md): the concrete outputs reviewers inspect.
 - [Architecture](docs/architecture.md): the local-first evidence flow.
+
+Use this path if you are evaluating VibeBench as a Codex-first / vibe-coding quality console: run the demo, inspect JSON and artifacts, read the case study, then decide whether the audit-friendly evidence is strong enough for a small repo pilot. The project is built for developers and teams evaluating AI-assisted coding workflows, without fake traction or investment claims.
 
 ## See The Case Study
 
@@ -78,9 +83,9 @@ Read the [product strategy](docs/product-strategy.md), [public roadmap](docs/roa
 ## Start Here
 
 1. Run the one-command demo: `python3 -m vibebench demo`.
-2. Open the [demo guide](docs/demo.md) and [artifact gallery](docs/artifact-gallery.md).
+2. Follow the [5-minute evaluation guide](docs/evaluate.md), then open the [adoption guide](docs/adoption.md), [demo guide](docs/demo.md), and [artifact gallery](docs/artifact-gallery.md).
 3. Inspect the checked-in [sample artifact pack](examples/showcase-artifacts/sample/README.md) or copy it with `python3 -m vibebench demo --copy-to /tmp/vibebench-demo`.
-4. Read the [comparison](docs/comparison.md), [FAQ](docs/faq.md), [architecture](docs/architecture.md), [positioning](docs/positioning.md), [use cases](docs/use-cases.md), [product strategy](docs/product-strategy.md), [public roadmap](docs/roadmap-public.md), and [commercial potential](docs/commercial-potential.md) to see why this matters for Codex-first / vibe-coding engineering.
+4. Read the [case study](docs/case-study.md), [comparison](docs/comparison.md), [FAQ](docs/faq.md), [architecture](docs/architecture.md), [positioning](docs/positioning.md), [use cases](docs/use-cases.md), [product strategy](docs/product-strategy.md), [public roadmap](docs/roadmap-public.md), and [commercial potential](docs/commercial-potential.md) to see why this matters for Codex-first / vibe-coding engineering.
 5. Use the GitHub issue templates to share a use case, report demo feedback, or propose a focused PR.
 
 For bounded, low-cost Codex milestones, use the [Codex task template](docs/codex-task-template.md).

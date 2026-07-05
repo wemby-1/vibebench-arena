@@ -8,6 +8,8 @@ Vibe coding is fast, but review still needs evidence. A single `passed` or `fail
 
 VibeBench artifacts make AI-assisted changes reviewable by leaving local, CI-readable records that can be inspected before commit, in GitHub Actions, during release preparation, or after a run is archived.
 
+For a compact visitor path and team rollout checklist, see [evaluate in 5 minutes](evaluate.md) and [adoption](adoption.md).
+
 They are the proof layer behind the broader [project positioning](positioning.md), [product strategy](product-strategy.md), [public roadmap](roadmap-public.md), and [commercial potential](commercial-potential.md): VibeBench makes AI-assisted coding reviewable, auditable, and reproducible.
 
 For a concrete workflow from AI-assisted change to reviewable evidence, read the [case study](case-study.md) and browse the checked-in [case-study artifacts](../examples/showcase-artifacts/case-study/README.md).

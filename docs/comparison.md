@@ -4,6 +4,8 @@ VibeBench Arena is a local-first quality console for AI-assisted coding evidence
 
 Its job is narrower and practical: turn AI-generated changes into inspectable artifacts, summaries, risk signals, comparison outputs, and release/readiness evidence that humans can review before trusting a change.
 
+For a compact proof path and safe rollout checklist, see [evaluate in 5 minutes](evaluate.md) and [adoption](adoption.md).
+
 ## Comparison Matrix
 
 | Category | Primary job | What it proves | What it misses | Where VibeBench fits |
@@ -39,6 +41,8 @@ The evidence is only as strong as the configured checks, the risk rules, the rep
 
 ## Related
 
+- [Evaluate in 5 minutes](evaluate.md)
+- [Adoption guide](adoption.md)
 - [FAQ](faq.md)
 - [Case study](case-study.md)
 - [Artifact gallery](artifact-gallery.md)

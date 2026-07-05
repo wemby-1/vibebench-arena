@@ -6,7 +6,7 @@ AI coding is becoming easier, but engineering trust is becoming harder. Develope
 
 Generated code needs more than a chat transcript. It needs local checks, diff review, risk review, artifact-backed summaries, release readiness, and reproducible audit trails that humans can inspect.
 
-For quick evaluation, see the [comparison](comparison.md), [FAQ](faq.md), and [case study](case-study.md).
+For quick evaluation and safe rollout, see [evaluate in 5 minutes](evaluate.md), [adoption](adoption.md), the [comparison](comparison.md), [FAQ](faq.md), and [case study](case-study.md).
 
 ## Product Thesis
 

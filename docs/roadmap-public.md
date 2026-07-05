@@ -2,6 +2,8 @@
 
 This public roadmap describes product direction, not promises. Items are planned or experimental until they are shipped, documented, and verified in the repository.
 
+For the current proof path and a safe first-week rollout, see [evaluate in 5 minutes](evaluate.md) and [adoption](adoption.md).
+
 ## Now
 
 VibeBench Arena currently focuses on a local-first quality console for Codex-first / vibe-coding work:
@@ -46,7 +48,7 @@ Helpful contributions include:
 
 - real AI coding use cases with clear review pain
 - demo feedback about what is confusing or missing
-- sample projects that produce meaningful artifacts without secrets or private data
+- sample projects that produce meaningful artifacts without credentials or private data
 - small documentation improvements that make the product thesis easier to understand
 - focused PRs that improve report readability, risk explanations, GitHub output, or release-readiness artifacts
 

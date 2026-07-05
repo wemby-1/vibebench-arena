@@ -8,7 +8,7 @@ It is built for the practical layer between "the agent changed code" and "a huma
 
 For the fuller product thesis, see [product strategy](product-strategy.md), [public roadmap](roadmap-public.md), and [commercial potential](commercial-potential.md).
 
-For quick evaluation, see the [comparison](comparison.md), [FAQ](faq.md), and [case study](case-study.md).
+For quick evaluation, see [evaluate in 5 minutes](evaluate.md), [adoption](adoption.md), the [comparison](comparison.md), [FAQ](faq.md), and [case study](case-study.md).
 
 ## Visual Architecture
 

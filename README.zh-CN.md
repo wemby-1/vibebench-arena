@@ -39,11 +39,16 @@ AI coding 正在变得更容易；真正困难的是 review、审计、对比和
 
 ## 快速判断
 
+- [5 分钟评估路径](docs/evaluate.md)：给开发者、团队、维护者和观察者一个紧凑路径，用来验证本地优先、证据优先、可审计、可复现的工作流。
+- [采用指南](docs/adoption.md)：适合评估 Codex / vibe-coding / AI 辅助编程工作流的小团队，说明第一周如何安全试点。
+- [Demo guide](docs/demo.md)：用本地命令证明核心流程，不依赖外部服务。
 - [对比与定位](docs/comparison.md)：说明 VibeBench 不是普通 CI、不是聊天机器人、不是排行榜，而是面向 AI coding / vibe-coding 的本地质量控制台。
 - [常见问题](docs/faq.md)：直接说明范围、边界、artifacts、local-first 和人工 review 的关系。
 - [案例研究](docs/case-study.md)：展示 AI 生成代码如何变成可检查、可审计、可复现的证据。
 - [证据制品](docs/artifact-gallery.md)：浏览 reviewers 可以检查的具体输出。
 - [架构图](docs/architecture.md)：理解本地优先的 evidence flow。
+
+这条路径适合快速判断 VibeBench 是否值得继续试用：运行 demo，检查 JSON 和 artifacts，阅读案例研究，再决定是否在一个小仓库里试点。它是 Codex-first / vibe-coding 质量控制台，不是虚假榜单，也不是自动发布工具。
 
 ## 案例研究
 
@@ -78,9 +83,9 @@ VibeBench 不是玩具 CLI，而是一个早期的本地优先产品方向：面
 ## 从这里开始
 
 1. 运行一条命令 demo：`python3 -m vibebench demo`。
-2. 打开 [demo guide](docs/demo.md) 和 [artifact gallery](docs/artifact-gallery.md)。
+2. 按 [5 分钟评估路径](docs/evaluate.md) 快速检查，再打开 [采用指南](docs/adoption.md)、[demo guide](docs/demo.md) 和 [artifact gallery](docs/artifact-gallery.md)。
 3. 检查已提交的 [示例 artifact pack](examples/showcase-artifacts/sample/README.md)，或用 `python3 -m vibebench demo --copy-to /tmp/vibebench-demo` 复制到本地。
-4. 阅读 [对比与定位](docs/comparison.md)、[常见问题](docs/faq.md)、[architecture](docs/architecture.md)、[positioning](docs/positioning.md)、[use cases](docs/use-cases.md)、[product strategy](docs/product-strategy.md)、[public roadmap](docs/roadmap-public.md) 和 [commercial potential](docs/commercial-potential.md)，理解它为什么面向 Codex-first / vibe-coding 和 AI coding 工程化。
+4. 阅读 [案例研究](docs/case-study.md)、[对比与定位](docs/comparison.md)、[常见问题](docs/faq.md)、[architecture](docs/architecture.md)、[positioning](docs/positioning.md)、[use cases](docs/use-cases.md)、[product strategy](docs/product-strategy.md)、[public roadmap](docs/roadmap-public.md) 和 [commercial potential](docs/commercial-potential.md)，理解它为什么面向 Codex-first / vibe-coding 和 AI coding 工程化。
 5. 通过 GitHub issue templates 提交真实使用场景、demo feedback，或发起小范围 PR。
 
 编写有边界、低成本的 Codex 里程碑时，可以使用 [Codex task template](docs/codex-task-template.md)。
