@@ -42,7 +42,7 @@ See the [architecture](docs/architecture.md), [artifact gallery](docs/artifact-g
 - [Evaluate in 5 minutes](docs/evaluate.md): a compact path for developers, teams, maintainers, and observers to verify the local-first, evidence-first workflow.
 - [Adoption guide](docs/adoption.md): a safe first-week path for Codex-first / vibe-coding teams.
 - [Demo guide](docs/demo.md): commands that prove the core local workflow without external service dependency.
-- Generate a shareable proof packet: `python3 -m vibebench proof --output-dir PATH` writes Markdown, JSON, a self-contained evidence-first HTML report, and a manifest; add `--zip` for `proof.zip`, or download the `vibebench-proof-packet` artifact from GitHub Actions after CI runs.
+- Generate a shareable proof packet: `python3 -m vibebench proof --output-dir PATH --zip` writes Markdown, JSON, a self-contained evidence-first HTML report, a manifest, and `proof.zip`; GitHub Actions shows a proof packet summary card and uploads the downloadable `vibebench-proof-packet` artifact.
 - [Comparison](docs/comparison.md): where VibeBench fits beside CI, tests, benchmarks, chatbots, and review assistants.
 - [FAQ](docs/faq.md): direct answers about scope, limits, artifacts, and local-first review.
 - [Case study](docs/case-study.md): how an AI-assisted change becomes reviewable evidence.
@@ -109,7 +109,7 @@ If you care about better AI coding review, audit tooling, and artifacts, starrin
 - Run `python3 -m vibebench demo` to inspect the local showcase demo and checked-in artifact pack.
 - Run `python3 -m vibebench demo --json` or `python3 -m vibebench demo --copy-to /tmp/vibebench-demo` to script or copy the sample evidence pack.
 - Run `python3 -m vibebench ci --dry-run` to see the planned quality pipeline.
-- Run `python3 -m vibebench proof --output-dir /tmp/vibebench-proof --zip` to generate a shareable proof packet with self-contained `proof.html`, then run `python3 -m vibebench proof --verify /tmp/vibebench-proof/proof.zip` to verify it. GitHub Actions also uploads the same evidence-first packet as `vibebench-proof-packet`.
+- Run `python3 -m vibebench proof --output-dir /tmp/vibebench-proof --zip` to generate a shareable proof packet with self-contained, evidence-first `proof.html`, then run `python3 -m vibebench proof --verify /tmp/vibebench-proof/proof.zip` to verify it. GitHub Actions also shows a proof packet summary card and uploads the same packet as `vibebench-proof-packet`.
 - Run `python3 -m vibebench ci` to generate local run artifacts.
 - Run `python3 -m vibebench latest --all-paths` to inspect the newest outputs.
 - Run `python3 -m vibebench release-check` to inspect release readiness.
@@ -496,13 +496,13 @@ fork PRs do not override the core VibeBench quality gate.
 
 `vibebench annotate` emits GitHub Actions annotations for visible risk findings and command failures. `vibebench gh-summary` writes a concise Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is set. The workflow posts or updates VibeBench PR comments only on `pull_request` events.
 
-This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml` and generates config-check/report/comment/explanation/export/badge/status-block/trend/run-index/compare output, including `config-check.json`, `config-check.md`, `trend.md`, `trend.json`, `run-index.json`, `run-index.md`, `compare.json`, and `compare.md`, emits annotations, bundles run artifacts, writes summaries, uploads selected `.vibebench/runs` outputs as the `vibebench-run-artifacts` artifact, and uploads a downloadable `vibebench-proof-packet` artifact with `proof.html`, `proof.json`, `proof.md`, `proof-manifest.json`, and `proof.zip`. `vibebench init` can generate a starter workflow at `.github/workflows/vibebench.yml`; see [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) and [docs/github-actions.md](docs/github-actions.md) for details.
+This repository dogfoods VibeBench in its own CI: after direct Ruff and pytest checks, CI runs `vibebench ci`, which enforces the policy in `.vibebench/config.yaml` and generates config-check/report/comment/explanation/export/badge/status-block/trend/run-index/compare output, including `config-check.json`, `config-check.md`, `trend.md`, `trend.json`, `run-index.json`, `run-index.md`, `compare.json`, and `compare.md`, emits annotations, bundles run artifacts, writes summaries, uploads selected `.vibebench/runs` outputs as the `vibebench-run-artifacts` artifact, shows a proof packet summary card, and uploads a downloadable `vibebench-proof-packet` artifact with `proof.html`, `proof.json`, `proof.md`, `proof-manifest.json`, and `proof.zip`. `vibebench init` can generate a starter workflow at `.github/workflows/vibebench.yml`; see [docs/examples/github-actions/vibebench.yml](docs/examples/github-actions/vibebench.yml) and [docs/github-actions.md](docs/github-actions.md) for details.
 
 ## Release Readiness And CI Artifacts
 
 For v0.2.0 details, see [RELEASE_NOTES_v0.2.0.md](RELEASE_NOTES_v0.2.0.md). For future release readiness, before tagging or publishing, run `python -m vibebench ci`, `python -m vibebench release-check`, and `python -m vibebench doctor --strict`. Use `python -m vibebench ci --dry-run` or `python -m vibebench ci --dry-run --write-plan` to inspect the pipeline before executing it.
 
-GitHub Actions uploads a downloadable artifact named `vibebench-run-artifacts` from workflow runs. It can include the run manifest, bundle zip, HTML report, GitHub summary, config-check artifacts, package-check artifacts, trend artifacts, run-index artifacts, compare artifacts, and `release-check.json`/`release-check.md` for review after CI completes. CI also uploads `vibebench-proof-packet`, a local proof packet whose self-contained `proof.html` is meant for evidence-first inspection.
+GitHub Actions uploads a downloadable artifact named `vibebench-run-artifacts` from workflow runs. It can include the run manifest, bundle zip, HTML report, GitHub summary, config-check artifacts, package-check artifacts, trend artifacts, run-index artifacts, compare artifacts, and `release-check.json`/`release-check.md` for review after CI completes. CI also shows a proof packet summary card and uploads `vibebench-proof-packet`, a local proof packet whose self-contained `proof.html` is meant for evidence-first inspection and can be reproduced with `python3 -m vibebench proof --output-dir PATH --zip`.
 
 ## Try The Risk Demo
 

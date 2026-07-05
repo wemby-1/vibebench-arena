@@ -1536,16 +1536,20 @@ def test_active_github_workflow_uploads_proof_packet_artifact() -> None:
     workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
 
     assert "Generate proof packet" in workflow
-    assert "proof --output-dir .vibebench/proof-packet" in workflow
+    assert "proof --output-dir .vibebench/proof-packet --zip" in workflow
     assert "actions/upload-artifact" in workflow
     assert "name: vibebench-proof-packet" in workflow
     assert ".vibebench/proof-packet" in workflow
     assert "GITHUB_STEP_SUMMARY" in workflow
     assert "VibeBench Proof Packet" in workflow
+    assert "Generated successfully" in workflow
+    assert "Reproduce locally" in workflow
+    assert "GitHub Actions run artifacts area" in workflow
     assert "proof.html" in workflow
     assert "proof.json" in workflow
     assert "proof.md" in workflow
     assert "proof-manifest.json" in workflow
+    assert "proof.zip" in workflow
 
 def test_example_github_workflow_posts_pr_comments_safely() -> None:
     workflow = Path("docs/examples/github-actions/vibebench.yml").read_text(

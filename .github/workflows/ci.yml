@@ -48,12 +48,30 @@ jobs:
 
       - name: Add proof packet summary
         run: |
-          {
-            echo "## VibeBench Proof Packet"
-            echo ""
-            echo "Download the \`vibebench-proof-packet\` artifact to inspect the local proof packet."
-            echo "It contains \`proof.html\`, \`proof.json\`, \`proof.md\`, \`proof-manifest.json\`, and \`proof.zip\`."
-          } >> "$GITHUB_STEP_SUMMARY"
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          ## VibeBench Proof Packet
+
+          **Status:** Generated successfully
+
+          **Artifact:** `vibebench-proof-packet`
+
+          **Generated files:**
+          - `proof.html`
+          - `proof.json`
+          - `proof.md`
+          - `proof-manifest.json`
+          - `proof.zip`
+
+          **Reproduce locally:**
+
+          ```bash
+          python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip
+          ```
+
+          `proof.html` is a self-contained evidence-first report for reviewing the local proof packet.
+
+          Download `vibebench-proof-packet` from the GitHub Actions run artifacts area to inspect the packet locally.
+          EOF
 
       - name: Upload VibeBench proof packet
         uses: actions/upload-artifact@v7
