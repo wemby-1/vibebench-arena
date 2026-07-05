@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,6 +25,7 @@ from vibebench.report import ReportError
 RELEASE_AUDIT_JSON = "release-audit.json"
 RELEASE_AUDIT_SUMMARY = "release-audit.md"
 RELEASE_AUDIT_ARCHIVE = "release-audit.zip"
+RELEASE_AUDIT_MANIFEST = "release-audit-manifest.json"
 RELEASE_AUDIT_REQUIRED_FILES = [
     "package-check.json",
     "package-check.md",
@@ -216,7 +219,14 @@ def create_release_audit(
             "markdown",
         )
     )
-    included_archive_files = sorted(RELEASE_AUDIT_REQUIRED_FILES)
+    generated_files.append(
+        generated_file(
+            RELEASE_AUDIT_MANIFEST,
+            selected_output_dir / RELEASE_AUDIT_MANIFEST,
+            "json",
+        )
+    )
+    included_archive_files = sorted(item.name for item in generated_files)
     archive = ReleaseAuditArchive(
         requested=archive_requested,
         path=selected_zip_path if archive_requested else None,
@@ -249,6 +259,10 @@ def create_release_audit(
     write_release_audit_summary(
         result,
         selected_output_dir / RELEASE_AUDIT_SUMMARY,
+    )
+    write_release_audit_manifest(
+        generated_files,
+        selected_output_dir / RELEASE_AUDIT_MANIFEST,
     )
     if archive_requested:
         write_release_audit_archive(selected_zip_path, generated_files)
@@ -354,6 +368,13 @@ def verify_release_audit_directory(
         file_path = target / name
         if file_path.is_file():
             verify_markdown_bytes(name, file_path.read_bytes(), checks)
+    manifest_path = target / RELEASE_AUDIT_MANIFEST
+    if manifest_path.is_file():
+        verify_manifest_bytes(
+            manifest_path.read_bytes(),
+            lambda name: read_directory_audit_file(target, name),
+            checks,
+        )
 
 
 def verify_release_audit_zip(
@@ -381,6 +402,12 @@ def verify_release_audit_zip(
             for name in RELEASE_AUDIT_MARKDOWN_FILES:
                 if name in file_names:
                     verify_markdown_bytes(name, archive.read(name), checks)
+            if RELEASE_AUDIT_MANIFEST in file_names:
+                verify_manifest_bytes(
+                    archive.read(RELEASE_AUDIT_MANIFEST),
+                    lambda name: read_zip_audit_file(archive, file_names, name),
+                    checks,
+                )
     except (OSError, BadZipFile, LargeZipFile) as exc:
         checks.append(failed_check("zip_read", f"Unable to read zip archive: {exc}"))
 
@@ -405,6 +432,30 @@ def verify_zip_entry_safety(
 def is_unsafe_zip_entry(name: str) -> bool:
     """Return whether a zip entry name is unsafe."""
     return not name or name.startswith("/") or ".." in Path(name).parts
+
+
+def read_directory_audit_file(target: Path, name: str) -> bytes | None:
+    """Read one audit file from a directory if it exists."""
+    file_path = target / name
+    if file_path.is_file():
+        return file_path.read_bytes()
+    return None
+
+
+def read_zip_audit_file(
+    archive: ZipFile,
+    file_names: set[str],
+    name: str,
+) -> bytes | None:
+    """Read one audit file from a zip archive if it exists."""
+    if name in file_names:
+        return archive.read(name)
+    return None
+
+
+def is_safe_manifest_path(name: str) -> bool:
+    """Return whether a manifest path is a safe relative path."""
+    return bool(name) and not name.startswith("/") and ".." not in Path(name).parts
 
 
 def verify_json_bytes(
@@ -438,6 +489,87 @@ def verify_markdown_bytes(
         checks.append(passed_check(f"markdown:{name}", f"Non-empty Markdown in {name}"))
     else:
         checks.append(failed_check(f"markdown:{name}", f"Empty Markdown in {name}"))
+
+
+def verify_manifest_bytes(
+    content: bytes,
+    read_file: Callable[[str], bytes | None],
+    checks: list[ReleaseAuditVerifyCheck],
+) -> None:
+    """Verify a release audit checksum manifest."""
+    try:
+        payload = json.loads(content.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        checks.append(
+            failed_check(
+                "manifest_json",
+                f"Invalid JSON in {RELEASE_AUDIT_MANIFEST}: {exc}",
+            )
+        )
+        return
+    checks.append(
+        passed_check("manifest_json", f"Valid JSON in {RELEASE_AUDIT_MANIFEST}")
+    )
+    files = payload.get("files") if isinstance(payload, dict) else None
+    if not isinstance(files, list):
+        checks.append(failed_check("manifest_files", "Manifest files must be a list"))
+        return
+    for index, entry in enumerate(files):
+        if not isinstance(entry, dict):
+            checks.append(
+                failed_check(
+                    "manifest_entry",
+                    f"Manifest entry {index} is not an object",
+                )
+            )
+            continue
+        verify_manifest_entry(entry, read_file, checks)
+
+
+def verify_manifest_entry(
+    entry: dict[str, object],
+    read_file: Callable[[str], bytes | None],
+    checks: list[ReleaseAuditVerifyCheck],
+) -> None:
+    """Verify one manifest file entry."""
+    name = entry.get("path")
+    if not isinstance(name, str) or not is_safe_manifest_path(name):
+        checks.append(failed_check("manifest_path", f"Unsafe manifest path: {name}"))
+        return
+    content = read_file(name)
+    if content is None:
+        checks.append(
+            failed_check(f"manifest_file:{name}", f"Manifest file missing: {name}")
+        )
+        return
+    expected_size = entry.get("size_bytes")
+    if expected_size != len(content):
+        checks.append(
+            failed_check(
+                f"manifest_size:{name}",
+                f"Manifest size mismatch for {name}",
+            )
+        )
+    else:
+        checks.append(
+            passed_check(f"manifest_size:{name}", f"Manifest size matches for {name}")
+        )
+    expected_sha = entry.get("sha256")
+    actual_sha = sha256_bytes(content)
+    if not isinstance(expected_sha, str) or expected_sha.lower() != actual_sha:
+        checks.append(
+            failed_check(
+                f"manifest_sha256:{name}",
+                f"Manifest sha256 mismatch for {name}",
+            )
+        )
+    else:
+        checks.append(
+            passed_check(
+                f"manifest_sha256:{name}",
+                f"Manifest sha256 matches for {name}",
+            )
+        )
 
 
 def release_audit_verify_result(
@@ -536,6 +668,47 @@ def write_release_audit_summary(result: ReleaseAuditResult, output_path: Path) -
     """Write release audit Markdown."""
     output_path.write_text(render_release_audit_markdown(result), encoding="utf-8")
     return output_path
+
+
+def release_audit_manifest_payload(
+    generated_files: list[ReleaseAuditFile],
+) -> dict[str, object]:
+    """Return a checksum manifest payload for release audit files."""
+    entries = []
+    for item in sorted(generated_files, key=lambda file: file.name):
+        if item.name == RELEASE_AUDIT_MANIFEST:
+            continue
+        content = item.path.read_bytes()
+        entries.append(
+            {
+                "path": item.name,
+                "sha256": sha256_bytes(content),
+                "size_bytes": len(content),
+            }
+        )
+    return {
+        "artifact": "release-audit",
+        "files": entries,
+        "schema_version": 1,
+    }
+
+
+def write_release_audit_manifest(
+    generated_files: list[ReleaseAuditFile],
+    output_path: Path,
+) -> Path:
+    """Write a deterministic checksum manifest for release audit files."""
+    payload = release_audit_manifest_payload(generated_files)
+    output_path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return output_path
+
+
+def sha256_bytes(content: bytes) -> str:
+    """Return lowercase hex sha256 for bytes."""
+    return hashlib.sha256(content).hexdigest()
 
 
 def write_release_audit_archive(

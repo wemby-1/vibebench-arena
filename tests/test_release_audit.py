@@ -23,6 +23,8 @@ EXPECTED_FILES = {
     "release-audit.json",
     "release-audit.md",
 }
+MANIFEST_FILE = "release-audit-manifest.json"
+EXPECTED_GENERATED_FILES = EXPECTED_FILES | {MANIFEST_FILE}
 
 
 def write_audit_project(root: Path, *, version: str = "0.3.0") -> None:
@@ -119,7 +121,7 @@ def test_release_audit_creates_expected_files(tmp_path: Path, monkeypatch) -> No
     )
 
     assert result.exit_code == 0
-    assert {path.name for path in output_dir.iterdir()} == EXPECTED_FILES
+    assert {path.name for path in output_dir.iterdir()} == EXPECTED_GENERATED_FILES
 
 
 def test_release_audit_json_stdout_is_pure_json(
@@ -257,7 +259,7 @@ def test_release_audit_json_includes_generated_files(
     payload = json.loads(output_dir.joinpath("release-audit.json").read_text())
     generated = {item["name"] for item in payload["generated_files"]}
     assert result.exit_code == 0
-    assert generated == EXPECTED_FILES
+    assert generated == EXPECTED_GENERATED_FILES
 
 
 def test_release_audit_invalid_output_parent_fails(
@@ -332,7 +334,7 @@ def test_release_audit_zip_creates_expected_archive(
     assert zip_path.is_file()
     with ZipFile(zip_path) as archive:
         names = archive.namelist()
-    assert set(names) == EXPECTED_FILES
+    assert set(names) == EXPECTED_GENERATED_FILES
     assert all(not name.startswith("/") for name in names)
     assert all(".." not in Path(name).parts for name in names)
     assert all(len(Path(name).parts) == 1 for name in names)
@@ -416,7 +418,7 @@ def test_release_audit_json_records_archive_metadata(
     payload = json.loads(output_dir.joinpath("release-audit.json").read_text())
     assert result.exit_code == 0
     assert payload["archive"] == {
-        "included_files": sorted(EXPECTED_FILES),
+        "included_files": sorted(EXPECTED_GENERATED_FILES),
         "path": str(output_dir / "release-audit.zip"),
         "requested": True,
         "status": "created",
@@ -744,3 +746,233 @@ def test_release_audit_verify_plain_file_fails(
 
     assert result.exit_code == 1
     assert "neither a release audit directory nor a .zip file" in result.output
+
+
+def test_release_audit_directory_includes_manifest(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+
+    result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert output_dir.joinpath(MANIFEST_FILE).is_file()
+
+
+def test_release_audit_zip_includes_manifest(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+
+    result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+            "--zip",
+        ],
+    )
+
+    assert result.exit_code == 0
+    with ZipFile(output_dir / "release-audit.zip") as archive:
+        assert MANIFEST_FILE in archive.namelist()
+
+
+def test_release_audit_manifest_records_size_and_sha256(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+
+    result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+
+    payload = json.loads(output_dir.joinpath(MANIFEST_FILE).read_text())
+    files = {entry["path"]: entry for entry in payload["files"]}
+    assert result.exit_code == 0
+    assert payload["schema_version"] == 1
+    assert payload["artifact"] == "release-audit"
+    assert set(files) == EXPECTED_FILES
+    for entry in files.values():
+        assert isinstance(entry["size_bytes"], int)
+        assert entry["size_bytes"] > 0
+        assert isinstance(entry["sha256"], str)
+        assert len(entry["sha256"]) == 64
+        assert entry["sha256"] == entry["sha256"].lower()
+
+
+def test_release_audit_verify_manifest_detects_modified_file(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+    create_result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+    output_dir.joinpath("package-check.md").write_text("changed", encoding="utf-8")
+
+    result = runner.invoke(app, ["release-audit", "--verify", str(output_dir)])
+
+    assert create_result.exit_code == 0
+    assert result.exit_code == 1
+    assert "Manifest size mismatch for package-check.md" in result.output
+    assert "Manifest sha256 mismatch for package-check.md" in result.output
+
+
+def test_release_audit_verify_manifest_detects_bad_sha256(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+    create_result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+    manifest_path = output_dir / MANIFEST_FILE
+    payload = json.loads(manifest_path.read_text())
+    payload["files"][0]["sha256"] = "0" * 64
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = runner.invoke(app, ["release-audit", "--verify", str(output_dir)])
+
+    assert create_result.exit_code == 0
+    assert result.exit_code == 1
+    assert "Manifest sha256 mismatch" in result.output
+
+
+def test_release_audit_verify_manifest_rejects_unsafe_path(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+    create_result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+    manifest_path = output_dir / MANIFEST_FILE
+    payload = json.loads(manifest_path.read_text())
+    payload["files"].append(
+        {"path": "../bad.txt", "size_bytes": 1, "sha256": "0" * 64}
+    )
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = runner.invoke(app, ["release-audit", "--verify", str(output_dir)])
+
+    assert create_result.exit_code == 0
+    assert result.exit_code == 1
+    assert "Unsafe manifest path: ../bad.txt" in result.output
+
+
+def test_release_audit_verify_accepts_old_audit_without_manifest(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+    create_result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+    output_dir.joinpath(MANIFEST_FILE).unlink()
+
+    result = runner.invoke(app, ["release-audit", "--verify", str(output_dir)])
+
+    assert create_result.exit_code == 0
+    assert result.exit_code == 0
+    assert "Release audit verification: passed" in result.output
+
+
+def test_release_audit_verify_zip_with_manifest_passes_json(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+    create_result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+            "--zip",
+        ],
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--verify",
+            str(output_dir / "release-audit.zip"),
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    assert create_result.exit_code == 0
+    assert result.exit_code == 0
+    assert payload["status"] == "passed"
+    assert any(check["name"] == "manifest_json" for check in payload["checks"])
