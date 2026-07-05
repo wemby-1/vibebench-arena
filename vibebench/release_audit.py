@@ -6,6 +6,7 @@ import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from zipfile import ZIP_DEFLATED, BadZipFile, LargeZipFile, ZipFile, ZipInfo
 
 from vibebench.package_check import (
     run_package_check,
@@ -21,6 +22,7 @@ from vibebench.report import ReportError
 
 RELEASE_AUDIT_JSON = "release-audit.json"
 RELEASE_AUDIT_SUMMARY = "release-audit.md"
+RELEASE_AUDIT_ARCHIVE = "release-audit.zip"
 SAFETY_NOTES = [
     "No tag is created.",
     "No GitHub Release is created.",
@@ -39,6 +41,16 @@ class ReleaseAuditFile:
 
 
 @dataclass(frozen=True)
+class ReleaseAuditArchive:
+    """Release audit archive metadata."""
+
+    requested: bool
+    path: Path | None
+    included_files: list[str]
+    status: str
+
+
+@dataclass(frozen=True)
 class ReleaseAuditResult:
     """Complete release audit result."""
 
@@ -51,6 +63,7 @@ class ReleaseAuditResult:
     package_status: str
     publish_status: str
     release_checklist_status: str
+    archive: ReleaseAuditArchive
 
 
 def create_release_audit(
@@ -58,6 +71,8 @@ def create_release_audit(
     *,
     output_dir: Path | None = None,
     version: str | None = None,
+    create_zip: bool = False,
+    zip_output_path: Path | None = None,
     release_checklist_payload: dict[str, object],
 ) -> ReleaseAuditResult:
     """Create a local release audit directory and artifacts."""
@@ -65,6 +80,14 @@ def create_release_audit(
     generated_at = datetime.now(UTC).replace(microsecond=0).isoformat()
     selected_output_dir = resolve_output_dir(root, output_dir, generated_at)
     prepare_output_dir(selected_output_dir, create_parent=output_dir is None)
+    archive_requested = create_zip or zip_output_path is not None
+    selected_zip_path = resolve_zip_output_path(
+        root,
+        selected_output_dir,
+        zip_output_path,
+    )
+    if archive_requested:
+        prepare_zip_output_path(selected_zip_path)
 
     package_result = run_package_check(root, advice=True, build=True)
     publish_result = run_publish_check(root, advice=True)
@@ -151,6 +174,13 @@ def create_release_audit(
             "markdown",
         )
     )
+    included_archive_files = sorted(item.name for item in generated_files)
+    archive = ReleaseAuditArchive(
+        requested=archive_requested,
+        path=selected_zip_path if archive_requested else None,
+        included_files=included_archive_files if archive_requested else [],
+        status="created" if archive_requested else "not_requested",
+    )
 
     result = ReleaseAuditResult(
         project_root=root,
@@ -168,6 +198,7 @@ def create_release_audit(
         release_checklist_status=(
             value_as_str(release_checklist_payload.get("overall_status")) or "unknown"
         ),
+        archive=archive,
     )
     write_release_audit_json(
         result,
@@ -177,7 +208,10 @@ def create_release_audit(
         result,
         selected_output_dir / RELEASE_AUDIT_SUMMARY,
     )
+    if archive_requested:
+        write_release_audit_archive(selected_zip_path, generated_files)
     return result
+
 
 def resolve_output_dir(
     project_root: Path,
@@ -191,6 +225,19 @@ def resolve_output_dir(
         return (project_root / output_dir).resolve()
     stamp = generated_at.replace("-", "").replace(":", "").replace("+00:00", "Z")
     return (project_root / ".vibebench" / "release-audits" / stamp).resolve()
+
+
+def resolve_zip_output_path(
+    project_root: Path,
+    output_dir: Path,
+    zip_output_path: Path | None,
+) -> Path:
+    """Resolve the requested release audit zip path."""
+    if zip_output_path is None:
+        return output_dir / RELEASE_AUDIT_ARCHIVE
+    if zip_output_path.is_absolute():
+        return zip_output_path.resolve()
+    return (project_root / zip_output_path).resolve()
 
 
 def prepare_output_dir(output_dir: Path, *, create_parent: bool = False) -> None:
@@ -210,9 +257,32 @@ def prepare_output_dir(output_dir: Path, *, create_parent: bool = False) -> None
     output_dir.mkdir()
 
 
+def prepare_zip_output_path(output_path: Path) -> None:
+    """Validate the requested zip output path."""
+    if output_path.exists() and output_path.is_dir():
+        raise ReportError(
+            f"Release-audit zip output path is a directory: {output_path}"
+        )
+    if output_path.exists():
+        raise ReportError(f"Release-audit zip output already exists: {output_path}")
+    if not output_path.parent.exists():
+        raise ReportError(
+            f"Release-audit zip output parent does not exist: {output_path.parent}"
+        )
+
+
 def release_audit_json_payload(result: ReleaseAuditResult) -> dict[str, object]:
     """Return a JSON-safe release audit payload."""
+    archive_path = None
+    if result.archive.path is not None:
+        archive_path = str(result.archive.path)
     return {
+        "archive": {
+            "included_files": result.archive.included_files,
+            "path": archive_path,
+            "requested": result.archive.requested,
+            "status": result.archive.status,
+        },
         "generated_at": result.generated_at,
         "generated_files": [
             {"name": item.name, "path": str(item.path), "kind": item.kind}
@@ -245,6 +315,25 @@ def write_release_audit_json(result: ReleaseAuditResult, output_path: Path) -> P
 def write_release_audit_summary(result: ReleaseAuditResult, output_path: Path) -> Path:
     """Write release audit Markdown."""
     output_path.write_text(render_release_audit_markdown(result), encoding="utf-8")
+    return output_path
+
+
+def write_release_audit_archive(
+    output_path: Path,
+    generated_files: list[ReleaseAuditFile],
+) -> Path:
+    """Write a zip archive containing only generated release audit files."""
+    files_by_name = {item.name: item.path for item in generated_files}
+    try:
+        with ZipFile(output_path, mode="x") as archive:
+            for name in sorted(files_by_name):
+                zip_info = ZipInfo(name)
+                zip_info.date_time = (1980, 1, 1, 0, 0, 0)
+                zip_info.compress_type = ZIP_DEFLATED
+                zip_info.external_attr = 0o100644 << 16
+                archive.writestr(zip_info, files_by_name[name].read_bytes())
+    except (OSError, BadZipFile, LargeZipFile) as exc:
+        raise ReportError(f"Failed to create release-audit zip: {exc}") from exc
     return output_path
 
 
@@ -281,6 +370,28 @@ def render_release_audit_markdown(result: ReleaseAuditResult) -> str:
             f"| Publish check | {markdown_cell(result.publish_status)} |",
             f"| Release checklist | {markdown_cell(result.release_checklist_status)} |",
             "",
+            "## Archive",
+            "",
+        ]
+    )
+    if result.archive.requested:
+        lines.extend(
+            [
+                f"- Status: `{markdown_cell(result.archive.status)}`",
+                f"- Path: `{markdown_cell(result.archive.path)}`",
+                "",
+                "| Included file |",
+                "| --- |",
+            ]
+        )
+        lines.extend(
+            f"| {markdown_cell(name)} |" for name in result.archive.included_files
+        )
+        lines.append("")
+    else:
+        lines.extend(["- Not requested.", ""])
+    lines.extend(
+        [
             "## Safety Notes",
             "",
         ]

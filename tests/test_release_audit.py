@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from zipfile import ZipFile
 
 from typer.testing import CliRunner
 
@@ -137,6 +138,12 @@ def test_release_audit_json_stdout_is_pure_json(
     assert result.exit_code == 0
     assert payload["status"] == "warning"
     assert payload["version"] == "v0.3.0"
+    assert payload["archive"] == {
+        "included_files": [],
+        "path": None,
+        "requested": False,
+        "status": "not_requested",
+    }
     assert set(payload["safety_notes"]) >= {
         "No tag is created.",
         "No GitHub Release is created.",
@@ -298,3 +305,224 @@ def test_release_audit_output_path_file_fails(
 
     assert result.exit_code == 1
     assert "output path is a file" in result.output
+
+
+def test_release_audit_zip_creates_expected_archive(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+
+    result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+            "--zip",
+        ],
+    )
+
+    zip_path = output_dir / "release-audit.zip"
+    assert result.exit_code == 0
+    assert zip_path.is_file()
+    with ZipFile(zip_path) as archive:
+        names = archive.namelist()
+    assert set(names) == EXPECTED_FILES
+    assert all(not name.startswith("/") for name in names)
+    assert all(".." not in Path(name).parts for name in names)
+    assert all(len(Path(name).parts) == 1 for name in names)
+
+
+def test_release_audit_zip_output_writes_requested_path(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+    zip_path = tmp_path / "requested-release-audit.zip"
+
+    result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+            "--zip-output",
+            str(zip_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert zip_path.is_file()
+    assert not output_dir.joinpath("release-audit.zip").exists()
+
+
+def test_release_audit_json_zip_stdout_is_pure_json(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+
+    result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+            "--zip",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["archive"]["requested"] is True
+    assert payload["archive"]["status"] == "created"
+    assert payload["archive"]["path"] == str(output_dir / "release-audit.zip")
+
+
+def test_release_audit_json_records_archive_metadata(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+
+    result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+            "--zip",
+        ],
+    )
+
+    payload = json.loads(output_dir.joinpath("release-audit.json").read_text())
+    assert result.exit_code == 0
+    assert payload["archive"] == {
+        "included_files": sorted(EXPECTED_FILES),
+        "path": str(output_dir / "release-audit.zip"),
+        "requested": True,
+        "status": "created",
+    }
+
+
+def test_release_audit_markdown_mentions_archive(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+
+    result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+            "--zip",
+        ],
+    )
+
+    markdown = output_dir.joinpath("release-audit.md").read_text(encoding="utf-8")
+    assert result.exit_code == 0
+    assert "## Archive" in markdown
+    assert str(output_dir / "release-audit.zip") in markdown
+
+
+def test_release_audit_missing_zip_output_parent_fails(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+    zip_path = tmp_path / "missing" / "release-audit.zip"
+
+    result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+            "--zip-output",
+            str(zip_path),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "zip output parent does not exist" in result.output
+
+
+def test_release_audit_zip_output_directory_fails(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+    zip_path = tmp_path / "zip-dir"
+    zip_path.mkdir()
+
+    result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+            "--zip-output",
+            str(zip_path),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "zip output path is a directory" in result.output
+
+
+def test_release_audit_default_does_not_create_archive(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_audit_project(tmp_path)
+    install_release_audit_mocks(monkeypatch)
+    output_dir = tmp_path / "audit"
+
+    result = runner.invoke(
+        app,
+        [
+            "release-audit",
+            "--project-root",
+            str(tmp_path),
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+
+    payload = json.loads(output_dir.joinpath("release-audit.json").read_text())
+    assert result.exit_code == 0
+    assert not output_dir.joinpath("release-audit.zip").exists()
+    assert payload["archive"]["requested"] is False
+    assert payload["archive"]["status"] == "not_requested"

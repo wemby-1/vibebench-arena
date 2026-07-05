@@ -1996,6 +1996,17 @@ def release_audit_command(
         str | None,
         typer.Option("--version", help="Target release version, for example v0.3.0."),
     ] = None,
+    zip_archive: Annotated[
+        bool,
+        typer.Option(
+            "--zip",
+            help="Write release-audit.zip inside the audit output directory.",
+        ),
+    ] = False,
+    zip_output: Annotated[
+        Path | None,
+        typer.Option("--zip-output", help="Write the release audit zip to this path."),
+    ] = None,
     as_json: Annotated[
         bool,
         typer.Option("--json", help="Print release audit result as JSON."),
@@ -2004,12 +2015,15 @@ def release_audit_command(
     """Create a local release audit folder without release side effects."""
     root = project_root.resolve()
     selected_output_dir = resolve_optional_output_path(root, output_dir)
+    selected_zip_output = resolve_optional_output_path(root, zip_output)
     checklist_payload = release_checklist_payload(root, requested_version=version)
     try:
         result = create_release_audit(
             root,
             output_dir=selected_output_dir,
             version=version,
+            create_zip=zip_archive,
+            zip_output_path=selected_zip_output,
             release_checklist_payload=checklist_payload,
         )
     except ReportError as exc:
@@ -3273,6 +3287,9 @@ def render_release_audit_summary(result: ReleaseAuditResult) -> None:
     console.print(
         "Local-only safety: no tag, GitHub Release, package upload, or version bump."
     )
+    if result.archive.requested and result.archive.path is not None:
+        console.print(f"Archive: {result.archive.path}")
+
     style = "red" if result.status == "failed" else "yellow"
     if result.status == "ready":
         style = "green"
