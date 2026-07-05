@@ -2032,16 +2032,123 @@ def release_checklist_command(
         str | None,
         typer.Option("--version", help="Target release version, for example v0.3.0."),
     ] = None,
+    write_json: Annotated[
+        Path | None,
+        typer.Option("--write-json", help="Write release checklist JSON."),
+    ] = None,
+    write_summary: Annotated[
+        Path | None,
+        typer.Option("--write-summary", help="Write release checklist Markdown."),
+    ] = None,
 ) -> None:
     """Inspect local release readiness without creating tags or releases."""
     root = project_root.resolve()
     payload = release_checklist_payload(root, requested_version=version)
+    selected_json_path = resolve_optional_output_path(root, write_json)
+    selected_summary_path = resolve_optional_output_path(root, write_summary)
+    try:
+        if selected_json_path is not None:
+            write_release_checklist_json(payload, selected_json_path)
+        if selected_summary_path is not None:
+            write_release_checklist_summary(payload, selected_summary_path)
+    except ReportError as exc:
+        target_console = err_console if as_json else console
+        target_console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
     if as_json:
-        print(json.dumps(payload, indent=2, sort_keys=True))
+        print(release_checklist_json(payload))
     else:
         render_release_checklist(payload)
+        if selected_json_path is not None:
+            console.print(f"Release-checklist JSON: {selected_json_path}")
+        if selected_summary_path is not None:
+            console.print(f"Release-checklist summary: {selected_summary_path}")
     if payload["overall_status"] == "failed":
         raise typer.Exit(code=1)
+
+
+def release_checklist_json(payload: dict[str, object]) -> str:
+    """Return deterministic JSON for a release checklist payload."""
+    return json.dumps(payload, indent=2, sort_keys=True)
+
+
+def write_release_checklist_json(
+    payload: dict[str, object],
+    output_path: Path,
+) -> Path:
+    """Write release checklist JSON to a selected path."""
+    validate_release_checklist_output_path(output_path)
+    output_path.write_text(release_checklist_json(payload) + "\n", encoding="utf-8")
+    return output_path
+
+
+def write_release_checklist_summary(
+    payload: dict[str, object],
+    output_path: Path,
+) -> Path:
+    """Write release checklist Markdown to a selected path."""
+    validate_release_checklist_output_path(output_path)
+    output_path.write_text(render_release_checklist_markdown(payload), encoding="utf-8")
+    return output_path
+
+
+def validate_release_checklist_output_path(output_path: Path) -> None:
+    """Validate a release-checklist output path."""
+    if output_path.exists() and output_path.is_dir():
+        raise ReportError(
+            f"Release-checklist output path is a directory: {output_path}"
+        )
+    if not output_path.parent.exists():
+        raise ReportError(
+            "Release-checklist output parent does not exist: "
+            f"{output_path.parent}"
+        )
+
+
+def render_release_checklist_markdown(payload: dict[str, object]) -> str:
+    """Render a concise Markdown release checklist summary."""
+    lines = [
+        "# VibeBench Release Checklist",
+        "",
+        f"- Version: `{markdown_cell(payload.get('target_version', 'unknown'))}`",
+        (
+            "- Overall status: "
+            f"`{markdown_cell(payload.get('overall_status', 'unknown'))}`"
+        ),
+        "",
+        "| Item | Status | Message |",
+        "| --- | --- | --- |",
+    ]
+    checks = payload.get("checks", [])
+    if isinstance(checks, list):
+        for check in checks:
+            if not isinstance(check, dict):
+                continue
+            lines.append(
+                "| "
+                f"{markdown_cell(check.get('name', ''))} | "
+                f"{markdown_cell(check.get('status', ''))} | "
+                f"{markdown_cell(check.get('message', ''))} |"
+            )
+    lines.extend(
+        [
+            "",
+            "## Safety Note",
+            "",
+            "- No tag is created.",
+            "- No GitHub Release is created.",
+            "- No package publish or upload is performed.",
+            "- No version bump is performed.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def markdown_cell(value: object) -> str:
+    """Escape Markdown table-sensitive content."""
+    return str(value).replace("|", "\\|").replace("\n", " ")
 
 
 def release_checklist_payload(

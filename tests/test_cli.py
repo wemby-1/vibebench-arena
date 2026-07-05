@@ -962,6 +962,162 @@ def test_release_checklist_json_output_is_clean(tmp_path: Path, monkeypatch) -> 
     }
 
 
+def test_release_checklist_write_json_writes_valid_json(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_release_checklist_project(tmp_path)
+    stub_release_checklist_dependencies(monkeypatch)
+    output_path = tmp_path / "release-checklist.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "release-checklist",
+            "--project-root",
+            str(tmp_path),
+            "--write-json",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["overall_status"] == "warning"
+    assert payload["target_version"] == "v0.3.0"
+    assert output_path.read_text(encoding="utf-8").endswith("\n")
+
+
+def test_release_checklist_write_summary_writes_markdown(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_release_checklist_project(tmp_path)
+    stub_release_checklist_dependencies(monkeypatch)
+    output_path = tmp_path / "release-checklist.md"
+
+    result = runner.invoke(
+        app,
+        [
+            "release-checklist",
+            "--project-root",
+            str(tmp_path),
+            "--write-summary",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    markdown = output_path.read_text(encoding="utf-8")
+    assert "# VibeBench Release Checklist" in markdown
+    assert "- Version: `v0.3.0`" in markdown
+    assert "- Overall status: `warning`" in markdown
+    assert "| Item | Status | Message |" in markdown
+    assert "No tag is created" in markdown
+    assert "No GitHub Release is created" in markdown
+    assert "No package publish or upload is performed" in markdown
+    assert "No version bump is performed" in markdown
+
+
+def test_release_checklist_json_stdout_stays_pure_when_writing_json(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_release_checklist_project(tmp_path)
+    stub_release_checklist_dependencies(monkeypatch)
+    output_path = tmp_path / "release-checklist.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "release-checklist",
+            "--project-root",
+            str(tmp_path),
+            "--json",
+            "--write-json",
+            str(output_path),
+        ],
+    )
+
+    stdout_payload = json.loads(result.output)
+    file_payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert result.exit_code == 0
+    assert stdout_payload == file_payload
+    assert stdout_payload["target_version"] == "v0.3.0"
+
+
+def test_release_checklist_version_write_summary_records_requested_version(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_release_checklist_project(tmp_path, version="0.3.0", notes_version="v0.4.0")
+    stub_release_checklist_dependencies(monkeypatch)
+    output_path = tmp_path / "release-checklist.md"
+
+    result = runner.invoke(
+        app,
+        [
+            "release-checklist",
+            "--project-root",
+            str(tmp_path),
+            "--version",
+            "v0.4.0",
+            "--write-summary",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    markdown = output_path.read_text(encoding="utf-8")
+    assert "- Version: `v0.4.0`" in markdown
+    assert "target is v0.4.0" in markdown
+
+
+def test_release_checklist_missing_output_parent_fails(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_release_checklist_project(tmp_path)
+    stub_release_checklist_dependencies(monkeypatch)
+    output_path = tmp_path / "missing" / "release-checklist.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "release-checklist",
+            "--project-root",
+            str(tmp_path),
+            "--write-json",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "output parent does not exist" in result.output
+
+
+def test_release_checklist_output_directory_fails(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    write_release_checklist_project(tmp_path)
+    stub_release_checklist_dependencies(monkeypatch)
+
+    result = runner.invoke(
+        app,
+        [
+            "release-checklist",
+            "--project-root",
+            str(tmp_path),
+            "--write-summary",
+            str(tmp_path),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "output path is a directory" in result.output
+
+
 def test_release_checklist_infers_target_version(tmp_path: Path, monkeypatch) -> None:
     write_release_checklist_project(tmp_path, version="0.3.0", notes_version="v0.3.0")
     stub_release_checklist_dependencies(monkeypatch)
