@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added `python3 -m vibebench evidence-room` for creating, zipping, JSON-exporting, and verifying a local evidence room that combines the proof packet and static site preview for external evaluation.
+
 - Added `python3 -m vibebench site-preview` for creating, zipping, JSON-exporting, and verifying the reusable static site preview bundle that CI uploads as `vibebench-site-preview`.
 
 - Added CI static site readiness checking and a downloadable `vibebench-site-preview` artifact for reviewing the GitHub Pages-ready docs without enabling Pages automatically.

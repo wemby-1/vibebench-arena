@@ -44,6 +44,7 @@ AI coding 正在变得更容易；真正困难的是 review、审计、对比和
 - [Product showcase](docs/showcase.html)：一个 GitHub Pages-ready 的概览页，串起 CLI、CI 证据包、artifacts 和自包含 `proof.html`。
 - [采用指南](docs/adoption.md)：适合评估 Codex / vibe-coding / AI 辅助编程工作流的小团队，说明第一周如何安全试点。
 - [Demo guide](docs/demo.md)：用本地命令证明核心流程，不依赖外部服务。
+- 一条命令生成 evidence room：`python3 -m vibebench evidence-room --output-dir /tmp/vibebench-evidence-room --zip`，再用 `python3 -m vibebench evidence-room --verify /tmp/vibebench-evidence-room/evidence-room.zip` 校验。
 - 生成可分享的本地证据包：`python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip` 会写入 Markdown、JSON、自包含、证据优先的 HTML 报告、manifest 和 `proof.zip`。GitHub Actions 也会显示 proof packet summary card，并上传可下载的 `vibebench-proof-packet` artifact。
 - 发布或编辑静态 Pages 入口前，可运行 `python3 -m vibebench site-preview --output-dir /tmp/vibebench-site-preview --zip` 生成静态预览包，并用 `python3 -m vibebench site-preview --verify /tmp/vibebench-site-preview/site-preview.zip` 校验；CI 复用同一命令上传 `vibebench-site-preview`，但不会自动启用 GitHub Pages。
 - [对比与定位](docs/comparison.md)：说明 VibeBench 不是普通 CI、不是聊天机器人、不是排行榜，而是面向 AI coding / vibe-coding 的本地质量控制台。

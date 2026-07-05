@@ -55,6 +55,16 @@ from vibebench.config_check import (
 )
 from vibebench.demo import DemoError, copy_sample_pack, demo_payload
 from vibebench.doctor import DoctorResult, doctor_json_payload, run_doctor
+from vibebench.evidence_room import (
+    EvidenceRoomError,
+    evidence_room_json,
+    evidence_room_payload,
+    evidence_room_verification_json,
+    verify_evidence_room,
+    write_evidence_room,
+    write_evidence_room_json,
+    write_zip_only_evidence_room,
+)
 from vibebench.explain import ExplainResult, generate_explanation
 from vibebench.export import ExportResult, export_run
 from vibebench.gate import GateResult, run_gate
@@ -1619,6 +1629,125 @@ def site_preview_command(
 
     if payload["status"] == "failed":
         raise typer.Exit(code=1)
+
+
+@app.command("evidence-room")
+def evidence_room_command(
+    project_root: ProjectRootOption = Path("."),
+    output_dir: Annotated[
+        Path | None,
+        typer.Option("--output-dir", help="Write evidence room files to PATH."),
+    ] = None,
+    create_zip: Annotated[
+        bool,
+        typer.Option("--zip", help="Write evidence-room.zip with relative files."),
+    ] = False,
+    zip_output: Annotated[
+        Path | None,
+        typer.Option("--zip-output", help="Write evidence room archive to PATH."),
+    ] = None,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print evidence room details as JSON."),
+    ] = False,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write evidence room JSON to PATH."),
+    ] = None,
+    verify: Annotated[
+        Path | None,
+        typer.Option("--verify", help="Verify an evidence room directory or zip."),
+    ] = None,
+    root: Annotated[
+        Path,
+        typer.Option("--root", help="Static site root to include."),
+    ] = Path("docs"),
+) -> None:
+    """Plan, write, zip, or verify a combined evidence room package."""
+    project = project_root.resolve()
+    selected_root = root if root.is_absolute() else project / root
+    root_label = root.as_posix()
+
+    if verify is not None:
+        result = verify_evidence_room(verify)
+        selected_json_output = None
+        if json_output is not None:
+            selected_json_output = (
+                json_output if json_output.is_absolute() else project / json_output
+            )
+            write_evidence_room_json(result, selected_json_output)
+        if as_json:
+            print(evidence_room_verification_json(result))
+        else:
+            render_evidence_room_verification(result)
+            if selected_json_output is not None:
+                console.print(f"Evidence room JSON: {selected_json_output}")
+        if not result["verified"]:
+            raise typer.Exit(code=1)
+        return
+
+    selected_output_dir = None
+    if output_dir is not None:
+        selected_output_dir = (
+            output_dir if output_dir.is_absolute() else project / output_dir
+        )
+    selected_zip_output = None
+    if zip_output is not None:
+        selected_zip_output = (
+            zip_output if zip_output.is_absolute() else project / zip_output
+        )
+
+    try:
+        if selected_output_dir is not None:
+            payload = write_evidence_room(
+                project_root=project,
+                site_root=selected_root,
+                root_label=root_label,
+                output_dir=selected_output_dir,
+                create_zip=create_zip,
+                zip_output=selected_zip_output,
+            )
+        elif selected_zip_output is not None:
+            payload = write_zip_only_evidence_room(
+                project_root=project,
+                site_root=selected_root,
+                root_label=root_label,
+                zip_output=selected_zip_output,
+            )
+        else:
+            payload = evidence_room_payload(root_label=root_label)
+            if create_zip:
+                raise EvidenceRoomError(
+                    "--zip requires --output-dir or --zip-output."
+                )
+    except EvidenceRoomError as exc:
+        payload = evidence_room_payload(
+            root_label=root_label,
+            output_dir=selected_output_dir,
+            zip_output=selected_zip_output,
+            status="failed",
+            warnings=[str(exc)],
+        )
+        if as_json:
+            print(evidence_room_json(payload))
+        else:
+            console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if json_output is not None:
+        selected_json_output = (
+            json_output if json_output.is_absolute() else project / json_output
+        )
+        write_evidence_room_json(payload, selected_json_output)
+    else:
+        selected_json_output = None
+
+    if as_json:
+        print(evidence_room_json(payload))
+    else:
+        render_evidence_room_summary(payload)
+        if selected_json_output is not None:
+            console.print(f"Evidence room JSON: {selected_json_output}")
 
 
 @app.command("manifest")
@@ -3445,6 +3574,50 @@ def render_site_preview_verification(result: dict[str, object]) -> None:
         console.print("[green]Site preview verification passed.[/]")
     else:
         console.print("[red]Site preview verification failed.[/]")
+    console.print(f"Target: {result['target']} ({result['target_type']})")
+    for check in result["checks"]:
+        item = check if isinstance(check, dict) else {}
+        status = str(item.get("status", "unknown"))
+        name = str(item.get("name", "check"))
+        message = str(item.get("message", ""))
+        style = "green" if status == "passed" else "red"
+        console.print(f"- [{style}]{status}[/]: {name} - {message}")
+
+
+def render_evidence_room_summary(payload: dict[str, object]) -> None:
+    """Render a concise evidence room summary."""
+    status = str(payload["status"])
+    status_style = "green" if status in {"ready", "passed"} else "red"
+    console.print()
+    console.print("[bold]VibeBench evidence room[/]")
+    console.print(f"Status: [{status_style}]{status}[/]")
+    console.print(f"Root: {payload['root']}")
+    if payload.get("output_dir"):
+        console.print(f"Output directory: {payload['output_dir']}")
+    if payload.get("zip_output"):
+        console.print(f"Zip archive: {payload['zip_output']}")
+
+    files = payload.get("files")
+    if isinstance(files, list):
+        table = Table(show_header=True, header_style="bold")
+        table.add_column("Included file")
+        for item in files:
+            table.add_row(str(item))
+        console.print(table)
+
+    commands = payload.get("commands")
+    if isinstance(commands, list):
+        console.print("Local commands:")
+        for command in commands:
+            console.print(f"- {command}")
+
+
+def render_evidence_room_verification(result: dict[str, object]) -> None:
+    """Render evidence room verification output."""
+    if result["verified"]:
+        console.print("[green]Evidence room verification passed.[/]")
+    else:
+        console.print("[red]Evidence room verification failed.[/]")
     console.print(f"Target: {result['target']} ({result['target_type']})")
     for check in result["checks"]:
         item = check if isinstance(check, dict) else {}
