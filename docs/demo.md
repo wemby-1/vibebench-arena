@@ -4,7 +4,7 @@ VibeBench Arena is a Codex-first / vibe-coding quality console for local-first A
 
 For a skim-friendly map of the concrete outputs, see the [artifact gallery](artifact-gallery.md).
 
-To browse the output shape without running commands, open the checked-in [sample artifact pack](../examples/showcase-artifacts/sample/README.md).
+To browse the output shape without running commands, open the checked-in [sample artifact pack](../examples/showcase-artifacts/sample/README.md). To try the one-command local demo, run `python3 -m vibebench demo` or copy the pack with `python3 -m vibebench demo --copy-to /tmp/vibebench-demo`.
 
 For the broader product thesis and practical workflows, see [positioning](positioning.md) and [use cases](use-cases.md).
 
@@ -18,7 +18,7 @@ AI coding feels fast, but the hard part is trust. A useful local quality gate sh
 - Is the project ready for packaging or release work?
 - Can the result be reproduced locally or in CI?
 
-VibeBench does that without turning the local demo into a hosted service or secret-dependent workflow.
+VibeBench does that without turning the local demo into a hosted service or credential-dependent workflow.
 
 ## What This Demo Proves
 
@@ -38,6 +38,9 @@ The demo does not publish a package, create a tag, create a GitHub Release, or r
 From the repository root:
 
 ```bash
+python3 -m vibebench demo
+python3 -m vibebench demo --json
+python3 -m vibebench demo --copy-to /tmp/vibebench-demo
 python3 -m vibebench config --path
 python3 -m vibebench config --show --json
 python3 -m vibebench ci --dry-run
@@ -114,7 +117,7 @@ The zip is a local handoff record for release review. It can be inspected or ver
 
 - It does not automatically publish packages.
 - It does not automatically create GitHub Releases.
-- It does not require secrets or API tokens for this local demo.
+- It does not require credentials or API tokens for this local demo.
 - It does not call external services for normal local checks.
 - It does not replace human review.
 

@@ -10,7 +10,7 @@ VibeBench artifacts make AI-assisted changes reviewable by leaving local, CI-rea
 
 They are the proof layer behind the broader [project positioning](positioning.md): VibeBench makes AI-assisted coding reviewable, auditable, and reproducible.
 
-Want the quickest preview? Browse the checked-in [sample artifacts](../examples/showcase-artifacts/sample/README.md) before running VibeBench locally.
+Want the quickest preview? Run `python3 -m vibebench demo`, copy the pack with `python3 -m vibebench demo --copy-to /tmp/vibebench-demo`, or browse the checked-in [sample artifacts](../examples/showcase-artifacts/sample/README.md) before running the full quality console locally.
 
 ```mermaid
 flowchart LR

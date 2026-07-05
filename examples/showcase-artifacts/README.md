@@ -2,7 +2,7 @@
 
 This folder is a lightweight tour of what VibeBench produces. It is for GitHub visitors who want to understand the artifact surface before running a full project workflow.
 
-For the fastest browseable preview, open the checked-in [sample artifact pack](sample/README.md).
+For the fastest browseable preview, run `python3 -m vibebench demo`, copy the pack with `python3 -m vibebench demo --copy-to /tmp/vibebench-demo`, or open the checked-in [sample artifact pack](sample/README.md).
 
 These showcase artifacts support the project positioning: VibeBench makes AI-assisted coding reviewable and auditable.
 
@@ -22,6 +22,9 @@ VibeBench turns Codex-first / vibe-coding changes into a quality console of loca
 Run from the repository root:
 
 ```bash
+python3 -m vibebench demo
+python3 -m vibebench demo --json
+python3 -m vibebench demo --copy-to /tmp/vibebench-demo
 python3 -m vibebench ci --dry-run --json
 python3 -m vibebench artifacts --json
 python3 -m vibebench compare --json

@@ -53,6 +53,7 @@ from vibebench.config_check import (
     write_config_check_json,
     write_config_check_summary,
 )
+from vibebench.demo import DemoError, copy_sample_pack, demo_payload
 from vibebench.doctor import DoctorResult, doctor_json_payload, run_doctor
 from vibebench.explain import ExplainResult, generate_explanation
 from vibebench.export import ExportResult, export_run
@@ -1293,6 +1294,49 @@ def latest_command(
         return
 
     render_latest_summary(result, selected_artifact)
+
+
+@app.command("demo")
+def demo_command(
+    project_root: ProjectRootOption = Path("."),
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print local showcase demo details as JSON."),
+    ] = False,
+    copy_to: Annotated[
+        Path | None,
+        typer.Option("--copy-to", help="Copy the sample artifact pack to PATH."),
+    ] = None,
+    force: Annotated[
+        bool,
+        typer.Option("--force", help="Replace conflicting files under --copy-to."),
+    ] = False,
+) -> None:
+    """Show or copy the checked-in local showcase artifact pack."""
+    root = project_root.resolve()
+    copy_result = None
+    try:
+        if copy_to is not None:
+            copy_result = copy_sample_pack(root, copy_to, force=force)
+    except DemoError as exc:
+        if as_json:
+            payload = demo_payload(root, conflicts=[str(exc)])
+            payload["status"] = "error"
+            print(json.dumps(payload, indent=2))
+            raise typer.Exit(code=1) from exc
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    payload = demo_payload(root, copy_result=copy_result)
+    if as_json:
+        print(json.dumps(payload, indent=2))
+        if copy_result is not None and copy_result.conflicts:
+            raise typer.Exit(code=1)
+        return
+
+    render_demo_summary(payload)
+    if copy_result is not None and copy_result.conflicts:
+        raise typer.Exit(code=1)
 
 @app.command("manifest")
 def manifest_command(
@@ -3053,6 +3097,45 @@ def render_latest_summary(
         )
         table.add_row(item.name, item.display_path.as_posix(), availability, size)
     console.print(table)
+
+
+def render_demo_summary(payload: dict[str, object]) -> None:
+    """Render the local showcase demo summary."""
+    console.print("\n[bold]VibeBench local showcase demo[/]")
+    console.print(str(payload["description"]))
+    console.print(f"Available: {payload['available']}")
+    console.print(f"Sample artifact directory: {payload['sample_dir']}")
+    if not payload["available"]:
+        console.print("[yellow]Source-tree sample artifact pack is missing.[/]")
+
+    table = Table(title="Included demo artifact pack")
+    table.add_column("Artifact")
+    table.add_column("Kind")
+    table.add_column("Exists")
+    for item in payload["artifacts"]:
+        artifact = item if isinstance(item, dict) else {}
+        table.add_row(
+            str(artifact.get("path", "")),
+            str(artifact.get("kind", "")),
+            "yes" if artifact.get("exists") else "no",
+        )
+    console.print(table)
+
+    if payload.get("output_dir"):
+        console.print(f"Copied to: {payload['output_dir']}")
+        copied_files = payload.get("copied_files") or []
+        skipped_files = payload.get("skipped_files") or []
+        conflicts = payload.get("conflicts") or []
+        console.print(f"Copied files: {len(copied_files)}")
+        console.print(f"Skipped files: {len(skipped_files)}")
+        if conflicts:
+            conflict_text = ", ".join(str(item) for item in conflicts)
+            console.print(f"[red]Conflicting files: {conflict_text}[/]")
+            console.print("Use --force to replace conflicting files under --copy-to.")
+
+    console.print("\nUseful next commands:")
+    for command in payload["commands"]:
+        console.print(f"- {command}")
 
 
 def render_manifest_summary(result: ManifestResult) -> None:

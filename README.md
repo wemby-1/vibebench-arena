@@ -26,7 +26,7 @@ AI coding is getting easier; reviewing, auditing, comparing, and trusting AI-gen
 
 VibeBench Arena is not another AI chat app and not just a benchmark leaderboard. It is a local quality console for Codex-first work: a way to record what changed, check it, compare it, audit release readiness, and keep humans in the review loop.
 
-Start with the [positioning](docs/positioning.md), [use cases](docs/use-cases.md), [public demo guide](docs/demo.md), [artifact gallery](docs/artifact-gallery.md), [sample artifact pack](examples/showcase-artifacts/sample/README.md), [quickstart demo](examples/quickstart-demo/README.md), or the current [v0.3.0 release notes](RELEASE_NOTES_v0.3.0.md). Use the GitHub issue templates to share a use case, report demo feedback, or propose a focused PR.
+Start with the [positioning](docs/positioning.md), [use cases](docs/use-cases.md), [public demo guide](docs/demo.md), [artifact gallery](docs/artifact-gallery.md), [sample artifact pack](examples/showcase-artifacts/sample/README.md), [quickstart demo](examples/quickstart-demo/README.md), or the current [v0.3.0 release notes](RELEASE_NOTES_v0.3.0.md). For a one-command local demo, run `python3 -m vibebench demo`; use `python3 -m vibebench demo --copy-to /tmp/vibebench-demo` to copy the sample evidence pack. Use the GitHub issue templates to share a use case, report demo feedback, or propose a focused PR.
 
 ## Why This Exists
 
@@ -45,6 +45,8 @@ If you care about better AI coding review, audit tooling, and artifacts, starrin
 
 ## What You Can See In 5 Minutes
 
+- Run `python3 -m vibebench demo` to inspect the local showcase demo and checked-in artifact pack.
+- Run `python3 -m vibebench demo --json` or `python3 -m vibebench demo --copy-to /tmp/vibebench-demo` to script or copy the sample evidence pack.
 - Run `python3 -m vibebench ci --dry-run` to see the planned quality pipeline.
 - Run `python3 -m vibebench ci` to generate local run artifacts.
 - Run `python3 -m vibebench latest --all-paths` to inspect the newest outputs.
