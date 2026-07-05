@@ -1,10 +1,10 @@
 # Showcase Artifacts
 
-This folder is a lightweight tour of what VibeBench produces. It is for GitHub visitors who want to understand the artifact surface before running a full project workflow.
+This folder is a lightweight tour of what VibeBench produces. It is for GitHub visitors who want to understand the artifact surface, one-command demo, and local-first quality console before running a full project workflow.
 
 For the fastest browseable preview, run `python3 -m vibebench demo`, copy the pack with `python3 -m vibebench demo --copy-to /tmp/vibebench-demo`, or open the checked-in [sample artifact pack](sample/README.md).
 
-These showcase artifacts support the project positioning: VibeBench makes AI-assisted coding reviewable and auditable.
+These showcase artifacts support the project positioning: VibeBench makes AI-assisted coding reviewable, auditable, reproducible, and easier to evaluate from GitHub.
 
 ## Artifact Tour
 
@@ -55,4 +55,4 @@ Generated outputs are local and safe to delete. This showcase does not check in 
 
 These commands do not publish or upload packages, create tags, create GitHub Releases, call the GitHub API, use `gh`, bump versions, or install dependencies.
 
-For a broader explanation, see the [artifact gallery](../../docs/artifact-gallery.md) and the [quickstart demo](../quickstart-demo/README.md).
+For a broader explanation, see the [artifact gallery](../../docs/artifact-gallery.md), [demo guide](../../docs/demo.md), [positioning](../../docs/positioning.md), and [use cases](../../docs/use-cases.md). Use the GitHub issue templates for demo feedback or real AI coding use cases.

@@ -1,6 +1,6 @@
 # VibeBench Arena Use Cases
 
-VibeBench Arena is a Codex-first / vibe-coding quality console for local-first AI-assisted software projects. These use cases show how it turns AI coding work into reviewable artifacts and evidence.
+VibeBench Arena is a Codex-first / vibe-coding quality console for local-first AI-assisted software projects. These use cases show how it turns AI coding work into reviewable artifacts and evidence for local-first, inspectable, auditable, reproducible engineering workflows.
 
 | Use case | Pain point | How VibeBench helps | Commands / artifacts | Evidence produced |
 | --- | --- | --- | --- | --- |
@@ -12,4 +12,4 @@ VibeBench Arena is a Codex-first / vibe-coding quality console for local-first A
 | Investor or technical evaluator assessing project quality | A repository may look active, but it is hard to see engineering discipline quickly. | Shows how the project checks itself and what evidence it leaves for review and release decisions. | `python3 -m vibebench ci --dry-run --json`, sample artifacts, `docs/positioning.md`, `docs/artifact-gallery.md` | Quality pipeline plan, checked-in sample artifacts, project thesis, and artifact map. |
 | Education or lab setting teaching AI coding discipline | Students can generate code quickly but need habits for verification and accountability. | Makes review, comparison, local-first checks, and artifact inspection part of the exercise. | `python3 -m vibebench ci --dry-run`, `python3 -m vibebench ci`, `python3 -m vibebench compare` | Repeatable check logs, compare summaries, manifests, and discussion-ready artifacts. |
 
-Across these cases, VibeBench does not claim to replace human review. It gives developers and reviewers a clearer evidence trail for AI-assisted coding. Real workflows can be shared through the GitHub use case issue template.
+Across these cases, VibeBench does not claim to replace human review. It gives developers and reviewers a clearer evidence trail for AI-assisted coding. Real workflows can be shared through the GitHub use case issue template; demo feedback belongs in the demo feedback template.

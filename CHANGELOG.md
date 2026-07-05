@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Improved the GitHub landing-page positioning across README and public docs, emphasizing the Codex-first / vibe-coding quality console, one-command demo, artifact gallery, sample artifacts, and local-first evidence trail.
+
 - Added `python3 -m vibebench demo` for a one-command local showcase demo of the checked-in sample artifact pack, including JSON and safe copy modes.
 - Added GitHub issue templates, a PR template, and community feedback paths for bugs, features, use cases, and demo feedback.
 - Added project positioning and use-case docs for evaluating VibeBench as a Codex-first / vibe-coding quality console.

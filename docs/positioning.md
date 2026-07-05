@@ -40,7 +40,7 @@ VibeBench is for:
 
 ## What Makes It Different
 
-VibeBench is not trying to be the coding agent. It is the evidence layer around AI-assisted coding.
+VibeBench is not trying to be the coding agent, a generic chatbot, a RAG demo, a prompt collection, or a benchmark-only project. It is the evidence layer around AI-assisted coding: the quality console that helps humans inspect what changed after the agent moves fast.
 
 - Codex-first: designed around agent-written code and human review.
 - Local-first: works from the checkout, with no hosted service required for the core flow.

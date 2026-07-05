@@ -22,22 +22,48 @@
 
 <!-- VIBEBENCH_STATUS_END -->
 
-AI coding is getting easier; reviewing, auditing, comparing, and trusting AI-generated changes is still the hard part. VibeBench exists to make local-first AI coding sessions inspectable through repeatable checks, artifacts, summaries, release audits, and CI-readable outputs.
+AI coding is getting easier; reviewing, auditing, comparing, and trusting AI-generated changes is still the hard part. VibeBench Arena is a local-first quality console for Codex-first / vibe-coding engineering: it turns AI-assisted changes into checks, risk review, artifact-backed summaries, and release readiness evidence.
 
-VibeBench Arena is not another AI chat app and not just a benchmark leaderboard. It is a local quality console for Codex-first work: a way to record what changed, check it, compare it, audit release readiness, and keep humans in the review loop.
+It is not a generic chatbot, RAG demo, benchmark-only project, prompt collection, or leaderboard. VibeBench sits after the agent writes code and before humans merge or release it, so "seems to work" becomes something inspectable, auditable, and reproducible.
 
-Start with the [positioning](docs/positioning.md), [use cases](docs/use-cases.md), [public demo guide](docs/demo.md), [artifact gallery](docs/artifact-gallery.md), [sample artifact pack](examples/showcase-artifacts/sample/README.md), [quickstart demo](examples/quickstart-demo/README.md), or the current [v0.3.0 release notes](RELEASE_NOTES_v0.3.0.md). For a one-command local demo, run `python3 -m vibebench demo`; use `python3 -m vibebench demo --copy-to /tmp/vibebench-demo` to copy the sample evidence pack. Use the GitHub issue templates to share a use case, report demo feedback, or propose a focused PR.
+```bash
+python3 -m vibebench demo
+```
+
+That one-command demo prints the public showcase path and points to the checked-in sample artifact pack. Use `python3 -m vibebench demo --copy-to /tmp/vibebench-demo` to copy the evidence pack for local inspection.
+
+## What You Get
+
+- CI-style checks and a dry-run quality pipeline for local or GitHub Actions workflows.
+- Risk and diff review that highlights suspicious paths, deleted tests, lockfile movement, and broad patches.
+- Artifact-backed summaries: Markdown, JSON, report previews, manifests, comparisons, badges, bundles, and GitHub-friendly review text.
+- Release and publish readiness checks that create local audit records without hidden publishing, tagging, or GitHub Release side effects.
+- A local-first workflow designed for Codex-first / vibe-coding teams that still want human review and reproducible evidence.
+
+## Why This Is Different
+
+VibeBench is the evidence layer around AI-assisted coding. It does not try to replace the coding agent or the reviewer; it records what happened, what ran, what changed, and which artifacts a human can inspect next.
+
+That makes it useful for new GitHub visitors as well as maintainers: the repository can show its quality console, one-command demo, artifact gallery, and release-readiness flow without asking for a hosted account or external service.
+
+## Start Here
+
+1. Run the one-command demo: `python3 -m vibebench demo`.
+2. Open the [demo guide](docs/demo.md) and [artifact gallery](docs/artifact-gallery.md).
+3. Inspect the checked-in [sample artifact pack](examples/showcase-artifacts/sample/README.md) or copy it with `python3 -m vibebench demo --copy-to /tmp/vibebench-demo`.
+4. Read the [positioning](docs/positioning.md) and [use cases](docs/use-cases.md) to see why this matters for Codex-first / vibe-coding engineering.
+5. Use the GitHub issue templates to share a use case, report demo feedback, or propose a focused PR.
+
+For bounded, low-cost Codex milestones, use the [Codex task template](docs/codex-task-template.md).
 
 ## Why This Exists
 
-AI coding agents can produce useful changes quickly, but speed creates review pressure. VibeBench adds a local quality gate between generated code and shipping decisions so "seems to work" becomes something more inspectable:
+AI coding agents can produce useful changes quickly, but speed creates review pressure. VibeBench adds a local quality gate between generated code and shipping decisions:
 
 - reproducible local and CI checks
 - readable Markdown and JSON artifacts
 - latest-run, compare, package, release-check, and release-audit records
 - no replacement for human review, and no hidden publish/release side effects
-
-For bounded, low-cost Codex milestones, use the [Codex task template](docs/codex-task-template.md).
 
 ## Help Shape VibeBench
 
@@ -81,7 +107,7 @@ Git diff risk analysis flags:
 
 - deleted test files
 - touched `.env`, `.env.*`, or sensitive local paths
-- credential-like paths containing terms such as `token`, `api_key`, or `private_key`
+- credential-like paths containing terms such as `credential`, `private_key`, or `apikey`
 - changed lockfiles such as `package-lock.json`, `poetry.lock`, or `uv.lock`
 - large patches over the configured threshold
 - changes touching more files than the configured threshold
@@ -156,7 +182,7 @@ python -m vibebench publish-check --write-summary publish-check.md
 
 `vibebench config` prints the effective project, checks, gate, and risk configuration. Use `--json` for machine-readable output, `--validate` for a short validation result, `--check` for consistency diagnostics, `--check --advice` for repair guidance, and `--show-source` to see whether major sections came from the config file or built-in defaults. Use `python3 -m vibebench config --init --dry-run` to preview config initialization; add `--json` for machine-readable dry-run output. Use `python3 -m vibebench config --init` to create `.vibebench/config.yaml` from the starter config; it refuses to overwrite by default. Use `--force` only when you intentionally want a real init to overwrite an existing config. Use `python3 -m vibebench config --example` to view the starter config, or `python3 -m vibebench config --write-example .vibebench/config.example.yaml` to write a copy; the starter includes `compare.fail_on_regression`. Use `python3 -m vibebench config --path` to see the expected config path before or after `--init`; add `--json` for `project_root`, `config_path`, and `exists`.
 
-The default config looks like this:
+A shortened config example looks like this:
 
 ```yaml
 project:
@@ -185,11 +211,9 @@ risk:
     - .env.*
     - sensitive/
   credential_like_paths:
-    - "*token*"
     - "*credential*"
     - "*credentials*"
     - "*private_key*"
-    - "*api_key*"
     - "*apikey*"
     - "*passwd*"
   lockfiles:
@@ -425,7 +449,7 @@ into a GitHub Pull Request, issue, or code review. It includes:
 GitHub PR posting is wired into the GitHub Actions workflow for
 `pull_request` events. Use `python -m vibebench pr-comment --post --dry-run`
 to preview it locally. In CI, comments are updated with a hidden marker, use the
-built-in `GITHUB_TOKEN`, and run with `--no-fail-on-error` so permission-limited
+built-in GitHub Actions credential, and run with `--no-fail-on-error` so permission-limited
 fork PRs do not override the core VibeBench quality gate.
 
 ## Run Explanation

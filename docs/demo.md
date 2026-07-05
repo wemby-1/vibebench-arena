@@ -8,6 +8,14 @@ To browse the output shape without running commands, open the checked-in [sample
 
 For the broader product thesis and practical workflows, see [positioning](positioning.md) and [use cases](use-cases.md).
 
+## Start Here
+
+1. Run the one-command demo: `python3 -m vibebench demo`.
+2. Open the [artifact gallery](artifact-gallery.md) to see the artifact surface.
+3. Inspect the checked-in [sample artifacts](../examples/showcase-artifacts/sample/README.md).
+4. Read [positioning](positioning.md) and [use cases](use-cases.md) for the Codex-first / vibe-coding quality console thesis.
+5. Use the GitHub issue templates for demo feedback or real use cases.
+
 ## Why Vibe Coding Needs A Quality Gate
 
 AI coding feels fast, but the hard part is trust. A useful local quality gate should make it easy to answer:
@@ -31,7 +39,7 @@ This quickstart demo shows that a fresh clone or current checkout can:
 - check release readiness
 - generate a local release audit zip
 
-The demo does not publish a package, create a tag, create a GitHub Release, or require a GitHub token.
+The demo does not publish a package, create a tag, create a GitHub Release, or require GitHub credentials.
 
 ## Commands
 
@@ -117,7 +125,7 @@ The zip is a local handoff record for release review. It can be inspected or ver
 
 - It does not automatically publish packages.
 - It does not automatically create GitHub Releases.
-- It does not require credentials or API tokens for this local demo.
+- It does not require credentials for this local demo.
 - It does not call external services for normal local checks.
 - It does not replace human review.
 
