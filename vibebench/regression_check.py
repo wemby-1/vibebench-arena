@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-from vibebench.baseline import show_pinned_baseline
+from vibebench.baseline import BaselineMetadata, show_pinned_baseline
 from vibebench.compare import (
     RISK_ORDER,
     find_valid_runs,
@@ -71,10 +71,22 @@ class RegressionCheckResult:
     message: str
     baseline_source: str = "auto"
     baseline_label: str | None = None
+    baseline_metrics_source: str = "live"
+    baseline_run_missing: bool = False
     policy_source: str = "default"
     effective_policy: RegressionPolicy = field(default_factory=RegressionPolicy)
     json_path: Path | None = None
     summary_path: Path | None = None
+
+
+@dataclass(frozen=True)
+class ComparableRunSnapshot:
+    """Metrics needed to compare a run or portable baseline snapshot."""
+
+    run_dir: Path | None
+    run_id: str | None
+    score: int
+    risk_level: str
 
 
 def run_regression_check(
@@ -142,11 +154,26 @@ def run_regression_check(
                 policy_source=policy_source,
             )
             return write_regression_outputs(result, json_output, summary_output)
-        if not pinned.is_valid or pinned.run_dir is None:
-            raise ReportError(pinned.message)
-        baseline = pinned.run_dir
         baseline_source = "pinned"
         selected_baseline_label = pinned.metadata.label
+        if pinned.live_metrics_available and pinned.run_dir is not None:
+            baseline = pinned.run_dir
+        elif pinned.metadata.metrics_snapshot is not None:
+            result = evaluate_snapshot_baseline(
+                pinned.metadata,
+                pinned.run_dir,
+                candidate,
+                thresholds,
+                baseline_source=baseline_source,
+                baseline_label=selected_baseline_label,
+                policy=policy,
+                policy_source=policy_source,
+                fail_on_missing_metrics=fail_on_missing_metrics,
+                baseline_run_missing=not pinned.live_metrics_available,
+            )
+            return write_regression_outputs(result, json_output, summary_output)
+        else:
+            raise ReportError(pinned.message)
     else:
         baseline = select_baseline(root, runs_dir, candidate, baseline_run)
 
@@ -255,6 +282,8 @@ def missing_baseline_result(
         message=message,
         baseline_source=baseline_source,
         baseline_label=baseline_label,
+        baseline_metrics_source="none",
+        baseline_run_missing=False,
         policy_source=policy_source,
         effective_policy=effective_policy,
     )
@@ -272,8 +301,87 @@ def evaluate_runs(
     fail_on_missing_metrics: bool = True,
 ) -> RegressionCheckResult:
     """Evaluate candidate metrics against baseline metrics."""
-    base = load_run_snapshot(baseline)
-    head = load_run_snapshot(candidate)
+    base = comparable_from_run(baseline)
+    head = comparable_from_run(candidate)
+    return evaluate_comparable_runs(
+        base,
+        head,
+        thresholds,
+        baseline_source=baseline_source,
+        baseline_label=baseline_label,
+        policy=policy,
+        policy_source=policy_source,
+        fail_on_missing_metrics=fail_on_missing_metrics,
+        baseline_metrics_source="live",
+        baseline_run_missing=False,
+        inspect_baseline_metrics=True,
+    )
+
+
+def evaluate_snapshot_baseline(
+    metadata: BaselineMetadata,
+    baseline_run_dir: Path | None,
+    candidate: Path,
+    thresholds: RegressionThresholds,
+    *,
+    baseline_source: str = "pinned",
+    baseline_label: str | None = None,
+    policy: RegressionPolicy | None = None,
+    policy_source: str = "default",
+    fail_on_missing_metrics: bool = True,
+    baseline_run_missing: bool = True,
+) -> RegressionCheckResult:
+    """Evaluate candidate metrics against a portable baseline snapshot."""
+    if metadata.metrics_snapshot is None:
+        raise ReportError("Pinned baseline has no portable metrics snapshot.")
+    base = ComparableRunSnapshot(
+        run_dir=baseline_run_dir,
+        run_id=metadata.run_id,
+        score=metadata.metrics_snapshot.score,
+        risk_level=metadata.metrics_snapshot.risk_level,
+    )
+    head = comparable_from_run(candidate)
+    return evaluate_comparable_runs(
+        base,
+        head,
+        thresholds,
+        baseline_source=baseline_source,
+        baseline_label=baseline_label,
+        policy=policy,
+        policy_source=policy_source,
+        fail_on_missing_metrics=fail_on_missing_metrics,
+        baseline_metrics_source="snapshot",
+        baseline_run_missing=baseline_run_missing,
+        inspect_baseline_metrics=False,
+    )
+
+
+def comparable_from_run(run_dir: Path) -> ComparableRunSnapshot:
+    """Load the comparison metrics from a live run directory."""
+    snapshot = load_run_snapshot(run_dir)
+    return ComparableRunSnapshot(
+        run_dir=snapshot.run_dir,
+        run_id=snapshot.run_id,
+        score=snapshot.score,
+        risk_level=snapshot.risk_level,
+    )
+
+
+def evaluate_comparable_runs(
+    base: ComparableRunSnapshot,
+    head: ComparableRunSnapshot,
+    thresholds: RegressionThresholds,
+    *,
+    baseline_source: str = "auto",
+    baseline_label: str | None = None,
+    policy: RegressionPolicy | None = None,
+    policy_source: str = "default",
+    fail_on_missing_metrics: bool = True,
+    baseline_metrics_source: str = "live",
+    baseline_run_missing: bool = False,
+    inspect_baseline_metrics: bool = True,
+) -> RegressionCheckResult:
+    """Evaluate candidate metrics against comparable baseline metrics."""
     effective_policy = policy or RegressionPolicy(
         baseline_label=baseline_label,
         require_baseline=thresholds.require_baseline,
@@ -291,7 +399,11 @@ def evaluate_runs(
     )
     warnings = metric_warnings(base.risk_level, head.risk_level)
     failures: list[RegressionIssue] = []
-    missing_metric_issues = missing_metric_findings(baseline, candidate)
+    missing_metric_issues = missing_metric_findings(
+        base.run_dir,
+        head.run_dir,
+        inspect_baseline=inspect_baseline_metrics,
+    )
     if fail_on_missing_metrics:
         failures.extend(missing_metric_issues)
     else:
@@ -351,6 +463,8 @@ def evaluate_runs(
         message=message,
         baseline_source=baseline_source,
         baseline_label=baseline_label,
+        baseline_metrics_source=baseline_metrics_source,
+        baseline_run_missing=baseline_run_missing,
         policy_source=policy_source,
         effective_policy=effective_policy,
     )
@@ -376,11 +490,34 @@ def run_metrics(run_dir: Path | None) -> dict[str, object]:
     return snapshot_metrics(snapshot.score, snapshot.risk_level)
 
 
-def missing_metric_findings(baseline: Path, candidate: Path) -> list[RegressionIssue]:
+def missing_metric_findings(
+    baseline: Path | None,
+    candidate: Path | None,
+    *,
+    inspect_baseline: bool = True,
+) -> list[RegressionIssue]:
     """Return findings for missing metrics required by the regression gate."""
     issues: list[RegressionIssue] = []
     required = {"score", "risk_level"}
-    for role, run_dir in [("baseline", baseline), ("candidate", candidate)]:
+    roles: list[tuple[str, Path | None]] = [("candidate", candidate)]
+    if inspect_baseline:
+        roles.insert(0, ("baseline", baseline))
+    for role, run_dir in roles:
+        if run_dir is None:
+            issues.append(
+                RegressionIssue(
+                    code="missing_metrics",
+                    metric=role,
+                    baseline_value=str(baseline) if baseline else None,
+                    candidate_value=str(candidate) if candidate else None,
+                    threshold=None,
+                    message=(
+                        f"Could not inspect {role} metrics.json: "
+                        "run path is missing."
+                    ),
+                )
+            )
+            continue
         try:
             raw = json.loads(run_dir.joinpath("metrics.json").read_text("utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
@@ -486,6 +623,8 @@ def write_regression_outputs(
         message=result.message,
         baseline_source=result.baseline_source,
         baseline_label=result.baseline_label,
+        baseline_metrics_source=result.baseline_metrics_source,
+        baseline_run_missing=result.baseline_run_missing,
         policy_source=result.policy_source,
         effective_policy=result.effective_policy,
         json_path=json_path,
@@ -507,6 +646,8 @@ def regression_check_payload(result: RegressionCheckResult) -> dict[str, object]
         "candidate_run_id": result.candidate_run_id,
         "baseline_source": result.baseline_source,
         "baseline_label": result.baseline_label,
+        "baseline_metrics_source": result.baseline_metrics_source,
+        "baseline_run_missing": result.baseline_run_missing,
         "policy_source": result.policy_source,
         "effective_policy": {
             "baseline_label": result.effective_policy.baseline_label,
@@ -557,6 +698,8 @@ def regression_check_markdown(result: RegressionCheckResult) -> str:
         f"- Baseline run: `{result.baseline_run_id or 'none'}`",
         f"- Baseline source: `{result.baseline_source}`",
         f"- Baseline label: `{result.baseline_label or 'none'}`",
+        f"- Baseline metrics source: `{result.baseline_metrics_source}`",
+        f"- Baseline run missing: `{str(result.baseline_run_missing).lower()}`",
         f"- Candidate run: `{result.candidate_run_id or 'none'}`",
         f"- Message: {result.message}",
         "",

@@ -697,3 +697,167 @@ regression:
     assert payload["label"] == "candidate"
     assert (tmp_path / ".vibebench" / "baselines" / "candidate.json").exists()
     assert not (tmp_path / ".vibebench" / "baselines" / "stable.json").exists()
+
+
+
+def test_baseline_promote_latest_writes_metrics_snapshot(tmp_path: Path) -> None:
+    latest = write_run(
+        tmp_path,
+        "20260628_130000",
+        metrics_payload(score=97, risk="medium"),
+    )
+
+    result = baseline_json(
+        tmp_path,
+        "--promote-latest",
+        "--label",
+        "stable",
+        "--json",
+    )
+
+    stored = json.loads(
+        (tmp_path / ".vibebench" / "baselines" / "stable.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert result.exit_code == 0
+    assert stored["run_id"] == latest.name
+    assert stored["metrics_snapshot"] == {
+        "schema_version": "1.0",
+        "score": 97,
+        "risk_level": "medium",
+        "status": "passed",
+        "project": "demo-project",
+        "created_at": "2026-06-28T12:00:00Z",
+    }
+
+
+def test_baseline_promote_run_writes_metrics_snapshot(tmp_path: Path) -> None:
+    selected = write_run(tmp_path, "20260628_120000", metrics_payload(score=88))
+
+    result = baseline_json(
+        tmp_path,
+        "--promote-run",
+        selected.name,
+        "--label",
+        "stable",
+        "--json",
+    )
+
+    stored = json.loads(
+        (tmp_path / ".vibebench" / "baselines" / "stable.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert result.exit_code == 0
+    assert stored["metrics_snapshot"]["score"] == 88
+
+
+def test_baseline_show_json_reports_portability(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260628_120000")
+    assert baseline_json(tmp_path, "--promote-run", run_dir.name).exit_code == 0
+
+    result = baseline_json(tmp_path, "--show", "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["snapshot_available"] is True
+    assert payload["live_metrics_available"] is True
+    assert payload["portable"] is True
+
+
+def test_baseline_export_scrubs_absolute_paths_by_default(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260628_120000")
+    assert baseline_json(tmp_path, "--promote-run", str(run_dir)).exit_code == 0
+    output = tmp_path / "portable-baseline.json"
+
+    result = baseline_json(
+        tmp_path,
+        "--export",
+        "--output",
+        str(output),
+        "--json",
+    )
+
+    exported_text = output.read_text(encoding="utf-8")
+    payload = json.loads(result.output)
+    exported = json.loads(exported_text)
+    assert result.exit_code == 0
+    assert payload["status"] == "exported"
+    assert exported["metrics_snapshot"]["score"] == 100
+    assert str(tmp_path) not in exported_text
+    assert exported["run_path"] == f".vibebench/runs/{run_dir.name}"
+
+
+def test_baseline_import_writes_usable_portable_baseline(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    target = tmp_path / "target"
+    source.mkdir()
+    target.mkdir()
+    run_dir = write_run(source, "20260628_120000", metrics_payload(score=95))
+    assert baseline_json(source, "--promote-run", run_dir.name).exit_code == 0
+    export_path = tmp_path / "portable-baseline.json"
+    assert (
+        baseline_json(source, "--export", "--output", str(export_path)).exit_code
+        == 0
+    )
+
+    result = baseline_json(
+        target,
+        "--import",
+        str(export_path),
+        "--label",
+        "stable",
+        "--json",
+    )
+    show = baseline_json(target, "--show", "--label", "stable", "--json")
+
+    payload = json.loads(result.output)
+    shown = json.loads(show.output)
+    assert result.exit_code == 0
+    assert payload["status"] == "imported"
+    assert shown["status"] == "valid"
+    assert shown["snapshot_available"] is True
+    assert shown["live_metrics_available"] is False
+    assert shown["baseline"]["label"] == "stable"
+
+
+def test_baseline_export_json_output_keeps_stdout_clean(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260628_120000")
+    assert baseline_json(tmp_path, "--promote-run", run_dir.name).exit_code == 0
+    export_path = tmp_path / "portable-baseline.json"
+    json_output = tmp_path / "export-result.json"
+
+    result = baseline_json(
+        tmp_path,
+        "--export",
+        "--output",
+        str(export_path),
+        "--json-output",
+        str(json_output),
+        "--json",
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(result.output)["status"] == "exported"
+    assert json.loads(json_output.read_text(encoding="utf-8"))["status"] == "exported"
+
+
+def test_baseline_import_requires_snapshot(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260628_120000")
+    assert baseline_json(tmp_path, "--set", run_dir.name).exit_code == 0
+    legacy = json.loads(baseline_file(tmp_path).read_text(encoding="utf-8"))
+    import_path = tmp_path / "legacy-baseline.json"
+    import_path.write_text(json.dumps(legacy), encoding="utf-8")
+
+    result = baseline_json(
+        tmp_path,
+        "--import",
+        str(import_path),
+        "--label",
+        "stable",
+        "--json",
+    )
+
+    assert result.exit_code == 1
+    assert "metrics_snapshot" in result.output

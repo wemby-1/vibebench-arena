@@ -24,6 +24,8 @@ from vibebench.baseline import (
     baseline_list_payload,
     baseline_status_payload,
     clear_pinned_baseline,
+    export_pinned_baseline,
+    import_pinned_baseline,
     list_pinned_baselines,
     set_baseline,
     set_pinned_baseline,
@@ -3562,6 +3564,25 @@ def baseline(
         bool,
         typer.Option("--list", help="List labeled pinned baselines."),
     ] = False,
+    export_baseline: Annotated[
+        bool,
+        typer.Option("--export", help="Export a portable pinned baseline."),
+    ] = False,
+    import_baseline: Annotated[
+        Path | None,
+        typer.Option("--import", help="Import a portable pinned baseline JSON file."),
+    ] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Write exported baseline JSON to PATH."),
+    ] = None,
+    include_local_paths: Annotated[
+        bool,
+        typer.Option(
+            "--include-local-paths",
+            help="Include local path metadata in exported baseline JSON.",
+        ),
+    ] = False,
     label: Annotated[
         str | None,
         typer.Option("--label", help="Pinned baseline label."),
@@ -3621,6 +3642,8 @@ def baseline(
     root = project_root.resolve()
     selected_json_output = resolve_optional_output_path(root, json_output)
     selected_summary_output = resolve_optional_output_path(root, summary_output)
+    selected_output = resolve_optional_output_path(root, output)
+    selected_import = resolve_optional_output_path(root, import_baseline)
     promotion_requested = promote_latest or promote_run is not None
     selected_label = resolve_baseline_label(root, label, use_config=promotion_requested)
     pinned_action_requested = any(
@@ -3631,6 +3654,8 @@ def baseline(
             show,
             clear,
             list_baselines,
+            export_baseline,
+            import_baseline is not None,
             as_json,
             json_output,
             summary_output,
@@ -3643,6 +3668,8 @@ def baseline(
             bool(set_run is not None),
             promote_latest,
             bool(promote_run is not None),
+            export_baseline,
+            bool(import_baseline is not None),
             clear,
             list_baselines,
         ]
@@ -3654,6 +3681,7 @@ def baseline(
     try:
         list_result = None
         promotion_result = None
+        operation_payload = None
         if legacy_set_run is not None and not pinned_action_requested:
             result = set_baseline(root, legacy_set_run, runs_dir=runs_dir)
             payload = baseline_status_payload(result)
@@ -3663,6 +3691,27 @@ def baseline(
             result = None
         elif selected_summary_output is not None and not promotion_requested:
             raise ReportError("--summary-output is only supported for promotion.")
+        elif export_baseline:
+            if selected_output is None:
+                raise ReportError("--export requires --output PATH.")
+            operation_payload = export_pinned_baseline(
+                root,
+                label=selected_label,
+                output=selected_output,
+                include_local_paths=include_local_paths,
+            )
+            payload = operation_payload
+            result = None
+        elif import_baseline is not None:
+            if selected_import is None:
+                raise ReportError("--import requires a PATH.")
+            operation_payload = import_pinned_baseline(
+                root,
+                label=selected_label,
+                input_path=selected_import,
+            )
+            payload = operation_payload
+            result = None
         elif set_latest:
             result = set_pinned_baseline(
                 root,
@@ -3734,6 +3783,14 @@ def baseline(
             print(promotion_json(promotion_result))
         else:
             print(json.dumps(payload, indent=2, sort_keys=True))
+    elif operation_payload is not None:
+        console.print(operation_payload["message"])
+        if "output" in operation_payload:
+            console.print(f"Baseline export: {operation_payload['output']}")
+        if "baseline_path" in operation_payload:
+            console.print(f"Baseline file: {operation_payload['baseline_path']}")
+        if selected_json_output is not None:
+            console.print(f"Baseline JSON: {selected_json_output}")
     elif promotion_result is not None:
         render_baseline_promotion_summary(promotion_result)
         if selected_json_output is not None:
@@ -4976,6 +5033,8 @@ def render_baseline_summary(result: BaselineStatus) -> None:
     table.add_row("Run", metadata.run_id)
     table.add_row("Run path", metadata.run_path)
     table.add_row("Metrics", metadata.metrics_path)
+    table.add_row("Portable", str(result.snapshot_available).lower())
+    table.add_row("Live metrics available", str(result.live_metrics_available).lower())
     table.add_row("Project", metadata.project or "")
     table.add_row("Created at", metadata.created_at or "")
     table.add_row("Overall status", metadata.status)
@@ -4999,6 +5058,7 @@ def render_baseline_list_summary(results: list[BaselineStatus]) -> None:
     table.add_column("Status")
     table.add_column("Score")
     table.add_column("Risk")
+    table.add_column("Portable")
     table.add_column("Message")
     for result in results:
         metadata = result.metadata
@@ -5008,6 +5068,7 @@ def render_baseline_list_summary(results: list[BaselineStatus]) -> None:
             "valid" if result.is_valid else "stale" if metadata else "missing",
             str(metadata.score) if metadata else "",
             metadata.risk_level if metadata else "",
+            str(result.snapshot_available).lower() if metadata else "",
             result.message,
         )
     console.print(table)

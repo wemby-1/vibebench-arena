@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added portable regression baseline snapshots plus `baseline --export` / `--import` so promoted pinned baselines can be reused when local run directories are unavailable.
+
 - Added guarded pinned baseline promotion with `baseline --promote-latest`, `--promote-run`, dry-run, JSON, Markdown, manifest checks, and regression-check validation before updating `.vibebench/baselines/<label>.json`.
 
 - Added configurable regression policy in `.vibebench/config.yaml` so `ci` can run `regression-check` by default with pinned baseline labels, thresholds, required baselines, and missing-metric behavior while preserving CLI overrides.

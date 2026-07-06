@@ -355,12 +355,35 @@ def test_regression_check_missing_pinned_baseline_fails_when_required(
     assert payload["failures"][0]["code"] == "missing_baseline"
 
 
-def test_regression_check_stale_pinned_baseline_fails_clearly(
+def test_regression_check_uses_snapshot_when_pinned_run_is_missing(
     tmp_path: Path,
 ) -> None:
     pinned = write_run(tmp_path, "20260706_100000", score=100)
     write_run(tmp_path, "20260706_110000", score=100)
     pin_baseline(tmp_path, pinned.name)
+    pinned.joinpath("metrics.json").unlink()
+    pinned.rmdir()
+
+    result = run_regression_check(tmp_path, "--baseline-label", "stable", "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["status"] == "passed"
+    assert payload["baseline_metrics_source"] == "snapshot"
+    assert payload["baseline_run_missing"] is True
+    assert payload["baseline_run_id"] == pinned.name
+
+
+def test_regression_check_stale_pinned_baseline_without_snapshot_fails(
+    tmp_path: Path,
+) -> None:
+    pinned = write_run(tmp_path, "20260706_100000", score=100)
+    write_run(tmp_path, "20260706_110000", score=100)
+    pin_baseline(tmp_path, pinned.name)
+    baseline_path = tmp_path / ".vibebench" / "baselines" / "stable.json"
+    metadata = json.loads(baseline_path.read_text(encoding="utf-8"))
+    metadata.pop("metrics_snapshot")
+    baseline_path.write_text(json.dumps(metadata), encoding="utf-8")
     pinned.joinpath("metrics.json").unlink()
     pinned.rmdir()
 
@@ -489,3 +512,87 @@ def test_regression_check_missing_metrics_can_be_allowed_by_config(
     assert result.exit_code == 0
     assert payload["status"] == "passed"
     assert any(item["code"] == "missing_metric" for item in payload["warnings"])
+
+
+def test_regression_check_reports_live_metrics_source_for_pinned_baseline(
+    tmp_path: Path,
+) -> None:
+    pinned = write_run(tmp_path, "20260706_100000", score=100)
+    write_run(tmp_path, "20260706_110000", score=100)
+    pin_baseline(tmp_path, pinned.name)
+
+    result = run_regression_check(tmp_path, "--baseline-label", "stable", "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["baseline_metrics_source"] == "live"
+    assert payload["baseline_run_missing"] is False
+
+
+def test_regression_check_imported_snapshot_baseline_without_run(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    target = tmp_path / "target"
+    source.mkdir()
+    target.mkdir()
+    baseline = write_run(source, "20260706_100000", score=100)
+    write_run(target, "20260706_110000", score=100)
+    pin_baseline(source, baseline.name)
+    export_path = tmp_path / "portable-baseline.json"
+    export_result = runner.invoke(
+        app,
+        [
+            "baseline",
+            "--project-root",
+            str(source),
+            "--export",
+            "--label",
+            "stable",
+            "--output",
+            str(export_path),
+        ],
+    )
+    assert export_result.exit_code == 0
+    import_result = runner.invoke(
+        app,
+        [
+            "baseline",
+            "--project-root",
+            str(target),
+            "--import",
+            str(export_path),
+            "--label",
+            "stable",
+        ],
+    )
+    assert import_result.exit_code == 0
+
+    result = run_regression_check(target, "--baseline-label", "stable", "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["baseline_metrics_source"] == "snapshot"
+    assert payload["baseline_run_missing"] is True
+
+
+def test_regression_check_markdown_reports_snapshot_source(tmp_path: Path) -> None:
+    pinned = write_run(tmp_path, "20260706_100000", score=100)
+    write_run(tmp_path, "20260706_110000", score=100)
+    pin_baseline(tmp_path, pinned.name)
+    pinned.joinpath("metrics.json").unlink()
+    pinned.rmdir()
+    output = tmp_path / "regression-check.md"
+
+    result = run_regression_check(
+        tmp_path,
+        "--baseline-label",
+        "stable",
+        "--summary-output",
+        str(output),
+    )
+
+    content = output.read_text(encoding="utf-8")
+    assert result.exit_code == 0
+    assert "Baseline metrics source: `snapshot`" in content
+    assert "Baseline run missing: `true`" in content

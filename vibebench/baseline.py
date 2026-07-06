@@ -14,6 +14,19 @@ from vibebench.paths import config_dir
 from vibebench.report import ReportError
 
 
+class BaselineMetricsSnapshot(BaseModel):
+    """Portable metrics used by regression-check when a run is unavailable."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "1.0"
+    score: int
+    risk_level: str
+    status: str | None = None
+    project: str | None = None
+    created_at: str | None = None
+
+
 class BaselineMetadata(BaseModel):
     """Saved baseline metadata."""
 
@@ -33,6 +46,7 @@ class BaselineMetadata(BaseModel):
     source: str = "legacy"
     pinned_at: str | None = None
     saved_at: str
+    metrics_snapshot: BaselineMetricsSnapshot | None = None
 
 
 class BaselineStatus(BaseModel):
@@ -45,6 +59,8 @@ class BaselineStatus(BaseModel):
     run_dir: Path | None = None
     metrics_path: Path | None = None
     is_valid: bool = False
+    live_metrics_available: bool = False
+    snapshot_available: bool = False
     message: str
 
 
@@ -150,6 +166,8 @@ def set_baseline(
         run_dir=run_dir,
         metrics_path=run_dir / "metrics.json",
         is_valid=True,
+        live_metrics_available=True,
+        snapshot_available=metadata.metrics_snapshot is not None,
         message="Baseline saved.",
     )
 
@@ -189,8 +207,129 @@ def set_pinned_baseline(
         run_dir=run_dir,
         metrics_path=run_dir / "metrics.json",
         is_valid=True,
+        live_metrics_available=True,
+        snapshot_available=metadata.metrics_snapshot is not None,
         message="Pinned baseline saved.",
     )
+
+
+
+def export_pinned_baseline(
+    project_root: Path,
+    *,
+    label: str = "default",
+    output: Path,
+    include_local_paths: bool = False,
+) -> dict[str, object]:
+    """Export a labeled baseline as a portable JSON file."""
+    root = project_root.resolve()
+    selected_label = normalize_label(label)
+    status = show_pinned_baseline(root, label=selected_label)
+    if status.metadata is None:
+        raise ReportError(status.message)
+    if status.metadata.metrics_snapshot is None:
+        raise ReportError(
+            "Baseline cannot be exported portably because it has no metrics snapshot."
+        )
+    if output.exists() and output.is_dir():
+        raise ReportError(f"Baseline export output is a directory: {output}")
+    if not output.parent.exists():
+        raise ReportError(
+            f"Baseline export parent directory does not exist: {output.parent}"
+        )
+
+    exported = portable_baseline_metadata(
+        status.metadata,
+        label=selected_label,
+        include_local_paths=include_local_paths,
+    )
+    payload = {
+        "status": "exported",
+        "label": selected_label,
+        "output": str(output),
+        "include_local_paths": include_local_paths,
+        "snapshot_available": exported.metrics_snapshot is not None,
+        "portable": exported.metrics_snapshot is not None,
+        "baseline": exported.model_dump(mode="json"),
+        "message": "Portable baseline exported.",
+    }
+    output.write_text(
+        json.dumps(payload["baseline"], indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return payload
+
+
+def import_pinned_baseline(
+    project_root: Path,
+    *,
+    label: str = "default",
+    input_path: Path,
+) -> dict[str, object]:
+    """Import a portable pinned baseline JSON file."""
+    root = project_root.resolve()
+    selected_label = normalize_label(label)
+    if not input_path.exists():
+        raise ReportError(f"Baseline import file does not exist: {input_path}")
+    if input_path.is_dir():
+        raise ReportError(f"Baseline import path is a directory: {input_path}")
+    try:
+        raw = json.loads(input_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ReportError(f"Could not parse baseline import file: {exc}") from exc
+    if not isinstance(raw, dict):
+        raise ReportError("Baseline import file must contain a JSON object.")
+    if "baseline" in raw and isinstance(raw["baseline"], dict):
+        raw = raw["baseline"]
+    try:
+        metadata = BaselineMetadata.model_validate(raw)
+    except ValueError as exc:
+        raise ReportError(f"Baseline import file has invalid metadata: {exc}") from exc
+    if metadata.metrics_snapshot is None:
+        raise ReportError(
+            "Baseline import file must include a portable metrics_snapshot."
+        )
+
+    metadata = portable_baseline_metadata(
+        metadata,
+        label=selected_label,
+        include_local_paths=False,
+    )
+    target = pinned_baseline_file(root, selected_label)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        json.dumps(metadata.model_dump(mode="json"), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    status = validate_baseline_metadata(root, target, metadata)
+    return {
+        "status": "imported",
+        "label": selected_label,
+        "input": str(input_path),
+        "baseline_path": str(target),
+        "snapshot_available": status.snapshot_available,
+        "live_metrics_available": status.live_metrics_available,
+        "portable": status.snapshot_available,
+        "baseline": metadata.model_dump(mode="json"),
+        "message": "Portable baseline imported.",
+    }
+
+
+def portable_baseline_metadata(
+    metadata: BaselineMetadata,
+    *,
+    label: str,
+    include_local_paths: bool = False,
+) -> BaselineMetadata:
+    """Return metadata suitable for moving between workspaces."""
+    data = metadata.model_dump(mode="json")
+    data["label"] = normalize_label(label)
+    if not include_local_paths:
+        run_id = str(data["run_id"])
+        data["run_path"] = f".vibebench/runs/{run_id}"
+        data["run_dir"] = f".vibebench/runs/{run_id}"
+        data["metrics_path"] = f".vibebench/runs/{run_id}/metrics.json"
+    return BaselineMetadata.model_validate(data)
 
 
 def clear_pinned_baseline(
@@ -230,12 +369,33 @@ def validate_baseline_metadata(
     target: Path,
     metadata: BaselineMetadata,
 ) -> BaselineStatus:
-    """Validate stored baseline metadata against local run files."""
+    """Validate stored baseline metadata against local run files or snapshot."""
     run_dir = resolve_metadata_path(project_root, metadata.run_dir or metadata.run_path)
     if not run_dir.exists() and metadata.run_dir is not None:
         run_dir = resolve_metadata_path(project_root, metadata.run_path)
     metrics_path = resolve_metadata_path(project_root, metadata.metrics_path)
+    live_metrics_available = (
+        run_dir.exists()
+        and run_dir.is_dir()
+        and metrics_path.exists()
+        and metrics_path.is_file()
+    )
+    snapshot_available = metadata.metrics_snapshot is not None
     if not run_dir.exists() or not run_dir.is_dir():
+        if snapshot_available:
+            return BaselineStatus(
+                baseline_path=target,
+                metadata=metadata,
+                run_dir=run_dir,
+                metrics_path=metrics_path,
+                is_valid=True,
+                live_metrics_available=False,
+                snapshot_available=True,
+                message=(
+                    "Baseline live run directory is missing; portable metrics "
+                    "snapshot is available."
+                ),
+            )
         return BaselineStatus(
             baseline_path=target,
             metadata=metadata,
@@ -244,6 +404,20 @@ def validate_baseline_metadata(
             message=f"Baseline run directory is missing: {run_dir}",
         )
     if not metrics_path.exists():
+        if snapshot_available:
+            return BaselineStatus(
+                baseline_path=target,
+                metadata=metadata,
+                run_dir=run_dir,
+                metrics_path=metrics_path,
+                is_valid=True,
+                live_metrics_available=False,
+                snapshot_available=True,
+                message=(
+                    "Baseline live metrics.json is missing; portable metrics "
+                    "snapshot is available."
+                ),
+            )
         return BaselineStatus(
             baseline_path=target,
             metadata=metadata,
@@ -258,6 +432,8 @@ def validate_baseline_metadata(
         run_dir=run_dir,
         metrics_path=metrics_path,
         is_valid=True,
+        live_metrics_available=live_metrics_available,
+        snapshot_available=snapshot_available,
         message="Baseline is valid.",
     )
 
@@ -358,6 +534,25 @@ def metadata_from_run(
         source=source,
         pinned_at=saved_at if source != "legacy" else None,
         saved_at=saved_at,
+        metrics_snapshot=(
+            metrics_snapshot_from_metrics(metrics) if source != "legacy" else None
+        ),
+    )
+
+
+def metrics_snapshot_from_metrics(
+    metrics: dict[str, Any],
+) -> BaselineMetricsSnapshot | None:
+    """Build the minimal portable metrics snapshot used by regression-check."""
+    if "score" not in metrics or "risk_level" not in metrics:
+        return None
+    return BaselineMetricsSnapshot(
+        schema_version="1.0",
+        score=as_int(metrics.get("score")),
+        risk_level=text(metrics.get("risk_level", "unknown")),
+        status=text_or_none(metrics.get("overall_status")),
+        project=text_or_none(metrics.get("project_name")),
+        created_at=text_or_none(metrics.get("created_at")),
     )
 
 
@@ -384,6 +579,9 @@ def relative_or_absolute(project_root: Path, path: Path) -> str:
 def baseline_status_payload(result: BaselineStatus) -> dict[str, object]:
     """Return JSON-compatible baseline status."""
     metadata = result.metadata.model_dump(mode="json") if result.metadata else None
+    snapshot_available = result.snapshot_available
+    live_metrics_available = result.live_metrics_available
+    portable = snapshot_available
     if result.is_valid:
         status = "valid"
     elif result.metadata is None:
@@ -399,6 +597,9 @@ def baseline_status_payload(result: BaselineStatus) -> dict[str, object]:
         "run_dir": str(result.run_dir) if result.run_dir else None,
         "metrics_path": str(result.metrics_path) if result.metrics_path else None,
         "is_valid": result.is_valid,
+        "snapshot_available": snapshot_available,
+        "live_metrics_available": live_metrics_available,
+        "portable": portable,
         "message": result.message,
         "baseline": metadata,
     }
