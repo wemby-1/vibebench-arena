@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -28,6 +28,17 @@ class RegressionThresholds:
     max_score_drop: float = 0.0
     max_risk_increase: float = 0.0
     require_baseline: bool = False
+
+
+@dataclass(frozen=True)
+class RegressionPolicy:
+    """Effective regression-check policy after CLI/config/default resolution."""
+
+    baseline_label: str | None = None
+    require_baseline: bool = False
+    max_score_drop: float = 0.0
+    max_risk_increase: float = 0.0
+    fail_on_missing_metrics: bool = True
 
 
 @dataclass(frozen=True)
@@ -60,6 +71,8 @@ class RegressionCheckResult:
     message: str
     baseline_source: str = "auto"
     baseline_label: str | None = None
+    policy_source: str = "default"
+    effective_policy: RegressionPolicy = field(default_factory=RegressionPolicy)
     json_path: Path | None = None
     summary_path: Path | None = None
 
@@ -74,6 +87,8 @@ def run_regression_check(
     max_score_drop: float = 0.0,
     max_risk_increase: float = 0.0,
     require_baseline: bool = False,
+    fail_on_missing_metrics: bool = True,
+    policy_source: str = "default",
     json_output: Path | None = None,
     summary_output: Path | None = None,
 ) -> RegressionCheckResult:
@@ -83,6 +98,13 @@ def run_regression_check(
         max_score_drop=max_score_drop,
         max_risk_increase=max_risk_increase,
         require_baseline=require_baseline,
+    )
+    policy = RegressionPolicy(
+        baseline_label=baseline_label,
+        require_baseline=require_baseline,
+        max_score_drop=max_score_drop,
+        max_risk_increase=max_risk_increase,
+        fail_on_missing_metrics=fail_on_missing_metrics,
     )
     if max_score_drop < 0:
         raise ReportError("--max-score-drop must be greater than or equal to 0.")
@@ -95,6 +117,8 @@ def run_regression_check(
             thresholds,
             message="No candidate run is available; no baseline comparison was run.",
             failed=require_baseline,
+            policy=policy,
+            policy_source=policy_source,
         )
         return write_regression_outputs(result, json_output, summary_output)
 
@@ -114,6 +138,8 @@ def run_regression_check(
                 candidate_run=candidate,
                 baseline_source="missing",
                 baseline_label=baseline_label,
+                policy=policy,
+                policy_source=policy_source,
             )
             return write_regression_outputs(result, json_output, summary_output)
         if not pinned.is_valid or pinned.run_dir is None:
@@ -132,6 +158,8 @@ def run_regression_check(
             candidate_run=candidate,
             baseline_source="missing" if require_baseline else "auto",
             baseline_label=selected_baseline_label,
+            policy=policy,
+            policy_source=policy_source,
         )
         return write_regression_outputs(result, json_output, summary_output)
 
@@ -141,6 +169,9 @@ def run_regression_check(
         thresholds,
         baseline_source=baseline_source,
         baseline_label=selected_baseline_label,
+        policy=policy,
+        policy_source=policy_source,
+        fail_on_missing_metrics=fail_on_missing_metrics,
     )
     return write_regression_outputs(result, json_output, summary_output)
 
@@ -187,9 +218,17 @@ def missing_baseline_result(
     candidate_run: Path | None = None,
     baseline_source: str = "auto",
     baseline_label: str | None = None,
+    policy: RegressionPolicy | None = None,
+    policy_source: str = "default",
 ) -> RegressionCheckResult:
     """Return a skipped or failed no-baseline result."""
     status: RegressionStatus = "failed" if failed else "skipped"
+    effective_policy = policy or RegressionPolicy(
+        baseline_label=baseline_label,
+        require_baseline=thresholds.require_baseline,
+        max_score_drop=thresholds.max_score_drop,
+        max_risk_increase=thresholds.max_risk_increase,
+    )
     return RegressionCheckResult(
         status=status,
         baseline_run_dir=None,
@@ -216,6 +255,8 @@ def missing_baseline_result(
         message=message,
         baseline_source=baseline_source,
         baseline_label=baseline_label,
+        policy_source=policy_source,
+        effective_policy=effective_policy,
     )
 
 
@@ -226,10 +267,20 @@ def evaluate_runs(
     *,
     baseline_source: str = "auto",
     baseline_label: str | None = None,
+    policy: RegressionPolicy | None = None,
+    policy_source: str = "default",
+    fail_on_missing_metrics: bool = True,
 ) -> RegressionCheckResult:
     """Evaluate candidate metrics against baseline metrics."""
     base = load_run_snapshot(baseline)
     head = load_run_snapshot(candidate)
+    effective_policy = policy or RegressionPolicy(
+        baseline_label=baseline_label,
+        require_baseline=thresholds.require_baseline,
+        max_score_drop=thresholds.max_score_drop,
+        max_risk_increase=thresholds.max_risk_increase,
+        fail_on_missing_metrics=fail_on_missing_metrics,
+    )
     baseline_metrics = snapshot_metrics(base.score, base.risk_level)
     candidate_metrics = snapshot_metrics(head.score, head.risk_level)
     score_delta = head.score - base.score
@@ -240,6 +291,11 @@ def evaluate_runs(
     )
     warnings = metric_warnings(base.risk_level, head.risk_level)
     failures: list[RegressionIssue] = []
+    missing_metric_issues = missing_metric_findings(baseline, candidate)
+    if fail_on_missing_metrics:
+        failures.extend(missing_metric_issues)
+    else:
+        warnings.extend(missing_metric_issues)
 
     if head.score < base.score - thresholds.max_score_drop:
         failures.append(
@@ -295,6 +351,8 @@ def evaluate_runs(
         message=message,
         baseline_source=baseline_source,
         baseline_label=baseline_label,
+        policy_source=policy_source,
+        effective_policy=effective_policy,
     )
 
 
@@ -316,6 +374,52 @@ def run_metrics(run_dir: Path | None) -> dict[str, object]:
     except ReportError:
         return {}
     return snapshot_metrics(snapshot.score, snapshot.risk_level)
+
+
+def missing_metric_findings(baseline: Path, candidate: Path) -> list[RegressionIssue]:
+    """Return findings for missing metrics required by the regression gate."""
+    issues: list[RegressionIssue] = []
+    required = {"score", "risk_level"}
+    for role, run_dir in [("baseline", baseline), ("candidate", candidate)]:
+        try:
+            raw = json.loads(run_dir.joinpath("metrics.json").read_text("utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            issues.append(
+                RegressionIssue(
+                    code="missing_metrics",
+                    metric=role,
+                    baseline_value=str(baseline),
+                    candidate_value=str(candidate),
+                    threshold=None,
+                    message=f"Could not inspect {role} metrics.json: {exc}",
+                )
+            )
+            continue
+        if not isinstance(raw, dict):
+            issues.append(
+                RegressionIssue(
+                    code="missing_metrics",
+                    metric=role,
+                    baseline_value=str(baseline),
+                    candidate_value=str(candidate),
+                    threshold=None,
+                    message=f"{role} metrics.json is not a JSON object.",
+                )
+            )
+            continue
+        missing = sorted(required - raw.keys())
+        for metric in missing:
+            issues.append(
+                RegressionIssue(
+                    code="missing_metric",
+                    metric=metric,
+                    baseline_value=str(baseline) if role == "baseline" else None,
+                    candidate_value=str(candidate) if role == "candidate" else None,
+                    threshold=None,
+                    message=f"{role} run is missing required metric {metric!r}.",
+                )
+            )
+    return issues
 
 
 def metric_warnings(base_risk: str, head_risk: str) -> list[RegressionIssue]:
@@ -382,6 +486,8 @@ def write_regression_outputs(
         message=result.message,
         baseline_source=result.baseline_source,
         baseline_label=result.baseline_label,
+        policy_source=result.policy_source,
+        effective_policy=result.effective_policy,
         json_path=json_path,
         summary_path=summary_path,
     )
@@ -401,6 +507,16 @@ def regression_check_payload(result: RegressionCheckResult) -> dict[str, object]
         "candidate_run_id": result.candidate_run_id,
         "baseline_source": result.baseline_source,
         "baseline_label": result.baseline_label,
+        "policy_source": result.policy_source,
+        "effective_policy": {
+            "baseline_label": result.effective_policy.baseline_label,
+            "require_baseline": result.effective_policy.require_baseline,
+            "max_score_drop": result.effective_policy.max_score_drop,
+            "max_risk_increase": result.effective_policy.max_risk_increase,
+            "fail_on_missing_metrics": (
+                result.effective_policy.fail_on_missing_metrics
+            ),
+        },
         "thresholds": {
             "max_score_drop": result.thresholds.max_score_drop,
             "max_risk_increase": result.thresholds.max_risk_increase,
@@ -443,6 +559,19 @@ def regression_check_markdown(result: RegressionCheckResult) -> str:
         f"- Baseline label: `{result.baseline_label or 'none'}`",
         f"- Candidate run: `{result.candidate_run_id or 'none'}`",
         f"- Message: {result.message}",
+        "",
+        "## Effective policy",
+        "",
+        "| Setting | Value |",
+        "| --- | --- |",
+        f"| Policy source | {markdown_cell(result.policy_source)} |",
+        f"| Baseline label | {markdown_cell(result.effective_policy.baseline_label)} |",
+        "| Require baseline | "
+        f"{str(result.effective_policy.require_baseline).lower()} |",
+        f"| Max score drop | {result.effective_policy.max_score_drop:g} |",
+        f"| Max risk increase | {result.effective_policy.max_risk_increase:g} |",
+        "| Fail on missing metrics | "
+        f"{str(result.effective_policy.fail_on_missing_metrics).lower()} |",
         "",
         "## Thresholds",
         "",

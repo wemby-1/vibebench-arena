@@ -673,6 +673,7 @@ def config_show_payload(result: EffectiveConfigResult) -> dict[str, object]:
         "commands": payload["checks"],
         "gate": payload["gate"],
         "risk": payload["risk"],
+        "regression": payload["regression"],
     }
 
 
@@ -686,7 +687,7 @@ def render_config_summary(
     console.print(f"[bold]VibeBench config[/] ({source})")
 
     payload = effective_config_payload(result)
-    for section_name in ["project", "checks", "gate", "risk"]:
+    for section_name in ["project", "checks", "gate", "risk", "regression"]:
         table = Table(title=section_name)
         table.add_column("Key")
         table.add_column("Value")
@@ -1799,17 +1800,27 @@ def regression_check_command(
         typer.Option("--baseline-label", help="Pinned baseline label to use."),
     ] = None,
     max_score_drop: Annotated[
-        float,
+        float | None,
         typer.Option("--max-score-drop", help="Allowed score drop."),
-    ] = 0.0,
+    ] = None,
     max_risk_increase: Annotated[
-        float,
+        float | None,
         typer.Option("--max-risk-increase", help="Allowed risk-level increase."),
-    ] = 0.0,
+    ] = None,
     require_baseline: Annotated[
-        bool,
-        typer.Option("--require-baseline", help="Fail if no baseline is available."),
-    ] = False,
+        bool | None,
+        typer.Option(
+            "--require-baseline/--no-require-baseline",
+            help="Fail if no baseline is available.",
+        ),
+    ] = None,
+    fail_on_missing_metrics: Annotated[
+        bool | None,
+        typer.Option(
+            "--fail-on-missing-metrics/--allow-missing-metrics",
+            help="Fail when score or risk metrics are missing.",
+        ),
+    ] = None,
     as_json: Annotated[
         bool,
         typer.Option("--json", help="Print regression-check result as pure JSON."),
@@ -1831,15 +1842,26 @@ def regression_check_command(
     selected_json_output = resolve_optional_output_path(root, json_output)
     selected_summary_output = resolve_optional_output_path(root, summary_output)
     try:
+        policy = resolve_regression_check_policy(
+            root,
+            baseline_run=selected_baseline_run,
+            baseline_label=baseline_label,
+            max_score_drop=max_score_drop,
+            max_risk_increase=max_risk_increase,
+            require_baseline=require_baseline,
+            fail_on_missing_metrics=fail_on_missing_metrics,
+        )
         result = run_regression_check(
             root,
             runs_dir=selected_runs_dir,
             baseline_run=selected_baseline_run,
             candidate_run=selected_candidate_run,
-            baseline_label=baseline_label,
-            max_score_drop=max_score_drop,
-            max_risk_increase=max_risk_increase,
-            require_baseline=require_baseline,
+            baseline_label=policy["baseline_label"],
+            max_score_drop=policy["max_score_drop"],
+            max_risk_increase=policy["max_risk_increase"],
+            require_baseline=policy["require_baseline"],
+            fail_on_missing_metrics=policy["fail_on_missing_metrics"],
+            policy_source=policy["policy_source"],
             json_output=selected_json_output,
             summary_output=selected_summary_output,
         )
@@ -2169,6 +2191,114 @@ def annotate(
 
 
 
+def resolve_regression_check_policy(
+    root: Path,
+    *,
+    baseline_run: Path | None = None,
+    baseline_label: str | None = None,
+    max_score_drop: float | None = None,
+    max_risk_increase: float | None = None,
+    require_baseline: bool | None = None,
+    fail_on_missing_metrics: bool | None = None,
+) -> dict[str, object]:
+    """Resolve regression-check policy from CLI flags, config, and defaults."""
+    effective_config = load_effective_config(config_file(root))
+    regression = effective_config.config.regression
+    cli_override = any(
+        value is not None
+        for value in [
+            baseline_run,
+            baseline_label,
+            max_score_drop,
+            max_risk_increase,
+            require_baseline,
+            fail_on_missing_metrics,
+        ]
+    )
+    policy_source = "cli" if cli_override else (
+        "config"
+        if effective_config.sources.get("regression") == "config file"
+        else "default"
+    )
+    selected_label = baseline_label
+    if selected_label is None and baseline_run is None:
+        selected_label = regression.baseline_label
+    return {
+        "policy_source": policy_source,
+        "baseline_label": selected_label,
+        "require_baseline": (
+            require_baseline
+            if require_baseline is not None
+            else regression.require_baseline
+        ),
+        "max_score_drop": (
+            max_score_drop
+            if max_score_drop is not None
+            else regression.max_score_drop
+        ),
+        "max_risk_increase": (
+            max_risk_increase
+            if max_risk_increase is not None
+            else regression.max_risk_increase
+        ),
+        "fail_on_missing_metrics": (
+            fail_on_missing_metrics
+            if fail_on_missing_metrics is not None
+            else regression.fail_on_missing_metrics
+        ),
+    }
+
+
+def resolve_ci_regression_check_policy(
+    root: Path,
+    *,
+    regression_check: bool,
+    skip_regression_check: bool,
+    require_regression_baseline: bool | None,
+    baseline_label: str | None,
+) -> dict[str, object]:
+    """Resolve whether CI should run regression-check and with what policy."""
+    effective_config = load_effective_config(config_file(root))
+    regression = effective_config.config.regression
+    if skip_regression_check:
+        enabled = False
+        policy_source = "cli"
+    elif regression_check:
+        enabled = True
+        policy_source = "cli"
+    elif regression.enabled:
+        enabled = True
+        policy_source = (
+            "config"
+            if effective_config.sources.get("regression") == "config file"
+            else "default"
+        )
+    else:
+        enabled = False
+        policy_source = (
+            "config"
+            if effective_config.sources.get("regression") == "config file"
+            else "default"
+        )
+    selected_label = (
+        baseline_label if baseline_label is not None else regression.baseline_label
+    )
+    require_baseline = (
+        require_regression_baseline
+        if require_regression_baseline is not None
+        else regression.require_baseline
+    )
+    return {
+        "enabled": enabled,
+        "policy_source": policy_source,
+        "baseline_label": selected_label,
+        "require_baseline": require_baseline,
+        "max_score_drop": regression.max_score_drop,
+        "max_risk_increase": regression.max_risk_increase,
+        "fail_on_missing_metrics": regression.fail_on_missing_metrics,
+    }
+
+
 def resolve_ci_regression_guard(
     root: Path,
     fail_on_regression: bool | None,
@@ -2293,13 +2423,20 @@ def ci_command(
             help="Run the optional candidate-vs-baseline regression gate.",
         ),
     ] = False,
-    require_regression_baseline: Annotated[
+    skip_regression_check: Annotated[
         bool,
         typer.Option(
-            "--require-regression-baseline",
-            help="Fail regression-check when no baseline run exists.",
+            "--skip-regression-check",
+            help="Disable config-enabled regression-check for this CI run.",
         ),
     ] = False,
+    require_regression_baseline: Annotated[
+        bool | None,
+        typer.Option(
+            "--require-regression-baseline/--no-require-regression-baseline",
+            help="Fail regression-check when no baseline run exists.",
+        ),
+    ] = None,
     baseline_label: Annotated[
         str | None,
         typer.Option("--baseline-label", help="Pinned regression baseline label."),
@@ -2428,6 +2565,13 @@ def ci_command(
             fail_on_regression,
             skip_compare,
         )
+        regression_policy = resolve_ci_regression_check_policy(
+            root,
+            regression_check=regression_check,
+            skip_regression_check=skip_regression_check,
+            require_regression_baseline=require_regression_baseline,
+            baseline_label=baseline_label,
+        )
         if plan_mode:
             result = plan_ci_pipeline(
                 skip_report=skip_report,
@@ -2447,9 +2591,15 @@ def ci_command(
                 skip_release_check=skip_release_check,
                 skip_package_check=skip_package_check,
                 skip_evidence_room=skip_evidence_room,
-                regression_check=regression_check,
-                require_regression_baseline=require_regression_baseline,
-                baseline_label=baseline_label,
+                regression_check=bool(regression_policy["enabled"]),
+                require_regression_baseline=bool(regression_policy["require_baseline"]),
+                baseline_label=regression_policy["baseline_label"],
+                regression_policy_source=str(regression_policy["policy_source"]),
+                max_score_drop=float(regression_policy["max_score_drop"]),
+                max_risk_increase=float(regression_policy["max_risk_increase"]),
+                fail_on_missing_metrics=bool(
+                    regression_policy["fail_on_missing_metrics"]
+                ),
                 fail_on_regression=regression_guard.enabled,
                 regression_guard_source=regression_guard.source,
                 regression_guard_message=regression_guard.message,
@@ -2483,9 +2633,15 @@ def ci_command(
                 skip_release_check=skip_release_check,
                 skip_package_check=skip_package_check,
                 skip_evidence_room=skip_evidence_room,
-                regression_check=regression_check,
-                require_regression_baseline=require_regression_baseline,
-                baseline_label=baseline_label,
+                regression_check=bool(regression_policy["enabled"]),
+                require_regression_baseline=bool(regression_policy["require_baseline"]),
+                baseline_label=regression_policy["baseline_label"],
+                regression_policy_source=str(regression_policy["policy_source"]),
+                max_score_drop=float(regression_policy["max_score_drop"]),
+                max_risk_increase=float(regression_policy["max_risk_increase"]),
+                fail_on_missing_metrics=bool(
+                    regression_policy["fail_on_missing_metrics"]
+                ),
                 emit_annotations=not as_json,
                 bundle_include_report_assets=bundle_include_report_assets,
                 bundle_strict=bundle_strict,

@@ -34,6 +34,7 @@ def write_config(
     *,
     fail_on_regression: bool | None = None,
     include_compare: bool = True,
+    regression_policy: str | None = None,
 ) -> None:
     config_path(root).parent.mkdir(parents=True, exist_ok=True)
     selected_test_command = test_command or f"{sys.executable} -c 'print(1)'"
@@ -50,6 +51,17 @@ def write_config(
             "compare:\n  fail_on_regression: false\n",
             "",
         )
+    if regression_policy is not None:
+        default_regression = (
+            "regression:\n"
+            "  enabled: false\n"
+            "  baseline_label: null\n"
+            "  require_baseline: false\n"
+            "  max_score_drop: 0.0\n"
+            "  max_risk_increase: 0.0\n"
+            "  fail_on_missing_metrics: true\n"
+        )
+        config = config.replace(default_regression, regression_policy)
     config_path(root).write_text(config, encoding="utf-8")
     write_package_metadata(root)
 
@@ -2555,3 +2567,180 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
     assert "evidence-room/evidence-room.md" in names
     assert "evidence-room/evidence-room.zip" in names
     assert "evidence-room/proof-packet/proof.html" not in names
+
+
+
+def test_ci_config_regression_enabled_runs_check_by_default(
+    tmp_path: Path,
+) -> None:
+    write_config(
+        tmp_path,
+        regression_policy=(
+            "regression:\n"
+            "  enabled: true\n"
+            "  require_baseline: false\n"
+            "  max_score_drop: 0.0\n"
+            "  max_risk_increase: 0.0\n"
+            "  fail_on_missing_metrics: true\n"
+        ),
+    )
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(app, ["ci", "--project-root", str(tmp_path), "--json"])
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("regression-check.json").read_text())
+    assert result.exit_code == 0
+    assert steps["regression-check"]["status"] == "skipped"
+    assert report["policy_source"] == "config"
+
+
+def test_ci_config_regression_disabled_does_not_run_by_default(
+    tmp_path: Path,
+) -> None:
+    write_config(
+        tmp_path,
+        regression_policy=(
+            "regression:\n"
+            "  enabled: false\n"
+            "  baseline_label: stable\n"
+            "  require_baseline: true\n"
+            "  max_score_drop: 0.0\n"
+            "  max_risk_increase: 0.0\n"
+            "  fail_on_missing_metrics: true\n"
+        ),
+    )
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(app, ["ci", "--project-root", str(tmp_path), "--json"])
+
+    steps = {step["name"]: step for step in json.loads(result.output)["steps"]}
+    run_dir = latest_run(tmp_path)
+    assert result.exit_code == 0
+    assert "regression-check" not in steps
+    assert not run_dir.joinpath("regression-check.json").exists()
+
+
+def test_ci_regression_check_forces_disabled_config(tmp_path: Path) -> None:
+    write_config(
+        tmp_path,
+        regression_policy=(
+            "regression:\n"
+            "  enabled: false\n"
+            "  require_baseline: false\n"
+            "  max_score_drop: 0.0\n"
+            "  max_risk_increase: 0.0\n"
+            "  fail_on_missing_metrics: true\n"
+        ),
+    )
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--regression-check", "--json"],
+    )
+
+    steps = {step["name"]: step for step in json.loads(result.output)["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("regression-check.json").read_text())
+    assert result.exit_code == 0
+    assert steps["regression-check"]["status"] == "skipped"
+    assert report["policy_source"] == "cli"
+
+
+def test_ci_skip_regression_check_disables_config_enabled_policy(
+    tmp_path: Path,
+) -> None:
+    write_config(
+        tmp_path,
+        regression_policy=(
+            "regression:\n"
+            "  enabled: true\n"
+            "  require_baseline: true\n"
+            "  max_score_drop: 0.0\n"
+            "  max_risk_increase: 0.0\n"
+            "  fail_on_missing_metrics: true\n"
+        ),
+    )
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--skip-regression-check", "--json"],
+    )
+
+    steps = {step["name"]: step for step in json.loads(result.output)["steps"]}
+    run_dir = latest_run(tmp_path)
+    assert result.exit_code == 0
+    assert "regression-check" not in steps
+    assert not run_dir.joinpath("regression-check.json").exists()
+
+
+def test_ci_dry_run_json_reflects_config_enabled_regression_check(
+    tmp_path: Path,
+) -> None:
+    write_config(
+        tmp_path,
+        regression_policy=(
+            "regression:\n"
+            "  enabled: true\n"
+            "  baseline_label: stable\n"
+            "  require_baseline: true\n"
+            "  max_score_drop: 2\n"
+            "  max_risk_increase: 1\n"
+            "  fail_on_missing_metrics: false\n"
+        ),
+    )
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--dry-run", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["regression-check"]["status"] == "planned"
+    assert "policy=config" in steps["regression-check"]["message"]
+    assert "stable" in steps["regression-check"]["message"]
+
+
+def test_ci_regression_check_uses_config_baseline_label(tmp_path: Path) -> None:
+    write_config(
+        tmp_path,
+        regression_policy=(
+            "regression:\n"
+            "  enabled: true\n"
+            "  baseline_label: stable\n"
+            "  require_baseline: true\n"
+            "  max_score_drop: 0.0\n"
+            "  max_risk_increase: 0.0\n"
+            "  fail_on_missing_metrics: true\n"
+        ),
+    )
+    init_git_repo(tmp_path)
+    baseline = write_run(tmp_path, "20260706_100000", metrics=sample_metrics(score=100))
+    pin = runner.invoke(
+        app,
+        [
+            "baseline",
+            "--project-root",
+            str(tmp_path),
+            "--set-run",
+            baseline.name,
+            "--label",
+            "stable",
+        ],
+    )
+    assert pin.exit_code == 0
+
+    result = runner.invoke(app, ["ci", "--project-root", str(tmp_path), "--json"])
+
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("regression-check.json").read_text())
+    assert result.exit_code == 0
+    assert report["baseline_source"] == "pinned"
+    assert report["baseline_label"] == "stable"
+    assert report["policy_source"] == "config"

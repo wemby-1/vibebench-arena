@@ -109,6 +109,28 @@ def config_consistency_checks(
             ),
         }
     )
+
+    regression = config.regression
+    regression_check = {
+        "name": "regression_policy",
+        "status": "passed",
+        "message": (
+            "Regression policy is internally consistent "
+            f"(enabled={str(regression.enabled).lower()}, "
+            f"baseline_label={regression.baseline_label or 'none'}, "
+            f"require_baseline={str(regression.require_baseline).lower()}, "
+            f"max_score_drop={regression.max_score_drop:g}, "
+            f"max_risk_increase={regression.max_risk_increase:g})"
+        ),
+    }
+    if include_advice and not regression.enabled:
+        regression_check["advice"] = (
+            "For a stable pinned regression gate, run "
+            "`python3 -m vibebench baseline --set-latest --label stable`, "
+            "then set regression.enabled=true, regression.baseline_label=stable, "
+            "and regression.require_baseline=true in .vibebench/config.yaml."
+        )
+    checks.append(regression_check)
     return checks
 
 

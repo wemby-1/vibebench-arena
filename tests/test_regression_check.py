@@ -54,6 +54,22 @@ def write_run(
     return run_dir
 
 
+def write_project_config(project_root: Path, regression_yaml: str) -> None:
+    config_dir = project_root / ".vibebench"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_dir.joinpath("config.yaml").write_text(
+        f"""project:
+  name: demo
+checks:
+  test:
+    - python -c "print(1)"
+regression:
+{regression_yaml}
+""",
+        encoding="utf-8",
+    )
+
+
 def run_regression_check(project_root: Path, *args: str) -> object:
     return runner.invoke(
         app,
@@ -352,3 +368,124 @@ def test_regression_check_stale_pinned_baseline_fails_clearly(
 
     assert result.exit_code == 1
     assert "Baseline run directory is missing" in result.output
+
+
+
+def test_regression_check_json_reports_effective_policy(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260706_120000")
+    write_run(tmp_path, "20260706_130000")
+
+    result = run_regression_check(tmp_path, "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["policy_source"] == "default"
+    assert payload["effective_policy"] == {
+        "baseline_label": None,
+        "require_baseline": False,
+        "max_score_drop": 0.0,
+        "max_risk_increase": 0.0,
+        "fail_on_missing_metrics": True,
+    }
+
+
+def test_regression_check_markdown_includes_effective_policy(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260706_120000")
+    write_run(tmp_path, "20260706_130000")
+    output = tmp_path / "regression-check.md"
+
+    result = run_regression_check(tmp_path, "--summary-output", str(output))
+
+    assert result.exit_code == 0
+    assert "## Effective policy" in output.read_text(encoding="utf-8")
+
+
+def test_regression_check_uses_config_thresholds_when_cli_absent(
+    tmp_path: Path,
+) -> None:
+    write_project_config(tmp_path, "  max_score_drop: 5\n")
+    write_run(tmp_path, "20260706_120000", score=100)
+    write_run(tmp_path, "20260706_130000", score=97)
+
+    result = run_regression_check(tmp_path, "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["status"] == "passed"
+    assert payload["policy_source"] == "config"
+    assert payload["effective_policy"]["max_score_drop"] == 5
+
+
+def test_regression_check_cli_threshold_overrides_config(tmp_path: Path) -> None:
+    write_project_config(tmp_path, "  max_score_drop: 5\n")
+    write_run(tmp_path, "20260706_120000", score=100)
+    write_run(tmp_path, "20260706_130000", score=97)
+
+    result = run_regression_check(tmp_path, "--max-score-drop", "1", "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 1
+    assert payload["policy_source"] == "cli"
+    assert payload["effective_policy"]["max_score_drop"] == 1
+    assert payload["failures"][0]["code"] == "score_regression"
+
+
+def test_regression_check_uses_config_baseline_label(tmp_path: Path) -> None:
+    pinned = write_run(tmp_path, "20260706_100000", score=100)
+    write_run(tmp_path, "20260706_110000", score=100)
+    write_project_config(tmp_path, "  baseline_label: stable\n")
+    pin_baseline(tmp_path, pinned.name)
+
+    result = run_regression_check(tmp_path, "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["policy_source"] == "config"
+    assert payload["baseline_source"] == "pinned"
+    assert payload["baseline_label"] == "stable"
+    assert payload["baseline_run_id"] == pinned.name
+
+
+def test_regression_check_cli_baseline_label_overrides_config(
+    tmp_path: Path,
+) -> None:
+    stable = write_run(tmp_path, "20260706_100000", score=80)
+    experimental = write_run(tmp_path, "20260706_110000", score=100)
+    write_run(tmp_path, "20260706_120000", score=100)
+    write_project_config(tmp_path, "  baseline_label: stable\n")
+    pin_baseline(tmp_path, stable.name, label="stable")
+    pin_baseline(tmp_path, experimental.name, label="experimental")
+
+    result = run_regression_check(
+        tmp_path,
+        "--baseline-label",
+        "experimental",
+        "--json",
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["policy_source"] == "cli"
+    assert payload["baseline_label"] == "experimental"
+    assert payload["baseline_run_id"] == experimental.name
+
+
+def test_regression_check_missing_metrics_can_be_allowed_by_config(
+    tmp_path: Path,
+) -> None:
+    baseline = write_run(tmp_path, "20260706_120000", score=100)
+    candidate = write_run(tmp_path, "20260706_130000", score=100)
+    for run_dir in [baseline, candidate]:
+        metrics = json.loads(run_dir.joinpath("metrics.json").read_text())
+        metrics.pop("risk_level")
+        run_dir.joinpath("metrics.json").write_text(
+            json.dumps(metrics), encoding="utf-8"
+        )
+    write_project_config(tmp_path, "  fail_on_missing_metrics: false\n")
+
+    result = run_regression_check(tmp_path, "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["status"] == "passed"
+    assert any(item["code"] == "missing_metric" for item in payload["warnings"])

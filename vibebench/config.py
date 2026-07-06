@@ -5,7 +5,15 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, StrictStr, ValidationError
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictBool,
+    StrictStr,
+    ValidationError,
+    field_validator,
+)
 
 from vibebench.paths import config_file
 
@@ -72,6 +80,14 @@ DEFAULT_CONFIG: dict[str, Any] = {
     },
     "compare": {
         "fail_on_regression": False,
+    },
+    "regression": {
+        "enabled": False,
+        "baseline_label": None,
+        "require_baseline": False,
+        "max_score_drop": 0.0,
+        "max_risk_increase": 0.0,
+        "fail_on_missing_metrics": True,
     },
 }
 
@@ -158,6 +174,39 @@ class CompareConfig(BaseModel):
     fail_on_regression: bool = False
 
 
+class RegressionConfig(BaseModel):
+    """Regression-check policy defaults."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: StrictBool = False
+    baseline_label: str | None = None
+    require_baseline: StrictBool = False
+    max_score_drop: float = Field(default=0.0, ge=0)
+    max_risk_increase: float = Field(default=0.0, ge=0)
+    fail_on_missing_metrics: StrictBool = True
+
+    @field_validator("baseline_label")
+    @classmethod
+    def validate_baseline_label(cls, value: str | None) -> str | None:
+        """Validate a pinned baseline label without importing CLI helpers."""
+        if value is None:
+            return None
+        selected = value.strip()
+        allowed = set(
+            "abcdefghijklmnopqrstuvwxyz"
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            "0123456789._-"
+        )
+        if not selected or selected in {".", ".."}:
+            raise ValueError("baseline label must not be empty, '.' or '..'")
+        if any(char not in allowed for char in selected):
+            raise ValueError(
+                "baseline label may only contain letters, numbers, '.', '_', or '-'"
+            )
+        return selected
+
+
 class VibeBenchConfig(BaseModel):
     """Top-level VibeBench configuration."""
 
@@ -169,6 +218,7 @@ class VibeBenchConfig(BaseModel):
     risk: RiskConfig | None = None
     gate: GateConfig = Field(default_factory=GateConfig)
     compare: CompareConfig = Field(default_factory=CompareConfig)
+    regression: RegressionConfig = Field(default_factory=RegressionConfig)
 
     def effective_risk(self) -> RiskConfig:
         """Return the active Git diff risk policy."""
@@ -200,6 +250,14 @@ def config_example_yaml() -> str:
             "require_status_passed": True,
         },
         "compare": {"fail_on_regression": False},
+        "regression": {
+            "enabled": False,
+            "baseline_label": "stable",
+            "require_baseline": False,
+            "max_score_drop": 0.0,
+            "max_risk_increase": 0.0,
+            "fail_on_missing_metrics": True,
+        },
     }
     return yaml.safe_dump(payload, sort_keys=False)
 
@@ -252,6 +310,7 @@ def load_effective_config(path: Path | None = None) -> EffectiveConfigResult:
                 "gate": "built-in defaults",
                 "risk": "built-in defaults",
                 "compare": "built-in defaults",
+                "regression": "built-in defaults",
             },
             config_path=config_path,
             config_exists=False,
@@ -267,6 +326,9 @@ def load_effective_config(path: Path | None = None) -> EffectiveConfigResult:
         "gate": "config file" if "gate" in raw_config else "built-in defaults",
         "risk": "config file" if "risk" in raw_config else "built-in defaults",
         "compare": "config file" if "compare" in raw_config else "built-in defaults",
+        "regression": (
+            "config file" if "regression" in raw_config else "built-in defaults"
+        ),
     }
     return EffectiveConfigResult(
         config=config,
@@ -283,6 +345,7 @@ def effective_config_payload(result: EffectiveConfigResult) -> dict[str, Any]:
         "checks": result.config.checks.model_dump(),
         "gate": result.config.gate.model_dump(),
         "compare": result.config.compare.model_dump(),
+        "regression": result.config.regression.model_dump(),
         "risk": result.config.effective_risk().model_dump(),
     }
     return payload

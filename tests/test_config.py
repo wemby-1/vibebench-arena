@@ -24,6 +24,12 @@ def test_config_loader_reads_generated_config(tmp_path: Path) -> None:
     assert config.gate.max_risk == "medium"
     assert config.gate.allow_findings == 0
     assert config.gate.require_status_passed is True
+    assert config.regression.enabled is False
+    assert config.regression.baseline_label is None
+    assert config.regression.require_baseline is False
+    assert config.regression.max_score_drop == 0.0
+    assert config.regression.max_risk_increase == 0.0
+    assert config.regression.fail_on_missing_metrics is True
 
 def test_config_loader_missing_config_has_helpful_error(tmp_path: Path) -> None:
     missing_config = tmp_path / ".vibebench" / "config.yaml"
@@ -170,4 +176,67 @@ def test_invalid_risk_forbidden_path_item_fails_clearly(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ConfigError, match="risk.forbidden_paths"):
+        load_config(config_path)
+
+
+def write_regression_config(tmp_path: Path, regression_yaml: str) -> Path:
+    config_dir = tmp_path / ".vibebench"
+    config_dir.mkdir(parents=True)
+    config_path = config_dir / "config.yaml"
+    config_path.write_text(
+        f"""project:
+  name: demo
+checks:
+  test:
+    - pytest -q
+  lint:
+    - ruff check .
+regression:
+{regression_yaml}
+""",
+        encoding="utf-8",
+    )
+    return config_path
+
+
+def test_config_loader_reads_regression_policy(tmp_path: Path) -> None:
+    config_path = write_regression_config(
+        tmp_path,
+        """  enabled: true
+  baseline_label: stable
+  require_baseline: true
+  max_score_drop: 1.5
+  max_risk_increase: 1
+  fail_on_missing_metrics: false
+""",
+    )
+
+    config = load_config(config_path)
+
+    assert config.regression.enabled is True
+    assert config.regression.baseline_label == "stable"
+    assert config.regression.require_baseline is True
+    assert config.regression.max_score_drop == 1.5
+    assert config.regression.max_risk_increase == 1
+    assert config.regression.fail_on_missing_metrics is False
+
+
+def test_invalid_regression_threshold_fails_clearly(tmp_path: Path) -> None:
+    config_path = write_regression_config(tmp_path, "  max_score_drop: -1\n")
+
+    with pytest.raises(ConfigError, match="regression.max_score_drop"):
+        load_config(config_path)
+
+
+def test_invalid_regression_boolean_fails_clearly(tmp_path: Path) -> None:
+    config_path = write_regression_config(tmp_path, "  enabled: maybe\n")
+
+    with pytest.raises(ConfigError, match="regression.enabled"):
+        load_config(config_path)
+
+
+def test_invalid_regression_baseline_label_fails_clearly(tmp_path: Path) -> None:
+    config_path = write_regression_config(tmp_path, "  baseline_label: 'bad label'\n")
+
+    with pytest.raises(ConfigError, match="regression.baseline_label"):
         load_config(config_path)

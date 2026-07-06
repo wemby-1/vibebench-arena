@@ -153,6 +153,10 @@ def plan_ci_pipeline(
     regression_check: bool = False,
     require_regression_baseline: bool = False,
     baseline_label: str | None = None,
+    regression_policy_source: str = "default",
+    max_score_drop: float = 0.0,
+    max_risk_increase: float = 0.0,
+    fail_on_missing_metrics: bool = True,
     fail_on_regression: bool = False,
     regression_guard_source: RegressionGuardSource | None = None,
     regression_guard_message: str | None = None,
@@ -222,6 +226,10 @@ def plan_ci_pipeline(
                     regression_check_plan_message(
                         require_regression_baseline,
                         baseline_label=baseline_label,
+                        policy_source=regression_policy_source,
+                        max_score_drop=max_score_drop,
+                        max_risk_increase=max_risk_increase,
+                        fail_on_missing_metrics=fail_on_missing_metrics,
                     ),
                 )
             )
@@ -272,14 +280,29 @@ def regression_check_plan_message(
     require_baseline: bool,
     *,
     baseline_label: str | None = None,
+    policy_source: str = "default",
+    max_score_drop: float = 0.0,
+    max_risk_increase: float = 0.0,
+    fail_on_missing_metrics: bool = True,
 ) -> str:
     """Return dry-run message for the optional regression-check step."""
     label_text = (
         f" using pinned baseline label {baseline_label!r}" if baseline_label else ""
     )
+    threshold_text = (
+        f" (policy={policy_source}, max_score_drop={max_score_drop:g}, "
+        f"max_risk_increase={max_risk_increase:g}, "
+        f"fail_on_missing_metrics={str(fail_on_missing_metrics).lower()})"
+    )
     if require_baseline:
-        return f"Would run regression-check{label_text} and require a baseline"
-    return f"Would run regression-check{label_text}; missing baseline would be skipped"
+        return (
+            f"Would run regression-check{label_text} and require a baseline"
+            + threshold_text
+        )
+    return (
+        f"Would run regression-check{label_text}; missing baseline would be skipped"
+        + threshold_text
+    )
 
 
 def ci_artifact_step_flags(
@@ -529,6 +552,10 @@ def run_ci_pipeline(
     regression_check: bool = False,
     require_regression_baseline: bool = False,
     baseline_label: str | None = None,
+    regression_policy_source: str = "default",
+    max_score_drop: float = 0.0,
+    max_risk_increase: float = 0.0,
+    fail_on_missing_metrics: bool = True,
     emit_annotations: bool = True,
     bundle_include_report_assets: bool = False,
     bundle_strict: bool = False,
@@ -717,6 +744,10 @@ def run_ci_pipeline(
                         selected_run_dir,
                         require_baseline=require_regression_baseline,
                         baseline_label=baseline_label,
+                        policy_source=regression_policy_source,
+                        max_score_drop=max_score_drop,
+                        max_risk_increase=max_risk_increase,
+                        fail_on_missing_metrics=fail_on_missing_metrics,
                     )
                 )
             continue
@@ -735,6 +766,10 @@ def run_ci_pipeline(
                         selected_run_dir,
                         require_baseline=require_regression_baseline,
                         baseline_label=baseline_label,
+                        policy_source=regression_policy_source,
+                        max_score_drop=max_score_drop,
+                        max_risk_increase=max_risk_increase,
+                        fail_on_missing_metrics=fail_on_missing_metrics,
                     )
                 )
             continue
@@ -981,6 +1016,10 @@ def run_regression_check_artifact_step(
     *,
     require_baseline: bool,
     baseline_label: str | None = None,
+    policy_source: str = "default",
+    max_score_drop: float = 0.0,
+    max_risk_increase: float = 0.0,
+    fail_on_missing_metrics: bool = True,
 ) -> CiStepResult:
     """Generate regression-check artifacts and return CI step status."""
     started = time.perf_counter()
@@ -990,6 +1029,10 @@ def run_regression_check_artifact_step(
             candidate_run=run_dir,
             require_baseline=require_baseline,
             baseline_label=baseline_label,
+            max_score_drop=max_score_drop,
+            max_risk_increase=max_risk_increase,
+            fail_on_missing_metrics=fail_on_missing_metrics,
+            policy_source=policy_source,
             json_output=run_dir / REGRESSION_CHECK_JSON,
             summary_output=run_dir / REGRESSION_CHECK_SUMMARY,
         )

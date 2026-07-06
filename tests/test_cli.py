@@ -423,12 +423,21 @@ def test_config_command_json_is_valid(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     payload = json.loads(result.output)
-    assert sorted(payload) == ["checks", "compare", "gate", "project", "risk"]
+    assert sorted(payload) == [
+        "checks",
+        "compare",
+        "gate",
+        "project",
+        "regression",
+        "risk",
+    ]
     assert payload["compare"]["fail_on_regression"] is False
     assert payload["project"]["name"] == "vibebench-project"
     assert payload["checks"]["test"] == ["pytest -q"]
     assert payload["gate"]["min_score"] == 80
     assert payload["risk"]["max_patch_lines"] == 500
+    assert payload["regression"]["fail_on_missing_metrics"] is True
+    assert payload["regression"]["enabled"] is False
 
 def test_config_command_validate_succeeds_for_valid_config(tmp_path: Path) -> None:
     runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
@@ -507,7 +516,14 @@ def test_config_show_json_output(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     payload = json.loads(result.output)
-    assert sorted(payload) == ["commands", "config_path", "gate", "project", "risk"]
+    assert sorted(payload) == [
+        "commands",
+        "config_path",
+        "gate",
+        "project",
+        "regression",
+        "risk",
+    ]
     assert payload["config_path"] == str(config_path(tmp_path))
     assert payload["project"]["name"] == "vibebench-project"
     assert payload["commands"]["test"] == ["pytest -q"]
@@ -583,6 +599,7 @@ def test_config_check_json_output(tmp_path: Path) -> None:
         "command_strings",
         "gate_policy",
         "risk_policy",
+        "regression_policy",
     }
     assert all(
         sorted(check) == ["message", "name", "status"]
@@ -1220,3 +1237,46 @@ def test_release_checklist_does_not_modify_files(tmp_path: Path, monkeypatch) ->
     }
     assert result.exit_code == 0
     assert after == before
+
+
+
+def test_config_check_advice_mentions_stable_regression_gate(
+    tmp_path: Path,
+) -> None:
+    runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
+
+    result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--check", "--advice", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    regression = next(
+        check for check in payload["checks"] if check["name"] == "regression_policy"
+    )
+    assert result.exit_code == 0
+    assert "baseline --set-latest --label stable" in regression["advice"]
+
+
+def test_config_check_rejects_invalid_regression_policy(tmp_path: Path) -> None:
+    config_path(tmp_path).parent.mkdir(parents=True)
+    config_path(tmp_path).write_text(
+        """project:
+  name: demo
+checks:
+  test:
+    - pytest -q
+regression:
+  max_risk_increase: -1
+""",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--check", "--json"],
+    )
+
+    assert result.exit_code == 1
+    assert result.stdout == ""
+    assert "regression.max_risk_increase" in result.stderr
