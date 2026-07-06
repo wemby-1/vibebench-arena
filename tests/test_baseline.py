@@ -861,3 +861,228 @@ def test_baseline_import_requires_snapshot(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "metrics_snapshot" in result.output
+
+
+
+def test_baseline_verify_existing_pinned_portable_baseline_passes(
+    tmp_path: Path,
+) -> None:
+    run_dir = write_run(tmp_path, "20260628_120000")
+    assert baseline_json(tmp_path, "--promote-run", run_dir.name).exit_code == 0
+
+    result = baseline_json(tmp_path, "--verify", "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["status"] == "passed"
+    assert payload["snapshot_available"] is True
+    assert payload["live_metrics_available"] is True
+    assert payload["usable_for_regression"] is True
+
+
+def test_baseline_verify_snapshot_fallback_warns_but_passes_exit_zero(
+    tmp_path: Path,
+) -> None:
+    run_dir = write_run(tmp_path, "20260628_120000")
+    assert baseline_json(tmp_path, "--promote-run", run_dir.name).exit_code == 0
+    run_dir.joinpath("metrics.json").unlink()
+    run_dir.rmdir()
+
+    result = baseline_json(tmp_path, "--verify", "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["status"] == "warning"
+    assert payload["portable"] is True
+    assert payload["live_metrics_available"] is False
+    assert payload["usable_for_regression"] is True
+
+
+def test_baseline_verify_missing_pinned_baseline_fails(tmp_path: Path) -> None:
+    result = baseline_json(tmp_path, "--verify", "--label", "stable", "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert payload["checks"][0]["name"] == "baseline_file_exists"
+
+
+def test_baseline_verify_malformed_pinned_json_fails_clearly(
+    tmp_path: Path,
+) -> None:
+    baseline_path = tmp_path / ".vibebench" / "baselines" / "stable.json"
+    baseline_path.parent.mkdir(parents=True)
+    baseline_path.write_text("{bad", encoding="utf-8")
+
+    result = baseline_json(tmp_path, "--verify", "--label", "stable", "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert any(check["name"] == "json_shape" for check in payload["checks"])
+
+
+def test_baseline_verify_without_live_metrics_or_snapshot_fails(
+    tmp_path: Path,
+) -> None:
+    run_dir = write_run(tmp_path, "20260628_120000")
+    assert baseline_json(tmp_path, "--set-run", run_dir.name).exit_code == 0
+    baseline_path = tmp_path / ".vibebench" / "baselines" / "default.json"
+    metadata = json.loads(baseline_path.read_text(encoding="utf-8"))
+    metadata.pop("metrics_snapshot")
+    baseline_path.write_text(json.dumps(metadata), encoding="utf-8")
+    run_dir.joinpath("metrics.json").unlink()
+    run_dir.rmdir()
+
+    result = baseline_json(tmp_path, "--verify", "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert payload["usable_for_regression"] is False
+
+
+def test_baseline_verify_require_portable_fails_for_non_portable(
+    tmp_path: Path,
+) -> None:
+    run_dir = write_run(tmp_path, "20260628_120000")
+    assert baseline_json(tmp_path, "--set-run", run_dir.name).exit_code == 0
+    baseline_path = tmp_path / ".vibebench" / "baselines" / "default.json"
+    metadata = json.loads(baseline_path.read_text(encoding="utf-8"))
+    metadata.pop("metrics_snapshot")
+    baseline_path.write_text(json.dumps(metadata), encoding="utf-8")
+
+    result = baseline_json(tmp_path, "--verify", "--require-portable", "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert any(check["name"] == "require_portable" for check in payload["checks"])
+
+
+def test_baseline_verify_require_live_metrics_fails_for_snapshot_only(
+    tmp_path: Path,
+) -> None:
+    run_dir = write_run(tmp_path, "20260628_120000")
+    assert baseline_json(tmp_path, "--promote-run", run_dir.name).exit_code == 0
+    run_dir.joinpath("metrics.json").unlink()
+    run_dir.rmdir()
+
+    result = baseline_json(
+        tmp_path,
+        "--verify",
+        "--require-live-metrics",
+        "--json",
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert any(
+        check["name"] == "require_live_metrics" for check in payload["checks"]
+    )
+
+
+def test_baseline_verify_strict_fails_on_warnings(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260628_120000")
+    assert baseline_json(tmp_path, "--promote-run", run_dir.name).exit_code == 0
+    run_dir.joinpath("metrics.json").unlink()
+    run_dir.rmdir()
+
+    result = baseline_json(tmp_path, "--verify", "--strict", "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert any(check["name"] == "strict" for check in payload["checks"])
+
+
+def test_baseline_verify_input_does_not_write_baseline_state(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    target = tmp_path / "target"
+    source.mkdir()
+    target.mkdir()
+    run_dir = write_run(source, "20260628_120000")
+    assert baseline_json(source, "--promote-run", run_dir.name).exit_code == 0
+    export_path = tmp_path / "portable-baseline.json"
+    assert (
+        baseline_json(source, "--export", "--output", str(export_path)).exit_code
+        == 0
+    )
+
+    result = baseline_json(target, "--verify", "--input", str(export_path), "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["status"] == "warning"
+    assert payload["snapshot_available"] is True
+    assert not (target / ".vibebench" / "baselines").exists()
+
+
+def test_baseline_verify_input_rejects_malformed_export(tmp_path: Path) -> None:
+    export_path = tmp_path / "bad-baseline.json"
+    export_path.write_text("{bad", encoding="utf-8")
+
+    result = baseline_json(tmp_path, "--verify", "--input", str(export_path), "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert any(check["name"] == "json_shape" for check in payload["checks"])
+
+
+def test_baseline_import_reuses_verification_and_rejects_invalid_file(
+    tmp_path: Path,
+) -> None:
+    run_dir = write_run(tmp_path, "20260628_120000")
+    assert baseline_json(tmp_path, "--set", run_dir.name).exit_code == 0
+    legacy = json.loads(baseline_file(tmp_path).read_text(encoding="utf-8"))
+    import_path = tmp_path / "legacy-baseline.json"
+    import_path.write_text(json.dumps(legacy), encoding="utf-8")
+
+    result = baseline_json(tmp_path, "--import", str(import_path), "--label", "stable")
+
+    assert result.exit_code == 1
+    assert "metrics_snapshot" in result.output
+    assert not (tmp_path / ".vibebench" / "baselines" / "stable.json").exists()
+
+
+def test_baseline_verify_outputs_json_and_markdown(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260628_120000")
+    assert baseline_json(tmp_path, "--promote-run", run_dir.name).exit_code == 0
+    json_output = tmp_path / "verify.json"
+    summary_output = tmp_path / "verify.md"
+
+    json_result = baseline_json(
+        tmp_path,
+        "--verify",
+        "--json-output",
+        str(json_output),
+    )
+    summary_result = baseline_json(
+        tmp_path,
+        "--verify",
+        "--summary-output",
+        str(summary_output),
+    )
+
+    assert json_result.exit_code == 0
+    assert "VibeBench baseline verification" in json_result.output
+    assert json.loads(json_output.read_text(encoding="utf-8"))["status"] == "passed"
+    assert summary_result.exit_code == 0
+    assert summary_output.read_text(encoding="utf-8").startswith(
+        "# VibeBench Baseline Verification"
+    )
+
+
+def test_baseline_verify_json_stdout_is_pure(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260628_120000")
+    assert baseline_json(tmp_path, "--promote-run", run_dir.name).exit_code == 0
+
+    result = baseline_json(tmp_path, "--verify", "--json")
+
+    assert result.exit_code == 0
+    assert json.loads(result.output)["status"] == "passed"
+    assert "VibeBench baseline verification" not in result.output

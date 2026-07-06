@@ -21,8 +21,12 @@ from vibebench.artifacts import (
 from vibebench.badge import DEFAULT_BADGE_LABEL, BadgeResult, generate_badge
 from vibebench.baseline import (
     BaselineStatus,
+    BaselineVerificationResult,
     baseline_list_payload,
     baseline_status_payload,
+    baseline_verification_json,
+    baseline_verification_markdown,
+    baseline_verification_payload,
     clear_pinned_baseline,
     export_pinned_baseline,
     import_pinned_baseline,
@@ -31,6 +35,8 @@ from vibebench.baseline import (
     set_pinned_baseline,
     show_baseline,
     show_pinned_baseline,
+    verify_baseline_input,
+    verify_pinned_baseline,
 )
 from vibebench.baseline_promotion import (
     BaselinePromotionResult,
@@ -3564,6 +3570,32 @@ def baseline(
         bool,
         typer.Option("--list", help="List labeled pinned baselines."),
     ] = False,
+    verify_baseline: Annotated[
+        bool,
+        typer.Option("--verify", help="Verify a pinned or exported baseline."),
+    ] = False,
+    input_path: Annotated[
+        Path | None,
+        typer.Option("--input", help="Exported baseline JSON file to verify."),
+    ] = None,
+    strict: Annotated[
+        bool,
+        typer.Option("--strict", help="Fail baseline verification on warnings."),
+    ] = False,
+    require_portable: Annotated[
+        bool,
+        typer.Option(
+            "--require-portable",
+            help="Require a valid portable metrics snapshot.",
+        ),
+    ] = False,
+    require_live_metrics: Annotated[
+        bool,
+        typer.Option(
+            "--require-live-metrics",
+            help="Require the original live metrics.json to be available.",
+        ),
+    ] = False,
     export_baseline: Annotated[
         bool,
         typer.Option("--export", help="Export a portable pinned baseline."),
@@ -3644,6 +3676,7 @@ def baseline(
     selected_summary_output = resolve_optional_output_path(root, summary_output)
     selected_output = resolve_optional_output_path(root, output)
     selected_import = resolve_optional_output_path(root, import_baseline)
+    selected_input = resolve_optional_output_path(root, input_path)
     promotion_requested = promote_latest or promote_run is not None
     selected_label = resolve_baseline_label(root, label, use_config=promotion_requested)
     pinned_action_requested = any(
@@ -3654,6 +3687,8 @@ def baseline(
             show,
             clear,
             list_baselines,
+            verify_baseline,
+            input_path is not None,
             export_baseline,
             import_baseline is not None,
             as_json,
@@ -3668,12 +3703,16 @@ def baseline(
             bool(set_run is not None),
             promote_latest,
             bool(promote_run is not None),
+            verify_baseline,
             export_baseline,
             bool(import_baseline is not None),
             clear,
             list_baselines,
         ]
     )
+    if input_path is not None and not verify_baseline:
+        console.print("[red]--input can only be used with --verify.[/]")
+        raise typer.Exit(code=1)
     if action_count > 1:
         console.print("[red]Choose only one baseline action.[/]")
         raise typer.Exit(code=1)
@@ -3681,6 +3720,7 @@ def baseline(
     try:
         list_result = None
         promotion_result = None
+        verification_result = None
         operation_payload = None
         if legacy_set_run is not None and not pinned_action_requested:
             result = set_baseline(root, legacy_set_run, runs_dir=runs_dir)
@@ -3689,8 +3729,32 @@ def baseline(
             list_result = list_pinned_baselines(root)
             payload = baseline_list_payload(list_result)
             result = None
-        elif selected_summary_output is not None and not promotion_requested:
-            raise ReportError("--summary-output is only supported for promotion.")
+        elif selected_summary_output is not None and not (
+            promotion_requested or verify_baseline
+        ):
+            raise ReportError(
+                "--summary-output is only supported for promotion or verification."
+            )
+        elif verify_baseline:
+            if selected_input is not None:
+                verification_result = verify_baseline_input(
+                    root,
+                    selected_input,
+                    expected_label=label,
+                    strict=strict,
+                    require_portable=require_portable,
+                    require_live_metrics=require_live_metrics,
+                )
+            else:
+                verification_result = verify_pinned_baseline(
+                    root,
+                    label=selected_label,
+                    strict=strict,
+                    require_portable=require_portable,
+                    require_live_metrics=require_live_metrics,
+                )
+            payload = baseline_verification_payload(verification_result)
+            result = None
         elif export_baseline:
             if selected_output is None:
                 raise ReportError("--export requires --output PATH.")
@@ -3774,15 +3838,25 @@ def baseline(
         )
     if selected_summary_output is not None:
         selected_summary_output.write_text(
-            promotion_markdown(promotion_result),
+            baseline_verification_markdown(verification_result)
+            if verification_result is not None
+            else promotion_markdown(promotion_result),
             encoding="utf-8",
         )
 
     if as_json:
         if promotion_result is not None:
             print(promotion_json(promotion_result))
+        elif verification_result is not None:
+            print(baseline_verification_json(verification_result))
         else:
             print(json.dumps(payload, indent=2, sort_keys=True))
+    elif verification_result is not None:
+        render_baseline_verification_summary(verification_result)
+        if selected_json_output is not None:
+            console.print(f"Baseline JSON: {selected_json_output}")
+        if selected_summary_output is not None:
+            console.print(f"Baseline verification Markdown: {selected_summary_output}")
     elif operation_payload is not None:
         console.print(operation_payload["message"])
         if "output" in operation_payload:
@@ -3807,6 +3881,8 @@ def baseline(
             console.print(f"Baseline JSON: {selected_json_output}")
 
     if promotion_result is not None and promotion_result.status == "failed":
+        raise typer.Exit(code=1)
+    if verification_result is not None and verification_result.status == "failed":
         raise typer.Exit(code=1)
     if result is not None and result.metadata is not None and not result.is_valid:
         raise typer.Exit(code=1)
@@ -4984,6 +5060,40 @@ def resolve_baseline_label(root: Path, label: str | None, *, use_config: bool) -
             return effective_config.config.regression.baseline_label
     return "default"
 
+
+
+def render_baseline_verification_summary(result: BaselineVerificationResult) -> None:
+    """Render baseline verification output."""
+    style = "green" if result.status == "passed" else "yellow"
+    if result.status == "failed":
+        style = "red"
+    console.print()
+    console.print("[bold]VibeBench baseline verification[/]")
+    console.print(f"Status: [{style}]{result.status}[/]")
+    console.print(f"Label: {result.label or 'none'}")
+    console.print(f"Run id: {result.run_id or 'none'}")
+    console.print(f"Baseline path: {result.baseline_path}")
+    console.print(f"Live metrics: {str(result.live_metrics_available).lower()}")
+    console.print(f"Portable: {str(result.portable).lower()}")
+    console.print(
+        f"Usable for regression: {str(result.usable_for_regression).lower()}"
+    )
+    table = Table(title="Verification checks")
+    table.add_column("Check")
+    table.add_column("Status")
+    table.add_column("Message")
+    for check in result.checks:
+        check_style = "green" if check.status == "passed" else "yellow"
+        if check.status == "failed":
+            check_style = "red"
+        table.add_row(check.name, f"[{check_style}]{check.status}[/]", check.message)
+    console.print(table)
+    if result.advice:
+        advice_table = Table(title="Advice")
+        advice_table.add_column("Item")
+        for item in result.advice:
+            advice_table.add_row(item)
+        console.print(advice_table)
 
 def render_baseline_promotion_summary(result: BaselinePromotionResult) -> None:
     """Render baseline promotion output."""

@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added `baseline --verify` for pinned and exported baseline regression-readiness checks, including JSON, Markdown, strict, portable, and live-metrics modes.
+
 - Added portable regression baseline snapshots plus `baseline --export` / `--import` so promoted pinned baselines can be reused when local run directories are unavailable.
 
 - Added guarded pinned baseline promotion with `baseline --promote-latest`, `--promote-run`, dry-run, JSON, Markdown, manifest checks, and regression-check validation before updating `.vibebench/baselines/<label>.json`.

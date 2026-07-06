@@ -5,13 +5,45 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
 from vibebench.history import resolve_runs_dir
 from vibebench.paths import config_dir
 from vibebench.report import ReportError
+
+BaselineVerifyStatus = Literal["passed", "warning", "failed"]
+BaselineCheckStatus = Literal["passed", "warning", "failed"]
+
+
+class BaselineVerificationCheck(BaseModel):
+    """One baseline verification check."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    status: BaselineCheckStatus
+    message: str
+
+
+class BaselineVerificationResult(BaseModel):
+    """Structured baseline verification result."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: BaselineVerifyStatus
+    label: str | None = None
+    run_id: str | None = None
+    baseline_path: str
+    baseline_source: str | None = None
+    live_metrics_available: bool = False
+    snapshot_available: bool = False
+    portable: bool = False
+    usable_for_regression: bool = False
+    checks: list[BaselineVerificationCheck]
+    advice: list[str]
+    message: str
 
 
 class BaselineMetricsSnapshot(BaseModel):
@@ -214,6 +246,509 @@ def set_pinned_baseline(
 
 
 
+def verify_pinned_baseline(
+    project_root: Path,
+    *,
+    label: str = "default",
+    strict: bool = False,
+    require_portable: bool = False,
+    require_live_metrics: bool = False,
+) -> BaselineVerificationResult:
+    """Verify a labeled pinned baseline for regression readiness."""
+    root = project_root.resolve()
+    selected_label = normalize_label(label)
+    target = pinned_baseline_file(root, selected_label)
+    if not target.exists():
+        return verification_result(
+            label=selected_label,
+            baseline_path=target,
+            source=None,
+            checks=[
+                BaselineVerificationCheck(
+                    name="baseline_file_exists",
+                    status="failed",
+                    message=(
+                        f"No pinned baseline saved for label '{selected_label}'. "
+                        "Run 'vibebench baseline --set-latest' first."
+                    ),
+                )
+            ],
+            strict=strict,
+            advice=["Pin or import a baseline before running regression gates."],
+        )
+    checks = [
+        BaselineVerificationCheck(
+            name="baseline_file_exists",
+            status="passed",
+            message="Pinned baseline file exists.",
+        )
+    ]
+    try:
+        raw = json.loads(target.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        checks.append(
+            BaselineVerificationCheck(
+                name="json_shape",
+                status="failed",
+                message=f"Could not parse pinned baseline JSON: {exc}",
+            )
+        )
+        return verification_result(
+            label=selected_label,
+            baseline_path=target,
+            source=None,
+            checks=checks,
+            strict=strict,
+            advice=["Recreate or re-import the pinned baseline file."],
+        )
+    try:
+        metadata = BaselineMetadata.model_validate(raw)
+    except ValueError as exc:
+        checks.append(
+            BaselineVerificationCheck(
+                name="json_shape",
+                status="failed",
+                message=f"Pinned baseline metadata is invalid: {exc}",
+            )
+        )
+        return verification_result(
+            label=selected_label,
+            baseline_path=target,
+            source=None,
+            checks=checks,
+            strict=strict,
+            advice=["Recreate or re-import the pinned baseline file."],
+        )
+    checks.append(
+        BaselineVerificationCheck(
+            name="json_shape",
+            status="passed",
+            message="Baseline JSON shape is valid.",
+        )
+    )
+    status = validate_baseline_metadata(root, target, metadata)
+    checks.extend(
+        metadata_verification_checks(
+            root,
+            metadata,
+            target,
+            expected_label=selected_label,
+            live_metrics_available=status.live_metrics_available,
+            require_portable=require_portable,
+            require_live_metrics=require_live_metrics,
+        )
+    )
+    return verification_result(
+        label=selected_label,
+        baseline_path=target,
+        source=metadata.source,
+        metadata=metadata,
+        live_metrics_available=status.live_metrics_available,
+        checks=checks,
+        strict=strict,
+    )
+
+
+def verify_baseline_input(
+    project_root: Path,
+    input_path: Path,
+    *,
+    expected_label: str | None = None,
+    strict: bool = False,
+    require_portable: bool = False,
+    require_live_metrics: bool = False,
+    allow_label_override: bool = False,
+) -> BaselineVerificationResult:
+    """Verify a standalone exported baseline without writing local state."""
+    root = project_root.resolve()
+    target = input_path if input_path.is_absolute() else root / input_path
+    checks: list[BaselineVerificationCheck] = []
+    if not target.exists():
+        checks.append(
+            BaselineVerificationCheck(
+                name="baseline_file_exists",
+                status="failed",
+                message=f"Baseline input file does not exist: {target}",
+            )
+        )
+        return verification_result(
+            label=expected_label,
+            baseline_path=target,
+            source=None,
+            checks=checks,
+            strict=strict,
+            advice=["Provide an existing exported baseline JSON file."],
+        )
+    if not target.is_file():
+        checks.append(
+            BaselineVerificationCheck(
+                name="baseline_file_exists",
+                status="failed",
+                message=f"Baseline input path is not a file: {target}",
+            )
+        )
+        return verification_result(
+            label=expected_label,
+            baseline_path=target,
+            source=None,
+            checks=checks,
+            strict=strict,
+            advice=["Use a baseline JSON file, not a directory."],
+        )
+    checks.append(
+        BaselineVerificationCheck(
+            name="baseline_file_exists",
+            status="passed",
+            message="Baseline input file exists.",
+        )
+    )
+    try:
+        raw = json.loads(target.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        checks.append(
+            BaselineVerificationCheck(
+                name="json_shape",
+                status="failed",
+                message=f"Could not parse baseline JSON: {exc}",
+            )
+        )
+        return verification_result(
+            label=expected_label,
+            baseline_path=target,
+            source=None,
+            checks=checks,
+            strict=strict,
+            advice=["Export a fresh baseline JSON file and retry."],
+        )
+    if not isinstance(raw, dict):
+        checks.append(
+            BaselineVerificationCheck(
+                name="json_shape",
+                status="failed",
+                message="Baseline JSON must be an object.",
+            )
+        )
+        return verification_result(
+            label=expected_label,
+            baseline_path=target,
+            source=None,
+            checks=checks,
+            strict=strict,
+        )
+    if "baseline" in raw and isinstance(raw["baseline"], dict):
+        raw = raw["baseline"]
+    try:
+        metadata = BaselineMetadata.model_validate(raw)
+    except ValueError as exc:
+        checks.append(
+            BaselineVerificationCheck(
+                name="json_shape",
+                status="failed",
+                message=f"Baseline metadata is invalid: {exc}",
+            )
+        )
+        return verification_result(
+            label=expected_label,
+            baseline_path=target,
+            source=None,
+            checks=checks,
+            strict=strict,
+            advice=["Use a baseline exported by this VibeBench version."],
+        )
+    checks.append(
+        BaselineVerificationCheck(
+            name="json_shape",
+            status="passed",
+            message="Baseline JSON shape is valid.",
+        )
+    )
+    label_for_check = None if allow_label_override else expected_label
+    live_metrics_available = live_metrics_exists(root, metadata)
+    checks.extend(
+        metadata_verification_checks(
+            root,
+            metadata,
+            target,
+            expected_label=label_for_check,
+            live_metrics_available=live_metrics_available,
+            require_portable=require_portable,
+            require_live_metrics=require_live_metrics,
+            input_file=True,
+        )
+    )
+    return verification_result(
+        label=expected_label or metadata.label,
+        baseline_path=target,
+        source=metadata.source,
+        metadata=metadata,
+        live_metrics_available=live_metrics_available,
+        checks=checks,
+        strict=strict,
+    )
+
+
+def metadata_verification_checks(
+    project_root: Path,
+    metadata: BaselineMetadata,
+    baseline_path: Path,
+    *,
+    expected_label: str | None,
+    live_metrics_available: bool,
+    require_portable: bool,
+    require_live_metrics: bool,
+    input_file: bool = False,
+) -> list[BaselineVerificationCheck]:
+    """Return checks for parsed baseline metadata."""
+    checks: list[BaselineVerificationCheck] = []
+    if expected_label is not None and metadata.label != expected_label:
+        checks.append(
+            BaselineVerificationCheck(
+                name="label_matches",
+                status="failed",
+                message=(
+                    f"Baseline label {metadata.label!r} does not match "
+                    f"requested label {expected_label!r}."
+                ),
+            )
+        )
+    else:
+        checks.append(
+            BaselineVerificationCheck(
+                name="label_matches",
+                status="passed",
+                message="Baseline label matches the requested label.",
+            )
+        )
+    checks.append(
+        BaselineVerificationCheck(
+            name="run_id_present",
+            status="passed" if metadata.run_id else "failed",
+            message="Baseline run_id is present."
+            if metadata.run_id
+            else "Baseline run_id is missing.",
+        )
+    )
+    unsafe_paths = unsafe_metadata_paths(metadata)
+    checks.append(
+        BaselineVerificationCheck(
+            name="path_safety",
+            status="failed" if unsafe_paths else "passed",
+            message="Unsafe path metadata: " + ", ".join(unsafe_paths)
+            if unsafe_paths
+            else "Baseline path metadata is safe to inspect.",
+        )
+    )
+    checks.append(
+        BaselineVerificationCheck(
+            name="live_metrics_available",
+            status="passed" if live_metrics_available else "warning",
+            message="Live metrics are available."
+            if live_metrics_available
+            else "Live metrics are unavailable; snapshot fallback is required.",
+        )
+    )
+    snapshot = metadata.metrics_snapshot
+    snapshot_ok = snapshot is not None and snapshot.risk_level != ""
+    checks.append(
+        BaselineVerificationCheck(
+            name="metrics_snapshot_available",
+            status="passed" if snapshot_ok else "warning",
+            message="Portable metrics snapshot includes score and risk_level."
+            if snapshot_ok
+            else "Portable metrics snapshot is missing or incomplete.",
+        )
+    )
+    usable = (live_metrics_available or snapshot_ok) and not unsafe_paths
+    checks.append(
+        BaselineVerificationCheck(
+            name="usable_for_regression",
+            status="passed" if usable else "failed",
+            message="Baseline can be used by regression-check."
+            if usable
+            else "Baseline cannot be used by regression-check.",
+        )
+    )
+    if require_portable and not snapshot_ok:
+        checks.append(
+            BaselineVerificationCheck(
+                name="require_portable",
+                status="failed",
+                message="--require-portable needs a valid metrics_snapshot.",
+            )
+        )
+    elif require_portable:
+        checks.append(
+            BaselineVerificationCheck(
+                name="require_portable",
+                status="passed",
+                message="Portable snapshot requirement is satisfied.",
+            )
+        )
+    if require_live_metrics and not live_metrics_available:
+        checks.append(
+            BaselineVerificationCheck(
+                name="require_live_metrics",
+                status="failed",
+                message="--require-live-metrics needs live metrics.json.",
+            )
+        )
+    elif require_live_metrics:
+        checks.append(
+            BaselineVerificationCheck(
+                name="require_live_metrics",
+                status="passed",
+                message="Live metrics requirement is satisfied.",
+            )
+        )
+    return checks
+
+
+def verification_result(
+    *,
+    label: str | None,
+    baseline_path: Path,
+    source: str | None,
+    checks: list[BaselineVerificationCheck],
+    strict: bool,
+    metadata: BaselineMetadata | None = None,
+    live_metrics_available: bool = False,
+    advice: list[str] | None = None,
+) -> BaselineVerificationResult:
+    """Build final verification status and advice."""
+    snapshot_available = metadata.metrics_snapshot is not None if metadata else False
+    portable = snapshot_available
+    usable_for_regression = any(
+        check.name == "usable_for_regression" and check.status == "passed"
+        for check in checks
+    )
+    has_failed = any(check.status == "failed" for check in checks)
+    has_warning = any(check.status == "warning" for check in checks)
+    if strict and has_warning:
+        checks = [
+            *checks,
+            BaselineVerificationCheck(
+                name="strict",
+                status="failed",
+                message="--strict treats baseline verification warnings as failures.",
+            ),
+        ]
+        has_failed = True
+    status: BaselineVerifyStatus = "passed"
+    if has_failed:
+        status = "failed"
+    elif has_warning:
+        status = "warning"
+    final_advice = list(advice or [])
+    if has_failed:
+        final_advice.append(
+            "Fix failed checks before using this baseline for required "
+            "regression gates."
+        )
+    elif has_warning:
+        final_advice.append(
+            "Review warnings; use --strict to make warnings fail in automation."
+        )
+    message = (
+        "Baseline verification passed."
+        if status == "passed"
+        else "Baseline verification completed with warnings."
+        if status == "warning"
+        else "Baseline verification failed."
+    )
+    return BaselineVerificationResult(
+        status=status,
+        label=label or (metadata.label if metadata else None),
+        run_id=metadata.run_id if metadata else None,
+        baseline_path=str(baseline_path),
+        baseline_source=source,
+        live_metrics_available=live_metrics_available,
+        snapshot_available=snapshot_available,
+        portable=portable,
+        usable_for_regression=usable_for_regression and status != "failed",
+        checks=checks,
+        advice=final_advice,
+        message=message,
+    )
+
+
+def live_metrics_exists(project_root: Path, metadata: BaselineMetadata) -> bool:
+    """Return whether metadata points to an available live metrics file."""
+    run_dir = resolve_metadata_path(project_root, metadata.run_dir or metadata.run_path)
+    if not run_dir.exists() and metadata.run_dir is not None:
+        run_dir = resolve_metadata_path(project_root, metadata.run_path)
+    metrics_path = resolve_metadata_path(project_root, metadata.metrics_path)
+    return run_dir.exists() and run_dir.is_dir() and metrics_path.is_file()
+
+
+def unsafe_metadata_paths(metadata: BaselineMetadata) -> list[str]:
+    """Return unsafe relative path fields in portable baseline metadata."""
+    unsafe: list[str] = []
+    for field_name in ["run_path", "run_dir", "metrics_path"]:
+        value = getattr(metadata, field_name)
+        if value is None:
+            continue
+        path = Path(value)
+        if any(part == ".." for part in path.parts):
+            unsafe.append(field_name)
+    return unsafe
+
+
+def baseline_verification_payload(
+    result: BaselineVerificationResult,
+) -> dict[str, object]:
+    """Return JSON-compatible baseline verification output."""
+    return result.model_dump(mode="json")
+
+
+def baseline_verification_json(result: BaselineVerificationResult) -> str:
+    """Render baseline verification JSON."""
+    return json.dumps(baseline_verification_payload(result), indent=2, sort_keys=True)
+
+
+def baseline_verification_markdown(result: BaselineVerificationResult) -> str:
+    """Render baseline verification Markdown."""
+    lines = [
+        "# VibeBench Baseline Verification",
+        "",
+        f"- Status: `{result.status}`",
+        f"- Label: `{result.label or 'none'}`",
+        f"- Run id: `{result.run_id or 'none'}`",
+        f"- Baseline path: `{result.baseline_path}`",
+        f"- Source: `{result.baseline_source or 'none'}`",
+        f"- Live metrics available: `{str(result.live_metrics_available).lower()}`",
+        f"- Snapshot available: `{str(result.snapshot_available).lower()}`",
+        f"- Portable: `{str(result.portable).lower()}`",
+        f"- Usable for regression: `{str(result.usable_for_regression).lower()}`",
+        "",
+        "## Checks",
+        "",
+        "| Check | Status | Message |",
+        "| --- | --- | --- |",
+    ]
+    for check in result.checks:
+        lines.append(
+            "| "
+            f"{markdown_cell(check.name)} | "
+            f"{markdown_cell(check.status)} | "
+            f"{markdown_cell(check.message)} |"
+        )
+    lines.extend(["", "## Advice", ""])
+    if result.advice:
+        for item in result.advice:
+            lines.append(f"- {item}")
+    else:
+        lines.append("No advice.")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def markdown_cell(value: object) -> str:
+    """Escape Markdown table cell content."""
+    if value is None:
+        return ""
+    return str(value).replace("|", "\\|").replace("\n", " ")
+
+
 def export_pinned_baseline(
     project_root: Path,
     *,
@@ -269,27 +804,26 @@ def import_pinned_baseline(
     """Import a portable pinned baseline JSON file."""
     root = project_root.resolve()
     selected_label = normalize_label(label)
-    if not input_path.exists():
-        raise ReportError(f"Baseline import file does not exist: {input_path}")
-    if input_path.is_dir():
-        raise ReportError(f"Baseline import path is a directory: {input_path}")
+    target_input = input_path if input_path.is_absolute() else root / input_path
+    verification = verify_baseline_input(
+        root,
+        target_input,
+        expected_label=selected_label,
+        require_portable=True,
+        allow_label_override=True,
+    )
+    if verification.status == "failed":
+        failed_messages = [
+            check.message for check in verification.checks if check.status == "failed"
+        ]
+        raise ReportError("; ".join(failed_messages) or verification.message)
     try:
-        raw = json.loads(input_path.read_text(encoding="utf-8"))
+        raw = json.loads(target_input.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         raise ReportError(f"Could not parse baseline import file: {exc}") from exc
-    if not isinstance(raw, dict):
-        raise ReportError("Baseline import file must contain a JSON object.")
     if "baseline" in raw and isinstance(raw["baseline"], dict):
         raw = raw["baseline"]
-    try:
-        metadata = BaselineMetadata.model_validate(raw)
-    except ValueError as exc:
-        raise ReportError(f"Baseline import file has invalid metadata: {exc}") from exc
-    if metadata.metrics_snapshot is None:
-        raise ReportError(
-            "Baseline import file must include a portable metrics_snapshot."
-        )
-
+    metadata = BaselineMetadata.model_validate(raw)
     metadata = portable_baseline_metadata(
         metadata,
         label=selected_label,
@@ -305,11 +839,13 @@ def import_pinned_baseline(
     return {
         "status": "imported",
         "label": selected_label,
-        "input": str(input_path),
+        "input": str(target_input),
         "baseline_path": str(target),
         "snapshot_available": status.snapshot_available,
         "live_metrics_available": status.live_metrics_available,
         "portable": status.snapshot_available,
+        "verification_status": verification.status,
+        "verification": baseline_verification_payload(verification),
         "baseline": metadata.model_dump(mode="json"),
         "message": "Portable baseline imported.",
     }

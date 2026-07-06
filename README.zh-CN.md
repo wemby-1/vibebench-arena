@@ -48,7 +48,7 @@ AI coding 正在变得更容易；真正困难的是 review、审计、对比和
 - [采用指南](docs/adoption.md)：适合评估 Codex / vibe-coding / AI 辅助编程工作流的小团队，说明第一周如何安全试点。
 - [Demo guide](docs/demo.md)：用本地命令证明核心流程，不依赖外部服务。
 - 一条命令生成 evidence room：`python3 -m vibebench evidence-room --output-dir PATH --zip`，然后先打开 `index.html`，按需查看 `share-check.md` 里的本地预分享扫描摘要，并用 `review-scorecard.html` 做中立 review checklist；evidence room 也包含 `share-check.json`。也可以运行 `python3 -m vibebench ci`，并可用 `python3 -m vibebench latest --artifact evidence-room-index-html --path-only` 定位。
-- 用 `python3 -m vibebench regression-check` 对比 candidate run 和 baseline；稳定门禁建议先运行 `python3 -m vibebench ci --json`，再用 `python3 -m vibebench baseline --promote-latest --label stable --dry-run --json` 预演，检查通过后运行 `python3 -m vibebench baseline --promote-latest --label stable`。`--set-latest` 是直接/手动固定，`--promote-latest` 是带检查的安全路径；CI 不会自动 promote baseline。需要迁移到另一台机器时，可用 `python3 -m vibebench baseline --export --label stable --output baseline.json` 导出便携 snapshot，再用 `python3 -m vibebench baseline --import baseline.json --label stable` 导入。
+- 用 `python3 -m vibebench regression-check` 对比 candidate run 和 baseline；稳定门禁建议先运行 `python3 -m vibebench ci --json`，再用 `python3 -m vibebench baseline --promote-latest --label stable --dry-run --json` 预演，检查通过后运行 `python3 -m vibebench baseline --promote-latest --label stable`。`--set-latest` 是直接/手动固定，`--promote-latest` 是带检查的安全路径；CI 不会自动 promote baseline。需要迁移到另一台机器时，可用 `python3 -m vibebench baseline --export --label stable --output baseline.json` 导出便携 snapshot，用 `python3 -m vibebench baseline --verify --input baseline.json --require-portable` 验证，再用 `python3 -m vibebench baseline --import baseline.json --label stable` 导入。
 - 对外分享 evidence room、proof packet、static preview 或 zip 前，先运行 `python3 -m vibebench share-check PATH`；机器可读输出用 `python3 -m vibebench share-check PATH --json`。它只是本地预分享辅助，不是安全认证、第三方审计或保证，发布前仍需人工检查 artifacts。
 - 打开 evidence room 里的 `trust-center.html` 或 [docs Trust Center](docs/trust-center.html)，查看 local-first、privacy、reproducibility 和 artifact safety 边界。
 - 打开 evidence room 里的 `security-questionnaire.html` 或 [docs Security Questionnaire](docs/security-questionnaire.html)，查看面向 adopter 的 local-first、artifact sharing、CI uploads、static HTML safety、JSON purity 和 non-claims Q&A；它是项目维护文档，不是第三方认证或审计。
@@ -322,7 +322,9 @@ python -m vibebench ci --json
 python -m vibebench baseline --promote-latest --label stable --dry-run --json
 python -m vibebench baseline --promote-latest --label stable
 python -m vibebench baseline --show --label stable --json
+python -m vibebench baseline --verify --label stable --require-portable --json
 python -m vibebench baseline --export --label stable --output /tmp/vibebench-stable-baseline.json
+python -m vibebench baseline --verify --input /tmp/vibebench-stable-baseline.json --json
 python -m vibebench baseline --import /tmp/vibebench-stable-baseline.json --label stable
 # 然后设置 regression.enabled=true 和 regression.baseline_label=stable
 python -m vibebench ci --json
@@ -413,7 +415,7 @@ compare:
 
 需要临时关闭配置中的 guard 时，使用 `python -m vibebench ci --no-fail-on-regression`。`--skip-compare` 会完全跳过 compare，因此也会关闭 compare 退化失败。
 
-`vibebench baseline --set latest` 会把某次运行保存为 `.vibebench/baseline.json` 中的旧版 compare/gate baseline。用于 regression-check 时，`vibebench baseline --set-latest --label stable` 会直接写入本地固定 baseline；`vibebench baseline --promote-latest --label stable` 会先检查 candidate run、metrics、已有 manifest，以及相对当前 label 的 regression-check，再写入 `.vibebench/baselines/stable.json`。带 `regression.enabled: true` 的配置化 `vibebench ci --json` 会使用它，再考虑自动上一个 run 推断。`--baseline-label`、`--max-score-drop` 和 `--require-baseline` 等 CLI flag 会覆盖配置。promote 后的 pinned baseline 会包含精简 metrics snapshot；`baseline --export --label stable --output PATH` 默认不写入本机绝对路径，`baseline --import PATH --label stable` 可让清理后的 workspace 或类 CI checkout 在原 run 目录缺失时继续使用该 baseline。
+`vibebench baseline --set latest` 会把某次运行保存为 `.vibebench/baseline.json` 中的旧版 compare/gate baseline。用于 regression-check 时，`vibebench baseline --set-latest --label stable` 会直接写入本地固定 baseline；`vibebench baseline --promote-latest --label stable` 会先检查 candidate run、metrics、已有 manifest，以及相对当前 label 的 regression-check，再写入 `.vibebench/baselines/stable.json`。带 `regression.enabled: true` 的配置化 `vibebench ci --json` 会使用它，再考虑自动上一个 run 推断。`--baseline-label`、`--max-score-drop` 和 `--require-baseline` 等 CLI flag 会覆盖配置。promote 后的 pinned baseline 会包含精简 metrics snapshot；`baseline --verify --label stable` 会检查 pinned baseline 是否可用于回归门禁，`baseline --verify --input PATH` 会在不写入生成状态的情况下检查导出的文件，`--require-portable` 要求 snapshot fallback，`--require-live-metrics` 要求原始 run metrics 仍可用。`baseline --export --label stable --output PATH` 默认不写入本机绝对路径，`baseline --import PATH --label stable` 可让清理后的 workspace 或类 CI checkout 在原 run 目录缺失时继续使用该 baseline。verify 不会提交或发布生成的 baseline 状态。
 
 `vibebench clean` 会安全预览旧运行记录的清理计划。默认只是 dry-run，只有显式传入 `--yes` 才会删除。
 
