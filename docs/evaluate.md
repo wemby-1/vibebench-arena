@@ -16,13 +16,14 @@ VibeBench Arena is a Codex-first / vibe-coding quality console for turning AI-as
 3. Run `python3 -m vibebench demo`.
 4. Run `python3 -m vibebench demo --json`.
 5. Run `python3 -m vibebench ci --dry-run --json`.
-6. Run `python3 -m vibebench evidence-room --output-dir PATH --zip` or `python3 -m vibebench ci` to generate a combined proof packet and static site preview for external evaluation; open the package from `index.html`, inspect `share-check.md` if you want the local pre-sharing scan summary, read `trust-center.html` for project-maintained local-first/privacy/reproducibility boundaries, open `security-questionnaire.html` for adopter-facing Q&A about local-first behavior, artifact sharing, CI uploads, static HTML safety, JSON purity, and non-claims, and use `review-scorecard.html` as the neutral checklist. Evidence rooms include `share-check.json` and `share-check.md`. CI writes `evidence-room/` into the run artifacts and GitHub Actions also uploads `vibebench-evidence-room`.
-7. Verify it with `python3 -m vibebench evidence-room --verify PATH`.
-8. Before sharing externally, run `python3 -m vibebench share-check PATH`; use `python3 -m vibebench share-check PATH --json` for machine-readable output. It is a local pre-sharing aid, not a security certification, third-party audit, or guarantee, and artifacts still need manual review before publishing.
-9. Run `python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip` to inspect the proof packet directly; in GitHub Actions, CI shows a proof packet summary card and uploads the same evidence-first packet as `vibebench-proof-packet`.
-10. Run `python3 -m vibebench site-preview --output-dir /tmp/vibebench-site-preview --zip`, then `python3 -m vibebench site-preview --verify /tmp/vibebench-site-preview/site-preview.zip`; CI reuses the same command and uploads `vibebench-site-preview` without enabling GitHub Pages automatically.
-11. Inspect the sample [artifact gallery](artifact-gallery.md).
-12. Inspect the [case study](case-study.md).
+6. Run `python3 -m vibebench regression-check` to compare candidate score and risk against the previous baseline run. Use `python3 -m vibebench regression-check --require-baseline` when missing baseline data should fail, or `python3 -m vibebench ci --regression-check --require-regression-baseline` for optional CI integration. This is a local regression gate, not a benchmark certification.
+7. Run `python3 -m vibebench evidence-room --output-dir PATH --zip` or `python3 -m vibebench ci` to generate a combined proof packet and static site preview for external evaluation; open the package from `index.html`, inspect `share-check.md` if you want the local pre-sharing scan summary, read `trust-center.html` for project-maintained local-first/privacy/reproducibility boundaries, open `security-questionnaire.html` for adopter-facing Q&A about local-first behavior, artifact sharing, CI uploads, static HTML safety, JSON purity, and non-claims, and use `review-scorecard.html` as the neutral checklist. Evidence rooms include `share-check.json` and `share-check.md`. CI writes `evidence-room/` into the run artifacts and GitHub Actions also uploads `vibebench-evidence-room`.
+8. Verify it with `python3 -m vibebench evidence-room --verify PATH`.
+9. Before sharing externally, run `python3 -m vibebench share-check PATH`; use `python3 -m vibebench share-check PATH --json` for machine-readable output. It is a local pre-sharing aid, not a security certification, third-party audit, or guarantee, and artifacts still need manual review before publishing.
+10. Run `python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip` to inspect the proof packet directly; in GitHub Actions, CI shows a proof packet summary card and uploads the same evidence-first packet as `vibebench-proof-packet`.
+11. Run `python3 -m vibebench site-preview --output-dir /tmp/vibebench-site-preview --zip`, then `python3 -m vibebench site-preview --verify /tmp/vibebench-site-preview/site-preview.zip`; CI reuses the same command and uploads `vibebench-site-preview` without enabling GitHub Pages automatically.
+12. Inspect the sample [artifact gallery](artifact-gallery.md).
+13. Inspect the [case study](case-study.md).
 
 ## What to look for
 

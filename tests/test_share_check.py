@@ -39,6 +39,21 @@ def test_share_check_passes_generated_evidence_room_directory(tmp_path: Path) ->
     assert "Status: passed" in result.output
 
 
+def test_share_check_passes_single_markdown_file(tmp_path: Path) -> None:
+    report = tmp_path / "regression-check.md"
+    report.write_text(
+        "# VibeBench Regression Check\n\n"
+        "This is a local quality regression gate, not a benchmark certification.\n",
+        encoding="utf-8",
+    )
+
+    result = run_share_check(report)
+
+    assert result.exit_code == 0
+    assert "Target type: file" in result.output
+    assert "Status: passed" in result.output
+
+
 def test_share_check_passes_generated_evidence_room_zip(tmp_path: Path) -> None:
     room = make_evidence_room(tmp_path)
 

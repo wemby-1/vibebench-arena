@@ -41,6 +41,8 @@ ARTIFACT_ALIASES = {
     "run-index-md": Path("run-index.md"),
     "compare-json": Path("compare.json"),
     "compare-md": Path("compare.md"),
+    "regression-check-json": Path("regression-check.json"),
+    "regression-check-md": Path("regression-check.md"),
     "evidence-room-index-html": Path("evidence-room") / "index.html",
     "evidence-room-review-hub-html": Path("evidence-room") / "review-hub.html",
     "evidence-room-reviewer-guide-md": Path("evidence-room") / "reviewer-guide.md",

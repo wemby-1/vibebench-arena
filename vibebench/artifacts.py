@@ -39,12 +39,17 @@ EVIDENCE_ROOM_ARTIFACT_NAMES = {
     Path("evidence-room") / "evidence-room.md": "evidence-room-md",
     Path("evidence-room") / "evidence-room.zip": "evidence-room-zip",
 }
+ARTIFACT_NAMES = {
+    Path("regression-check.json"): "regression-check-json",
+    Path("regression-check.md"): "regression-check-md",
+    **EVIDENCE_ROOM_ARTIFACT_NAMES,
+}
 
 KNOWN_ARTIFACTS = [*STANDARD_ARTIFACTS, Path(BUNDLE_FILENAME)]
 
 KNOWN_ARTIFACT_SPECS = [
     ArtifactSpec(
-        EVIDENCE_ROOM_ARTIFACT_NAMES.get(relative_path, relative_path.as_posix()),
+        ARTIFACT_NAMES.get(relative_path, relative_path.as_posix()),
         relative_path,
     )
     for relative_path in [*STANDARD_ARTIFACTS, Path(BUNDLE_FILENAME)]

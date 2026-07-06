@@ -150,6 +150,8 @@ def artifacts_section(run_dir: Path) -> str:
         run_dir / "run-index.md",
         run_dir / "compare.json",
         run_dir / "compare.md",
+        run_dir / "regression-check.json",
+        run_dir / "regression-check.md",
         run_dir / "evidence-room" / "index.html",
         run_dir / "evidence-room" / "review-hub.html",
         run_dir / "evidence-room" / "reviewer-guide.md",

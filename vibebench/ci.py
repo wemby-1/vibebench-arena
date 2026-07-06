@@ -36,6 +36,11 @@ from vibebench.package_check import (
 )
 from vibebench.paths import config_dir, config_file
 from vibebench.pr_comment import generate_pr_comment
+from vibebench.regression_check import (
+    REGRESSION_CHECK_JSON,
+    REGRESSION_CHECK_SUMMARY,
+    run_regression_check,
+)
 from vibebench.release_check import (
     RELEASE_CHECK_JSON,
     RELEASE_CHECK_SUMMARY,
@@ -145,6 +150,8 @@ def plan_ci_pipeline(
     skip_release_check: bool = False,
     skip_package_check: bool = False,
     skip_evidence_room: bool = False,
+    regression_check: bool = False,
+    require_regression_baseline: bool = False,
     fail_on_regression: bool = False,
     regression_guard_source: RegressionGuardSource | None = None,
     regression_guard_message: str | None = None,
@@ -207,6 +214,13 @@ def plan_ci_pipeline(
             )
         else:
             steps.append(planned_step(name, f"Would run {name}"))
+        if name == "compare" and regression_check:
+            steps.append(
+                planned_step(
+                    "regression-check",
+                    regression_check_plan_message(require_regression_baseline),
+                )
+            )
     return CiResult(
         run_dir=None,
         steps=steps,
@@ -248,6 +262,13 @@ def skipped_plan_step(
         message=f"Skipped by {flag}",
         duration_seconds=None,
     )
+
+
+def regression_check_plan_message(require_baseline: bool) -> str:
+    """Return dry-run message for the optional regression-check step."""
+    if require_baseline:
+        return "Would run regression-check and require a baseline"
+    return "Would run regression-check; missing baseline would be skipped"
 
 
 def ci_artifact_step_flags(
@@ -494,6 +515,8 @@ def run_ci_pipeline(
     skip_release_check: bool = False,
     skip_package_check: bool = False,
     skip_evidence_room: bool = False,
+    regression_check: bool = False,
+    require_regression_baseline: bool = False,
     emit_annotations: bool = True,
     bundle_include_report_assets: bool = False,
     bundle_strict: bool = False,
@@ -556,6 +579,7 @@ def run_ci_pipeline(
             skip_release_check=skip_release_check,
             skip_package_check=skip_package_check,
             skip_evidence_room=skip_evidence_room,
+            regression_check=regression_check,
         )
         return CiResult(
             run_dir=None,
@@ -674,6 +698,14 @@ def run_ci_pipeline(
     for name, skipped, callback in artifact_steps:
         if skipped:
             steps.append(CiStepResult(name, "skipped", 0, message="skipped by flag"))
+            if name == "compare" and regression_check:
+                steps.append(
+                    run_regression_check_artifact_step(
+                        root,
+                        selected_run_dir,
+                        require_baseline=require_regression_baseline,
+                    )
+                )
             continue
         if name == "compare":
             steps.append(
@@ -683,6 +715,14 @@ def run_ci_pipeline(
                     fail_on_regression=regression_guard.enabled,
                 )
             )
+            if regression_check:
+                steps.append(
+                    run_regression_check_artifact_step(
+                        root,
+                        selected_run_dir,
+                        require_baseline=require_regression_baseline,
+                    )
+                )
             continue
         steps.append(run_artifact_step(name, callback))
 
@@ -718,6 +758,7 @@ def append_unavailable_artifact_steps(
     skip_release_check: bool,
     skip_package_check: bool,
     skip_evidence_room: bool,
+    regression_check: bool = False,
 ) -> None:
     """Append artifact steps when no run directory exists."""
     flags = [
@@ -747,6 +788,15 @@ def append_unavailable_artifact_steps(
             steps.append(
                 CiStepResult(
                     name,
+                    "failed",
+                    1,
+                    message="no run directory available",
+                )
+            )
+        if name == "compare" and regression_check:
+            steps.append(
+                CiStepResult(
+                    "regression-check",
                     "failed",
                     1,
                     message="no run directory available",
@@ -907,6 +957,59 @@ def run_compare_artifact_step(
         0,
         artifact_path=result.json_path,
         message=message,
+        duration_seconds=elapsed_since(started),
+    )
+
+
+def run_regression_check_artifact_step(
+    project_root: Path,
+    run_dir: Path,
+    *,
+    require_baseline: bool,
+) -> CiStepResult:
+    """Generate regression-check artifacts and return CI step status."""
+    started = time.perf_counter()
+    try:
+        result = run_regression_check(
+            project_root,
+            candidate_run=run_dir,
+            require_baseline=require_baseline,
+            json_output=run_dir / REGRESSION_CHECK_JSON,
+            summary_output=run_dir / REGRESSION_CHECK_SUMMARY,
+        )
+    except Exception as exc:
+        return CiStepResult(
+            "regression-check",
+            "failed",
+            1,
+            message=str(exc),
+            duration_seconds=elapsed_since(started),
+        )
+
+    if result.status == "skipped":
+        return CiStepResult(
+            "regression-check",
+            "skipped",
+            0,
+            artifact_path=result.json_path,
+            message=result.message,
+            duration_seconds=elapsed_since(started),
+        )
+    if result.status == "failed":
+        return CiStepResult(
+            "regression-check",
+            "failed",
+            1,
+            artifact_path=result.json_path,
+            message=result.message,
+            duration_seconds=elapsed_since(started),
+        )
+    return CiStepResult(
+        "regression-check",
+        "passed",
+        0,
+        artifact_path=result.json_path,
+        message=result.message,
         duration_seconds=elapsed_since(started),
     )
 

@@ -116,7 +116,7 @@ def run_share_check(
     allow_example_temp_paths: bool = False,
     target_label: str | None = None,
 ) -> ShareCheckResult:
-    """Scan a directory or zip before sharing it externally."""
+    """Scan a directory, zip, or single text artifact before sharing."""
     selected_target = target.resolve()
     if not selected_target.exists():
         raise ShareCheckError(f"Share-check target does not exist: {target}")
@@ -130,10 +130,12 @@ def run_share_check(
         scanned_files = list(scan_zip(selected_target, findings))
     elif selected_target.is_file():
         target_type = "file"
-        raise ShareCheckError("Share-check target must be a directory or zip file.")
+        scanned_files = [scan_file(selected_target)]
     else:
         target_type = "missing"
-        raise ShareCheckError("Share-check target must be a directory or zip file.")
+        raise ShareCheckError(
+            "Share-check target must be a directory, zip file, or text artifact."
+        )
 
     for scanned_file in scanned_files:
         findings.extend(
@@ -154,6 +156,18 @@ def run_share_check(
         checked_files=[item.path for item in scanned_files],
         findings=findings,
     )
+
+
+def scan_file(path: Path) -> ScannedFile:
+    """Collect one text/static artifact file."""
+    if not should_scan_path(path.name):
+        raise ShareCheckError(
+            "Share-check file target must use a supported text/static suffix."
+        )
+    data = path.read_bytes()
+    if is_probably_binary(data):
+        raise ShareCheckError("Share-check file target appears to be binary.")
+    return ScannedFile(path.name, decode_text(data))
 
 
 def scan_directory(root: Path) -> list[ScannedFile]:

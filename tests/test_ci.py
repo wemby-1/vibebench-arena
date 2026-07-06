@@ -446,6 +446,8 @@ def test_ci_command_creates_standard_artifacts(tmp_path: Path) -> None:
     assert run_dir.joinpath("run-index.md").exists()
     assert run_dir.joinpath("compare.json").exists()
     assert run_dir.joinpath("compare.md").exists()
+    assert not run_dir.joinpath("regression-check.json").exists()
+    assert not run_dir.joinpath("regression-check.md").exists()
     assert run_dir.joinpath("evidence-room", "evidence-room.html").exists()
     assert run_dir.joinpath("evidence-room", "evidence-room.json").exists()
     assert run_dir.joinpath("evidence-room", "evidence-room.md").exists()
@@ -1017,6 +1019,177 @@ def test_ci_dry_run_json_outputs_plan_payload(tmp_path: Path) -> None:
         else:
             assert step["artifact"] is None
         assert step["duration_seconds"] is None
+
+
+def test_ci_dry_run_regression_check_json_includes_planned_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--regression-check",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["regression-check"]["status"] == "planned"
+    assert "missing baseline would be skipped" in steps["regression-check"]["message"]
+
+
+def test_ci_dry_run_regression_check_require_baseline_message(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--regression-check",
+            "--require-regression-baseline",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert "require a baseline" in steps["regression-check"]["message"]
+
+
+def test_ci_regression_check_skips_cleanly_without_baseline(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--regression-check", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    assert result.exit_code == 0
+    assert steps["regression-check"]["status"] == "skipped"
+    assert run_dir.joinpath("regression-check.json").exists()
+    assert run_dir.joinpath("regression-check.md").exists()
+    report = json.loads(run_dir.joinpath("regression-check.json").read_text())
+    assert report["status"] == "skipped"
+
+
+def test_ci_regression_check_requires_baseline_when_requested(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--regression-check",
+            "--require-regression-baseline",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert steps["regression-check"]["status"] == "failed"
+    assert run_dir.joinpath("regression-check.json").exists()
+
+
+def test_ci_regression_check_writes_reports_when_baseline_exists(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+    write_run(tmp_path, "20260706_110000", metrics=sample_metrics(score=100))
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--regression-check", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("regression-check.json").read_text())
+    assert result.exit_code == 0
+    assert steps["regression-check"]["status"] == "passed"
+    assert report["status"] == "passed"
+    assert run_dir.joinpath("regression-check.md").exists()
+    assert "VibeBench CI" not in result.output
+
+    artifacts = runner.invoke(
+        app,
+        ["artifacts", "--project-root", str(tmp_path), "--json"],
+    )
+    artifact_map = {
+        item["name"]: item for item in json.loads(artifacts.output)["artifacts"]
+    }
+    assert artifacts.exit_code == 0
+    assert artifact_map["regression-check-json"]["available"] is True
+    assert artifact_map["regression-check-md"]["available"] is True
+
+    latest_json = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "regression-check-json",
+            "--path-only",
+        ],
+    )
+    latest_md = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "regression-check-md",
+            "--path-only",
+        ],
+    )
+    assert latest_json.exit_code == 0
+    assert latest_json.output.strip().endswith("regression-check.json")
+    assert latest_md.exit_code == 0
+    assert latest_md.output.strip().endswith("regression-check.md")
+
+    manifest = check_manifest(tmp_path, run_dir)
+    manifest_payload = json.loads(run_dir.joinpath("manifest.json").read_text())
+    manifest_artifacts = {
+        item["name"]: item for item in manifest_payload["artifacts"]
+    }
+    assert manifest.passed is True
+    assert manifest_artifacts["regression-check-json"]["available"] is True
+    assert manifest_artifacts["regression-check-md"]["available"] is True
+
+    names = zip_names(run_dir / "vibebench-bundle.zip")
+    assert "regression-check.json" in names
+    assert "regression-check.md" in names
 
 
 

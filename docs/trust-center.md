@@ -48,6 +48,8 @@ Generated shareable artifacts should prefer relative paths or placeholders. Revi
 
 Evidence rooms include `share-check.json` and `share-check.md`; reviewers should open `index.html` first, then inspect `share-check.md` if they want the local pre-sharing scan summary. Before sharing an evidence room, proof packet, static preview, or zip externally, run `python3 -m vibebench share-check PATH`; use `python3 -m vibebench share-check PATH --json` for machine-readable output. The scanner is a local pre-sharing aid, not a security certification, not a third-party audit, and not a guarantee.
 
+For run quality regression checks, use `python3 -m vibebench regression-check` or opt CI in with `python3 -m vibebench ci --regression-check`. Require baseline data with `python3 -m vibebench regression-check --require-baseline` or `python3 -m vibebench ci --regression-check --require-regression-baseline`. Regression-check is a local quality gate, not a benchmark certification, and depends on the metrics available in run artifacts.
+
 ## GitHub Actions artifact behavior
 
 GitHub Actions can upload downloadable proof packet, static site preview, and evidence-room artifacts. This does not publish a package, create a release, enable GitHub Pages, or change repository settings.
@@ -76,6 +78,8 @@ python3 -m vibebench site-preview --verify /tmp/vibebench-evidence-room/site-pre
 python3 -m vibebench site-check
 python3 -m vibebench share-check PATH
 python3 -m vibebench share-check PATH --json
+python3 -m vibebench regression-check
+python3 -m vibebench ci --regression-check
 python3 -m vibebench ci --dry-run --json
 python3 -m vibebench release-check
 python3 -m vibebench doctor --strict

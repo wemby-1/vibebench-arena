@@ -16,6 +16,8 @@ For a single evidence package for external evaluation, run `python3 -m vibebench
 
 Before sharing any generated evidence room, proof packet, static preview, or zip externally, run `python3 -m vibebench share-check PATH`; use `python3 -m vibebench share-check PATH --json` for machine-readable output. The scanner is a local pre-sharing aid, not a security certification, third-party audit, or guarantee, and artifacts still need manual review before publishing.
 
+Before sharing or releasing after multiple runs exist, run `python3 -m vibebench regression-check`; use `python3 -m vibebench ci --regression-check` for optional CI artifacts, and add `--require-baseline` or `--require-regression-baseline` when missing baseline data should fail. This compares candidate score and risk against a baseline run and is a local gate, not a benchmark certification.
+
 ## Why This Could Matter Commercially
 
 AI coding shifts more work into agent-assisted sessions. That creates demand for infrastructure that helps teams answer practical questions:

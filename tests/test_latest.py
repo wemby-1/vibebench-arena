@@ -546,3 +546,43 @@ def test_latest_artifact_supports_share_check_aliases(tmp_path: Path) -> None:
     assert json_result.output.strip().endswith("evidence-room/share-check.json")
     assert md_result.exit_code == 0
     assert md_result.output.strip().endswith("evidence-room/share-check.md")
+
+
+def test_latest_artifact_supports_regression_check_aliases(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260701_110000")
+    run_dir.joinpath("regression-check.json").write_text(
+        '{"status":"passed"}\n',
+        encoding="utf-8",
+    )
+    run_dir.joinpath("regression-check.md").write_text(
+        "# VibeBench Regression Check\n",
+        encoding="utf-8",
+    )
+
+    json_result = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "regression-check-json",
+            "--path-only",
+        ],
+    )
+    md_result = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "regression-check-md",
+            "--path-only",
+        ],
+    )
+
+    assert json_result.exit_code == 0
+    assert json_result.output.strip().endswith("regression-check.json")
+    assert md_result.exit_code == 0
+    assert md_result.output.strip().endswith("regression-check.md")

@@ -69,6 +69,8 @@ def test_default_latest_run_artifact_listing(tmp_path: Path) -> None:
     assert "run-index.md" in artifacts
     assert "compare.json" in artifacts
     assert "compare.md" in artifacts
+    assert "regression-check-json" in artifacts
+    assert "regression-check-md" in artifacts
     assert "evidence-room-security-questionnaire-html" in artifacts
     assert "evidence-room-security-questionnaire-md" in artifacts
     assert "evidence-room-share-check-json" in artifacts
@@ -188,6 +190,14 @@ def test_available_and_missing_artifacts_are_detected(tmp_path: Path) -> None:
         "not a third-party audit; not a guarantee\n",
         encoding="utf-8",
     )
+    run_dir.joinpath("regression-check.json").write_text(
+        '{"status":"passed"}\n',
+        encoding="utf-8",
+    )
+    run_dir.joinpath("regression-check.md").write_text(
+        "# VibeBench Regression Check\n",
+        encoding="utf-8",
+    )
 
     result = runner.invoke(
         app,
@@ -202,6 +212,8 @@ def test_available_and_missing_artifacts_are_detected(tmp_path: Path) -> None:
     assert artifacts["evidence-room-security-questionnaire-md"]["available"] is True
     assert artifacts["evidence-room-share-check-json"]["available"] is True
     assert artifacts["evidence-room-share-check-md"]["available"] is True
+    assert artifacts["regression-check-json"]["available"] is True
+    assert artifacts["regression-check-md"]["available"] is True
 
 
 def test_only_available_hides_missing_artifacts(tmp_path: Path) -> None:

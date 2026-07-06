@@ -28,7 +28,8 @@ Use this guide if you are a developer, maintainer, AI coding team, evaluator, or
 5. Open `PATH/vibebench-evidence-room/index.html` as the downloaded package start page, then inspect `share-check.md` if you want the local pre-sharing scan summary and use `review-scorecard.html` or `review-scorecard.md` as the neutral checklist. Evidence rooms include `share-check.json` and `share-check.md`.
    Open `trust-center.html` for project-maintained local-first, privacy, reproducibility, and artifact-safety boundaries. Open `security-questionnaire.html` for adopter-facing Q&A about local-first behavior, artifact sharing, CI uploads, static HTML safety, JSON purity, and non-claims. The questionnaire is project-maintained documentation, not a third-party certification or audit.
 6. Before sharing externally, run `python3 -m vibebench share-check PATH/vibebench-evidence-room` or `python3 -m vibebench share-check PATH --json` for automation. It is a local pre-sharing aid, not a security certification, third-party audit, or guarantee.
-7. Preview the local CI plan:
+7. Before sharing or releasing after multiple runs exist, run `python3 -m vibebench regression-check`. Use `python3 -m vibebench regression-check --require-baseline`, or opt CI in with `python3 -m vibebench ci --regression-check --require-regression-baseline`, when missing baseline data should fail. This is a local regression gate, not a benchmark certification.
+8. Preview the local CI plan:
 
    ```bash
    python3 -m vibebench ci --dry-run --json
@@ -63,6 +64,8 @@ python3 -m vibebench evidence-room --verify PATH
 For an evidence room, start with `index.html`, then open `share-check.md` for the local pre-sharing scan summary, `review-scorecard.html` for the neutral checklist, `trust-center.html` for safety/privacy/reproducibility boundaries, `security-questionnaire.html` for adopter-facing local-first, artifact, CI, sharing, and non-claim Q&A, `evidence-room.html` for the human overview, and `evidence-room.json` for the machine-readable summary. Share-check is a local aid, not a security certification, third-party audit, or guarantee. The scorecard is a reviewer aid, not a third-party endorsement. The Trust Center and Security Questionnaire are project-maintained documentation, not third-party certification or audit materials. The nested `proof-packet/` directory shows the proof report, and `site-preview/` shows the static public docs bundle.
 
 Before forwarding generated packages, run `python3 -m vibebench share-check PATH` and still manually review the artifacts before publishing.
+
+Before treating a new run as non-regressing, run `python3 -m vibebench regression-check`; optional CI usage writes `regression-check.json` and `regression-check.md` with `python3 -m vibebench ci --regression-check`. The check depends on run metrics and is not a benchmark certification.
 
 ## What this does not claim
 

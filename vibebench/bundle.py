@@ -40,6 +40,8 @@ STANDARD_ARTIFACTS = [
     Path("run-index.md"),
     Path("compare.json"),
     Path("compare.md"),
+    Path("regression-check.json"),
+    Path("regression-check.md"),
     Path("evidence-room") / "index.html",
     Path("evidence-room") / "review-hub.html",
     Path("evidence-room") / "reviewer-guide.md",

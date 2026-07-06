@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added `python3 -m vibebench regression-check` for local candidate-vs-baseline score/risk regression gating, with JSON and Markdown outputs plus optional `ci --regression-check` artifacts.
+
 - Added evidence-room `share-check.json` and `share-check.md` artifacts, including verification, artifact aliases, latest lookup, manifest visibility, bundle inclusion, and GitHub summary visibility.
 
 - Added `python3 -m vibebench share-check PATH` for local pre-sharing scans of evidence rooms, proof packets, static previews, directories, and zip packages, with JSON output and conservative unsafe marker detection.

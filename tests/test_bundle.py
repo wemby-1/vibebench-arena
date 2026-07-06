@@ -79,6 +79,14 @@ def write_run(
         (run_dir / "manifest.json").write_text("{}\n", encoding="utf-8")
         (run_dir / "compare.json").write_text("{}\n", encoding="utf-8")
         (run_dir / "compare.md").write_text("compare\n", encoding="utf-8")
+        (run_dir / "regression-check.json").write_text(
+            '{"status":"passed"}\n',
+            encoding="utf-8",
+        )
+        (run_dir / "regression-check.md").write_text(
+            "# VibeBench Regression Check\n",
+            encoding="utf-8",
+        )
         evidence_dir = run_dir / "evidence-room"
         evidence_dir.mkdir()
         (evidence_dir / "index.html").write_text(
@@ -173,6 +181,8 @@ def test_latest_run_bundle_is_created(tmp_path: Path) -> None:
     assert "manifest.json" in names
     assert "compare.json" in names
     assert "compare.md" in names
+    assert "regression-check.json" in names
+    assert "regression-check.md" in names
     assert "evidence-room/index.html" in names
     assert "evidence-room/review-hub.html" in names
     assert "evidence-room/reviewer-guide.md" in names

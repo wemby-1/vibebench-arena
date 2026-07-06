@@ -116,6 +116,11 @@ from vibebench.publish_check import (
     write_publish_check_json,
     write_publish_check_summary,
 )
+from vibebench.regression_check import (
+    RegressionCheckResult,
+    regression_check_json,
+    run_regression_check,
+)
 from vibebench.release_audit import (
     ReleaseAuditResult,
     ReleaseAuditVerifyResult,
@@ -1764,6 +1769,83 @@ def evidence_room_command(
             console.print(f"Evidence room JSON: {selected_json_output}")
 
 
+@app.command("regression-check")
+def regression_check_command(
+    project_root: ProjectRootOption = Path("."),
+    runs_dir: Annotated[
+        Path | None,
+        typer.Option("--runs-dir", help="Custom runs directory to compare."),
+    ] = None,
+    baseline_run: Annotated[
+        Path | None,
+        typer.Option("--baseline-run", help="Explicit baseline run directory."),
+    ] = None,
+    candidate_run: Annotated[
+        Path | None,
+        typer.Option("--candidate-run", help="Explicit candidate run directory."),
+    ] = None,
+    max_score_drop: Annotated[
+        float,
+        typer.Option("--max-score-drop", help="Allowed score drop."),
+    ] = 0.0,
+    max_risk_increase: Annotated[
+        float,
+        typer.Option("--max-risk-increase", help="Allowed risk-level increase."),
+    ] = 0.0,
+    require_baseline: Annotated[
+        bool,
+        typer.Option("--require-baseline", help="Fail if no baseline is available."),
+    ] = False,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print regression-check result as pure JSON."),
+    ] = False,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write regression-check JSON to PATH."),
+    ] = None,
+    summary_output: Annotated[
+        Path | None,
+        typer.Option("--summary-output", help="Write regression-check Markdown."),
+    ] = None,
+) -> None:
+    """Compare candidate run quality against a baseline run."""
+    root = project_root.resolve()
+    selected_runs_dir = resolve_optional_output_path(root, runs_dir)
+    selected_baseline_run = resolve_optional_output_path(root, baseline_run)
+    selected_candidate_run = resolve_optional_output_path(root, candidate_run)
+    selected_json_output = resolve_optional_output_path(root, json_output)
+    selected_summary_output = resolve_optional_output_path(root, summary_output)
+    try:
+        result = run_regression_check(
+            root,
+            runs_dir=selected_runs_dir,
+            baseline_run=selected_baseline_run,
+            candidate_run=selected_candidate_run,
+            max_score_drop=max_score_drop,
+            max_risk_increase=max_risk_increase,
+            require_baseline=require_baseline,
+            json_output=selected_json_output,
+            summary_output=selected_summary_output,
+        )
+    except ReportError as exc:
+        target_console = err_console if as_json else console
+        target_console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if as_json:
+        print(regression_check_json(result))
+    else:
+        render_regression_check_summary(result)
+        if result.json_path is not None:
+            console.print(f"Regression-check JSON: {result.json_path}")
+        if result.summary_path is not None:
+            console.print(f"Regression-check Markdown: {result.summary_path}")
+
+    if result.status == "failed":
+        raise typer.Exit(code=1)
+
+
 @app.command("share-check")
 def share_check_command(
     target: Annotated[
@@ -2189,6 +2271,20 @@ def ci_command(
             help="Skip evidence-room artifact generation.",
         ),
     ] = False,
+    regression_check: Annotated[
+        bool,
+        typer.Option(
+            "--regression-check",
+            help="Run the optional candidate-vs-baseline regression gate.",
+        ),
+    ] = False,
+    require_regression_baseline: Annotated[
+        bool,
+        typer.Option(
+            "--require-regression-baseline",
+            help="Fail regression-check when no baseline run exists.",
+        ),
+    ] = False,
     fail_on_regression: Annotated[
         bool | None,
         typer.Option(
@@ -2332,6 +2428,8 @@ def ci_command(
                 skip_release_check=skip_release_check,
                 skip_package_check=skip_package_check,
                 skip_evidence_room=skip_evidence_room,
+                regression_check=regression_check,
+                require_regression_baseline=require_regression_baseline,
                 fail_on_regression=regression_guard.enabled,
                 regression_guard_source=regression_guard.source,
                 regression_guard_message=regression_guard.message,
@@ -2365,6 +2463,8 @@ def ci_command(
                 skip_release_check=skip_release_check,
                 skip_package_check=skip_package_check,
                 skip_evidence_room=skip_evidence_room,
+                regression_check=regression_check,
+                require_regression_baseline=require_regression_baseline,
                 emit_annotations=not as_json,
                 bundle_include_report_assets=bundle_include_report_assets,
                 bundle_strict=bundle_strict,
@@ -3756,6 +3856,48 @@ def render_evidence_room_verification(result: dict[str, object]) -> None:
         message = str(item.get("message", ""))
         style = "green" if status == "passed" else "red"
         console.print(f"- [{style}]{status}[/]: {name} - {message}")
+
+
+def render_regression_check_summary(result: RegressionCheckResult) -> None:
+    """Render a compact regression-check summary."""
+    status_style = {
+        "passed": "green",
+        "failed": "red",
+        "skipped": "yellow",
+    }.get(result.status, "white")
+    console.print()
+    console.print("[bold]VibeBench Regression Check[/]")
+    console.print(f"Status: [{status_style}]{result.status}[/]")
+    console.print(f"Baseline run: {result.baseline_run_id or 'none'}")
+    console.print(f"Candidate run: {result.candidate_run_id or 'none'}")
+    console.print(f"Message: {result.message}")
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Metric")
+    table.add_column("Baseline")
+    table.add_column("Candidate")
+    table.add_column("Delta")
+    table.add_row(
+        "score",
+        str(result.baseline_metrics.get("score", "")),
+        str(result.candidate_metrics.get("score", "")),
+        str(result.deltas.get("score_delta", "")),
+    )
+    table.add_row(
+        "risk",
+        str(result.baseline_metrics.get("risk_level", "")),
+        str(result.candidate_metrics.get("risk_level", "")),
+        str(result.deltas.get("risk_delta", "")),
+    )
+    console.print(table)
+
+    for item in result.failures:
+        console.print(f"[red]{item.code}[/]: {item.message}")
+    for item in result.warnings:
+        console.print(f"[yellow]{item.code}[/]: {item.message}")
+    console.print(
+        "Regression-check is a local quality gate, not a benchmark certification."
+    )
 
 
 def render_share_check_summary(result: ShareCheckResult) -> None:

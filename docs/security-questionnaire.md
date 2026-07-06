@@ -50,6 +50,10 @@ No. Public/static HTML outputs should avoid absolute local paths and should use 
 
 Yes. Commands with `--json` are expected to write pure JSON stdout so automation can parse output without scraping human text.
 
+### How can teams check whether a run regressed?
+
+Run `python3 -m vibebench regression-check` to compare the candidate run against the previous baseline run using available score and risk metrics. Use `python3 -m vibebench regression-check --require-baseline` when missing baseline data should fail. Optional CI usage is `python3 -m vibebench ci --regression-check` or `python3 -m vibebench ci --regression-check --require-regression-baseline`. This is a local quality regression gate, not a benchmark certification.
+
 ### How can a reviewer reproduce the Evidence-room locally?
 
 Run:
