@@ -245,3 +245,110 @@ def test_regression_check_invalid_run_path_fails_clearly(tmp_path: Path) -> None
 
     assert result.exit_code == 1
     assert "Run directory does not exist" in result.output
+
+
+
+def pin_baseline(project_root: Path, run_id: str, label: str = "stable") -> None:
+    result = runner.invoke(
+        app,
+        [
+            "baseline",
+            "--project-root",
+            str(project_root),
+            "--set-run",
+            run_id,
+            "--label",
+            label,
+        ],
+    )
+    assert result.exit_code == 0
+
+
+def test_regression_check_uses_pinned_baseline_label(tmp_path: Path) -> None:
+    pinned = write_run(tmp_path, "20260706_100000", score=100, risk="low")
+    write_run(tmp_path, "20260706_110000", score=80, risk="low")
+    write_run(tmp_path, "20260706_120000", score=80, risk="low")
+    pin_baseline(tmp_path, pinned.name)
+
+    result = run_regression_check(tmp_path, "--baseline-label", "stable", "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 1
+    assert payload["baseline_source"] == "pinned"
+    assert payload["baseline_label"] == "stable"
+    assert payload["baseline_run_id"] == pinned.name
+    assert payload["failures"][0]["code"] == "score_regression"
+
+
+def test_regression_check_explicit_baseline_takes_precedence_over_pinned(
+    tmp_path: Path,
+) -> None:
+    pinned = write_run(tmp_path, "20260706_100000", score=100, risk="low")
+    explicit = write_run(tmp_path, "20260706_110000", score=80, risk="low")
+    write_run(tmp_path, "20260706_120000", score=80, risk="low")
+    pin_baseline(tmp_path, pinned.name)
+
+    result = run_regression_check(
+        tmp_path,
+        "--baseline-label",
+        "stable",
+        "--baseline-run",
+        str(explicit),
+        "--json",
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["baseline_source"] == "explicit"
+    assert payload["baseline_label"] is None
+    assert payload["baseline_run_id"] == explicit.name
+
+
+def test_regression_check_missing_pinned_baseline_skips_without_auto_fallback(
+    tmp_path: Path,
+) -> None:
+    write_run(tmp_path, "20260706_100000", score=100)
+    candidate = write_run(tmp_path, "20260706_110000", score=100)
+
+    result = run_regression_check(tmp_path, "--baseline-label", "stable", "--json")
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["status"] == "skipped"
+    assert payload["baseline_source"] == "missing"
+    assert payload["candidate_run_id"] == candidate.name
+
+
+def test_regression_check_missing_pinned_baseline_fails_when_required(
+    tmp_path: Path,
+) -> None:
+    write_run(tmp_path, "20260706_110000", score=100)
+
+    result = run_regression_check(
+        tmp_path,
+        "--baseline-label",
+        "stable",
+        "--require-baseline",
+        "--json",
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert payload["baseline_source"] == "missing"
+    assert payload["failures"][0]["code"] == "missing_baseline"
+
+
+def test_regression_check_stale_pinned_baseline_fails_clearly(
+    tmp_path: Path,
+) -> None:
+    pinned = write_run(tmp_path, "20260706_100000", score=100)
+    write_run(tmp_path, "20260706_110000", score=100)
+    pin_baseline(tmp_path, pinned.name)
+    pinned.joinpath("metrics.json").unlink()
+    pinned.rmdir()
+
+    result = run_regression_check(tmp_path, "--baseline-label", "stable")
+
+    assert result.exit_code == 1
+    assert "Baseline run directory is missing" in result.output

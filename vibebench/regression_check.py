@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from vibebench.baseline import show_pinned_baseline
 from vibebench.compare import (
     RISK_ORDER,
     find_valid_runs,
@@ -57,6 +58,8 @@ class RegressionCheckResult:
     failures: list[RegressionIssue]
     warnings: list[RegressionIssue]
     message: str
+    baseline_source: str = "auto"
+    baseline_label: str | None = None
     json_path: Path | None = None
     summary_path: Path | None = None
 
@@ -67,6 +70,7 @@ def run_regression_check(
     runs_dir: Path | None = None,
     baseline_run: Path | None = None,
     candidate_run: Path | None = None,
+    baseline_label: str | None = None,
     max_score_drop: float = 0.0,
     max_risk_increase: float = 0.0,
     require_baseline: bool = False,
@@ -94,17 +98,50 @@ def run_regression_check(
         )
         return write_regression_outputs(result, json_output, summary_output)
 
-    baseline = select_baseline(root, runs_dir, candidate, baseline_run)
+    baseline_source = "auto"
+    selected_baseline_label = None
+    if baseline_run is not None:
+        baseline = select_baseline(root, runs_dir, candidate, baseline_run)
+        baseline_source = "explicit"
+    elif baseline_label is not None:
+        selected_baseline_label = baseline_label
+        pinned = show_pinned_baseline(root, label=baseline_label)
+        if pinned.metadata is None:
+            result = missing_baseline_result(
+                thresholds,
+                message=pinned.message,
+                failed=require_baseline,
+                candidate_run=candidate,
+                baseline_source="missing",
+                baseline_label=baseline_label,
+            )
+            return write_regression_outputs(result, json_output, summary_output)
+        if not pinned.is_valid or pinned.run_dir is None:
+            raise ReportError(pinned.message)
+        baseline = pinned.run_dir
+        baseline_source = "pinned"
+        selected_baseline_label = pinned.metadata.label
+    else:
+        baseline = select_baseline(root, runs_dir, candidate, baseline_run)
+
     if baseline is None:
         result = missing_baseline_result(
             thresholds,
             message="No previous baseline run exists for regression comparison.",
             failed=require_baseline,
             candidate_run=candidate,
+            baseline_source="missing" if require_baseline else "auto",
+            baseline_label=selected_baseline_label,
         )
         return write_regression_outputs(result, json_output, summary_output)
 
-    result = evaluate_runs(baseline, candidate, thresholds)
+    result = evaluate_runs(
+        baseline,
+        candidate,
+        thresholds,
+        baseline_source=baseline_source,
+        baseline_label=selected_baseline_label,
+    )
     return write_regression_outputs(result, json_output, summary_output)
 
 
@@ -148,6 +185,8 @@ def missing_baseline_result(
     message: str,
     failed: bool,
     candidate_run: Path | None = None,
+    baseline_source: str = "auto",
+    baseline_label: str | None = None,
 ) -> RegressionCheckResult:
     """Return a skipped or failed no-baseline result."""
     status: RegressionStatus = "failed" if failed else "skipped"
@@ -175,6 +214,8 @@ def missing_baseline_result(
         else [],
         warnings=[],
         message=message,
+        baseline_source=baseline_source,
+        baseline_label=baseline_label,
     )
 
 
@@ -182,6 +223,9 @@ def evaluate_runs(
     baseline: Path,
     candidate: Path,
     thresholds: RegressionThresholds,
+    *,
+    baseline_source: str = "auto",
+    baseline_label: str | None = None,
 ) -> RegressionCheckResult:
     """Evaluate candidate metrics against baseline metrics."""
     base = load_run_snapshot(baseline)
@@ -249,6 +293,8 @@ def evaluate_runs(
         failures=failures,
         warnings=warnings,
         message=message,
+        baseline_source=baseline_source,
+        baseline_label=baseline_label,
     )
 
 
@@ -334,6 +380,8 @@ def write_regression_outputs(
         failures=result.failures,
         warnings=result.warnings,
         message=result.message,
+        baseline_source=result.baseline_source,
+        baseline_label=result.baseline_label,
         json_path=json_path,
         summary_path=summary_path,
     )
@@ -351,6 +399,8 @@ def regression_check_payload(result: RegressionCheckResult) -> dict[str, object]
         ),
         "baseline_run_id": result.baseline_run_id,
         "candidate_run_id": result.candidate_run_id,
+        "baseline_source": result.baseline_source,
+        "baseline_label": result.baseline_label,
         "thresholds": {
             "max_score_drop": result.thresholds.max_score_drop,
             "max_risk_increase": result.thresholds.max_risk_increase,
@@ -389,6 +439,8 @@ def regression_check_markdown(result: RegressionCheckResult) -> str:
         "",
         f"- Status: `{result.status}`",
         f"- Baseline run: `{result.baseline_run_id or 'none'}`",
+        f"- Baseline source: `{result.baseline_source}`",
+        f"- Baseline label: `{result.baseline_label or 'none'}`",
         f"- Candidate run: `{result.candidate_run_id or 'none'}`",
         f"- Message: {result.message}",
         "",

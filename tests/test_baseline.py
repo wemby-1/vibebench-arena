@@ -227,3 +227,153 @@ def test_default_compare_behavior_still_uses_latest_two_runs(tmp_path: Path) -> 
 
     assert result.base_run == base
     assert result.current_run == current
+
+
+
+def test_pinned_baseline_set_latest_writes_labeled_metadata(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260628_120000", metrics_payload(score=90))
+    latest = write_run(tmp_path, "20260628_130000", metrics_payload(score=100))
+
+    result = runner.invoke(
+        app,
+        [
+            "baseline",
+            "--project-root",
+            str(tmp_path),
+            "--set-latest",
+            "--label",
+            "stable",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    baseline_path = tmp_path / ".vibebench" / "baselines" / "stable.json"
+    stored = json.loads(baseline_path.read_text(encoding="utf-8"))
+    assert result.exit_code == 0
+    assert payload["status"] == "valid"
+    assert stored["schema_version"] == "1.0"
+    assert stored["label"] == "stable"
+    assert stored["run_id"] == latest.name
+    assert stored["run_dir"] == latest.name
+    assert stored["source"] == "set-latest"
+    assert stored["score"] == 100
+
+
+def test_pinned_baseline_set_run_accepts_id_and_path(tmp_path: Path) -> None:
+    selected = write_run(tmp_path, "20260628_120000", metrics_payload(score=88))
+    write_run(tmp_path, "20260628_130000", metrics_payload(score=100))
+
+    by_id = runner.invoke(
+        app,
+        [
+            "baseline",
+            "--project-root",
+            str(tmp_path),
+            "--set-run",
+            selected.name,
+            "--label",
+            "by-id",
+        ],
+    )
+    by_path = runner.invoke(
+        app,
+        [
+            "baseline",
+            "--project-root",
+            str(tmp_path),
+            "--set-run",
+            str(selected),
+            "--label",
+            "by-path",
+            "--json",
+        ],
+    )
+
+    assert by_id.exit_code == 0
+    assert by_path.exit_code == 0
+    assert json.loads(by_path.output)["baseline"]["run_id"] == selected.name
+
+
+def test_pinned_baseline_show_human_and_json(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260628_120000", metrics_payload(score=91))
+    runner.invoke(
+        app,
+        ["baseline", "--project-root", str(tmp_path), "--set-run", run_dir.name],
+    )
+
+    human = runner.invoke(app, ["baseline", "--project-root", str(tmp_path), "--show"])
+    as_json = runner.invoke(
+        app,
+        ["baseline", "--project-root", str(tmp_path), "--show", "--json"],
+    )
+
+    payload = json.loads(as_json.output)
+    assert human.exit_code == 0
+    assert "VibeBench baseline" in human.output
+    assert "default" in human.output
+    assert as_json.exit_code == 0
+    assert payload["status"] == "valid"
+    assert payload["label"] == "default"
+    assert "VibeBench baseline" not in as_json.output
+
+
+def test_pinned_baseline_clear_removes_labeled_file(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260628_120000")
+    runner.invoke(
+        app,
+        [
+            "baseline",
+            "--project-root",
+            str(tmp_path),
+            "--set-run",
+            run_dir.name,
+            "--label",
+            "stable",
+        ],
+    )
+
+    result = runner.invoke(
+        app,
+        ["baseline", "--project-root", str(tmp_path), "--clear", "--label", "stable"],
+    )
+
+    assert result.exit_code == 0
+    assert "Cleared pinned baseline" in result.output
+    assert not (tmp_path / ".vibebench" / "baselines" / "stable.json").exists()
+
+
+def test_pinned_baseline_list_and_json_output(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260628_120000")
+    output = tmp_path / "baseline.json"
+    runner.invoke(
+        app,
+        [
+            "baseline",
+            "--project-root",
+            str(tmp_path),
+            "--set-run",
+            run_dir.name,
+            "--label",
+            "stable",
+        ],
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "baseline",
+            "--project-root",
+            str(tmp_path),
+            "--list",
+            "--json-output",
+            str(output),
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    written = json.loads(output.read_text(encoding="utf-8"))
+    assert result.exit_code == 0
+    assert payload["baselines"][0]["label"] == "stable"
+    assert written["baselines"][0]["label"] == "stable"

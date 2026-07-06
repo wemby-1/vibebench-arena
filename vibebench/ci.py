@@ -152,6 +152,7 @@ def plan_ci_pipeline(
     skip_evidence_room: bool = False,
     regression_check: bool = False,
     require_regression_baseline: bool = False,
+    baseline_label: str | None = None,
     fail_on_regression: bool = False,
     regression_guard_source: RegressionGuardSource | None = None,
     regression_guard_message: str | None = None,
@@ -218,7 +219,10 @@ def plan_ci_pipeline(
             steps.append(
                 planned_step(
                     "regression-check",
-                    regression_check_plan_message(require_regression_baseline),
+                    regression_check_plan_message(
+                        require_regression_baseline,
+                        baseline_label=baseline_label,
+                    ),
                 )
             )
     return CiResult(
@@ -264,11 +268,18 @@ def skipped_plan_step(
     )
 
 
-def regression_check_plan_message(require_baseline: bool) -> str:
+def regression_check_plan_message(
+    require_baseline: bool,
+    *,
+    baseline_label: str | None = None,
+) -> str:
     """Return dry-run message for the optional regression-check step."""
+    label_text = (
+        f" using pinned baseline label {baseline_label!r}" if baseline_label else ""
+    )
     if require_baseline:
-        return "Would run regression-check and require a baseline"
-    return "Would run regression-check; missing baseline would be skipped"
+        return f"Would run regression-check{label_text} and require a baseline"
+    return f"Would run regression-check{label_text}; missing baseline would be skipped"
 
 
 def ci_artifact_step_flags(
@@ -517,6 +528,7 @@ def run_ci_pipeline(
     skip_evidence_room: bool = False,
     regression_check: bool = False,
     require_regression_baseline: bool = False,
+    baseline_label: str | None = None,
     emit_annotations: bool = True,
     bundle_include_report_assets: bool = False,
     bundle_strict: bool = False,
@@ -704,6 +716,7 @@ def run_ci_pipeline(
                         root,
                         selected_run_dir,
                         require_baseline=require_regression_baseline,
+                        baseline_label=baseline_label,
                     )
                 )
             continue
@@ -721,6 +734,7 @@ def run_ci_pipeline(
                         root,
                         selected_run_dir,
                         require_baseline=require_regression_baseline,
+                        baseline_label=baseline_label,
                     )
                 )
             continue
@@ -966,6 +980,7 @@ def run_regression_check_artifact_step(
     run_dir: Path,
     *,
     require_baseline: bool,
+    baseline_label: str | None = None,
 ) -> CiStepResult:
     """Generate regression-check artifacts and return CI step status."""
     started = time.perf_counter()
@@ -974,6 +989,7 @@ def run_regression_check_artifact_step(
             project_root,
             candidate_run=run_dir,
             require_baseline=require_baseline,
+            baseline_label=baseline_label,
             json_output=run_dir / REGRESSION_CHECK_JSON,
             summary_output=run_dir / REGRESSION_CHECK_SUMMARY,
         )

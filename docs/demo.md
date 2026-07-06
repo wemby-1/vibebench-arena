@@ -66,6 +66,8 @@ python3 -m vibebench evidence-room --verify PATH
 python3 -m vibebench regression-check
 python3 -m vibebench regression-check --require-baseline
 python3 -m vibebench ci --regression-check
+python3 -m vibebench baseline --set-latest --label stable
+python3 -m vibebench ci --regression-check --baseline-label stable --json
 python3 -m vibebench ci --regression-check --require-regression-baseline
 python3 -m vibebench share-check PATH
 python3 -m vibebench share-check PATH --json
@@ -96,7 +98,7 @@ If `/tmp/vibebench-release-audit-demo` already exists, remove it first or choose
 - `config --show --json` prints machine-readable project and policy configuration.
 - `ci --dry-run` prints the planned check, gate, artifact, manifest, release-check, bundle, and summary steps.
 - `evidence-room` writes a local-first, evidence-first package with `index.html`, Trust Center files, Security Questionnaire files, reviewer scorecard files, `share-check.json`, `share-check.md`, top-level HTML, Markdown, JSON, nested proof packet, nested static site preview, and optional `evidence-room.zip` for external review. Open `index.html` first, then inspect `share-check.md` if you want the local pre-sharing scan summary. Normal `ci` also writes `evidence-room/` into the run directory unless `--skip-evidence-room` is used. GitHub Actions uploads it as `vibebench-evidence-room`; it does not enable GitHub Pages automatically or claim traction, funding, customers, revenue, or adoption. The Security Questionnaire covers adopter-facing local-first behavior, artifact sharing, CI uploads, static HTML safety, JSON purity, and non-claims; it is project-maintained documentation, not a third-party certification or audit.
-- `regression-check` compares candidate run quality against a baseline run using the available score and risk metrics. It is a local regression gate, not a benchmark certification; `ci --regression-check` writes optional `regression-check.json` and `regression-check.md` artifacts.
+- `regression-check` compares candidate run quality against a baseline run using the available score and risk metrics. Automatic previous-run inference is convenient for experiments; pinned baselines from `baseline --set-latest --label stable` are better for stable gates. It is a local regression gate, not a benchmark certification; `ci --regression-check` writes optional `regression-check.json` and `regression-check.md` artifacts.
 - `share-check` scans an evidence room, proof packet, static preview, directory, or zip before external sharing. It is a local pre-sharing aid, not a security certification, third-party audit, or guarantee; manually review artifacts before publishing.
 - `proof` prints a concise Codex-first / vibe-coding, local-first, evidence-first proof packet summary; run `python3 -m vibebench proof --output-dir PATH --zip` to write `proof.md`, `proof.json`, self-contained `proof.html`, `proof-manifest.json`, and `proof.zip`. GitHub Actions shows a proof packet summary card and uploads the same packet as `vibebench-proof-packet`.
 - `site-check` verifies the static GitHub Pages entry for required proof/evaluation links and obvious unsafe publishing markers; `site-preview` writes the reusable preview bundle, optional `site-preview.zip`, `site-check.json`, and `site-preview.md`. In CI, GitHub Actions reuses `site-preview` and uploads `vibebench-site-preview`. It does not enable GitHub Pages automatically.

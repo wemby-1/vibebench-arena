@@ -1194,6 +1194,49 @@ def test_ci_regression_check_writes_reports_when_baseline_exists(
 
 
 
+def test_ci_regression_check_uses_pinned_baseline_label(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+    baseline = write_run(tmp_path, "20260706_110000", metrics=sample_metrics(score=100))
+    pin = runner.invoke(
+        app,
+        [
+            "baseline",
+            "--project-root",
+            str(tmp_path),
+            "--set-run",
+            baseline.name,
+            "--label",
+            "stable",
+        ],
+    )
+    assert pin.exit_code == 0
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--regression-check",
+            "--baseline-label",
+            "stable",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("regression-check.json").read_text())
+    assert result.exit_code == 0
+    assert steps["regression-check"]["status"] == "passed"
+    assert report["baseline_source"] == "pinned"
+    assert report["baseline_label"] == "stable"
+    assert run_dir.joinpath("regression-check.md").exists()
+
+
+
 def test_ci_dry_run_fail_on_regression_mentions_compare_guard(
     tmp_path: Path,
 ) -> None:

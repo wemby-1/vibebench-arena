@@ -272,3 +272,23 @@ def test_json_output_is_valid_and_stable(tmp_path: Path) -> None:
     missing = next(item for item in artifacts if item["name"] == "pr-comment.md")
     assert missing["available"] is False
     assert missing["size_bytes"] is None
+
+
+
+def test_pinned_baseline_state_is_not_listed_as_run_artifact(tmp_path: Path) -> None:
+    write_run(tmp_path)
+    baseline_dir = tmp_path / ".vibebench" / "baselines"
+    baseline_dir.mkdir(parents=True)
+    baseline_dir.joinpath("stable.json").write_text('{"run_id":"demo"}\n')
+
+    result = runner.invoke(
+        app,
+        ["artifacts", "--project-root", str(tmp_path), "--json"],
+    )
+
+    payload = json.loads(result.output)
+    artifact_names = {item["name"] for item in payload["artifacts"]}
+    artifact_paths = {item["path"] for item in payload["artifacts"]}
+    assert result.exit_code == 0
+    assert "stable.json" not in artifact_names
+    assert all(".vibebench/baselines" not in path for path in artifact_paths)

@@ -19,7 +19,17 @@ from vibebench.artifacts import (
     inventory_json,
 )
 from vibebench.badge import DEFAULT_BADGE_LABEL, BadgeResult, generate_badge
-from vibebench.baseline import BaselineStatus, set_baseline, show_baseline
+from vibebench.baseline import (
+    BaselineStatus,
+    baseline_list_payload,
+    baseline_status_payload,
+    clear_pinned_baseline,
+    list_pinned_baselines,
+    set_baseline,
+    set_pinned_baseline,
+    show_baseline,
+    show_pinned_baseline,
+)
 from vibebench.bundle import BundleResult, create_bundle
 from vibebench.ci import (
     CiRegressionGuardPolicy,
@@ -1784,6 +1794,10 @@ def regression_check_command(
         Path | None,
         typer.Option("--candidate-run", help="Explicit candidate run directory."),
     ] = None,
+    baseline_label: Annotated[
+        str | None,
+        typer.Option("--baseline-label", help="Pinned baseline label to use."),
+    ] = None,
     max_score_drop: Annotated[
         float,
         typer.Option("--max-score-drop", help="Allowed score drop."),
@@ -1822,6 +1836,7 @@ def regression_check_command(
             runs_dir=selected_runs_dir,
             baseline_run=selected_baseline_run,
             candidate_run=selected_candidate_run,
+            baseline_label=baseline_label,
             max_score_drop=max_score_drop,
             max_risk_increase=max_risk_increase,
             require_baseline=require_baseline,
@@ -2285,6 +2300,10 @@ def ci_command(
             help="Fail regression-check when no baseline run exists.",
         ),
     ] = False,
+    baseline_label: Annotated[
+        str | None,
+        typer.Option("--baseline-label", help="Pinned regression baseline label."),
+    ] = None,
     fail_on_regression: Annotated[
         bool | None,
         typer.Option(
@@ -2430,6 +2449,7 @@ def ci_command(
                 skip_evidence_room=skip_evidence_room,
                 regression_check=regression_check,
                 require_regression_baseline=require_regression_baseline,
+                baseline_label=baseline_label,
                 fail_on_regression=regression_guard.enabled,
                 regression_guard_source=regression_guard.source,
                 regression_guard_message=regression_guard.message,
@@ -2465,6 +2485,7 @@ def ci_command(
                 skip_evidence_room=skip_evidence_room,
                 regression_check=regression_check,
                 require_regression_baseline=require_regression_baseline,
+                baseline_label=baseline_label,
                 emit_annotations=not as_json,
                 bundle_include_report_assets=bundle_include_report_assets,
                 bundle_strict=bundle_strict,
@@ -3340,32 +3361,136 @@ def gate(
 @app.command()
 def baseline(
     project_root: ProjectRootOption = Path("."),
-    set_run: Annotated[
+    legacy_set_run: Annotated[
         str | None,
         typer.Option(
             "--set",
-            help="Save baseline to 'latest' or a specific run id.",
+            help="Save legacy baseline to 'latest' or a specific run id.",
         ),
     ] = None,
+    set_latest: Annotated[
+        bool,
+        typer.Option("--set-latest", help="Pin the latest run as a labeled baseline."),
+    ] = False,
+    set_run: Annotated[
+        str | None,
+        typer.Option("--set-run", help="Pin a specific run id or path."),
+    ] = None,
+    show: Annotated[
+        bool,
+        typer.Option("--show", help="Show a labeled pinned baseline."),
+    ] = False,
+    clear: Annotated[
+        bool,
+        typer.Option("--clear", help="Clear a labeled pinned baseline."),
+    ] = False,
+    list_baselines: Annotated[
+        bool,
+        typer.Option("--list", help="List labeled pinned baselines."),
+    ] = False,
+    label: Annotated[
+        str,
+        typer.Option("--label", help="Pinned baseline label."),
+    ] = "default",
     runs_dir: Annotated[
         Path | None,
         typer.Option("--runs-dir", help="Directory containing VibeBench runs."),
     ] = None,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print baseline status as pure JSON."),
+    ] = False,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write baseline JSON to PATH."),
+    ] = None,
 ) -> None:
-    """Show or set the project baseline run."""
+    """Show, set, list, or clear baseline run metadata."""
     root = project_root.resolve()
+    selected_json_output = resolve_optional_output_path(root, json_output)
+    pinned_action_requested = any(
+        [
+            set_latest,
+            set_run is not None,
+            show,
+            clear,
+            list_baselines,
+            as_json,
+            json_output,
+        ]
+    ) or label != "default"
+    action_count = sum(
+        [
+            bool(legacy_set_run is not None),
+            set_latest,
+            bool(set_run is not None),
+            clear,
+            list_baselines,
+        ]
+    )
+    if action_count > 1:
+        console.print("[red]Choose only one baseline action.[/]")
+        raise typer.Exit(code=1)
+
     try:
-        result = (
-            set_baseline(root, set_run, runs_dir=runs_dir)
-            if set_run is not None
-            else show_baseline(root)
-        )
+        list_result = None
+        if legacy_set_run is not None and not pinned_action_requested:
+            result = set_baseline(root, legacy_set_run, runs_dir=runs_dir)
+            payload = baseline_status_payload(result)
+        elif list_baselines:
+            list_result = list_pinned_baselines(root)
+            payload = baseline_list_payload(list_result)
+            result = None
+        elif set_latest:
+            result = set_pinned_baseline(
+                root,
+                "latest",
+                label=label,
+                runs_dir=runs_dir,
+                source="set-latest",
+            )
+            payload = baseline_status_payload(result)
+        elif set_run is not None:
+            result = set_pinned_baseline(
+                root,
+                set_run,
+                label=label,
+                runs_dir=runs_dir,
+                source="set-run",
+            )
+            payload = baseline_status_payload(result)
+        elif clear:
+            result = clear_pinned_baseline(root, label=label)
+            payload = baseline_status_payload(result)
+        elif pinned_action_requested:
+            result = show_pinned_baseline(root, label=label)
+            payload = baseline_status_payload(result)
+        else:
+            result = show_baseline(root)
+            payload = baseline_status_payload(result)
     except ReportError as exc:
-        console.print(f"[red]{exc}[/]")
+        target_console = err_console if as_json else console
+        target_console.print(f"[red]{exc}[/]")
         raise typer.Exit(code=1) from exc
 
-    render_baseline_summary(result)
-    if result.metadata is not None and not result.is_valid:
+    if selected_json_output is not None:
+        selected_json_output.write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+    if as_json:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    elif list_result is not None:
+        render_baseline_list_summary(list_result)
+        if selected_json_output is not None:
+            console.print(f"Baseline JSON: {selected_json_output}")
+    else:
+        render_baseline_summary(result)
+        if selected_json_output is not None:
+            console.print(f"Baseline JSON: {selected_json_output}")
+
+    if result is not None and result.metadata is not None and not result.is_valid:
         raise typer.Exit(code=1)
 
 
@@ -3869,6 +3994,8 @@ def render_regression_check_summary(result: RegressionCheckResult) -> None:
     console.print("[bold]VibeBench Regression Check[/]")
     console.print(f"Status: [{status_style}]{result.status}[/]")
     console.print(f"Baseline run: {result.baseline_run_id or 'none'}")
+    console.print(f"Baseline source: {result.baseline_source}")
+    console.print(f"Baseline label: {result.baseline_label or 'none'}")
     console.print(f"Candidate run: {result.candidate_run_id or 'none'}")
     console.print(f"Message: {result.message}")
 
@@ -4546,6 +4673,8 @@ def render_baseline_summary(result: BaselineStatus) -> None:
     table.add_column("Field")
     table.add_column("Value")
     metadata = result.metadata
+    table.add_row("Label", metadata.label)
+    table.add_row("Source", metadata.source)
     table.add_row("Run", metadata.run_id)
     table.add_row("Run path", metadata.run_path)
     table.add_row("Metrics", metadata.metrics_path)
@@ -4554,7 +4683,35 @@ def render_baseline_summary(result: BaselineStatus) -> None:
     table.add_row("Overall status", metadata.status)
     table.add_row("Score", str(metadata.score))
     table.add_row("Risk", metadata.risk_level)
+    table.add_row("Pinned at", metadata.pinned_at or "")
     table.add_row("Saved at", metadata.saved_at)
+    console.print(table)
+
+
+def render_baseline_list_summary(results: list[BaselineStatus]) -> None:
+    """Render labeled pinned baselines."""
+    console.print()
+    console.print("[bold]VibeBench pinned baselines[/]")
+    if not results:
+        console.print("No pinned baselines saved.")
+        return
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Label")
+    table.add_column("Run")
+    table.add_column("Status")
+    table.add_column("Score")
+    table.add_column("Risk")
+    table.add_column("Message")
+    for result in results:
+        metadata = result.metadata
+        table.add_row(
+            metadata.label if metadata else result.baseline_path.stem,
+            metadata.run_id if metadata else "",
+            "valid" if result.is_valid else "stale" if metadata else "missing",
+            str(metadata.score) if metadata else "",
+            metadata.risk_level if metadata else "",
+            result.message,
+        )
     console.print(table)
 
 

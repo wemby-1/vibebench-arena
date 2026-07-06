@@ -220,3 +220,4 @@ __marimo__/
 .vibebench/runs/
 
 .vibebench/baseline.json
+.vibebench/baselines/
