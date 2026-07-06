@@ -4,7 +4,7 @@ VibeBench Arena is a Codex-first / vibe-coding quality console for local-first A
 
 For the GitHub Pages-ready site entry and product overview, open the [site entry](index.html) and [showcase page](showcase.html).
 
-For external reviewers, start with the [review hub](review-hub.html) and [reviewer guide](reviewer-guide.md).
+For external reviewers, start with the [review hub](review-hub.html), [reviewer guide](reviewer-guide.md), and [Trust Center](trust-center.html).
 
 For a skim-friendly map of the concrete outputs, see the [artifact gallery](artifact-gallery.md).
 
@@ -89,7 +89,7 @@ If `/tmp/vibebench-release-audit-demo` already exists, remove it first or choose
 - `config --path` prints the expected `.vibebench/config.yaml` path.
 - `config --show --json` prints machine-readable project and policy configuration.
 - `ci --dry-run` prints the planned check, gate, artifact, manifest, release-check, bundle, and summary steps.
-- `evidence-room` writes a local-first, evidence-first package with `index.html`, reviewer scorecard files, top-level HTML, Markdown, JSON, nested proof packet, nested static site preview, and optional `evidence-room.zip` for external review. Normal `ci` also writes `evidence-room/` into the run directory unless `--skip-evidence-room` is used. GitHub Actions uploads it as `vibebench-evidence-room`; it does not enable GitHub Pages automatically or claim traction, funding, customers, revenue, or adoption.
+- `evidence-room` writes a local-first, evidence-first package with `index.html`, Trust Center files, reviewer scorecard files, top-level HTML, Markdown, JSON, nested proof packet, nested static site preview, and optional `evidence-room.zip` for external review. Normal `ci` also writes `evidence-room/` into the run directory unless `--skip-evidence-room` is used. GitHub Actions uploads it as `vibebench-evidence-room`; it does not enable GitHub Pages automatically or claim traction, funding, customers, revenue, or adoption. The Trust Center is project-maintained documentation, not a third-party certification.
 - `proof` prints a concise Codex-first / vibe-coding, local-first, evidence-first proof packet summary; run `python3 -m vibebench proof --output-dir PATH --zip` to write `proof.md`, `proof.json`, self-contained `proof.html`, `proof-manifest.json`, and `proof.zip`. GitHub Actions shows a proof packet summary card and uploads the same packet as `vibebench-proof-packet`.
 - `site-check` verifies the static GitHub Pages entry for required proof/evaluation links and obvious unsafe publishing markers; `site-preview` writes the reusable preview bundle, optional `site-preview.zip`, `site-check.json`, and `site-preview.md`. In CI, GitHub Actions reuses `site-preview` and uploads `vibebench-site-preview`. It does not enable GitHub Pages automatically.
 - `ci` runs the local pipeline and writes a timestamped run directory.

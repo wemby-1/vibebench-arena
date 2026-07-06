@@ -23,12 +23,16 @@ REVIEW_SCORECARD_HTML = "review-scorecard.html"
 REVIEW_SCORECARD_MARKDOWN = "review-scorecard.md"
 REVIEW_SCORECARD_JSON = "review-scorecard.json"
 REVIEW_SCORECARD_VERSION = "vibebench.review-scorecard.v1"
+TRUST_CENTER_HTML = "trust-center.html"
+TRUST_CENTER_MARKDOWN = "trust-center.md"
 PROOF_DIR = "proof-packet"
 SITE_PREVIEW_DIR = "site-preview"
 TOP_LEVEL_FILES = (
     LANDING_HTML,
     REVIEW_HUB_HTML,
     REVIEWER_GUIDE_MD,
+    TRUST_CENTER_HTML,
+    TRUST_CENTER_MARKDOWN,
     REVIEW_SCORECARD_HTML,
     REVIEW_SCORECARD_MARKDOWN,
     REVIEW_SCORECARD_JSON,
@@ -77,8 +81,17 @@ EXTRA_BANNED_MARKERS = (
     "fake investor",
     "guaranteed funding",
     "guaranteed stars",
+    "guaranteed secure",
     "market leader",
     "best in the world",
+    "soc 2 certified",
+    "iso 27001 certified",
+    "audited by",
+    "independently audited",
+    "enterprise certified",
+    "millions of users",
+    "revenue",
+    "unicorn",
 )
 FORBIDDEN_ZIP_PARTS = {".git", "__pycache__", ".pytest_cache", ".ruff_cache"}
 FORBIDDEN_ZIP_PREFIXES = (
@@ -208,6 +221,7 @@ def write_evidence_room(
         encoding="utf-8",
     )
     write_review_files(site_root, output_dir)
+    write_trust_center_files(site_root, output_dir)
 
     written = {
         "output_dir": "PATH",
@@ -233,6 +247,25 @@ def write_review_files(site_root: Path, output_dir: Path) -> None:
     reviewer_guide = read_required_site_file(site_root, REVIEWER_GUIDE_MD)
     output_dir.joinpath(REVIEWER_GUIDE_MD).write_text(
         reviewer_guide,
+        encoding="utf-8",
+    )
+
+
+def write_trust_center_files(site_root: Path, output_dir: Path) -> None:
+    """Copy package-safe Trust Center files."""
+    trust_html = read_required_site_file(site_root, TRUST_CENTER_HTML)
+    output_dir.joinpath(TRUST_CENTER_HTML).write_text(
+        trust_html,
+        encoding="utf-8",
+    )
+
+    trust_markdown = read_required_site_file(site_root, TRUST_CENTER_MARKDOWN)
+    trust_markdown = trust_markdown.replace(
+        "/tmp/vibebench-evidence-room",
+        "PATH",
+    )
+    output_dir.joinpath(TRUST_CENTER_MARKDOWN).write_text(
+        trust_markdown,
         encoding="utf-8",
     )
 
@@ -304,6 +337,8 @@ def evidence_room_markdown(payload: dict[str, Any]) -> str:
         "- `index.html`",
         "- `review-hub.html`",
         "- `reviewer-guide.md`",
+        "- `trust-center.html`",
+        "- `trust-center.md`",
         "- `review-scorecard.html`",
         "- `review-scorecard.md`",
         "- `review-scorecard.json`",
@@ -356,6 +391,8 @@ def evidence_room_html(payload: dict[str, Any]) -> str:
         "index.html",
         "review-hub.html",
         "reviewer-guide.md",
+        "trust-center.html",
+        "trust-center.md",
         "review-scorecard.html",
         "review-scorecard.md",
         "review-scorecard.json",
@@ -428,6 +465,7 @@ def evidence_room_landing_html(payload: dict[str, Any]) -> str:
         ("Evidence summary", "evidence-room.html"),
         ("Public review flow", "review-hub.html"),
         ("3-minute review path", "reviewer-guide.md"),
+        ("Trust Center", "trust-center.html"),
         ("Reviewer scorecard", "review-scorecard.html"),
         ("Proof details", "proof-packet/proof.html"),
         ("Static site preview", "site-preview/index.html"),
@@ -460,6 +498,8 @@ def evidence_room_landing_html(payload: dict[str, Any]) -> str:
                     "evidence-room.html summary",
                     "review-hub.html public review flow",
                     "reviewer-guide.md 3-minute review path",
+                    "trust-center.html project-maintained safety documentation",
+                    "trust-center.md Markdown trust notes",
                     "review-scorecard.html neutral checklist",
                     "review-scorecard.md Markdown checklist",
                     "review-scorecard.json machine-readable checklist",
@@ -470,6 +510,20 @@ def evidence_room_landing_html(payload: dict[str, Any]) -> str:
                 ],
             ),
             html_link_table_section("Open first", rows),
+            html_list_section(
+                "Trust Center",
+                [
+                    (
+                        "Use trust-center.html or trust-center.md for "
+                        "project-maintained safety, privacy, reproducibility, "
+                        "and artifact-boundary notes."
+                    ),
+                    (
+                        "The Trust Center is not a third-party audit or "
+                        "compliance certification."
+                    ),
+                ],
+            ),
             html_list_section(
                 "Reviewer scorecard",
                 [

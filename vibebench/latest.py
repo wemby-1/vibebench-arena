@@ -44,6 +44,8 @@ ARTIFACT_ALIASES = {
     "evidence-room-index-html": Path("evidence-room") / "index.html",
     "evidence-room-review-hub-html": Path("evidence-room") / "review-hub.html",
     "evidence-room-reviewer-guide-md": Path("evidence-room") / "reviewer-guide.md",
+    "evidence-room-trust-center-html": Path("evidence-room") / "trust-center.html",
+    "evidence-room-trust-center-md": Path("evidence-room") / "trust-center.md",
     "evidence-room-scorecard-html": Path("evidence-room")
     / "review-scorecard.html",
     "evidence-room-scorecard-md": Path("evidence-room") / "review-scorecard.md",

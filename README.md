@@ -40,6 +40,7 @@ See the [architecture](docs/architecture.md), [artifact gallery](docs/artifact-g
 ## Evaluate Quickly
 
 - [Review in 3 minutes](docs/review-hub.html): a public review hub and [reviewer guide](docs/reviewer-guide.md) for external evaluators inspecting proof, site preview, and evidence-room artifacts.
+- [Trust Center](docs/trust-center.html): project-maintained local-first, privacy, reproducibility, and artifact-safety boundaries; not a third-party certification.
 - [Evaluate in 5 minutes](docs/evaluate.md): a compact path for developers, teams, maintainers, and observers to verify the local-first, evidence-first workflow.
 - [Pages entry](docs/index.html): the GitHub Pages-ready public start page; see [Pages setup](docs/pages.md) for manual setup.
 - [Product showcase](docs/showcase.html): a GitHub Pages-ready Codex-first quality console overview of the CLI, CI proof packet, artifacts, and self-contained `proof.html`.
@@ -115,6 +116,7 @@ If you care about better AI coding review, audit tooling, and artifacts, starrin
 - Run `python3 -m vibebench demo --json` or `python3 -m vibebench demo --copy-to /tmp/vibebench-demo` to script or copy the sample evidence pack.
 - Run `python3 -m vibebench ci --dry-run` to see the planned quality pipeline.
 - Run `python3 -m vibebench evidence-room --output-dir PATH --zip` to create a local evidence room combining the proof packet and static site preview, then verify it with `python3 -m vibebench evidence-room --verify PATH`. GitHub Actions uploads the same evidence-first package as `vibebench-evidence-room`.
+- Open the evidence-room `trust-center.html` or [docs Trust Center](docs/trust-center.html) for local-first, privacy, reproducibility, and artifact-safety boundaries.
 - Run `python3 -m vibebench proof --output-dir /tmp/vibebench-proof --zip` to generate a shareable proof packet with self-contained, evidence-first `proof.html`, then run `python3 -m vibebench proof --verify /tmp/vibebench-proof/proof.zip` to verify it. GitHub Actions also shows a proof packet summary card and uploads the same packet as `vibebench-proof-packet`.
 - Run `python3 -m vibebench ci` to generate local run artifacts, including `evidence-room/`; use `python3 -m vibebench ci --skip-evidence-room` when you only want the rest of the pipeline.
 - Run `python3 -m vibebench latest --all-paths` to inspect the newest outputs.

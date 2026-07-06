@@ -151,6 +151,7 @@ GitHub Pages is not enabled automatically.
 <a href="index.html">Site entry</a>
 <a href="showcase.html">Product page</a>
 <a href="reviewer-guide.md">Reviewer guide</a>
+<a href="trust-center.html">Trust Center</a>
 <a href="evaluate.md">Evaluate</a>
 <a href="adoption.md">Adopt</a>
 <a href="pages.md">Pages</a>
@@ -180,6 +181,57 @@ Download `vibebench-evidence-room`.
 Verify with `python3 -m vibebench proof --verify PATH`.
 Verify with `python3 -m vibebench site-preview --verify PATH`.
 Verify with `python3 -m vibebench evidence-room --verify PATH`.
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    docs.joinpath("trust-center.html").write_text(
+        """
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>VibeBench Arena Trust Center</title></head>
+<body>
+<h1>VibeBench Arena Trust Center</h1>
+<p>Local-first Evidence-room Proof packet Static site preview Reviewer scorecard.</p>
+<p>JSON output purity. Security and privacy boundaries.</p>
+<p>This is project-maintained documentation, not a third-party audit.</p>
+<a href="index.html">Site entry</a>
+<a href="review-hub.html">Review hub</a>
+<a href="reviewer-guide.md">Reviewer guide</a>
+<a href="pages.md">Pages</a>
+<a href="../SECURITY.md">Security policy</a>
+<a href="../README.md">README</a>
+<code>python3 -m vibebench evidence-room --verify PATH</code>
+<code>python3 -m vibebench ci --dry-run --json</code>
+</body>
+</html>
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    docs.joinpath("trust-center.md").write_text(
+        """
+# VibeBench Arena Trust Center
+
+Local-first operation.
+Evidence-room package.
+Proof packet.
+Static site preview.
+Reviewer scorecard.
+JSON output purity.
+Security and privacy boundaries.
+This is project-maintained documentation, not a third-party audit.
+
+```bash
+python3 -m vibebench evidence-room --output-dir /tmp/vibebench-evidence-room --zip
+python3 -m vibebench evidence-room --verify /tmp/vibebench-evidence-room
+python3 -m vibebench proof --verify /tmp/vibebench-evidence-room/proof-packet
+python3 -m vibebench site-preview --verify /tmp/vibebench-evidence-room/site-preview
+python3 -m vibebench site-check
+python3 -m vibebench ci --dry-run --json
+python3 -m vibebench release-check
+python3 -m vibebench doctor --strict
+```
 """.strip()
         + "\n",
         encoding="utf-8",
@@ -2089,6 +2141,8 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
     assert evidence_dir.joinpath("index.html").exists()
     assert evidence_dir.joinpath("review-hub.html").exists()
     assert evidence_dir.joinpath("reviewer-guide.md").exists()
+    assert evidence_dir.joinpath("trust-center.html").exists()
+    assert evidence_dir.joinpath("trust-center.md").exists()
     assert evidence_dir.joinpath("review-scorecard.html").exists()
     assert evidence_dir.joinpath("review-scorecard.md").exists()
     assert evidence_dir.joinpath("review-scorecard.json").exists()
@@ -2111,6 +2165,8 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
         "evidence-room-index-html",
         "evidence-room-review-hub-html",
         "evidence-room-reviewer-guide-md",
+        "evidence-room-trust-center-html",
+        "evidence-room-trust-center-md",
         "evidence-room-scorecard-html",
         "evidence-room-scorecard-md",
         "evidence-room-scorecard-json",
@@ -2126,6 +2182,8 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
         ("evidence-room-index-html", "evidence-room/index.html"),
         ("evidence-room-review-hub-html", "evidence-room/review-hub.html"),
         ("evidence-room-reviewer-guide-md", "evidence-room/reviewer-guide.md"),
+        ("evidence-room-trust-center-html", "evidence-room/trust-center.html"),
+        ("evidence-room-trust-center-md", "evidence-room/trust-center.md"),
         ("evidence-room-scorecard-html", "evidence-room/review-scorecard.html"),
         ("evidence-room-scorecard-md", "evidence-room/review-scorecard.md"),
         ("evidence-room-scorecard-json", "evidence-room/review-scorecard.json"),
@@ -2158,6 +2216,8 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
     assert manifest_artifacts["evidence-room-index-html"]["available"] is True
     assert manifest_artifacts["evidence-room-review-hub-html"]["available"] is True
     assert manifest_artifacts["evidence-room-reviewer-guide-md"]["available"] is True
+    assert manifest_artifacts["evidence-room-trust-center-html"]["available"] is True
+    assert manifest_artifacts["evidence-room-trust-center-md"]["available"] is True
     assert manifest_artifacts["evidence-room-scorecard-html"]["available"] is True
     assert manifest_artifacts["evidence-room-scorecard-md"]["available"] is True
     assert manifest_artifacts["evidence-room-scorecard-json"]["available"] is True
@@ -2168,6 +2228,8 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
     assert "evidence-room/index.html" in names
     assert "evidence-room/review-hub.html" in names
     assert "evidence-room/reviewer-guide.md" in names
+    assert "evidence-room/trust-center.html" in names
+    assert "evidence-room/trust-center.md" in names
     assert "evidence-room/review-scorecard.html" in names
     assert "evidence-room/review-scorecard.md" in names
     assert "evidence-room/review-scorecard.json" in names

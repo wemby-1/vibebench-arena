@@ -40,12 +40,14 @@ AI coding 正在变得更容易；真正困难的是 review、审计、对比和
 ## 快速判断
 
 - [3 分钟外部 review](docs/review-hub.html)：公开 review hub 和 [reviewer guide](docs/reviewer-guide.md)，帮助外部评估者检查 proof、site preview 和 evidence-room artifacts。
+- [Trust Center](docs/trust-center.html)：项目维护的 local-first、privacy、reproducibility 和 artifact safety 边界说明；不是第三方认证。
 - [5 分钟评估路径](docs/evaluate.md)：给开发者、团队、维护者和观察者一个紧凑路径，用来验证本地优先、证据优先、可审计、可复现的工作流。
 - [Pages entry](docs/index.html)：GitHub Pages-ready 的公开入口；手动设置见 [Pages setup](docs/pages.md)。
 - [Product showcase](docs/showcase.html)：一个 GitHub Pages-ready 的概览页，串起 CLI、CI 证据包、artifacts 和自包含 `proof.html`。
 - [采用指南](docs/adoption.md)：适合评估 Codex / vibe-coding / AI 辅助编程工作流的小团队，说明第一周如何安全试点。
 - [Demo guide](docs/demo.md)：用本地命令证明核心流程，不依赖外部服务。
 - 一条命令生成 evidence room：`python3 -m vibebench evidence-room --output-dir PATH --zip`，然后打开 `index.html`，并用 `review-scorecard.html` 做中立 review checklist；也可以运行 `python3 -m vibebench ci`，并可用 `python3 -m vibebench latest --artifact evidence-room-index-html --path-only` 定位。
+- 打开 evidence room 里的 `trust-center.html` 或 [docs Trust Center](docs/trust-center.html)，查看 local-first、privacy、reproducibility 和 artifact safety 边界。
 - 生成可分享的本地证据包：`python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip` 会写入 Markdown、JSON、自包含、证据优先的 HTML 报告、manifest 和 `proof.zip`。GitHub Actions 也会显示 proof packet summary card，并上传可下载的 `vibebench-proof-packet` artifact。
 - 发布或编辑静态 Pages 入口前，可运行 `python3 -m vibebench site-preview --output-dir /tmp/vibebench-site-preview --zip` 生成静态预览包，并用 `python3 -m vibebench site-preview --verify /tmp/vibebench-site-preview/site-preview.zip` 校验；CI 复用同一命令上传 `vibebench-site-preview`，但不会自动启用 GitHub Pages。
 - [对比与定位](docs/comparison.md)：说明 VibeBench 不是普通 CI、不是聊天机器人、不是排行榜，而是面向 AI coding / vibe-coding 的本地质量控制台。

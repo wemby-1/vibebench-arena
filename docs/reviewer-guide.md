@@ -26,6 +26,7 @@ Use this guide if you are a developer, maintainer, AI coding team, evaluator, or
    ```
 
 5. Open `PATH/vibebench-evidence-room/index.html` as the downloaded package start page, then use `review-scorecard.html` or `review-scorecard.md` as the neutral checklist.
+   Open `trust-center.html` for project-maintained local-first, privacy, reproducibility, and artifact-safety boundaries. It is not a third-party certification.
 6. Preview the local CI plan:
 
    ```bash
@@ -58,7 +59,7 @@ python3 -m vibebench site-preview --verify PATH
 python3 -m vibebench evidence-room --verify PATH
 ```
 
-For an evidence room, start with `index.html`, then open `review-scorecard.html` for the neutral checklist, `evidence-room.html` for the human overview, and `evidence-room.json` for the machine-readable summary. The scorecard is a reviewer aid, not a third-party endorsement. The nested `proof-packet/` directory shows the proof report, and `site-preview/` shows the static public docs bundle.
+For an evidence room, start with `index.html`, then open `review-scorecard.html` for the neutral checklist, `trust-center.html` for safety/privacy/reproducibility boundaries, `evidence-room.html` for the human overview, and `evidence-room.json` for the machine-readable summary. The scorecard is a reviewer aid, not a third-party endorsement. The Trust Center is project-maintained documentation, not a third-party certification. The nested `proof-packet/` directory shows the proof report, and `site-preview/` shows the static public docs bundle.
 
 ## What this does not claim
 

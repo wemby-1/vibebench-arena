@@ -8,6 +8,7 @@ VibeBench Arena now includes a small static site surface under `docs/`.
 - `docs/showcase.html` is the product showcase page. It explains the Codex-first quality console, evidence stack, proof packet, `proof.html`, and review workflow.
 - `docs/review-hub.html` is the 3-minute public review entry for proof packet, site preview, evidence room, and CI artifact inspection.
 - `docs/reviewer-guide.md` is the compact Markdown guide for external reviewers and evaluators.
+- `docs/trust-center.html` and `docs/trust-center.md` describe project-maintained local-first, privacy, reproducibility, and artifact-safety boundaries. They are not third-party certification materials.
 
 Both pages are static files with inline CSS only. They do not need a build step.
 
@@ -43,7 +44,7 @@ python3 -m vibebench evidence-room --output-dir PATH --zip
 python3 -m vibebench evidence-room --verify PATH
 ```
 
-The evidence room is local-first and evidence-first. It contains `index.html`, reviewer scorecard files, top-level HTML, Markdown, JSON, a nested proof packet, and a nested static site preview. Normal `python3 -m vibebench ci` writes it into the run directory, `python3 -m vibebench latest --artifact evidence-room-index-html --path-only` locates the newest landing page, and `python3 -m vibebench ci --skip-evidence-room` skips only that combined package. GitHub Actions also uploads it as the downloadable `vibebench-evidence-room` artifact. It does not enable GitHub Pages automatically and does not claim traction, funding, customers, revenue, or adoption. The scorecard is a reviewer aid, not a third-party endorsement.
+The evidence room is local-first and evidence-first. It contains `index.html`, Trust Center files, reviewer scorecard files, top-level HTML, Markdown, JSON, a nested proof packet, and a nested static site preview. Normal `python3 -m vibebench ci` writes it into the run directory, `python3 -m vibebench latest --artifact evidence-room-index-html --path-only` locates the newest landing page, and `python3 -m vibebench ci --skip-evidence-room` skips only that combined package. GitHub Actions also uploads it as the downloadable `vibebench-evidence-room` artifact. It does not enable GitHub Pages automatically and does not claim traction, funding, customers, revenue, or adoption. The Trust Center is project-maintained documentation, not a third-party certification, and the scorecard is a reviewer aid, not a third-party endorsement.
 
 ## Preview locally
 
@@ -59,6 +60,7 @@ Then open these local files or preview them through the local server:
 - `docs/showcase.html`
 - `docs/review-hub.html`
 - `docs/reviewer-guide.md`
+- `docs/trust-center.html`
 
 ## Manual GitHub Pages setup
 

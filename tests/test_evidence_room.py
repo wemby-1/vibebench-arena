@@ -79,6 +79,8 @@ def test_evidence_room_output_dir_writes_required_top_level_files(
     assert output_dir.joinpath("index.html").is_file()
     assert output_dir.joinpath("review-hub.html").is_file()
     assert output_dir.joinpath("reviewer-guide.md").is_file()
+    assert output_dir.joinpath("trust-center.html").is_file()
+    assert output_dir.joinpath("trust-center.md").is_file()
     assert output_dir.joinpath("review-scorecard.html").is_file()
     assert output_dir.joinpath("review-scorecard.md").is_file()
     assert output_dir.joinpath("review-scorecard.json").is_file()
@@ -124,6 +126,8 @@ def test_evidence_room_zip_creates_archive_with_safe_names(tmp_path: Path) -> No
     assert "index.html" in names
     assert "review-hub.html" in names
     assert "reviewer-guide.md" in names
+    assert "trust-center.html" in names
+    assert "trust-center.md" in names
     assert "review-scorecard.html" in names
     assert "review-scorecard.md" in names
     assert "review-scorecard.json" in names
@@ -232,6 +236,48 @@ def test_evidence_room_verify_fails_for_missing_reviewer_guide(
 
     assert result.exit_code == 1
     assert "reviewer-guide.md" in result.output
+
+
+def test_evidence_room_verify_fails_for_missing_trust_center_html(
+    tmp_path: Path,
+) -> None:
+    output_dir, _ = make_room(tmp_path, "--zip")
+    output_dir.joinpath("trust-center.html").unlink()
+
+    result = runner.invoke(app, ["evidence-room", "--verify", str(output_dir)])
+
+    assert result.exit_code == 1
+    assert "trust-center.html" in result.output
+
+
+def test_evidence_room_verify_fails_for_missing_trust_center_markdown(
+    tmp_path: Path,
+) -> None:
+    output_dir, _ = make_room(tmp_path, "--zip")
+    output_dir.joinpath("trust-center.md").unlink()
+
+    result = runner.invoke(app, ["evidence-room", "--verify", str(output_dir)])
+
+    assert result.exit_code == 1
+    assert "trust-center.md" in result.output
+
+
+def test_evidence_room_verify_zip_fails_for_missing_trust_center_file(
+    tmp_path: Path,
+) -> None:
+    output_dir, _ = make_room(tmp_path, "--zip")
+    original = output_dir / "evidence-room.zip"
+    tampered = tmp_path / "missing-trust-center.zip"
+    with zipfile.ZipFile(original) as source:
+        with zipfile.ZipFile(tampered, "w") as target:
+            for item in source.infolist():
+                if item.filename != "trust-center.html":
+                    target.writestr(item, source.read(item.filename))
+
+    result = runner.invoke(app, ["evidence-room", "--verify", str(tampered)])
+
+    assert result.exit_code == 1
+    assert "trust-center.html" in result.output
 
 
 def test_evidence_room_verify_fails_for_missing_scorecard_html(
@@ -344,6 +390,22 @@ def test_evidence_room_verify_fails_for_remote_url(tmp_path: Path) -> None:
     assert "https://" in result.output
 
 
+def test_evidence_room_verify_fails_for_unsafe_trust_center_html(
+    tmp_path: Path,
+) -> None:
+    output_dir, _ = make_room(tmp_path, "--zip")
+    html = output_dir / "trust-center.html"
+    html.write_text(
+        html.read_text(encoding="utf-8") + "\n<script></script>\nhttp://example.test",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(app, ["evidence-room", "--verify", str(output_dir)])
+
+    assert result.exit_code == 1
+    assert "trust-center.html" in result.output
+
+
 def test_evidence_room_verify_fails_for_absolute_local_path(
     tmp_path: Path,
 ) -> None:
@@ -371,6 +433,10 @@ def test_evidence_room_landing_page_links_to_review_package_files(
     assert "evidence-room.html" in content
     assert "review-hub.html" in content
     assert "reviewer-guide.md" in content
+    assert "trust-center.html" in content
+    assert "trust-center.md" in content
+    assert "project-maintained" in content
+    assert "not a third-party audit" in content
     assert "review-scorecard.html" in content
     assert "review-scorecard.md" in content
     assert "review-scorecard.json" in content
@@ -428,6 +494,43 @@ def test_evidence_room_review_hub_copy_stays_static_and_local(
         "funding guaranteed",
     ]:
         assert marker not in content
+
+
+def test_evidence_room_trust_center_copy_stays_static_and_local(
+    tmp_path: Path,
+) -> None:
+    output_dir, result = make_room(tmp_path)
+
+    assert result.exit_code == 0
+    html_content = output_dir.joinpath("trust-center.html").read_text(
+        encoding="utf-8"
+    ).lower()
+    markdown_content = output_dir.joinpath("trust-center.md").read_text(
+        encoding="utf-8"
+    ).lower()
+    assert "trust center" in html_content
+    assert "trust center" in markdown_content
+    assert "security and privacy" in html_content
+    for content in [html_content, markdown_content]:
+        for marker in [
+            "<script",
+            "http://",
+            "https://",
+            "/tmp/",
+            "/home/",
+            "/data/code/",
+            "soc 2 certified",
+            "iso 27001 certified",
+            "audited by",
+            "independently audited",
+            "guaranteed secure",
+            "enterprise certified",
+            "millions of users",
+            "revenue",
+            "funding guaranteed",
+            "unicorn",
+        ]:
+            assert marker not in content
 
 
 def test_evidence_room_scorecard_html_links_to_review_package_files(
