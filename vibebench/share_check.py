@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 TEXT_SUFFIXES = {".html", ".md", ".json", ".txt", ".yml", ".yaml", ".toml"}
+IGNORED_REPORT_FILES = {"share-check.json", "share-check.md"}
 MAX_SNIPPET_LENGTH = 120
 REMOTE_URL_RE = re.compile(r"https?://[^\s\"'<>)]*", re.IGNORECASE)
 REMOTE_SCRIPT_RE = re.compile(
@@ -113,6 +114,7 @@ def run_share_check(
     strict: bool = False,
     allow_remote_urls: bool = False,
     allow_example_temp_paths: bool = False,
+    target_label: str | None = None,
 ) -> ShareCheckResult:
     """Scan a directory or zip before sharing it externally."""
     selected_target = target.resolve()
@@ -146,7 +148,7 @@ def run_share_check(
     status = status_from_findings(findings, strict=strict)
     return ShareCheckResult(
         status=status,
-        target=str(selected_target),
+        target=target_label if target_label is not None else str(selected_target),
         target_type=target_type,
         strict=strict,
         checked_files=[item.path for item in scanned_files],
@@ -158,12 +160,14 @@ def scan_directory(root: Path) -> list[ScannedFile]:
     """Collect text/static files from a directory recursively."""
     files: list[ScannedFile] = []
     for path in sorted(root.rglob("*")):
-        if not path.is_file() or path.is_symlink() or not should_scan_path(path.name):
+        if not path.is_file() or path.is_symlink():
+            continue
+        relative = path.relative_to(root).as_posix()
+        if ignored_report_path(relative) or not should_scan_path(path.name):
             continue
         data = path.read_bytes()
         if is_probably_binary(data):
             continue
-        relative = path.relative_to(root).as_posix()
         files.append(ScannedFile(relative, decode_text(data)))
     return files
 
@@ -189,6 +193,8 @@ def scan_zip(zip_path: Path, findings: list[ShareCheckFinding]) -> list[ScannedF
                         )
                     )
                     continue
+                if ignored_report_path(name):
+                    continue
                 if not should_scan_path(name):
                     continue
                 data = archive.read(info)
@@ -204,6 +210,11 @@ def scan_zip(zip_path: Path, findings: list[ShareCheckFinding]) -> list[ScannedF
 def should_scan_path(name: str) -> bool:
     """Return whether a file path should be scanned as a text artifact."""
     return Path(name).suffix.lower() in TEXT_SUFFIXES
+
+
+def ignored_report_path(name: str) -> bool:
+    """Return whether a path is a generated share-check report."""
+    return Path(name).name in IGNORED_REPORT_FILES
 
 
 def is_probably_binary(data: bytes) -> bool:
@@ -532,3 +543,77 @@ def write_share_check_json(result: ShareCheckResult, output: Path) -> None:
     """Write share-check JSON to a path."""
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(share_check_json(result) + "\n", encoding="utf-8")
+
+
+def share_check_markdown(result: ShareCheckResult) -> str:
+    """Render a human-readable Markdown share-check report."""
+    summary = share_check_summary(result.findings, len(result.checked_files))
+    lines = [
+        "# VibeBench Share Check",
+        "",
+        f"- Target: `{result.target}`",
+        f"- Target type: `{result.target_type}`",
+        f"- Status: `{result.status}`",
+        f"- Strict mode: `{str(result.strict).lower()}`",
+        f"- Checked files: {summary['checked_file_count']}",
+        f"- Findings: {summary['finding_count']}",
+        f"- Errors: {summary['error_count']}",
+        f"- Warnings: {summary['warning_count']}",
+        f"- Info: {summary['info_count']}",
+        "",
+    ]
+    if result.findings:
+        lines.extend(
+            [
+                "## Findings",
+                "",
+                "| Severity | Code | File | Line | Message |",
+                "| --- | --- | --- | --- | --- |",
+            ]
+        )
+        for item in result.findings:
+            line = "" if item.line is None else str(item.line)
+            lines.append(
+                "| "
+                f"{markdown_cell(item.severity)} | "
+                f"{markdown_cell(item.code)} | "
+                f"{markdown_cell(item.file)} | "
+                f"{markdown_cell(line)} | "
+                f"{markdown_cell(item.message)} |"
+            )
+        lines.append("")
+    else:
+        lines.extend(["## Findings", "", "No findings.", ""])
+
+    lines.extend(
+        [
+            "## Remediation Guidance",
+            "",
+            (
+                "Review errors before sharing. Remove scripts, remote assets, "
+                "personal paths, credential-like values, private key material, and "
+                "unsupported trust or traction claims from generated packages."
+            ),
+            "",
+            "## Scope",
+            "",
+            "- This is a local pre-sharing aid.",
+            "- It is not a security certification.",
+            "- It is not a third-party audit.",
+            "- It is not a guarantee.",
+            "- Users should still manually review artifacts before publishing.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def write_share_check_markdown(result: ShareCheckResult, output: Path) -> None:
+    """Write share-check Markdown to a path."""
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(share_check_markdown(result), encoding="utf-8")
+
+
+def markdown_cell(value: object) -> str:
+    """Escape a value for a compact Markdown table cell."""
+    return str(value).replace("|", "\\|").replace("\n", " ")

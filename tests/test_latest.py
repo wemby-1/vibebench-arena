@@ -503,3 +503,46 @@ def test_latest_artifact_supports_security_questionnaire_aliases(
     )
     assert md_result.exit_code == 0
     assert md_result.output.strip().endswith("evidence-room/security-questionnaire.md")
+
+
+def test_latest_artifact_supports_share_check_aliases(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260701_110000")
+    evidence_dir = run_dir / "evidence-room"
+    evidence_dir.mkdir()
+    evidence_dir.joinpath("share-check.json").write_text(
+        '{"status":"passed"}\n',
+        encoding="utf-8",
+    )
+    evidence_dir.joinpath("share-check.md").write_text(
+        "local pre-sharing aid; not a security certification; "
+        "not a third-party audit; not a guarantee\n",
+        encoding="utf-8",
+    )
+
+    json_result = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "evidence-room-share-check-json",
+            "--path-only",
+        ],
+    )
+    md_result = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "evidence-room-share-check-md",
+            "--path-only",
+        ],
+    )
+
+    assert json_result.exit_code == 0
+    assert json_result.output.strip().endswith("evidence-room/share-check.json")
+    assert md_result.exit_code == 0
+    assert md_result.output.strip().endswith("evidence-room/share-check.md")

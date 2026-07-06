@@ -128,6 +128,15 @@ def test_manifest_contains_artifact_entries_and_itself(tmp_path: Path) -> None:
         "questionnaire\n",
         encoding="utf-8",
     )
+    evidence_dir.joinpath("share-check.json").write_text(
+        '{"status":"passed"}\n',
+        encoding="utf-8",
+    )
+    evidence_dir.joinpath("share-check.md").write_text(
+        "local pre-sharing aid; not a security certification; "
+        "not a third-party audit; not a guarantee\n",
+        encoding="utf-8",
+    )
 
     result = runner.invoke(
         app,
@@ -153,6 +162,14 @@ def test_manifest_contains_artifact_entries_and_itself(tmp_path: Path) -> None:
         artifact_by_name(payload, "evidence-room-security-questionnaire-md")[
             "available"
         ]
+        is True
+    )
+    assert (
+        artifact_by_name(payload, "evidence-room-share-check-json")["available"]
+        is True
+    )
+    assert (
+        artifact_by_name(payload, "evidence-room-share-check-md")["available"]
         is True
     )
 

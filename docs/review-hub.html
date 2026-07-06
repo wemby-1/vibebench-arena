@@ -309,7 +309,7 @@
         </article>
         <article class="card">
           <h3><code>vibebench-evidence-room</code></h3>
-          <p>Combined evidence-room package with <code>index.html</code>, <code>trust-center.html</code>, <code>security-questionnaire.html</code>, <code>review-scorecard.html</code>, proof packet, and site preview.</p>
+          <p>Combined evidence-room package with <code>index.html</code>, <code>trust-center.html</code>, <code>security-questionnaire.html</code>, <code>review-scorecard.html</code>, <code>share-check.json</code>, <code>share-check.md</code>, proof packet, and site preview.</p>
         </article>
       </div>
     </section>
@@ -325,7 +325,7 @@ python3 -m vibebench evidence-room --output-dir PATH --zip
 python3 -m vibebench share-check PATH
 python3 -m vibebench share-check PATH --json
 python3 -m vibebench ci --dry-run --json</code></pre>
-      <p>After generating an evidence room, open <code>index.html</code> first, then use <code>trust-center.html</code> for project-maintained boundaries, <code>security-questionnaire.html</code> for adopter-facing local-first, artifact, CI, sharing, JSON, and non-claim Q&amp;A, and <code>review-scorecard.html</code> or <code>review-scorecard.md</code> as the neutral checklist. Run <code>share-check</code> before external sharing. The Security Questionnaire and scanner are project-maintained aids, not third-party certification or audit materials, and the scorecard is a reviewer aid, not a third-party endorsement.</p>
+      <p>After generating an evidence room, open <code>index.html</code> first, inspect <code>share-check.md</code> if you want the local pre-sharing scan summary, then use <code>trust-center.html</code> for project-maintained boundaries, <code>security-questionnaire.html</code> for adopter-facing local-first, artifact, CI, sharing, JSON, and non-claim Q&amp;A, and <code>review-scorecard.html</code> or <code>review-scorecard.md</code> as the neutral checklist. Evidence rooms include <code>share-check.json</code> and <code>share-check.md</code>. Run <code>share-check</code> before external sharing. The Security Questionnaire and scanner are project-maintained aids, not third-party certification or audit materials, and the scanner is not a guarantee.</p>
     </section>
 
     <section aria-labelledby="verify-title">

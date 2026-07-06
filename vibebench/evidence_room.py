@@ -9,6 +9,11 @@ from pathlib import Path
 from typing import Any
 
 from vibebench.proof import proof_payload, verify_proof_packet, write_proof_packet
+from vibebench.share_check import (
+    run_share_check,
+    share_check_json,
+    share_check_markdown,
+)
 from vibebench.site_check import BANNED_CLAIMS_OR_MARKERS
 from vibebench.site_preview import verify_site_preview, write_site_preview
 
@@ -16,6 +21,8 @@ EVIDENCE_HTML = "evidence-room.html"
 EVIDENCE_MARKDOWN = "evidence-room.md"
 EVIDENCE_JSON = "evidence-room.json"
 EVIDENCE_ZIP = "evidence-room.zip"
+SHARE_CHECK_JSON = "share-check.json"
+SHARE_CHECK_MARKDOWN = "share-check.md"
 LANDING_HTML = "index.html"
 REVIEW_HUB_HTML = "review-hub.html"
 REVIEWER_GUIDE_MD = "reviewer-guide.md"
@@ -40,6 +47,8 @@ TOP_LEVEL_FILES = (
     REVIEW_SCORECARD_HTML,
     REVIEW_SCORECARD_MARKDOWN,
     REVIEW_SCORECARD_JSON,
+    SHARE_CHECK_JSON,
+    SHARE_CHECK_MARKDOWN,
     EVIDENCE_HTML,
     EVIDENCE_MARKDOWN,
     EVIDENCE_JSON,
@@ -228,6 +237,7 @@ def write_evidence_room(
     write_review_files(site_root, output_dir)
     write_trust_center_files(site_root, output_dir)
     write_security_questionnaire_files(site_root, output_dir)
+    write_share_check_reports(output_dir)
 
     written = {
         "output_dir": "PATH",
@@ -241,6 +251,19 @@ def write_evidence_room(
         written["zip"] = "PATH/evidence-room.zip"
     payload["written"] = written
     return payload
+
+
+def write_share_check_reports(output_dir: Path) -> None:
+    """Write deterministic pre-sharing reports for an evidence room."""
+    result = run_share_check(output_dir, target_label="PATH")
+    output_dir.joinpath(SHARE_CHECK_JSON).write_text(
+        share_check_json(result) + "\n",
+        encoding="utf-8",
+    )
+    output_dir.joinpath(SHARE_CHECK_MARKDOWN).write_text(
+        share_check_markdown(result),
+        encoding="utf-8",
+    )
 
 
 def write_review_files(site_root: Path, output_dir: Path) -> None:
@@ -375,6 +398,8 @@ def evidence_room_markdown(payload: dict[str, Any]) -> str:
         "- `review-scorecard.html`",
         "- `review-scorecard.md`",
         "- `review-scorecard.json`",
+        "- `share-check.json`",
+        "- `share-check.md`",
         "",
         "## Proof packet",
         "",
@@ -431,6 +456,8 @@ def evidence_room_html(payload: dict[str, Any]) -> str:
         "review-scorecard.html",
         "review-scorecard.md",
         "review-scorecard.json",
+        "share-check.json",
+        "share-check.md",
         "proof-packet/proof.html",
         "proof-packet/proof.json",
         "proof-packet/proof.md",
@@ -503,6 +530,7 @@ def evidence_room_landing_html(payload: dict[str, Any]) -> str:
         ("Trust Center", "trust-center.html"),
         ("Security Questionnaire", "security-questionnaire.html"),
         ("Reviewer scorecard", "review-scorecard.html"),
+        ("Share-check report", "share-check.md"),
         ("Proof details", "proof-packet/proof.html"),
         ("Static site preview", "site-preview/index.html"),
     ]
@@ -544,6 +572,8 @@ def evidence_room_landing_html(payload: dict[str, Any]) -> str:
                     "review-scorecard.html neutral checklist",
                     "review-scorecard.md Markdown checklist",
                     "review-scorecard.json machine-readable checklist",
+                    "share-check.md local pre-sharing scan summary",
+                    "share-check.json machine-readable share-check result",
                     "proof-packet/proof.html proof details",
                     "site-preview/index.html static site preview",
                     "evidence-room.json machine-readable summary",
@@ -578,6 +608,19 @@ def evidence_room_landing_html(payload: dict[str, Any]) -> str:
                     (
                         "The Security Questionnaire is not a third-party audit "
                         "or certification."
+                    ),
+                ],
+            ),
+            html_list_section(
+                "Share-check report",
+                [
+                    (
+                        "Use share-check.md for the local pre-sharing scan "
+                        "summary, or share-check.json for automation."
+                    ),
+                    (
+                        "Share-check is a local aid, not a security "
+                        "certification, third-party audit, or guarantee."
                     ),
                 ],
             ),
@@ -1115,6 +1158,10 @@ def verify_evidence_room_directory(target: Path) -> dict[str, Any]:
         required_files_check(available),
         valid_evidence_json_check(target / EVIDENCE_JSON),
         valid_scorecard_json_check(target / REVIEW_SCORECARD_JSON),
+        valid_share_check_json_check(target / SHARE_CHECK_JSON),
+        share_check_markdown_scope_check(target / SHARE_CHECK_MARKDOWN),
+        share_check_status_check(target / SHARE_CHECK_JSON),
+        share_check_scan_check(target),
         top_level_safety_check(target),
         proof_component_check(target),
         site_preview_component_check(target),
@@ -1193,6 +1240,11 @@ def valid_scorecard_json_check(path: Path) -> dict[str, str]:
     return valid_json_file_check(path, "valid_json:review-scorecard.json")
 
 
+def valid_share_check_json_check(path: Path) -> dict[str, str]:
+    """Check share-check.json is valid JSON."""
+    return valid_json_file_check(path, "valid_json:share-check.json")
+
+
 def valid_json_file_check(path: Path, name: str) -> dict[str, str]:
     """Check a generated JSON file can be parsed."""
     try:
@@ -1207,6 +1259,69 @@ def valid_json_file_check(path: Path, name: str) -> dict[str, str]:
         name,
         True,
         f"{path.name} is valid JSON.",
+    )
+
+
+def share_check_status_check(path: Path) -> dict[str, str]:
+    """Check stored share-check JSON reports a passed status."""
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return check(
+            "share_check_status",
+            False,
+            "share-check.json is missing or invalid JSON.",
+        )
+    status = payload.get("status") if isinstance(payload, dict) else None
+    return check(
+        "share_check_status",
+        status == "passed",
+        (
+            "share-check.json reports passed."
+            if status == "passed"
+            else "share-check.json does not report passed status."
+        ),
+    )
+
+
+def share_check_markdown_scope_check(path: Path) -> dict[str, str]:
+    """Check share-check Markdown carries local-aid/non-certification language."""
+    try:
+        text = path.read_text(encoding="utf-8").lower()
+    except OSError:
+        text = ""
+    required = [
+        "local pre-sharing aid",
+        "not a security certification",
+        "not a third-party audit",
+        "not a guarantee",
+    ]
+    missing = [phrase for phrase in required if phrase not in text]
+    return check(
+        "share_check_markdown_scope",
+        not missing,
+        (
+            "share-check.md includes scope and non-certification language."
+            if not missing
+            else "share-check.md missing required language: " + ", ".join(missing)
+        ),
+    )
+
+
+def share_check_scan_check(target: Path) -> dict[str, str]:
+    """Run the deterministic share-check scan for the evidence room."""
+    try:
+        result = run_share_check(target, target_label="PATH")
+    except Exception as exc:  # pragma: no cover - defensive verification guard
+        return check("share_check_scan", False, f"share-check failed: {exc}")
+    return check(
+        "share_check_scan",
+        result.status == "passed",
+        (
+            "Evidence room passes share-check."
+            if result.status == "passed"
+            else "Evidence room share-check failed."
+        ),
     )
 
 

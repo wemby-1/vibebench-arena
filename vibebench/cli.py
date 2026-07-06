@@ -156,6 +156,7 @@ from vibebench.share_check import (
     run_share_check,
     share_check_json,
     write_share_check_json,
+    write_share_check_markdown,
 )
 from vibebench.site_check import (
     run_site_check,
@@ -1778,6 +1779,10 @@ def share_check_command(
         Path | None,
         typer.Option("--json-output", help="Write share-check JSON to PATH."),
     ] = None,
+    markdown_output: Annotated[
+        Path | None,
+        typer.Option("--markdown-output", help="Write share-check Markdown to PATH."),
+    ] = None,
     strict: Annotated[
         bool,
         typer.Option("--strict", help="Fail when warnings are present."),
@@ -1844,6 +1849,14 @@ def share_check_command(
             json_output if json_output.is_absolute() else project / json_output
         )
         write_share_check_json(result, selected_json_output)
+    selected_markdown_output = None
+    if markdown_output is not None:
+        selected_markdown_output = (
+            markdown_output
+            if markdown_output.is_absolute()
+            else project / markdown_output
+        )
+        write_share_check_markdown(result, selected_markdown_output)
 
     if as_json:
         print(share_check_json(result))
@@ -1851,6 +1864,8 @@ def share_check_command(
         render_share_check_summary(result)
         if selected_json_output is not None:
             console.print(f"Share-check JSON: {selected_json_output}")
+        if selected_markdown_output is not None:
+            console.print(f"Share-check Markdown: {selected_markdown_output}")
 
     if result.status == "failed":
         raise typer.Exit(code=1)

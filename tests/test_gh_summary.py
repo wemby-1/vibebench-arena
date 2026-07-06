@@ -164,6 +164,15 @@ def write_run(
             "{}\n",
             encoding="utf-8",
         )
+        (evidence_dir / "share-check.json").write_text(
+            '{"status":"passed"}\n',
+            encoding="utf-8",
+        )
+        (evidence_dir / "share-check.md").write_text(
+            "local pre-sharing aid; not a security certification; "
+            "not a third-party audit; not a guarantee\n",
+            encoding="utf-8",
+        )
         (evidence_dir / "evidence-room.html").write_text(
             "<html></html>\n",
             encoding="utf-8",
@@ -284,6 +293,8 @@ def test_summary_contains_key_sections_and_artifacts(
     assert "`evidence-room/review-scorecard.html` (available)" in markdown
     assert "`evidence-room/review-scorecard.md` (available)" in markdown
     assert "`evidence-room/review-scorecard.json` (available)" in markdown
+    assert "`evidence-room/share-check.json` (available)" in markdown
+    assert "`evidence-room/share-check.md` (available)" in markdown
     assert "`evidence-room/evidence-room.html` (available)" in markdown
     assert "`evidence-room/evidence-room.json` (available)" in markdown
     assert "`evidence-room/evidence-room.md` (available)" in markdown

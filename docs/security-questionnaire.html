@@ -226,7 +226,7 @@
         </article>
         <article class="card">
           <h3>What files does the Evidence-room contain?</h3>
-          <p>A landing page, review hub, reviewer guide, Trust Center, Security Questionnaire, scorecard, evidence summaries, nested Proof packet, and nested Static site preview.</p>
+          <p>A landing page, review hub, reviewer guide, Trust Center, Security Questionnaire, scorecard, <code>share-check.json</code>, <code>share-check.md</code>, evidence summaries, nested Proof packet, and nested Static site preview. Open <code>index.html</code> first, then inspect <code>share-check.md</code> for the local pre-sharing scan summary.</p>
         </article>
         <article class="card">
           <h3>What does GitHub Actions upload?</h3>
@@ -302,6 +302,7 @@ python3 -m vibebench doctor --strict</code></pre>
       <pre><code>python3 -m vibebench share-check PATH
 python3 -m vibebench share-check PATH --json</code></pre>
       <p class="notice">
+        Evidence rooms include <code>share-check.json</code> and <code>share-check.md</code>.
         Share-check is a local pre-sharing aid, not a security certification,
         not a third-party audit, and not a guarantee. Users should still
         manually review artifacts before publishing.

@@ -2212,6 +2212,12 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
     assert evidence_dir.joinpath("review-scorecard.html").exists()
     assert evidence_dir.joinpath("review-scorecard.md").exists()
     assert evidence_dir.joinpath("review-scorecard.json").exists()
+    assert evidence_dir.joinpath("share-check.json").exists()
+    assert evidence_dir.joinpath("share-check.md").exists()
+    share_check_payload = json.loads(
+        evidence_dir.joinpath("share-check.json").read_text(encoding="utf-8")
+    )
+    assert share_check_payload["status"] == "passed"
     assert evidence_dir.joinpath("evidence-room.html").exists()
     assert evidence_dir.joinpath("evidence-room.json").exists()
     assert evidence_dir.joinpath("evidence-room.md").exists()
@@ -2238,6 +2244,8 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
         "evidence-room-scorecard-html",
         "evidence-room-scorecard-md",
         "evidence-room-scorecard-json",
+        "evidence-room-share-check-json",
+        "evidence-room-share-check-md",
         "evidence-room-html",
         "evidence-room-json",
         "evidence-room-md",
@@ -2263,6 +2271,8 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
         ("evidence-room-scorecard-html", "evidence-room/review-scorecard.html"),
         ("evidence-room-scorecard-md", "evidence-room/review-scorecard.md"),
         ("evidence-room-scorecard-json", "evidence-room/review-scorecard.json"),
+        ("evidence-room-share-check-json", "evidence-room/share-check.json"),
+        ("evidence-room-share-check-md", "evidence-room/share-check.md"),
         ("evidence-room-html", "evidence-room/evidence-room.html"),
         ("evidence-room-json", "evidence-room/evidence-room.json"),
         ("evidence-room-md", "evidence-room/evidence-room.md"),
@@ -2305,6 +2315,8 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
     assert manifest_artifacts["evidence-room-scorecard-html"]["available"] is True
     assert manifest_artifacts["evidence-room-scorecard-md"]["available"] is True
     assert manifest_artifacts["evidence-room-scorecard-json"]["available"] is True
+    assert manifest_artifacts["evidence-room-share-check-json"]["available"] is True
+    assert manifest_artifacts["evidence-room-share-check-md"]["available"] is True
     assert manifest_artifacts["evidence-room-html"]["available"] is True
     assert manifest_artifacts["evidence-room-dir"]["available"] is True
 
@@ -2319,6 +2331,8 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
     assert "evidence-room/review-scorecard.html" in names
     assert "evidence-room/review-scorecard.md" in names
     assert "evidence-room/review-scorecard.json" in names
+    assert "evidence-room/share-check.json" in names
+    assert "evidence-room/share-check.md" in names
     assert "evidence-room/evidence-room.html" in names
     assert "evidence-room/evidence-room.json" in names
     assert "evidence-room/evidence-room.md" in names

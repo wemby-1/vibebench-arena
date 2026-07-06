@@ -82,6 +82,56 @@ def test_share_check_json_and_json_output_match(tmp_path: Path) -> None:
     assert json.loads(result.output) == json.loads(output.read_text(encoding="utf-8"))
 
 
+def test_share_check_markdown_output_writes_report(tmp_path: Path) -> None:
+    room = make_evidence_room(tmp_path)
+    output = tmp_path / "share-check.md"
+
+    result = run_share_check(room, "--markdown-output", str(output))
+
+    assert result.exit_code == 0
+    content = output.read_text(encoding="utf-8")
+    assert "# VibeBench Share Check" in content
+    assert "local pre-sharing aid" in content
+    assert "not a security certification" in content
+    assert "not a third-party audit" in content
+    assert "not a guarantee" in content
+
+
+def test_share_check_json_with_markdown_output_keeps_stdout_pure_json(
+    tmp_path: Path,
+) -> None:
+    room = make_evidence_room(tmp_path)
+    output = tmp_path / "share-check.md"
+
+    result = run_share_check(room, "--json", "--markdown-output", str(output))
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["status"] == "passed"
+    assert output.is_file()
+    assert "Share-check Markdown" not in result.output
+
+
+def test_share_check_json_output_and_markdown_output_write_files(
+    tmp_path: Path,
+) -> None:
+    room = make_evidence_room(tmp_path)
+    json_output = tmp_path / "share-check.json"
+    markdown_output = tmp_path / "share-check.md"
+
+    result = run_share_check(
+        room,
+        "--json-output",
+        str(json_output),
+        "--markdown-output",
+        str(markdown_output),
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(json_output.read_text(encoding="utf-8"))["status"] == "passed"
+    assert "# VibeBench Share Check" in markdown_output.read_text(encoding="utf-8")
+
+
 def test_share_check_missing_target_fails_clearly(tmp_path: Path) -> None:
     result = run_share_check(tmp_path / "missing")
 

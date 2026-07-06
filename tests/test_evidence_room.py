@@ -45,6 +45,8 @@ def test_evidence_room_json_stdout_is_pure_json() -> None:
     assert result.exit_code == 0
     payload = json.loads(result.output)
     assert payload["status"] == "ready"
+    assert "share-check.json" in payload["files"]
+    assert "share-check.md" in payload["files"]
     assert "VibeBench evidence room" not in result.output
 
 
@@ -86,6 +88,18 @@ def test_evidence_room_output_dir_writes_required_top_level_files(
     assert output_dir.joinpath("review-scorecard.html").is_file()
     assert output_dir.joinpath("review-scorecard.md").is_file()
     assert output_dir.joinpath("review-scorecard.json").is_file()
+    assert output_dir.joinpath("share-check.json").is_file()
+    assert output_dir.joinpath("share-check.md").is_file()
+    share_check_payload = json.loads(
+        output_dir.joinpath("share-check.json").read_text(encoding="utf-8")
+    )
+    assert share_check_payload["status"] == "passed"
+    share_check_markdown = output_dir.joinpath("share-check.md").read_text(
+        encoding="utf-8"
+    )
+    assert "local pre-sharing aid" in share_check_markdown
+    assert "not a security certification" in share_check_markdown
+    assert "not a third-party audit" in share_check_markdown
     assert output_dir.joinpath("evidence-room.html").is_file()
     assert output_dir.joinpath("evidence-room.md").is_file()
     assert output_dir.joinpath("evidence-room.json").is_file()
@@ -135,6 +149,8 @@ def test_evidence_room_zip_creates_archive_with_safe_names(tmp_path: Path) -> No
     assert "review-scorecard.html" in names
     assert "review-scorecard.md" in names
     assert "review-scorecard.json" in names
+    assert "share-check.json" in names
+    assert "share-check.md" in names
 
 
 def test_evidence_room_zip_output_writes_explicit_archive(tmp_path: Path) -> None:
@@ -362,6 +378,48 @@ def test_evidence_room_verify_fails_for_missing_scorecard_json(
     assert "review-scorecard.json" in result.output
 
 
+def test_evidence_room_verify_fails_for_missing_share_check_json(
+    tmp_path: Path,
+) -> None:
+    output_dir, _ = make_room(tmp_path, "--zip")
+    output_dir.joinpath("share-check.json").unlink()
+
+    result = runner.invoke(app, ["evidence-room", "--verify", str(output_dir)])
+
+    assert result.exit_code == 1
+    assert "share-check.json" in result.output
+
+
+def test_evidence_room_verify_fails_for_missing_share_check_markdown(
+    tmp_path: Path,
+) -> None:
+    output_dir, _ = make_room(tmp_path, "--zip")
+    output_dir.joinpath("share-check.md").unlink()
+
+    result = runner.invoke(app, ["evidence-room", "--verify", str(output_dir)])
+
+    assert result.exit_code == 1
+    assert "share-check.md" in result.output
+
+
+def test_evidence_room_verify_zip_fails_for_missing_share_check_file(
+    tmp_path: Path,
+) -> None:
+    output_dir, _ = make_room(tmp_path, "--zip")
+    original = output_dir / "evidence-room.zip"
+    tampered = tmp_path / "missing-share-check.zip"
+    with zipfile.ZipFile(original) as source:
+        with zipfile.ZipFile(tampered, "w") as target:
+            for item in source.infolist():
+                if item.filename != "share-check.json":
+                    target.writestr(item, source.read(item.filename))
+
+    result = runner.invoke(app, ["evidence-room", "--verify", str(tampered)])
+
+    assert result.exit_code == 1
+    assert "share-check.json" in result.output
+
+
 def test_evidence_room_verify_fails_for_missing_nested_proof_file(
     tmp_path: Path,
 ) -> None:
@@ -406,6 +464,35 @@ def test_evidence_room_verify_fails_for_invalid_scorecard_json(
 
     assert result.exit_code == 1
     assert "valid_json:review-scorecard.json" in result.output
+
+
+def test_evidence_room_verify_fails_for_invalid_share_check_json(
+    tmp_path: Path,
+) -> None:
+    output_dir, _ = make_room(tmp_path, "--zip")
+    output_dir.joinpath("share-check.json").write_text("{", encoding="utf-8")
+
+    result = runner.invoke(app, ["evidence-room", "--verify", str(output_dir)])
+
+    assert result.exit_code == 1
+    assert "valid_json:share-check.json" in result.output
+
+
+def test_evidence_room_verify_fails_for_failed_share_check_json(
+    tmp_path: Path,
+) -> None:
+    output_dir, _ = make_room(tmp_path, "--zip")
+    payload = json.loads(output_dir.joinpath("share-check.json").read_text())
+    payload["status"] = "failed"
+    output_dir.joinpath("share-check.json").write_text(
+        json.dumps(payload),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(app, ["evidence-room", "--verify", str(output_dir)])
+
+    assert result.exit_code == 1
+    assert "share_check_status" in result.output
 
 
 def test_evidence_room_verify_fails_for_script_tag(tmp_path: Path) -> None:
@@ -521,6 +608,8 @@ def test_evidence_room_landing_page_links_to_review_package_files(
     assert "review-scorecard.html" in content
     assert "review-scorecard.md" in content
     assert "review-scorecard.json" in content
+    assert "share-check.md" in content
+    assert "share-check.json" in content
     assert "neutral checklist" in content
     assert "proof-packet/proof.html" in content
     assert "site-preview/index.html" in content

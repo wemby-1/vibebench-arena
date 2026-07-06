@@ -28,7 +28,7 @@ The Static site preview contains `index.html`, `showcase.html`, `site-check.json
 
 ### What files does the Evidence-room contain?
 
-The Evidence-room contains a self-opening `index.html`, review hub files, reviewer guide, Trust Center files, this Security Questionnaire, reviewer scorecard files, `evidence-room.html`, `evidence-room.md`, `evidence-room.json`, a nested Proof packet, a nested Static site preview, and optional `evidence-room.zip`.
+The Evidence-room contains a self-opening `index.html`, review hub files, reviewer guide, Trust Center files, this Security Questionnaire, reviewer scorecard files, `share-check.json`, `share-check.md`, `evidence-room.html`, `evidence-room.md`, `evidence-room.json`, a nested Proof packet, a nested Static site preview, and optional `evidence-room.zip`. Reviewers should open `index.html` first, then inspect `share-check.md` if they want the local pre-sharing scan summary.
 
 ### What does GitHub Actions upload?
 
@@ -109,7 +109,7 @@ python3 -m vibebench share-check PATH
 python3 -m vibebench share-check PATH --json
 ```
 
-The scanner is a local pre-sharing aid, not a security certification, not a third-party audit, and not a guarantee. Users should still manually review artifacts before publishing.
+Evidence rooms include `share-check.json` and `share-check.md`. The scanner is a local pre-sharing aid, not a security certification, not a third-party audit, and not a guarantee. Users should still manually review artifacts before publishing.
 
 ### Where is the security policy?
 

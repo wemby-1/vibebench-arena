@@ -50,6 +50,8 @@ STANDARD_ARTIFACTS = [
     Path("evidence-room") / "review-scorecard.html",
     Path("evidence-room") / "review-scorecard.md",
     Path("evidence-room") / "review-scorecard.json",
+    Path("evidence-room") / "share-check.json",
+    Path("evidence-room") / "share-check.md",
     Path("evidence-room") / "evidence-room.html",
     Path("evidence-room") / "evidence-room.json",
     Path("evidence-room") / "evidence-room.md",
