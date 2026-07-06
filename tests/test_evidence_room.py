@@ -79,6 +79,9 @@ def test_evidence_room_output_dir_writes_required_top_level_files(
     assert output_dir.joinpath("index.html").is_file()
     assert output_dir.joinpath("review-hub.html").is_file()
     assert output_dir.joinpath("reviewer-guide.md").is_file()
+    assert output_dir.joinpath("review-scorecard.html").is_file()
+    assert output_dir.joinpath("review-scorecard.md").is_file()
+    assert output_dir.joinpath("review-scorecard.json").is_file()
     assert output_dir.joinpath("evidence-room.html").is_file()
     assert output_dir.joinpath("evidence-room.md").is_file()
     assert output_dir.joinpath("evidence-room.json").is_file()
@@ -121,6 +124,9 @@ def test_evidence_room_zip_creates_archive_with_safe_names(tmp_path: Path) -> No
     assert "index.html" in names
     assert "review-hub.html" in names
     assert "reviewer-guide.md" in names
+    assert "review-scorecard.html" in names
+    assert "review-scorecard.md" in names
+    assert "review-scorecard.json" in names
 
 
 def test_evidence_room_zip_output_writes_explicit_archive(tmp_path: Path) -> None:
@@ -228,6 +234,42 @@ def test_evidence_room_verify_fails_for_missing_reviewer_guide(
     assert "reviewer-guide.md" in result.output
 
 
+def test_evidence_room_verify_fails_for_missing_scorecard_html(
+    tmp_path: Path,
+) -> None:
+    output_dir, _ = make_room(tmp_path, "--zip")
+    output_dir.joinpath("review-scorecard.html").unlink()
+
+    result = runner.invoke(app, ["evidence-room", "--verify", str(output_dir)])
+
+    assert result.exit_code == 1
+    assert "review-scorecard.html" in result.output
+
+
+def test_evidence_room_verify_fails_for_missing_scorecard_markdown(
+    tmp_path: Path,
+) -> None:
+    output_dir, _ = make_room(tmp_path, "--zip")
+    output_dir.joinpath("review-scorecard.md").unlink()
+
+    result = runner.invoke(app, ["evidence-room", "--verify", str(output_dir)])
+
+    assert result.exit_code == 1
+    assert "review-scorecard.md" in result.output
+
+
+def test_evidence_room_verify_fails_for_missing_scorecard_json(
+    tmp_path: Path,
+) -> None:
+    output_dir, _ = make_room(tmp_path, "--zip")
+    output_dir.joinpath("review-scorecard.json").unlink()
+
+    result = runner.invoke(app, ["evidence-room", "--verify", str(output_dir)])
+
+    assert result.exit_code == 1
+    assert "review-scorecard.json" in result.output
+
+
 def test_evidence_room_verify_fails_for_missing_nested_proof_file(
     tmp_path: Path,
 ) -> None:
@@ -260,6 +302,18 @@ def test_evidence_room_verify_fails_for_invalid_json(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "valid_json:evidence-room.json" in result.output
+
+
+def test_evidence_room_verify_fails_for_invalid_scorecard_json(
+    tmp_path: Path,
+) -> None:
+    output_dir, _ = make_room(tmp_path, "--zip")
+    output_dir.joinpath("review-scorecard.json").write_text("{", encoding="utf-8")
+
+    result = runner.invoke(app, ["evidence-room", "--verify", str(output_dir)])
+
+    assert result.exit_code == 1
+    assert "valid_json:review-scorecard.json" in result.output
 
 
 def test_evidence_room_verify_fails_for_script_tag(tmp_path: Path) -> None:
@@ -317,6 +371,10 @@ def test_evidence_room_landing_page_links_to_review_package_files(
     assert "evidence-room.html" in content
     assert "review-hub.html" in content
     assert "reviewer-guide.md" in content
+    assert "review-scorecard.html" in content
+    assert "review-scorecard.md" in content
+    assert "review-scorecard.json" in content
+    assert "neutral checklist" in content
     assert "proof-packet/proof.html" in content
     assert "site-preview/index.html" in content
     assert "python3 -m vibebench evidence-room --verify PATH" in content
@@ -370,6 +428,83 @@ def test_evidence_room_review_hub_copy_stays_static_and_local(
         "funding guaranteed",
     ]:
         assert marker not in content
+
+
+def test_evidence_room_scorecard_html_links_to_review_package_files(
+    tmp_path: Path,
+) -> None:
+    output_dir, result = make_room(tmp_path)
+
+    assert result.exit_code == 0
+    content = output_dir.joinpath("review-scorecard.html").read_text(
+        encoding="utf-8"
+    )
+    assert "Reviewer Scorecard" in content
+    assert "index.html" in content
+    assert "evidence-room.html" in content
+    assert "review-hub.html" in content
+    assert "reviewer-guide.md" in content
+    assert "proof-packet/proof.html" in content
+    assert "site-preview/index.html" in content
+
+
+def test_evidence_room_scorecard_html_stays_static_and_local(
+    tmp_path: Path,
+) -> None:
+    output_dir, result = make_room(tmp_path)
+
+    assert result.exit_code == 0
+    content = output_dir.joinpath("review-scorecard.html").read_text(
+        encoding="utf-8"
+    ).lower()
+    for marker in [
+        "<script",
+        "http://",
+        "https://",
+        "/tmp/",
+        "/home/",
+        "/data/code/",
+        "guaranteed",
+        "best in the world",
+        "unicorn",
+        "millions of users",
+        "revenue",
+        "funding guaranteed",
+        "third-party approved",
+        "independently verified",
+    ]:
+        assert marker not in content
+
+
+def test_evidence_room_scorecard_json_has_neutral_structure(
+    tmp_path: Path,
+) -> None:
+    output_dir, result = make_room(tmp_path)
+
+    assert result.exit_code == 0
+    payload = json.loads(
+        output_dir.joinpath("review-scorecard.json").read_text(encoding="utf-8")
+    )
+    assert payload["status"] == "ready"
+    assert payload["project"] == "VibeBench Arena"
+    assert payload["scorecard_version"] == "vibebench.review-scorecard.v1"
+    sections = payload["sections"]
+    names = {section["name"] for section in sections}
+    assert "Local reproducibility" in names
+    assert "CI reproducibility" in names
+    assert "Evidence-room artifact completeness" in names
+    assert "Proof packet completeness" in names
+    assert "Static site preview completeness" in names
+    assert "JSON output purity" in names
+    statuses = {
+        check["reviewer_status"]
+        for section in sections
+        for check in section["checks"]
+    }
+    assert statuses == {"not_reviewed"}
+    serialized = json.dumps(payload).lower()
+    assert "approved" not in serialized
+    assert "independently verified" not in serialized
 
 
 def test_evidence_room_custom_root_works(tmp_path: Path) -> None:

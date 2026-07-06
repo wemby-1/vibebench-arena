@@ -93,6 +93,18 @@ def write_run(
             "guide\n",
             encoding="utf-8",
         )
+        (evidence_dir / "review-scorecard.html").write_text(
+            "<html></html>\n",
+            encoding="utf-8",
+        )
+        (evidence_dir / "review-scorecard.md").write_text(
+            "scorecard\n",
+            encoding="utf-8",
+        )
+        (evidence_dir / "review-scorecard.json").write_text(
+            "{}\n",
+            encoding="utf-8",
+        )
         (evidence_dir / "evidence-room.html").write_text(
             "<html></html>\n",
             encoding="utf-8",
@@ -139,6 +151,9 @@ def test_latest_run_bundle_is_created(tmp_path: Path) -> None:
     assert "evidence-room/index.html" in names
     assert "evidence-room/review-hub.html" in names
     assert "evidence-room/reviewer-guide.md" in names
+    assert "evidence-room/review-scorecard.html" in names
+    assert "evidence-room/review-scorecard.md" in names
+    assert "evidence-room/review-scorecard.json" in names
     assert "evidence-room/evidence-room.html" in names
     assert "evidence-room/evidence-room.json" in names
     assert "evidence-room/evidence-room.md" in names

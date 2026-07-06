@@ -19,12 +19,19 @@ EVIDENCE_ZIP = "evidence-room.zip"
 LANDING_HTML = "index.html"
 REVIEW_HUB_HTML = "review-hub.html"
 REVIEWER_GUIDE_MD = "reviewer-guide.md"
+REVIEW_SCORECARD_HTML = "review-scorecard.html"
+REVIEW_SCORECARD_MARKDOWN = "review-scorecard.md"
+REVIEW_SCORECARD_JSON = "review-scorecard.json"
+REVIEW_SCORECARD_VERSION = "vibebench.review-scorecard.v1"
 PROOF_DIR = "proof-packet"
 SITE_PREVIEW_DIR = "site-preview"
 TOP_LEVEL_FILES = (
     LANDING_HTML,
     REVIEW_HUB_HTML,
     REVIEWER_GUIDE_MD,
+    REVIEW_SCORECARD_HTML,
+    REVIEW_SCORECARD_MARKDOWN,
+    REVIEW_SCORECARD_JSON,
     EVIDENCE_HTML,
     EVIDENCE_MARKDOWN,
     EVIDENCE_JSON,
@@ -171,6 +178,7 @@ def write_evidence_room(
         "status": "passed",
         "summary": "Proof packet and static site preview verified.",
     }
+    scorecard_payload = review_scorecard_payload(payload)
     output_dir.joinpath(EVIDENCE_JSON).write_text(
         evidence_room_json(payload) + "\n",
         encoding="utf-8",
@@ -185,6 +193,18 @@ def write_evidence_room(
     )
     output_dir.joinpath(LANDING_HTML).write_text(
         evidence_room_landing_html(payload),
+        encoding="utf-8",
+    )
+    output_dir.joinpath(REVIEW_SCORECARD_JSON).write_text(
+        evidence_room_json(scorecard_payload) + "\n",
+        encoding="utf-8",
+    )
+    output_dir.joinpath(REVIEW_SCORECARD_MARKDOWN).write_text(
+        review_scorecard_markdown(scorecard_payload),
+        encoding="utf-8",
+    )
+    output_dir.joinpath(REVIEW_SCORECARD_HTML).write_text(
+        review_scorecard_html(scorecard_payload),
         encoding="utf-8",
     )
     write_review_files(site_root, output_dir)
@@ -284,6 +304,9 @@ def evidence_room_markdown(payload: dict[str, Any]) -> str:
         "- `index.html`",
         "- `review-hub.html`",
         "- `reviewer-guide.md`",
+        "- `review-scorecard.html`",
+        "- `review-scorecard.md`",
+        "- `review-scorecard.json`",
         "",
         "## Proof packet",
         "",
@@ -333,6 +356,9 @@ def evidence_room_html(payload: dict[str, Any]) -> str:
         "index.html",
         "review-hub.html",
         "reviewer-guide.md",
+        "review-scorecard.html",
+        "review-scorecard.md",
+        "review-scorecard.json",
         "proof-packet/proof.html",
         "proof-packet/proof.json",
         "proof-packet/proof.md",
@@ -402,6 +428,7 @@ def evidence_room_landing_html(payload: dict[str, Any]) -> str:
         ("Evidence summary", "evidence-room.html"),
         ("Public review flow", "review-hub.html"),
         ("3-minute review path", "reviewer-guide.md"),
+        ("Reviewer scorecard", "review-scorecard.html"),
         ("Proof details", "proof-packet/proof.html"),
         ("Static site preview", "site-preview/index.html"),
     ]
@@ -433,6 +460,9 @@ def evidence_room_landing_html(payload: dict[str, Any]) -> str:
                     "evidence-room.html summary",
                     "review-hub.html public review flow",
                     "reviewer-guide.md 3-minute review path",
+                    "review-scorecard.html neutral checklist",
+                    "review-scorecard.md Markdown checklist",
+                    "review-scorecard.json machine-readable checklist",
                     "proof-packet/proof.html proof details",
                     "site-preview/index.html static site preview",
                     "evidence-room.json machine-readable summary",
@@ -440,6 +470,17 @@ def evidence_room_landing_html(payload: dict[str, Any]) -> str:
                 ],
             ),
             html_link_table_section("Open first", rows),
+            html_list_section(
+                "Reviewer scorecard",
+                [
+                    (
+                        "Use review-scorecard.html or review-scorecard.md as "
+                        "a neutral checklist. It is a reviewer aid, not an "
+                        "approval badge."
+                    ),
+                    "review-scorecard.json contains the same checklist structure.",
+                ],
+            ),
             html_list_section(
                 "Verify this package",
                 ["python3 -m vibebench evidence-room --verify PATH"],
@@ -463,6 +504,370 @@ def evidence_room_landing_html(payload: dict[str, Any]) -> str:
             "",
         ]
     )
+
+
+def review_scorecard_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Build a neutral reviewer scorecard payload."""
+    return {
+        "status": "ready",
+        "project": "VibeBench Arena",
+        "generated_at": payload["generated_at"],
+        "scorecard_version": REVIEW_SCORECARD_VERSION,
+        "sections": [
+            scorecard_section(
+                "Local reproducibility",
+                "Check whether a reviewer can reproduce the package locally.",
+                [
+                    scorecard_check(
+                        "evidence-room-verify",
+                        "Verify the downloaded evidence room.",
+                        "python3 -m vibebench evidence-room --verify PATH",
+                        "Verifier exits successfully for an untampered package.",
+                    ),
+                    scorecard_check(
+                        "dry-run-json",
+                        "Inspect the planned local CI pipeline as JSON.",
+                        "python3 -m vibebench ci --dry-run --json",
+                        "JSON output is parseable and lists the planned steps.",
+                    ),
+                ],
+            ),
+            scorecard_section(
+                "CI reproducibility",
+                "Check whether CI-visible artifacts match the local review flow.",
+                [
+                    scorecard_check(
+                        "ci-artifacts",
+                        (
+                            "Confirm proof, site preview, and evidence-room "
+                            "artifacts exist."
+                        ),
+                        None,
+                        "CI artifacts are downloadable and named consistently.",
+                    ),
+                    scorecard_check(
+                        "ci-summary",
+                        "Confirm the CI summary links reviewers to evidence.",
+                        None,
+                        "Summary lists the evidence room and related artifacts.",
+                    ),
+                ],
+            ),
+            scorecard_section(
+                "Evidence-room artifact completeness",
+                "Check whether the top-level package is self-opening.",
+                [
+                    scorecard_check(
+                        "landing-page",
+                        "Open index.html first.",
+                        None,
+                        "Landing page links to scorecard, proof, and site preview.",
+                    ),
+                    scorecard_check(
+                        "scorecard-files",
+                        "Confirm scorecard HTML, Markdown, and JSON exist.",
+                        None,
+                        (
+                            "review-scorecard.html, review-scorecard.md, and "
+                            "review-scorecard.json are present."
+                        ),
+                    ),
+                ],
+            ),
+            scorecard_section(
+                "Proof packet completeness",
+                "Check whether the proof packet can stand on its own.",
+                [
+                    scorecard_check(
+                        "proof-verify",
+                        "Verify the nested proof packet.",
+                        "python3 -m vibebench proof --verify PATH/proof-packet",
+                        "Proof packet verification succeeds.",
+                    ),
+                    scorecard_check(
+                        "proof-html",
+                        "Open proof-packet/proof.html.",
+                        None,
+                        "Proof HTML is self-contained and readable.",
+                    ),
+                ],
+            ),
+            scorecard_section(
+                "Static site preview completeness",
+                "Check whether the public docs preview is packaged.",
+                [
+                    scorecard_check(
+                        "site-preview-verify",
+                        "Verify the nested static site preview.",
+                        "python3 -m vibebench site-preview --verify PATH/site-preview",
+                        "Site preview verification succeeds.",
+                    ),
+                    scorecard_check(
+                        "site-check",
+                        "Run the static site readiness check.",
+                        "python3 -m vibebench site-check",
+                        "Site check exits successfully.",
+                    ),
+                ],
+            ),
+            scorecard_section(
+                "JSON output purity",
+                "Check whether machine-readable commands stay parseable.",
+                [
+                    scorecard_check(
+                        "evidence-room-json",
+                        "Run evidence-room JSON output.",
+                        "python3 -m vibebench evidence-room --json",
+                        "Stdout is valid JSON with no human table text.",
+                    ),
+                    scorecard_check(
+                        "ci-json",
+                        "Run dry-run CI JSON output.",
+                        "python3 -m vibebench ci --dry-run --json",
+                        "Stdout is valid JSON with no human table text.",
+                    ),
+                ],
+            ),
+            scorecard_section(
+                "Offline / local-first behavior",
+                "Check whether the core review package works from local files.",
+                [
+                    scorecard_check(
+                        "offline-files",
+                        "Open package HTML files directly from disk.",
+                        None,
+                        "Core package files do not require remote assets.",
+                    )
+                ],
+            ),
+            scorecard_section(
+                "Safety of generated static HTML",
+                "Check whether generated HTML avoids unsafe publishing markers.",
+                [
+                    scorecard_check(
+                        "static-html",
+                        "Inspect generated package HTML.",
+                        None,
+                        (
+                            "HTML contains no scripts, remote URLs, or "
+                            "absolute local paths."
+                        ),
+                    )
+                ],
+            ),
+            scorecard_section(
+                "No fake traction or exaggerated claims",
+                "Check whether the package stays factual.",
+                [
+                    scorecard_check(
+                        "honest-claims",
+                        "Review public-facing text for unsupported claims.",
+                        None,
+                        "Text avoids fake traction, endorsement, and dominance claims.",
+                    )
+                ],
+            ),
+            scorecard_section(
+                "Adoption readiness",
+                "Check whether a small team can pilot the workflow.",
+                [
+                    scorecard_check(
+                        "pilot-path",
+                        "Compare the adoption guide with local artifacts.",
+                        None,
+                        "Reviewer can identify a small, reversible pilot path.",
+                    )
+                ],
+            ),
+            scorecard_section(
+                "Remaining risks / reviewer notes",
+                "Capture open questions before adoption or external evaluation.",
+                [
+                    scorecard_check(
+                        "reviewer-notes",
+                        "Record questions, gaps, or follow-up checks.",
+                        None,
+                        "Reviewer notes are explicit rather than implied.",
+                    )
+                ],
+            ),
+        ],
+    }
+
+
+def scorecard_section(
+    name: str,
+    purpose: str,
+    checks: list[dict[str, str | None]],
+) -> dict[str, Any]:
+    """Build one scorecard section."""
+    return {"name": name, "purpose": purpose, "checks": checks}
+
+
+def scorecard_check(
+    check_id: str,
+    label: str,
+    command: str | None,
+    expected: str,
+) -> dict[str, str | None]:
+    """Build one neutral scorecard check."""
+    return {
+        "id": check_id,
+        "label": label,
+        "command": command,
+        "expected": expected,
+        "reviewer_status": "not_reviewed",
+    }
+
+
+def review_scorecard_markdown(payload: dict[str, Any]) -> str:
+    """Render the reviewer scorecard as Markdown."""
+    lines = [
+        "# VibeBench Arena Reviewer Scorecard",
+        "",
+        "## How to use this scorecard",
+        "",
+        (
+            "Use this neutral checklist while inspecting a downloaded evidence "
+            "room. Mark items only after you personally review the artifact or "
+            "command output."
+        ),
+        "",
+        "## Verification commands",
+        "",
+        "- `python3 -m vibebench evidence-room --verify PATH`",
+        "- `python3 -m vibebench proof --verify PATH/proof-packet`",
+        "- `python3 -m vibebench site-preview --verify PATH/site-preview`",
+        "- `python3 -m vibebench site-check`",
+        "- `python3 -m vibebench ci --dry-run --json`",
+        "",
+    ]
+    for section in payload["sections"]:
+        lines.extend(
+            [
+                f"## {section['name']}",
+                "",
+                str(section["purpose"]),
+                "",
+            ]
+        )
+        for item in section["checks"]:
+            command = item.get("command")
+            command_text = f" Command: `{command}`." if command else ""
+            lines.append(
+                f"- [ ] {item['label']}{command_text} "
+                f"Expected: {item['expected']} "
+                f"Status: `{item['reviewer_status']}`."
+            )
+        lines.append("")
+    lines.extend(
+        [
+            "## Final reviewer notes",
+            "",
+            "- [ ] Notes recorded:",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def review_scorecard_html(payload: dict[str, Any]) -> str:
+    """Render the reviewer scorecard as static HTML."""
+    return "\n".join(
+        [
+            "<!doctype html>",
+            '<html lang="en">',
+            "<head>",
+            '  <meta charset="utf-8">',
+            '  <meta name="viewport" content="width=device-width, initial-scale=1">',
+            "  <title>VibeBench Arena Reviewer Scorecard</title>",
+            "  <style>",
+            evidence_room_css(),
+            "  </style>",
+            "</head>",
+            "<body>",
+            '  <main class="page">',
+            "    <header>",
+            "      <h1>VibeBench Arena Reviewer Scorecard</h1>",
+            (
+                "      <p>A neutral checklist for reviewing the downloaded "
+                "evidence room without treating project claims as proof.</p>"
+            ),
+            "    </header>",
+            html_list_section(
+                "Open related evidence",
+                [
+                    "index.html",
+                    "evidence-room.html",
+                    "review-hub.html",
+                    "reviewer-guide.md",
+                    "proof-packet/proof.html",
+                    "site-preview/index.html",
+                ],
+                link_items=True,
+            ),
+            html_list_section(
+                "Verification commands",
+                [
+                    "python3 -m vibebench evidence-room --verify PATH",
+                    "python3 -m vibebench proof --verify PATH/proof-packet",
+                    "python3 -m vibebench site-preview --verify PATH/site-preview",
+                    "python3 -m vibebench site-check",
+                    "python3 -m vibebench ci --dry-run --json",
+                ],
+            ),
+            *scorecard_html_sections(payload),
+            "  </main>",
+            "</body>",
+            "</html>",
+            "",
+        ]
+    )
+
+
+def scorecard_html_sections(payload: dict[str, Any]) -> list[str]:
+    """Render scorecard sections as HTML fragments."""
+    sections = []
+    for section in payload["sections"]:
+        lines = [
+            "    <section>",
+            f"      <h2>{escape(section['name'])}</h2>",
+            f"      <p>{escape(section['purpose'])}</p>",
+            "      <ul>",
+        ]
+        for item in section["checks"]:
+            command = item.get("command")
+            command_text = (
+                f" Command: <code>{escape(command)}</code>." if command else ""
+            )
+            expected = html_sentence(item["expected"])
+            lines.append(
+                "        <li>"
+                f"<strong>{html_sentence(item['label'])}</strong>"
+                f"{command_text} Expected: {expected} "
+                f"Status: <code>{escape(item['reviewer_status'])}</code>."
+                "</li>"
+            )
+        lines.extend(["      </ul>", "    </section>"])
+        sections.append("\n".join(lines))
+    sections.append(
+        "\n".join(
+            [
+                "    <section>",
+                "      <h2>Final reviewer notes</h2>",
+                "      <p>Record open questions, gaps, or follow-up checks.</p>",
+                "    </section>",
+            ]
+        )
+    )
+    return sections
+
+
+def html_sentence(value: object) -> str:
+    """Escape a value and ensure it ends with one sentence mark."""
+    text = str(value)
+    suffix = "" if text.endswith((".", "!", "?")) else "."
+    return escape(text + suffix)
 
 
 def evidence_room_css() -> str:
@@ -598,6 +1003,7 @@ def verify_evidence_room_directory(target: Path) -> dict[str, Any]:
     checks = [
         required_files_check(available),
         valid_evidence_json_check(target / EVIDENCE_JSON),
+        valid_scorecard_json_check(target / REVIEW_SCORECARD_JSON),
         top_level_safety_check(target),
         proof_component_check(target),
         site_preview_component_check(target),
@@ -668,18 +1074,28 @@ def required_files_check(files: set[str]) -> dict[str, str]:
 
 def valid_evidence_json_check(path: Path) -> dict[str, str]:
     """Check evidence-room.json is valid JSON."""
+    return valid_json_file_check(path, "valid_json:evidence-room.json")
+
+
+def valid_scorecard_json_check(path: Path) -> dict[str, str]:
+    """Check review-scorecard.json is valid JSON."""
+    return valid_json_file_check(path, "valid_json:review-scorecard.json")
+
+
+def valid_json_file_check(path: Path, name: str) -> dict[str, str]:
+    """Check a generated JSON file can be parsed."""
     try:
         json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return check(
-            "valid_json:evidence-room.json",
+            name,
             False,
-            "evidence-room.json is missing or invalid JSON.",
+            f"{path.name} is missing or invalid JSON.",
         )
     return check(
-        "valid_json:evidence-room.json",
+        name,
         True,
-        "evidence-room.json is valid JSON.",
+        f"{path.name} is valid JSON.",
     )
 
 
