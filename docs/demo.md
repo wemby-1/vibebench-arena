@@ -4,6 +4,8 @@ VibeBench Arena is a Codex-first / vibe-coding quality console for local-first A
 
 For the GitHub Pages-ready site entry and product overview, open the [site entry](index.html) and [showcase page](showcase.html).
 
+For external reviewers, start with the [review hub](review-hub.html) and [reviewer guide](reviewer-guide.md).
+
 For a skim-friendly map of the concrete outputs, see the [artifact gallery](artifact-gallery.md).
 
 For a visitor-facing proof path and safe team rollout, see [evaluate in 5 minutes](evaluate.md) and [adoption](adoption.md).

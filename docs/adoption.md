@@ -13,7 +13,7 @@ VibeBench Arena helps individuals and small teams make AI-assisted coding work r
 ## First 30 minutes
 
 1. Clone the project.
-2. Skim the [Pages site entry](index.html) and [product showcase](showcase.html) for the CLI, CI proof packet, and artifact loop.
+2. Skim the [review hub](review-hub.html), [Pages site entry](index.html), and [product showcase](showcase.html) for the CLI, CI proof packet, and artifact loop.
 3. Run `python3 -m vibebench demo`.
 4. Inspect the sample artifacts.
 5. Run `python3 -m vibebench ci --dry-run --json`.
@@ -35,6 +35,7 @@ VibeBench Arena helps individuals and small teams make AI-assisted coding work r
 - Run VibeBench on small changes.
 - Locate the newest local CI evidence-room HTML with `python3 -m vibebench latest --artifact evidence-room-html --path-only`; use `python3 -m vibebench ci --skip-evidence-room` only when you do not need the combined review package.
 - Collect review packets and proof packet outputs, including the GitHub Actions `vibebench-proof-packet` artifact and summary card when available; inspect the self-contained HTML report, then verify a proof packet before sharing it.
+- Share the [reviewer guide](reviewer-guide.md) with maintainers or evaluators who need the 3-minute artifact path.
 - Compare outcomes across runs.
 - Identify missing checks or unclear artifacts.
 - Decide whether to integrate VibeBench into the team workflow.

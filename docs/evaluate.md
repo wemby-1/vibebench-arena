@@ -11,7 +11,7 @@ VibeBench Arena is a Codex-first / vibe-coding quality console for turning AI-as
 
 ## 5-minute path
 
-1. Read the README positioning or open the [Pages site entry](index.html) to understand the local-first evidence model.
+1. Read the README positioning or open the [review hub](review-hub.html) and [Pages site entry](index.html) to understand the local-first evidence model.
 2. Skim the GitHub Pages-ready [product showcase](showcase.html).
 3. Run `python3 -m vibebench demo`.
 4. Run `python3 -m vibebench demo --json`.
@@ -43,6 +43,7 @@ VibeBench Arena is a Codex-first / vibe-coding quality console for turning AI-as
 - Verification with `python3 -m vibebench proof --verify /tmp/vibebench-proof/proof.zip`.
 - Release/readiness checks that stay local unless a user chooses otherwise.
 - Docs that map product direction to engineering proof.
+- A reviewer-facing [review hub](review-hub.html) and [reviewer guide](reviewer-guide.md) for a 3-minute external evaluation.
 
 ## What this does not claim
 

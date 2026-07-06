@@ -39,6 +39,7 @@ See the [architecture](docs/architecture.md), [artifact gallery](docs/artifact-g
 
 ## Evaluate Quickly
 
+- [Review in 3 minutes](docs/review-hub.html): a public review hub and [reviewer guide](docs/reviewer-guide.md) for external evaluators inspecting proof, site preview, and evidence-room artifacts.
 - [Evaluate in 5 minutes](docs/evaluate.md): a compact path for developers, teams, maintainers, and observers to verify the local-first, evidence-first workflow.
 - [Pages entry](docs/index.html): the GitHub Pages-ready public start page; see [Pages setup](docs/pages.md) for manual setup.
 - [Product showcase](docs/showcase.html): a GitHub Pages-ready Codex-first quality console overview of the CLI, CI proof packet, artifacts, and self-contained `proof.html`.
@@ -88,7 +89,7 @@ Read the [product strategy](docs/product-strategy.md), [public roadmap](docs/roa
 ## Start Here
 
 1. Run the one-command demo: `python3 -m vibebench demo`.
-2. Follow the [5-minute evaluation guide](docs/evaluate.md), then open the [adoption guide](docs/adoption.md), [demo guide](docs/demo.md), and [artifact gallery](docs/artifact-gallery.md).
+2. Follow the [3-minute review hub](docs/review-hub.html) or [5-minute evaluation guide](docs/evaluate.md), then open the [adoption guide](docs/adoption.md), [demo guide](docs/demo.md), and [artifact gallery](docs/artifact-gallery.md).
 3. Inspect the checked-in [sample artifact pack](examples/showcase-artifacts/sample/README.md) or copy it with `python3 -m vibebench demo --copy-to /tmp/vibebench-demo`.
 4. Read the [case study](docs/case-study.md), [comparison](docs/comparison.md), [FAQ](docs/faq.md), [architecture](docs/architecture.md), [positioning](docs/positioning.md), [use cases](docs/use-cases.md), [product strategy](docs/product-strategy.md), [public roadmap](docs/roadmap-public.md), and [commercial potential](docs/commercial-potential.md) to see why this matters for Codex-first / vibe-coding engineering.
 5. Use the GitHub issue templates to share a use case, report demo feedback, or propose a focused PR.

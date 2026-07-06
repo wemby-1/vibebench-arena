@@ -39,6 +39,7 @@ AI coding 正在变得更容易；真正困难的是 review、审计、对比和
 
 ## 快速判断
 
+- [3 分钟外部 review](docs/review-hub.html)：公开 review hub 和 [reviewer guide](docs/reviewer-guide.md)，帮助外部评估者检查 proof、site preview 和 evidence-room artifacts。
 - [5 分钟评估路径](docs/evaluate.md)：给开发者、团队、维护者和观察者一个紧凑路径，用来验证本地优先、证据优先、可审计、可复现的工作流。
 - [Pages entry](docs/index.html)：GitHub Pages-ready 的公开入口；手动设置见 [Pages setup](docs/pages.md)。
 - [Product showcase](docs/showcase.html)：一个 GitHub Pages-ready 的概览页，串起 CLI、CI 证据包、artifacts 和自包含 `proof.html`。
@@ -88,7 +89,7 @@ VibeBench 不是玩具 CLI，而是一个早期的本地优先产品方向：面
 ## 从这里开始
 
 1. 运行一条命令 demo：`python3 -m vibebench demo`。
-2. 按 [5 分钟评估路径](docs/evaluate.md) 快速检查，再打开 [采用指南](docs/adoption.md)、[demo guide](docs/demo.md) 和 [artifact gallery](docs/artifact-gallery.md)。
+2. 按 [3 分钟外部 review](docs/review-hub.html) 或 [5 分钟评估路径](docs/evaluate.md) 快速检查，再打开 [采用指南](docs/adoption.md)、[demo guide](docs/demo.md) 和 [artifact gallery](docs/artifact-gallery.md)。
 3. 检查已提交的 [示例 artifact pack](examples/showcase-artifacts/sample/README.md)，或用 `python3 -m vibebench demo --copy-to /tmp/vibebench-demo` 复制到本地。
 4. 阅读 [案例研究](docs/case-study.md)、[对比与定位](docs/comparison.md)、[常见问题](docs/faq.md)、[architecture](docs/architecture.md)、[positioning](docs/positioning.md)、[use cases](docs/use-cases.md)、[product strategy](docs/product-strategy.md)、[public roadmap](docs/roadmap-public.md) 和 [commercial potential](docs/commercial-potential.md)，理解它为什么面向 Codex-first / vibe-coding 和 AI coding 工程化。
 5. 通过 GitHub issue templates 提交真实使用场景、demo feedback，或发起小范围 PR。

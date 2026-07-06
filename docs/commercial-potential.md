@@ -6,6 +6,8 @@ This commercial potential narrative describes possible directions. It is not a c
 
 For an evidence-first public walkthrough that avoids inflated claims, see the [case study](case-study.md).
 
+For a compact external review path, see the [review hub](review-hub.html) and [reviewer guide](reviewer-guide.md).
+
 For a concise scope check and adoption path, see the [Pages site entry](index.html), [product showcase](showcase.html), [evaluate in 5 minutes](evaluate.md), [adoption](adoption.md), the [comparison](comparison.md), and [FAQ](faq.md).
 
 For a local, shareable static preview of the public docs surface, run `python3 -m vibebench site-preview --output-dir /tmp/vibebench-site-preview --zip` and verify it with `python3 -m vibebench site-preview --verify /tmp/vibebench-site-preview/site-preview.zip`. CI reuses the same command for the downloadable `vibebench-site-preview` artifact, without enabling GitHub Pages automatically.

@@ -6,6 +6,8 @@ VibeBench Arena now includes a small static site surface under `docs/`.
 
 - `docs/index.html` is the GitHub Pages-ready entry page. It points visitors to the product showcase, evaluation path, proof packet command, adoption guide, and honest limits.
 - `docs/showcase.html` is the product showcase page. It explains the Codex-first quality console, evidence stack, proof packet, `proof.html`, and review workflow.
+- `docs/review-hub.html` is the 3-minute public review entry for proof packet, site preview, evidence room, and CI artifact inspection.
+- `docs/reviewer-guide.md` is the compact Markdown guide for external reviewers and evaluators.
 
 Both pages are static files with inline CSS only. They do not need a build step.
 
@@ -55,6 +57,8 @@ Then open these local files or preview them through the local server:
 
 - `docs/index.html`
 - `docs/showcase.html`
+- `docs/review-hub.html`
+- `docs/reviewer-guide.md`
 
 ## Manual GitHub Pages setup
 
