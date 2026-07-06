@@ -30,6 +30,13 @@ from vibebench.baseline import (
     show_baseline,
     show_pinned_baseline,
 )
+from vibebench.baseline_promotion import (
+    BaselinePromotionResult,
+    promote_baseline,
+    promotion_json,
+    promotion_markdown,
+    promotion_payload,
+)
 from vibebench.bundle import BundleResult, create_bundle
 from vibebench.ci import (
     CiRegressionGuardPolicy,
@@ -3532,6 +3539,17 @@ def baseline(
         str | None,
         typer.Option("--set-run", help="Pin a specific run id or path."),
     ] = None,
+    promote_latest: Annotated[
+        bool,
+        typer.Option(
+            "--promote-latest",
+            help="Validate and promote the latest run as a labeled baseline.",
+        ),
+    ] = False,
+    promote_run: Annotated[
+        str | None,
+        typer.Option("--promote-run", help="Validate and promote a run id or path."),
+    ] = None,
     show: Annotated[
         bool,
         typer.Option("--show", help="Show a labeled pinned baseline."),
@@ -3545,9 +3563,9 @@ def baseline(
         typer.Option("--list", help="List labeled pinned baselines."),
     ] = False,
     label: Annotated[
-        str,
+        str | None,
         typer.Option("--label", help="Pinned baseline label."),
-    ] = "default",
+    ] = None,
     runs_dir: Annotated[
         Path | None,
         typer.Option("--runs-dir", help="Directory containing VibeBench runs."),
@@ -3560,26 +3578,71 @@ def baseline(
         Path | None,
         typer.Option("--json-output", help="Write baseline JSON to PATH."),
     ] = None,
+    summary_output: Annotated[
+        Path | None,
+        typer.Option("--summary-output", help="Write baseline promotion Markdown."),
+    ] = None,
+    dry_run: Annotated[
+        bool,
+        (
+            typer.Option(
+                "--dry-run",
+                help="Validate promotion without writing baseline state.",
+            )
+        ),
+    ] = False,
+    require_existing_baseline: Annotated[
+        bool,
+        typer.Option(
+            "--require-existing-baseline",
+            help="Fail promotion if the target label has no baseline yet.",
+        ),
+    ] = False,
+    require_manifest: Annotated[
+        bool,
+        typer.Option("--require-manifest", help="Require manifest.json to exist."),
+    ] = False,
+    require_regression_pass: Annotated[
+        bool,
+        typer.Option(
+            "--require-regression-pass/--no-require-regression-pass",
+            help="Require regression-check to pass when a baseline exists.",
+        ),
+    ] = True,
+    allow_regression_failure: Annotated[
+        bool,
+        typer.Option(
+            "--allow-regression-failure",
+            help="Allow promotion even when regression-check fails.",
+        ),
+    ] = False,
 ) -> None:
     """Show, set, list, or clear baseline run metadata."""
     root = project_root.resolve()
     selected_json_output = resolve_optional_output_path(root, json_output)
+    selected_summary_output = resolve_optional_output_path(root, summary_output)
+    promotion_requested = promote_latest or promote_run is not None
+    selected_label = resolve_baseline_label(root, label, use_config=promotion_requested)
     pinned_action_requested = any(
         [
             set_latest,
             set_run is not None,
+            promotion_requested,
             show,
             clear,
             list_baselines,
             as_json,
             json_output,
+            summary_output,
         ]
-    ) or label != "default"
+    ) or selected_label != "default"
     action_count = sum(
         [
             bool(legacy_set_run is not None),
             set_latest,
             bool(set_run is not None),
+            promote_latest,
+            bool(promote_run is not None),
             clear,
             list_baselines,
         ]
@@ -3590,6 +3653,7 @@ def baseline(
 
     try:
         list_result = None
+        promotion_result = None
         if legacy_set_run is not None and not pinned_action_requested:
             result = set_baseline(root, legacy_set_run, runs_dir=runs_dir)
             payload = baseline_status_payload(result)
@@ -3597,11 +3661,13 @@ def baseline(
             list_result = list_pinned_baselines(root)
             payload = baseline_list_payload(list_result)
             result = None
+        elif selected_summary_output is not None and not promotion_requested:
+            raise ReportError("--summary-output is only supported for promotion.")
         elif set_latest:
             result = set_pinned_baseline(
                 root,
                 "latest",
-                label=label,
+                label=selected_label,
                 runs_dir=runs_dir,
                 source="set-latest",
             )
@@ -3610,16 +3676,39 @@ def baseline(
             result = set_pinned_baseline(
                 root,
                 set_run,
-                label=label,
+                label=selected_label,
                 runs_dir=runs_dir,
                 source="set-run",
             )
             payload = baseline_status_payload(result)
+        elif promotion_requested:
+            policy = resolve_regression_check_policy(
+                root,
+                baseline_label=selected_label,
+            )
+            promotion_result = promote_baseline(
+                root,
+                "latest" if promote_latest else str(promote_run),
+                label=selected_label,
+                runs_dir=runs_dir,
+                source="promote-latest" if promote_latest else "promote-run",
+                dry_run=dry_run,
+                require_existing_baseline=require_existing_baseline,
+                require_manifest=require_manifest,
+                require_regression_pass=require_regression_pass,
+                allow_regression_failure=allow_regression_failure,
+                max_score_drop=float(policy["max_score_drop"]),
+                max_risk_increase=float(policy["max_risk_increase"]),
+                fail_on_missing_metrics=bool(policy["fail_on_missing_metrics"]),
+                policy_source=str(policy["policy_source"]),
+            )
+            payload = promotion_payload(promotion_result)
+            result = None
         elif clear:
-            result = clear_pinned_baseline(root, label=label)
+            result = clear_pinned_baseline(root, label=selected_label)
             payload = baseline_status_payload(result)
         elif pinned_action_requested:
-            result = show_pinned_baseline(root, label=label)
+            result = show_pinned_baseline(root, label=selected_label)
             payload = baseline_status_payload(result)
         else:
             result = show_baseline(root)
@@ -3634,9 +3723,23 @@ def baseline(
             json.dumps(payload, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+    if selected_summary_output is not None:
+        selected_summary_output.write_text(
+            promotion_markdown(promotion_result),
+            encoding="utf-8",
+        )
 
     if as_json:
-        print(json.dumps(payload, indent=2, sort_keys=True))
+        if promotion_result is not None:
+            print(promotion_json(promotion_result))
+        else:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+    elif promotion_result is not None:
+        render_baseline_promotion_summary(promotion_result)
+        if selected_json_output is not None:
+            console.print(f"Baseline JSON: {selected_json_output}")
+        if selected_summary_output is not None:
+            console.print(f"Baseline promotion Markdown: {selected_summary_output}")
     elif list_result is not None:
         render_baseline_list_summary(list_result)
         if selected_json_output is not None:
@@ -3646,6 +3749,8 @@ def baseline(
         if selected_json_output is not None:
             console.print(f"Baseline JSON: {selected_json_output}")
 
+    if promotion_result is not None and promotion_result.status == "failed":
+        raise typer.Exit(code=1)
     if result is not None and result.metadata is not None and not result.is_valid:
         raise typer.Exit(code=1)
 
@@ -4810,6 +4915,43 @@ def render_bundle_summary(result: BundleResult) -> None:
     else:
         skipped_table.add_row("none")
     console.print(skipped_table)
+
+
+def resolve_baseline_label(root: Path, label: str | None, *, use_config: bool) -> str:
+    """Resolve baseline label, optionally using regression config."""
+    if label is not None:
+        return label
+    if use_config:
+        effective_config = load_effective_config(config_file(root))
+        if effective_config.config.regression.baseline_label:
+            return effective_config.config.regression.baseline_label
+    return "default"
+
+
+def render_baseline_promotion_summary(result: BaselinePromotionResult) -> None:
+    """Render baseline promotion output."""
+    style = "green" if result.status in {"promoted", "planned"} else "red"
+    console.print()
+    console.print("[bold]VibeBench baseline promotion[/]")
+    console.print(f"Status: [{style}]{result.status}[/]")
+    console.print(f"Label: {result.label}")
+    console.print(f"Candidate run: {result.candidate_run_id or 'none'}")
+    console.print(f"Promotion happened: {str(result.baseline_written).lower()}")
+    console.print(f"Promotion forced: {str(result.promotion_forced).lower()}")
+    table = Table(title="Promotion checks")
+    table.add_column("Check")
+    table.add_column("Status")
+    table.add_column("Message")
+    for check in result.checks:
+        check_style = "green" if check.status == "passed" else "yellow"
+        if check.status == "failed":
+            check_style = "red"
+        table.add_row(check.name, f"[{check_style}]{check.status}[/]", check.message)
+    console.print(table)
+    console.print(
+        "Verify with: "
+        f"python3 -m vibebench baseline --show --label {result.label} --json"
+    )
 
 
 def render_baseline_summary(result: BaselineStatus) -> None:

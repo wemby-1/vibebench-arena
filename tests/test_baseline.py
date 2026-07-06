@@ -377,3 +377,323 @@ def test_pinned_baseline_list_and_json_output(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert payload["baselines"][0]["label"] == "stable"
     assert written["baselines"][0]["label"] == "stable"
+
+
+
+def baseline_json(project_root: Path, *args: str) -> object:
+    return runner.invoke(
+        app,
+        ["baseline", "--project-root", str(project_root), *args],
+    )
+
+
+def test_baseline_promote_latest_dry_run_does_not_write(tmp_path: Path) -> None:
+    latest = write_run(tmp_path, "20260628_130000", metrics_payload(score=100))
+
+    result = baseline_json(
+        tmp_path,
+        "--promote-latest",
+        "--label",
+        "stable",
+        "--dry-run",
+        "--json",
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["status"] == "planned"
+    assert payload["dry_run"] is True
+    assert payload["candidate_run_id"] == latest.name
+    assert payload["label"] == "stable"
+    assert not (tmp_path / ".vibebench" / "baselines" / "stable.json").exists()
+    assert {check["name"] for check in payload["checks"]} >= {
+        "run_exists",
+        "metrics_available",
+        "manifest_consistent",
+        "regression_policy",
+    }
+
+
+def test_baseline_promote_latest_writes_selected_label(tmp_path: Path) -> None:
+    latest = write_run(tmp_path, "20260628_130000", metrics_payload(score=100))
+
+    result = baseline_json(
+        tmp_path,
+        "--promote-latest",
+        "--label",
+        "stable",
+        "--json",
+    )
+
+    baseline_path = tmp_path / ".vibebench" / "baselines" / "stable.json"
+    stored = json.loads(baseline_path.read_text(encoding="utf-8"))
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["status"] == "promoted"
+    assert payload["baseline_written"] is True
+    assert stored["run_id"] == latest.name
+    assert stored["label"] == "stable"
+    assert stored["source"] == "promote-latest"
+
+
+def test_baseline_promote_run_writes_explicit_run(tmp_path: Path) -> None:
+    selected = write_run(tmp_path, "20260628_120000", metrics_payload(score=90))
+    write_run(tmp_path, "20260628_130000", metrics_payload(score=100))
+
+    result = baseline_json(
+        tmp_path,
+        "--promote-run",
+        selected.name,
+        "--label",
+        "stable",
+        "--json",
+    )
+
+    stored = json.loads(
+        (tmp_path / ".vibebench" / "baselines" / "stable.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert result.exit_code == 0
+    assert json.loads(result.output)["candidate_run_id"] == selected.name
+    assert stored["run_id"] == selected.name
+    assert stored["source"] == "promote-run"
+
+
+def test_baseline_promote_missing_run_fails(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260628_120000")
+
+    result = baseline_json(
+        tmp_path,
+        "--promote-run",
+        "missing",
+        "--label",
+        "stable",
+        "--json",
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert payload["checks"][0]["name"] == "run_exists"
+    assert payload["checks"][0]["status"] == "failed"
+    assert not (tmp_path / ".vibebench" / "baselines" / "stable.json").exists()
+
+
+def test_baseline_promote_missing_metrics_fails(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260628_120000")
+    run_dir.joinpath("metrics.json").unlink()
+
+    result = baseline_json(
+        tmp_path,
+        "--promote-run",
+        run_dir.name,
+        "--label",
+        "stable",
+        "--json",
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert any(check["name"] == "run_exists" for check in payload["checks"])
+    assert not (tmp_path / ".vibebench" / "baselines" / "stable.json").exists()
+
+
+def test_baseline_promote_requires_manifest_when_requested(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260628_120000")
+
+    result = baseline_json(
+        tmp_path,
+        "--promote-latest",
+        "--label",
+        "stable",
+        "--require-manifest",
+        "--json",
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert any(
+        check["name"] == "manifest_consistent" and check["status"] == "failed"
+        for check in payload["checks"]
+    )
+
+
+def test_baseline_promote_requires_existing_baseline(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260628_120000")
+
+    result = baseline_json(
+        tmp_path,
+        "--promote-latest",
+        "--label",
+        "stable",
+        "--require-existing-baseline",
+        "--json",
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert any(
+        check["name"] == "regression_policy" and check["status"] == "failed"
+        for check in payload["checks"]
+    )
+
+
+def test_baseline_promote_runs_regression_and_blocks_failure(
+    tmp_path: Path,
+) -> None:
+    baseline = write_run(tmp_path, "20260628_120000", metrics_payload(score=100))
+    candidate = write_run(tmp_path, "20260628_130000", metrics_payload(score=90))
+    first = baseline_json(tmp_path, "--set-run", baseline.name, "--label", "stable")
+    assert first.exit_code == 0
+
+    result = baseline_json(
+        tmp_path,
+        "--promote-run",
+        candidate.name,
+        "--label",
+        "stable",
+        "--json",
+    )
+
+    payload = json.loads(result.output)
+    stored = json.loads(
+        (tmp_path / ".vibebench" / "baselines" / "stable.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert payload["regression_check"]["status"] == "failed"
+    assert stored["run_id"] == baseline.name
+
+
+def test_baseline_promote_allows_forced_regression_failure(
+    tmp_path: Path,
+) -> None:
+    baseline = write_run(tmp_path, "20260628_120000", metrics_payload(score=100))
+    candidate = write_run(tmp_path, "20260628_130000", metrics_payload(score=90))
+    first = baseline_json(tmp_path, "--set-run", baseline.name, "--label", "stable")
+    assert first.exit_code == 0
+
+    result = baseline_json(
+        tmp_path,
+        "--promote-run",
+        candidate.name,
+        "--label",
+        "stable",
+        "--allow-regression-failure",
+        "--json",
+    )
+
+    payload = json.loads(result.output)
+    stored = json.loads(
+        (tmp_path / ".vibebench" / "baselines" / "stable.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert result.exit_code == 0
+    assert payload["status"] == "promoted"
+    assert payload["promotion_forced"] is True
+    assert payload["regression_check"]["status"] == "failed"
+    assert stored["run_id"] == candidate.name
+
+
+def test_baseline_promote_json_stdout_is_pure(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260628_120000")
+
+    result = baseline_json(tmp_path, "--promote-latest", "--label", "stable", "--json")
+
+    assert result.exit_code == 0
+    assert json.loads(result.output)["status"] == "promoted"
+    assert "VibeBench baseline promotion" not in result.output
+
+
+def test_baseline_promote_json_output_and_summary_output(tmp_path: Path) -> None:
+    write_run(tmp_path, "20260628_120000")
+    json_output = tmp_path / "promotion.json"
+    summary_output = tmp_path / "promotion.md"
+
+    result = baseline_json(
+        tmp_path,
+        "--promote-latest",
+        "--label",
+        "stable",
+        "--json-output",
+        str(json_output),
+        "--summary-output",
+        str(summary_output),
+        "--json",
+    )
+
+    stdout_payload = json.loads(result.output)
+    file_payload = json.loads(json_output.read_text(encoding="utf-8"))
+    summary = summary_output.read_text(encoding="utf-8")
+    assert result.exit_code == 0
+    assert stdout_payload["status"] == "promoted"
+    assert file_payload["status"] == "promoted"
+    assert summary.startswith("# VibeBench Baseline Promotion")
+    assert "## Checks" in summary
+
+
+def test_baseline_promote_uses_config_label_when_omitted(tmp_path: Path) -> None:
+    config_dir = tmp_path / ".vibebench"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_dir.joinpath("config.yaml").write_text(
+        """project:
+  name: demo
+checks:
+  test:
+    - pytest -q
+regression:
+  baseline_label: stable
+""",
+        encoding="utf-8",
+    )
+    latest = write_run(tmp_path, "20260628_120000")
+
+    result = baseline_json(tmp_path, "--promote-latest", "--json")
+
+    payload = json.loads(result.output)
+    stored = json.loads(
+        (tmp_path / ".vibebench" / "baselines" / "stable.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert result.exit_code == 0
+    assert payload["label"] == "stable"
+    assert stored["run_id"] == latest.name
+
+
+def test_baseline_promote_cli_label_overrides_config(tmp_path: Path) -> None:
+    config_dir = tmp_path / ".vibebench"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_dir.joinpath("config.yaml").write_text(
+        """project:
+  name: demo
+checks:
+  test:
+    - pytest -q
+regression:
+  baseline_label: stable
+""",
+        encoding="utf-8",
+    )
+    write_run(tmp_path, "20260628_120000")
+
+    result = baseline_json(
+        tmp_path,
+        "--promote-latest",
+        "--label",
+        "candidate",
+        "--json",
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["label"] == "candidate"
+    assert (tmp_path / ".vibebench" / "baselines" / "candidate.json").exists()
+    assert not (tmp_path / ".vibebench" / "baselines" / "stable.json").exists()

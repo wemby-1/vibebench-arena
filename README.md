@@ -48,7 +48,7 @@ See the [architecture](docs/architecture.md), [artifact gallery](docs/artifact-g
 - [Adoption guide](docs/adoption.md): a safe first-week path for Codex-first / vibe-coding teams.
 - [Demo guide](docs/demo.md): commands that prove the core local workflow without external service dependency.
 - Create a one-command evidence room: `python3 -m vibebench evidence-room --output-dir PATH --zip`, then open `index.html`, `security-questionnaire.html`, and `review-scorecard.html`; inspect `share-check.md` for the local pre-sharing scan summary when needed. Evidence rooms include `share-check.json` and `share-check.md`. Or run `python3 -m vibebench ci` and locate it with `python3 -m vibebench latest --artifact evidence-room-index-html --path-only`.
-- Compare candidate run quality against the previous baseline run with `python3 -m vibebench regression-check`; for stable gates, pin a run with `python3 -m vibebench baseline --set-latest --label stable`, configure `regression.enabled: true` with `baseline_label: stable`, and run `python3 -m vibebench ci --json`. Use `python3 -m vibebench ci --regression-check --baseline-label experimental --json` for a temporary override. It is a local regression gate, not a benchmark certification.
+- Compare candidate run quality with `python3 -m vibebench regression-check`; for stable gates, run `python3 -m vibebench ci --json`, dry-run `python3 -m vibebench baseline --promote-latest --label stable --dry-run --json`, then promote with `python3 -m vibebench baseline --promote-latest --label stable` only if checks pass. Configure `regression.enabled: true` with `baseline_label: stable` for future `ci --json` runs. `--set-latest` remains direct/manual; `--promote-latest` is the guarded path. CI does not auto-promote baselines.
 - Before sharing an evidence room, proof packet, static preview, or zip externally, run `python3 -m vibebench share-check PATH`; use `python3 -m vibebench share-check PATH --json` for machine-readable output. It is a local pre-sharing aid, not a security certification, third-party audit, or guarantee, so manually review artifacts before publishing.
 - Generate a shareable proof packet: `python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip` writes Markdown, JSON, a self-contained evidence-first HTML report, a manifest, and `proof.zip`; GitHub Actions shows a proof packet summary card and uploads the downloadable `vibebench-proof-packet` artifact.
 - Build a static preview bundle before publishing edits: `python3 -m vibebench site-preview --output-dir /tmp/vibebench-site-preview --zip`, then verify it with `python3 -m vibebench site-preview --verify /tmp/vibebench-site-preview/site-preview.zip`; CI reuses the same command for `vibebench-site-preview` without enabling GitHub Pages automatically.
@@ -118,7 +118,7 @@ If you care about better AI coding review, audit tooling, and artifacts, starrin
 - Run `python3 -m vibebench demo` to inspect the local showcase demo and checked-in artifact pack.
 - Run `python3 -m vibebench demo --json` or `python3 -m vibebench demo --copy-to /tmp/vibebench-demo` to script or copy the sample evidence pack.
 - Run `python3 -m vibebench ci --dry-run` to see the planned quality pipeline.
-- Run `python3 -m vibebench regression-check` before sharing or releasing when at least two runs exist; automatic previous-run inference is convenient for experiments, while pinned baselines plus config are better for stable gates. Use `python3 -m vibebench baseline --set-latest --label stable`, set `regression.enabled: true` and `regression.baseline_label: stable`, then `python3 -m vibebench ci --json` to write optional `regression-check.json` and `regression-check.md` artifacts during CI. This compares candidate score and risk against the baseline run and is not a benchmark certification.
+- Run `python3 -m vibebench regression-check` before sharing or releasing when at least two runs exist; automatic previous-run inference is convenient for experiments, while guarded pinned baselines plus config are better for stable gates. Generate a candidate with `python3 -m vibebench ci --json`, dry-run `python3 -m vibebench baseline --promote-latest --label stable --dry-run --json`, promote with `python3 -m vibebench baseline --promote-latest --label stable`, verify with `python3 -m vibebench baseline --show --label stable --json`, then run future checks with `python3 -m vibebench ci --regression-check --baseline-label stable --json` or config-enabled `ci --json`. This compares candidate score and risk against the baseline run and is not a benchmark certification.
 - Run `python3 -m vibebench evidence-room --output-dir PATH --zip` to create a local evidence room combining the proof packet and static site preview, then verify it with `python3 -m vibebench evidence-room --verify PATH`. Open `index.html` first, then inspect `share-check.md` for the pre-sharing scan summary if you want the local share-check result. Evidence rooms include `share-check.json` and `share-check.md`. GitHub Actions uploads the same evidence-first package as `vibebench-evidence-room`.
 - Run `python3 -m vibebench share-check PATH` before sharing generated evidence rooms, proof packets, static previews, or zip files; add `--json` for automation. The scanner is local-only and does not replace manual artifact review.
 - Open the evidence-room `trust-center.html` or [docs Trust Center](docs/trust-center.html) for local-first, privacy, reproducibility, and artifact-safety boundaries.
@@ -320,8 +320,11 @@ python -m vibebench trend --write-summary
 # Mark the latest run as the legacy compare/gate baseline
 python -m vibebench baseline --set latest
 
-# Pin the latest run as a stable regression-check baseline
-python -m vibebench baseline --set-latest --label stable
+# Safely promote the latest run as a stable regression-check baseline
+python -m vibebench ci --json
+python -m vibebench baseline --promote-latest --label stable --dry-run --json
+python -m vibebench baseline --promote-latest --label stable
+python -m vibebench baseline --show --label stable --json
 # Then set regression.enabled=true and regression.baseline_label=stable
 python -m vibebench ci --json
 python -m vibebench ci --regression-check --baseline-label experimental --json
@@ -411,7 +414,7 @@ compare:
 
 Use `python -m vibebench ci --no-fail-on-regression` to disable the configured guard for one run. `--skip-compare` skips compare entirely, so it also disables compare regression failure.
 
-`vibebench baseline --set latest` saves the legacy compare/gate baseline in `.vibebench/baseline.json`. For regression-check, `vibebench baseline --set-latest --label stable` stores local pinned state in `.vibebench/baselines/stable.json`; `vibebench regression-check --baseline-label stable` and config-driven `vibebench ci --json` with `regression.enabled: true` use it before falling back to automatic previous-run inference. CLI flags such as `--baseline-label`, `--max-score-drop`, and `--require-baseline` override the config policy.
+`vibebench baseline --set latest` saves the legacy compare/gate baseline in `.vibebench/baseline.json`. For regression-check, `vibebench baseline --set-latest --label stable` writes pinned state directly, while `vibebench baseline --promote-latest --label stable` first checks the candidate run, metrics, manifest when present, and regression-check against the current label before updating `.vibebench/baselines/stable.json`. `vibebench regression-check --baseline-label stable` and config-driven `vibebench ci --json` with `regression.enabled: true` use it before falling back to automatic previous-run inference. CLI flags such as `--baseline-label`, `--max-score-drop`, and `--require-baseline` override the config policy.
 
 `vibebench clean` safely previews cleanup of old local runs. It is dry-run by default and only deletes with `--yes`.
 
