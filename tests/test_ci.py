@@ -1123,7 +1123,7 @@ def test_ci_regression_check_writes_reports_when_baseline_exists(
 ) -> None:
     write_config(tmp_path)
     init_git_repo(tmp_path)
-    write_run(tmp_path, "20260706_110000", metrics=sample_metrics(score=100))
+    write_run(tmp_path, "20991231_235958", metrics=sample_metrics(score=100))
 
     result = runner.invoke(
         app,
@@ -1136,6 +1136,7 @@ def test_ci_regression_check_writes_reports_when_baseline_exists(
     report = json.loads(run_dir.joinpath("regression-check.json").read_text())
     assert result.exit_code == 0
     assert steps["regression-check"]["status"] == "passed"
+    assert run_dir.name == payload["run_id"]
     assert report["status"] == "passed"
     assert run_dir.joinpath("regression-check.md").exists()
     assert "VibeBench CI" not in result.output

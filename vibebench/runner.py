@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Literal
 
@@ -149,7 +149,7 @@ def run_command(
 
 def create_run_dir(project_root: Path, created_at: datetime) -> Path:
     """Create the timestamped VibeBench run directory."""
-    timestamp = created_at.astimezone().strftime("%Y%m%d_%H%M%S")
+    timestamp = next_run_timestamp(config_dir(project_root) / "runs", created_at)
     base_dir = config_dir(project_root) / "runs" / timestamp
     run_dir = base_dir
     suffix = 1
@@ -158,6 +158,29 @@ def create_run_dir(project_root: Path, created_at: datetime) -> Path:
         suffix += 1
     run_dir.mkdir(parents=True, exist_ok=False)
     return run_dir
+
+
+def next_run_timestamp(runs_dir: Path, created_at: datetime) -> str:
+    """Return a run timestamp that sorts after existing timestamped runs."""
+    timestamp = created_at.astimezone().strftime("%Y%m%d_%H%M%S")
+    if not runs_dir.exists():
+        return timestamp
+
+    latest_timestamp = timestamp
+    for path in runs_dir.iterdir():
+        if not path.is_dir():
+            continue
+        try:
+            parsed = datetime.strptime(path.name[:15], "%Y%m%d_%H%M%S").replace(
+                tzinfo=created_at.tzinfo or UTC
+            )
+        except ValueError:
+            continue
+        if path.name[:15] > latest_timestamp:
+            latest_timestamp = (parsed + timedelta(seconds=1)).strftime(
+                "%Y%m%d_%H%M%S"
+            )
+    return latest_timestamp
 
 
 def build_result(
