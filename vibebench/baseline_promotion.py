@@ -19,6 +19,7 @@ from vibebench.baseline import (
 )
 from vibebench.history import resolve_runs_dir
 from vibebench.manifest import check_manifest
+from vibebench.metrics_check import validate_metrics_payload
 from vibebench.regression_check import (
     RegressionCheckResult,
     regression_check_payload,
@@ -131,15 +132,17 @@ def promote_baseline(
     if run_dir is not None:
         try:
             metrics = load_metrics(run_dir)
-            missing = [name for name in ["score", "risk_level"] if name not in metrics]
-            if missing:
+            metrics_contract = validate_metrics_payload(metrics)
+            failures = [
+                check for check in metrics_contract.checks if check.status == "failed"
+            ]
+            if failures:
                 checks.append(
                     PromotionCheck(
                         "metrics_available",
                         "failed",
-                        "metrics.json is missing required regression metric(s): "
-                        + ", ".join(missing),
-                        {"missing": missing},
+                        "; ".join(check.message for check in failures),
+                        {"failed_checks": [check.name for check in failures]},
                     )
                 )
             else:

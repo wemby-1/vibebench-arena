@@ -10,6 +10,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict
 
 from vibebench.history import resolve_runs_dir
+from vibebench.metrics_check import validate_score_risk_values
 from vibebench.paths import config_dir
 from vibebench.report import ReportError
 
@@ -548,12 +549,17 @@ def metadata_verification_checks(
         )
     )
     snapshot = metadata.metrics_snapshot
-    snapshot_ok = snapshot is not None and snapshot.risk_level != ""
+    snapshot_result = (
+        validate_score_risk_values(snapshot.score, snapshot.risk_level)
+        if snapshot is not None
+        else None
+    )
+    snapshot_ok = snapshot_result.usable if snapshot_result is not None else False
     checks.append(
         BaselineVerificationCheck(
             name="metrics_snapshot_available",
             status="passed" if snapshot_ok else "warning",
-            message="Portable metrics snapshot includes score and risk_level."
+            message="Portable metrics snapshot includes usable score and risk_level."
             if snapshot_ok
             else "Portable metrics snapshot is missing or incomplete.",
         )

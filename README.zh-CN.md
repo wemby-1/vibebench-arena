@@ -48,6 +48,7 @@ AI coding 正在变得更容易；真正困难的是 review、审计、对比和
 - [采用指南](docs/adoption.md)：适合评估 Codex / vibe-coding / AI 辅助编程工作流的小团队，说明第一周如何安全试点。
 - [Demo guide](docs/demo.md)：用本地命令证明核心流程，不依赖外部服务。
 - 一条命令生成 evidence room：`python3 -m vibebench evidence-room --output-dir PATH --zip`，然后先打开 `index.html`，按需查看 `share-check.md` 里的本地预分享扫描摘要，并用 `review-scorecard.html` 做中立 review checklist；evidence room 也包含 `share-check.json`。也可以运行 `python3 -m vibebench ci`，并可用 `python3 -m vibebench latest --artifact evidence-room-index-html --path-only` 定位。
+- 用 `python3 -m vibebench metrics-check` 检查最新 run 的 metrics contract，或用 `python3 -m vibebench metrics-check --run-dir PATH` 检查指定 run；`--strict` 会把可选字段 warning 也视为失败。它会在 baseline promote 或 regression-check 前验证 `metrics.json` 结构以及 score/risk 是否可用。
 - 用 `python3 -m vibebench regression-check` 对比 candidate run 和 baseline；稳定门禁建议先运行 `python3 -m vibebench ci --json`，再用 `python3 -m vibebench baseline --promote-latest --label stable --dry-run --json` 预演，检查通过后运行 `python3 -m vibebench baseline --promote-latest --label stable`。`--set-latest` 是直接/手动固定，`--promote-latest` 是带检查的安全路径；CI 不会自动 promote baseline。需要迁移到另一台机器时，可用 `python3 -m vibebench baseline --export --label stable --output baseline.json` 导出便携 snapshot，用 `python3 -m vibebench baseline --verify --input baseline.json --require-portable` 验证，再用 `python3 -m vibebench baseline --import baseline.json --label stable` 导入。
 - 对外分享 evidence room、proof packet、static preview 或 zip 前，先运行 `python3 -m vibebench share-check PATH`；机器可读输出用 `python3 -m vibebench share-check PATH --json`。它只是本地预分享辅助，不是安全认证、第三方审计或保证，发布前仍需人工检查 artifacts。
 - 打开 evidence room 里的 `trust-center.html` 或 [docs Trust Center](docs/trust-center.html)，查看 local-first、privacy、reproducibility 和 artifact safety 边界。
@@ -319,6 +320,7 @@ python -m vibebench baseline --set latest
 
 # 安全地将最新运行提升为稳定 regression-check baseline
 python -m vibebench ci --json
+python -m vibebench metrics-check --strict
 python -m vibebench baseline --promote-latest --label stable --dry-run --json
 python -m vibebench baseline --promote-latest --label stable
 python -m vibebench baseline --show --label stable --json

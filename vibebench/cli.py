@@ -110,6 +110,11 @@ from vibebench.manifest import (
     check_manifest,
     generate_manifest,
 )
+from vibebench.metrics_check import (
+    MetricsCheckResult,
+    metrics_check_json,
+    run_metrics_check,
+)
 from vibebench.package_check import (
     PackageReadinessResult,
     package_check_json_payload,
@@ -1793,6 +1798,61 @@ def evidence_room_command(
         render_evidence_room_summary(payload)
         if selected_json_output is not None:
             console.print(f"Evidence room JSON: {selected_json_output}")
+
+
+@app.command("metrics-check")
+def metrics_check_command(
+    project_root: ProjectRootOption = Path("."),
+    run_dir: Annotated[
+        Path | None,
+        typer.Option("--run-dir", help="Specific VibeBench run directory to check."),
+    ] = None,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print metrics-check result as pure JSON."),
+    ] = False,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write metrics-check JSON to PATH."),
+    ] = None,
+    summary_output: Annotated[
+        Path | None,
+        typer.Option("--summary-output", help="Write metrics-check Markdown."),
+    ] = None,
+    strict: Annotated[
+        bool,
+        typer.Option("--strict", help="Fail when metrics-check warnings exist."),
+    ] = False,
+) -> None:
+    """Check that a run metrics.json satisfies regression/baseline contracts."""
+    root = project_root.resolve()
+    selected_run_dir = resolve_optional_output_path(root, run_dir)
+    selected_json_output = resolve_optional_output_path(root, json_output)
+    selected_summary_output = resolve_optional_output_path(root, summary_output)
+    try:
+        result = run_metrics_check(
+            root,
+            run_dir=selected_run_dir,
+            strict=strict,
+            json_output=selected_json_output,
+            summary_output=selected_summary_output,
+        )
+    except ReportError as exc:
+        target_console = err_console if as_json else console
+        target_console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if as_json:
+        print(metrics_check_json(result))
+    else:
+        render_metrics_check_summary(result)
+        if result.json_path is not None:
+            console.print(f"Metrics-check JSON: {result.json_path}")
+        if result.summary_path is not None:
+            console.print(f"Metrics-check Markdown: {result.summary_path}")
+
+    if result.status == "failed":
+        raise typer.Exit(code=1)
 
 
 @app.command("regression-check")
@@ -5061,6 +5121,38 @@ def resolve_baseline_label(root: Path, label: str | None, *, use_config: bool) -
     return "default"
 
 
+
+
+def render_metrics_check_summary(result: MetricsCheckResult) -> None:
+    """Render metrics-check output."""
+    style = "green" if result.status == "passed" else "yellow"
+    if result.status == "failed":
+        style = "red"
+    console.print()
+    console.print("[bold]VibeBench metrics check[/]")
+    console.print(f"Status: [{style}]{result.status}[/]")
+    console.print(f"Run dir: {result.run_dir or 'none'}")
+    console.print(f"Metrics path: {result.metrics_path or 'none'}")
+    console.print(
+        f"Usable for regression: {str(result.usable_for_regression).lower()}"
+    )
+    console.print(f"Usable as baseline: {str(result.usable_as_baseline).lower()}")
+    table = Table(title="Metrics checks")
+    table.add_column("Check")
+    table.add_column("Status")
+    table.add_column("Message")
+    for check in result.checks:
+        check_style = "green" if check.status == "passed" else "yellow"
+        if check.status == "failed":
+            check_style = "red"
+        table.add_row(check.name, f"[{check_style}]{check.status}[/]", check.message)
+    console.print(table)
+    if result.advice:
+        advice_table = Table(title="Advice")
+        advice_table.add_column("Item")
+        for item in result.advice:
+            advice_table.add_row(item)
+        console.print(advice_table)
 
 def render_baseline_verification_summary(result: BaselineVerificationResult) -> None:
     """Render baseline verification output."""

@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added `metrics-check` for explicit `metrics.json` contract validation before baseline promotion or regression comparison, with JSON, Markdown, run selection, and strict modes.
+
 - Added `baseline --verify` for pinned and exported baseline regression-readiness checks, including JSON, Markdown, strict, portable, and live-metrics modes.
 
 - Added portable regression baseline snapshots plus `baseline --export` / `--import` so promoted pinned baselines can be reused when local run directories are unavailable.

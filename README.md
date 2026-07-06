@@ -48,6 +48,7 @@ See the [architecture](docs/architecture.md), [artifact gallery](docs/artifact-g
 - [Adoption guide](docs/adoption.md): a safe first-week path for Codex-first / vibe-coding teams.
 - [Demo guide](docs/demo.md): commands that prove the core local workflow without external service dependency.
 - Create a one-command evidence room: `python3 -m vibebench evidence-room --output-dir PATH --zip`, then open `index.html`, `security-questionnaire.html`, and `review-scorecard.html`; inspect `share-check.md` for the local pre-sharing scan summary when needed. Evidence rooms include `share-check.json` and `share-check.md`. Or run `python3 -m vibebench ci` and locate it with `python3 -m vibebench latest --artifact evidence-room-index-html --path-only`.
+- Check metrics contract readiness with `python3 -m vibebench metrics-check` for the latest run, `python3 -m vibebench metrics-check --run-dir PATH` for a specific run, and `--strict` when missing optional metrics should fail automation. It verifies `metrics.json` shape plus score/risk usability before baseline promotion or regression-check.
 - Compare candidate run quality with `python3 -m vibebench regression-check`; for stable gates, run `python3 -m vibebench ci --json`, dry-run `python3 -m vibebench baseline --promote-latest --label stable --dry-run --json`, then promote with `python3 -m vibebench baseline --promote-latest --label stable` only if checks pass. Configure `regression.enabled: true` with `baseline_label: stable` for future `ci --json` runs. `--set-latest` remains direct/manual; `--promote-latest` is the guarded path. CI does not auto-promote baselines. Export with `python3 -m vibebench baseline --export --label stable --output baseline.json`, verify with `python3 -m vibebench baseline --verify --input baseline.json --require-portable`, and import with `python3 -m vibebench baseline --import baseline.json --label stable` when another machine needs the same portable snapshot.
 - Before sharing an evidence room, proof packet, static preview, or zip externally, run `python3 -m vibebench share-check PATH`; use `python3 -m vibebench share-check PATH --json` for machine-readable output. It is a local pre-sharing aid, not a security certification, third-party audit, or guarantee, so manually review artifacts before publishing.
 - Generate a shareable proof packet: `python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip` writes Markdown, JSON, a self-contained evidence-first HTML report, a manifest, and `proof.zip`; GitHub Actions shows a proof packet summary card and uploads the downloadable `vibebench-proof-packet` artifact.
@@ -322,6 +323,7 @@ python -m vibebench baseline --set latest
 
 # Safely promote the latest run as a stable regression-check baseline
 python -m vibebench ci --json
+python -m vibebench metrics-check --strict
 python -m vibebench baseline --promote-latest --label stable --dry-run --json
 python -m vibebench baseline --promote-latest --label stable
 python -m vibebench baseline --show --label stable --json
