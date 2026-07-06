@@ -292,13 +292,20 @@ python3 -m vibebench doctor --strict</code></pre>
       <div class="grid">
         <article class="card">
           <h3>Review CI artifacts before sharing</h3>
-          <p>Download artifacts, open the Evidence-room from <code>index.html</code>, inspect the Proof packet and Static site preview, and verify the package.</p>
+          <p>Download artifacts, open the Evidence-room from <code>index.html</code>, inspect the Proof packet and Static site preview, verify the package, and run <code>python3 -m vibebench share-check PATH</code>.</p>
         </article>
         <article class="card">
           <h3>Security issues</h3>
           <p>Use the repository <a href="../SECURITY.md">Security Policy</a> for vulnerability reporting expectations.</p>
         </article>
       </div>
+      <pre><code>python3 -m vibebench share-check PATH
+python3 -m vibebench share-check PATH --json</code></pre>
+      <p class="notice">
+        Share-check is a local pre-sharing aid, not a security certification,
+        not a third-party audit, and not a guarantee. Users should still
+        manually review artifacts before publishing.
+      </p>
     </section>
   </main>
 </body>

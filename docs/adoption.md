@@ -19,9 +19,10 @@ VibeBench Arena helps individuals and small teams make AI-assisted coding work r
 5. Run `python3 -m vibebench ci --dry-run --json`.
 6. Generate a shareable evidence room with `python3 -m vibebench evidence-room --output-dir PATH --zip` or a normal `python3 -m vibebench ci`; open it from `index.html`, read `trust-center.html` for project-maintained local-first/privacy/reproducibility boundaries, open `security-questionnaire.html` for adopter-facing Q&A about local-first behavior, artifact sharing, CI uploads, static HTML safety, JSON purity, and non-claims, and use `review-scorecard.html` as the neutral checklist. It combines the proof packet, static site preview, top-level HTML, Markdown, JSON, and a zip archive for external evaluation. Local CI writes `evidence-room/`, and GitHub Actions uploads `vibebench-evidence-room`.
 7. Verify the room with `python3 -m vibebench evidence-room --verify PATH`.
-8. Generate a shareable proof packet with `python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip`; inspect the self-contained evidence-first `proof.html` before sharing, or use the GitHub Actions proof packet summary card and download `vibebench-proof-packet` after CI runs.
-9. Run `python3 -m vibebench site-preview --output-dir /tmp/vibebench-site-preview --zip` and `python3 -m vibebench site-preview --verify /tmp/vibebench-site-preview/site-preview.zip` before publishing or editing the static Pages entry; CI reuses the same command for `vibebench-site-preview` without enabling GitHub Pages automatically.
-10. Read the [comparison](comparison.md) and [FAQ](faq.md).
+8. Before sharing externally, run `python3 -m vibebench share-check PATH`; use `python3 -m vibebench share-check PATH --json` for automation. It is a local pre-sharing aid, not a security certification, third-party audit, or guarantee, and teams should still manually review artifacts before publishing.
+9. Generate a shareable proof packet with `python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip`; inspect the self-contained evidence-first `proof.html` before sharing, or use the GitHub Actions proof packet summary card and download `vibebench-proof-packet` after CI runs.
+10. Run `python3 -m vibebench site-preview --output-dir /tmp/vibebench-site-preview --zip` and `python3 -m vibebench site-preview --verify /tmp/vibebench-site-preview/site-preview.zip` before publishing or editing the static Pages entry; CI reuses the same command for `vibebench-site-preview` without enabling GitHub Pages automatically.
+11. Read the [comparison](comparison.md) and [FAQ](faq.md).
 
 ## First day
 

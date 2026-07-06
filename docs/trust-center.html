@@ -259,7 +259,7 @@
       <div class="grid">
         <article class="card">
           <h3>Path/privacy hygiene</h3>
-          <p>Shareable artifacts prefer relative paths and placeholders. Review artifacts before sharing outside a local environment.</p>
+          <p>Shareable artifacts prefer relative paths and placeholders. Run <code>python3 -m vibebench share-check PATH</code> before external sharing, then manually review artifacts.</p>
         </article>
         <article class="card">
           <h3>Security boundary</h3>
@@ -292,6 +292,8 @@ python3 -m vibebench evidence-room --verify PATH
 python3 -m vibebench proof --verify PATH/proof-packet
 python3 -m vibebench site-preview --verify PATH/site-preview
 python3 -m vibebench site-check
+python3 -m vibebench share-check PATH
+python3 -m vibebench share-check PATH --json
 python3 -m vibebench ci --dry-run --json
 python3 -m vibebench release-check
 python3 -m vibebench doctor --strict</code></pre>

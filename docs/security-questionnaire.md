@@ -102,6 +102,15 @@ Treat generated artifacts as review materials. Run VibeBench locally first, insp
 
 Download the CI artifacts, open the Evidence-room from `index.html`, inspect the Proof packet and Static site preview, verify the package, and confirm the artifacts do not contain sensitive data before forwarding them outside the team.
 
+Before sharing an evidence room, proof packet, static preview, or zip externally, run:
+
+```bash
+python3 -m vibebench share-check PATH
+python3 -m vibebench share-check PATH --json
+```
+
+The scanner is a local pre-sharing aid, not a security certification, not a third-party audit, and not a guarantee. Users should still manually review artifacts before publishing.
+
 ### Where is the security policy?
 
 See [SECURITY.md](../SECURITY.md).

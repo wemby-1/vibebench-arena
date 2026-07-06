@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added `python3 -m vibebench share-check PATH` for local pre-sharing scans of evidence rooms, proof packets, static previews, directories, and zip packages, with JSON output and conservative unsafe marker detection.
+
 - Added a public adopter-facing Security Questionnaire and packaged evidence-room questionnaire artifacts, including verification, artifact aliases, bundle inclusion, and GitHub summary visibility.
 
 - Added a public Trust Center and packaged evidence-room Trust Center artifacts, including verification, artifact aliases, bundle inclusion, and GitHub summary visibility.

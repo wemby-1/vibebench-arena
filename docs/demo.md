@@ -63,6 +63,8 @@ python3 -m vibebench demo --json
 python3 -m vibebench demo --copy-to /tmp/vibebench-demo
 python3 -m vibebench evidence-room --output-dir PATH --zip
 python3 -m vibebench evidence-room --verify PATH
+python3 -m vibebench share-check PATH
+python3 -m vibebench share-check PATH --json
 python3 -m vibebench proof
 python3 -m vibebench proof --output-dir /tmp/vibebench-proof --zip
 python3 -m vibebench proof --verify /tmp/vibebench-proof/proof.zip
@@ -90,6 +92,7 @@ If `/tmp/vibebench-release-audit-demo` already exists, remove it first or choose
 - `config --show --json` prints machine-readable project and policy configuration.
 - `ci --dry-run` prints the planned check, gate, artifact, manifest, release-check, bundle, and summary steps.
 - `evidence-room` writes a local-first, evidence-first package with `index.html`, Trust Center files, Security Questionnaire files, reviewer scorecard files, top-level HTML, Markdown, JSON, nested proof packet, nested static site preview, and optional `evidence-room.zip` for external review. Normal `ci` also writes `evidence-room/` into the run directory unless `--skip-evidence-room` is used. GitHub Actions uploads it as `vibebench-evidence-room`; it does not enable GitHub Pages automatically or claim traction, funding, customers, revenue, or adoption. The Security Questionnaire covers adopter-facing local-first behavior, artifact sharing, CI uploads, static HTML safety, JSON purity, and non-claims; it is project-maintained documentation, not a third-party certification or audit.
+- `share-check` scans an evidence room, proof packet, static preview, directory, or zip before external sharing. It is a local pre-sharing aid, not a security certification, third-party audit, or guarantee; manually review artifacts before publishing.
 - `proof` prints a concise Codex-first / vibe-coding, local-first, evidence-first proof packet summary; run `python3 -m vibebench proof --output-dir PATH --zip` to write `proof.md`, `proof.json`, self-contained `proof.html`, `proof-manifest.json`, and `proof.zip`. GitHub Actions shows a proof packet summary card and uploads the same packet as `vibebench-proof-packet`.
 - `site-check` verifies the static GitHub Pages entry for required proof/evaluation links and obvious unsafe publishing markers; `site-preview` writes the reusable preview bundle, optional `site-preview.zip`, `site-check.json`, and `site-preview.md`. In CI, GitHub Actions reuses `site-preview` and uploads `vibebench-site-preview`. It does not enable GitHub Pages automatically.
 - `ci` runs the local pipeline and writes a timestamped run directory.

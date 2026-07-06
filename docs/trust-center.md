@@ -46,6 +46,8 @@ Generated static HTML artifacts are expected to avoid JavaScript, remote URLs, e
 
 Generated shareable artifacts should prefer relative paths or placeholders. Reviewers should inspect artifacts before sharing them outside a local environment.
 
+Before sharing an evidence room, proof packet, static preview, or zip externally, run `python3 -m vibebench share-check PATH`; use `python3 -m vibebench share-check PATH --json` for machine-readable output. The scanner is a local pre-sharing aid, not a security certification, not a third-party audit, and not a guarantee.
+
 ## GitHub Actions artifact behavior
 
 GitHub Actions can upload downloadable proof packet, static site preview, and evidence-room artifacts. This does not publish a package, create a release, enable GitHub Pages, or change repository settings.
@@ -72,6 +74,8 @@ python3 -m vibebench evidence-room --verify /tmp/vibebench-evidence-room
 python3 -m vibebench proof --verify /tmp/vibebench-evidence-room/proof-packet
 python3 -m vibebench site-preview --verify /tmp/vibebench-evidence-room/site-preview
 python3 -m vibebench site-check
+python3 -m vibebench share-check PATH
+python3 -m vibebench share-check PATH --json
 python3 -m vibebench ci --dry-run --json
 python3 -m vibebench release-check
 python3 -m vibebench doctor --strict

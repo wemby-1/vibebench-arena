@@ -22,6 +22,8 @@ python3 -m vibebench site-check
 python3 -m vibebench site-check --json
 python3 -m vibebench site-preview --output-dir /tmp/vibebench-site-preview --zip
 python3 -m vibebench site-preview --verify /tmp/vibebench-site-preview/site-preview.zip
+python3 -m vibebench share-check PATH
+python3 -m vibebench share-check PATH --json
 ```
 
 This checks the Pages entry for required proof/evaluation links and obvious unsafe publishing markers. It is local-only. GitHub Pages is not enabled automatically by this command.
@@ -46,6 +48,8 @@ python3 -m vibebench evidence-room --verify PATH
 ```
 
 The evidence room is local-first and evidence-first. It contains `index.html`, Trust Center files, Security Questionnaire files, reviewer scorecard files, top-level HTML, Markdown, JSON, a nested proof packet, and a nested static site preview. Normal `python3 -m vibebench ci` writes it into the run directory, `python3 -m vibebench latest --artifact evidence-room-index-html --path-only` locates the newest landing page, and `python3 -m vibebench ci --skip-evidence-room` skips only that combined package. GitHub Actions also uploads it as the downloadable `vibebench-evidence-room` artifact. It does not enable GitHub Pages automatically and does not claim traction, funding, customers, revenue, or adoption. The Security Questionnaire is project-maintained adopter-facing Q&A about local-first behavior, artifact sharing, CI uploads, static HTML safety, JSON purity, and non-claims, not a third-party certification or audit. The scorecard is a reviewer aid, not a third-party endorsement.
+
+Before sharing an evidence room, proof packet, static preview, or zip externally, run `python3 -m vibebench share-check PATH`; use `python3 -m vibebench share-check PATH --json` for machine-readable output. The scanner is a local aid, not a security certification, third-party audit, or guarantee.
 
 ## Preview locally
 

@@ -150,6 +150,13 @@ from vibebench.run_index import (
     write_run_index_summary,
 )
 from vibebench.runner import CheckRunResult, run_checks
+from vibebench.share_check import (
+    ShareCheckError,
+    ShareCheckResult,
+    run_share_check,
+    share_check_json,
+    write_share_check_json,
+)
 from vibebench.site_check import (
     run_site_check,
     site_check_json,
@@ -1754,6 +1761,99 @@ def evidence_room_command(
         render_evidence_room_summary(payload)
         if selected_json_output is not None:
             console.print(f"Evidence room JSON: {selected_json_output}")
+
+
+@app.command("share-check")
+def share_check_command(
+    target: Annotated[
+        Path,
+        typer.Argument(help="Evidence room, proof packet, site preview, or zip path."),
+    ],
+    project_root: ProjectRootOption = Path("."),
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print share-check result as pure JSON."),
+    ] = False,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write share-check JSON to PATH."),
+    ] = None,
+    strict: Annotated[
+        bool,
+        typer.Option("--strict", help="Fail when warnings are present."),
+    ] = False,
+    allow_remote_urls: Annotated[
+        bool,
+        typer.Option(
+            "--allow-remote-urls",
+            help="Downgrade remote URL findings from errors to warnings.",
+        ),
+    ] = False,
+    allow_example_temp_paths: Annotated[
+        bool,
+        typer.Option(
+            "--allow-example-temp-paths",
+            help="Allow documented /tmp/vibebench-* example paths.",
+        ),
+    ] = False,
+) -> None:
+    """Scan a local review package before sharing it externally."""
+    project = project_root.resolve()
+    selected_target = target if target.is_absolute() else project / target
+    try:
+        result = run_share_check(
+            selected_target,
+            strict=strict,
+            allow_remote_urls=allow_remote_urls,
+            allow_example_temp_paths=allow_example_temp_paths,
+        )
+    except ShareCheckError as exc:
+        if as_json:
+            payload = {
+                "status": "failed",
+                "target": str(selected_target),
+                "target_type": "missing",
+                "strict": strict,
+                "checked_files": [],
+                "summary": {
+                    "checked_file_count": 0,
+                    "finding_count": 1,
+                    "error_count": 1,
+                    "warning_count": 0,
+                    "info_count": 0,
+                },
+                "findings": [
+                    {
+                        "severity": "error",
+                        "code": "target_error",
+                        "file": str(selected_target),
+                        "line": None,
+                        "message": str(exc),
+                        "snippet": None,
+                    }
+                ],
+            }
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    selected_json_output = None
+    if json_output is not None:
+        selected_json_output = (
+            json_output if json_output.is_absolute() else project / json_output
+        )
+        write_share_check_json(result, selected_json_output)
+
+    if as_json:
+        print(share_check_json(result))
+    else:
+        render_share_check_summary(result)
+        if selected_json_output is not None:
+            console.print(f"Share-check JSON: {selected_json_output}")
+
+    if result.status == "failed":
+        raise typer.Exit(code=1)
 
 
 @app.command("manifest")
@@ -3641,6 +3741,85 @@ def render_evidence_room_verification(result: dict[str, object]) -> None:
         message = str(item.get("message", ""))
         style = "green" if status == "passed" else "red"
         console.print(f"- [{style}]{status}[/]: {name} - {message}")
+
+
+def render_share_check_summary(result: ShareCheckResult) -> None:
+    """Render a compact share-check summary."""
+    payload = json.loads(share_check_json(result))
+    summary = payload["summary"]
+    status_style = "green" if result.status == "passed" else "red"
+    console.print()
+    console.print("[bold]VibeBench share-check[/]")
+    console.print(f"Target: {result.target}")
+    console.print(f"Target type: {result.target_type}")
+    console.print(f"Checked files: {summary['checked_file_count']}")
+    console.print(
+        "Findings: "
+        f"{summary['finding_count']} "
+        f"(errors {summary['error_count']}, "
+        f"warnings {summary['warning_count']}, "
+        f"info {summary['info_count']})"
+    )
+    console.print(f"Status: [{status_style}]{result.status}[/]")
+
+    if result.findings:
+        table = Table(show_header=True, header_style="bold")
+        table.add_column("Severity")
+        table.add_column("Code")
+        table.add_column("File")
+        table.add_column("Line")
+        table.add_column("Message", overflow="fold")
+        for item in result.findings:
+            style = {
+                "error": "red",
+                "warning": "yellow",
+                "info": "cyan",
+            }.get(item.severity, "white")
+            table.add_row(
+                f"[{style}]{item.severity}[/]",
+                item.code,
+                item.file,
+                str(item.line) if item.line is not None else "",
+                item.message,
+            )
+        console.print(table)
+        render_share_check_hints(sorted({item.code for item in result.findings}))
+    else:
+        console.print("No high-confidence sharing issues found.")
+
+    console.print(
+        "Reminder: share-check is a local pre-sharing aid, not a security "
+        "certification, third-party audit, or guarantee."
+    )
+
+
+def render_share_check_hints(codes: list[str]) -> None:
+    """Render remediation hints for finding codes."""
+    hints = {
+        "remote_url": "Use local relative assets or rerun with --allow-remote-urls.",
+        "html_script_tag": "Remove scripts from static review HTML.",
+        "html_remote_script": "Bundle scripts locally or remove them.",
+        "html_remote_stylesheet": "Use inline CSS or local relative styles.",
+        "html_remote_image": "Remove remote images or use local relative assets.",
+        "html_iframe": "Remove iframe embeds from shareable review packages.",
+        "absolute_home_path": "Replace machine-local paths with placeholders.",
+        "absolute_users_path": "Replace machine-local paths with placeholders.",
+        "absolute_data_code_path": "Replace project-local paths with placeholders.",
+        "absolute_windows_user_path": "Replace machine-local paths with placeholders.",
+        "absolute_windows_drive_path": "Replace drive paths with placeholders.",
+        "absolute_tmp_path": "Use placeholders for temp paths unless clearly examples.",
+        "github_token": "Revoke the token and remove it from artifacts.",
+        "openai_api_key": "Revoke the key and remove it from artifacts.",
+        "aws_access_key": "Rotate the key and remove it from artifacts.",
+        "secret_assignment": "Remove secret assignments before sharing.",
+        "password_assignment": "Remove password assignments before sharing.",
+        "private_key_block": "Remove private key material before sharing.",
+        "fake_trust_claim": "Replace unsupported claims with conservative non-claims.",
+        "unsafe_zip_path": "Rebuild the zip with safe relative entry names.",
+    }
+    console.print("Remediation hints:")
+    for code in codes:
+        console.print(f"- {code}: {hints.get(code, 'Review this finding.')}")
 
 
 def render_proof_summary(payload: dict[str, object]) -> None:
