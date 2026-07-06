@@ -20,6 +20,9 @@ class ArtifactSpec:
 
 
 EVIDENCE_ROOM_ARTIFACT_NAMES = {
+    Path("evidence-room") / "index.html": "evidence-room-index-html",
+    Path("evidence-room") / "review-hub.html": "evidence-room-review-hub-html",
+    Path("evidence-room") / "reviewer-guide.md": "evidence-room-reviewer-guide-md",
     Path("evidence-room") / "evidence-room.html": "evidence-room-html",
     Path("evidence-room") / "evidence-room.json": "evidence-room-json",
     Path("evidence-room") / "evidence-room.md": "evidence-room-md",

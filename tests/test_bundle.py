@@ -81,6 +81,18 @@ def write_run(
         (run_dir / "compare.md").write_text("compare\n", encoding="utf-8")
         evidence_dir = run_dir / "evidence-room"
         evidence_dir.mkdir()
+        (evidence_dir / "index.html").write_text(
+            "<html></html>\n",
+            encoding="utf-8",
+        )
+        (evidence_dir / "review-hub.html").write_text(
+            "<html></html>\n",
+            encoding="utf-8",
+        )
+        (evidence_dir / "reviewer-guide.md").write_text(
+            "guide\n",
+            encoding="utf-8",
+        )
         (evidence_dir / "evidence-room.html").write_text(
             "<html></html>\n",
             encoding="utf-8",
@@ -124,6 +136,9 @@ def test_latest_run_bundle_is_created(tmp_path: Path) -> None:
     assert "manifest.json" in names
     assert "compare.json" in names
     assert "compare.md" in names
+    assert "evidence-room/index.html" in names
+    assert "evidence-room/review-hub.html" in names
+    assert "evidence-room/reviewer-guide.md" in names
     assert "evidence-room/evidence-room.html" in names
     assert "evidence-room/evidence-room.json" in names
     assert "evidence-room/evidence-room.md" in names

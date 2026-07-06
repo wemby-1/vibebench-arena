@@ -141,6 +141,49 @@ GitHub Pages is not enabled automatically.
     docs.joinpath("index.html").write_text(index + "\n", encoding="utf-8")
     docs.joinpath("showcase.html").write_text(showcase + "\n", encoding="utf-8")
     docs.joinpath("pages.md").write_text(pages + "\n", encoding="utf-8")
+    docs.joinpath("review-hub.html").write_text(
+        """
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>VibeBench Arena Review Hub</title></head>
+<body>
+<h1>VibeBench Arena Review Hub</h1>
+<a href="index.html">Site entry</a>
+<a href="showcase.html">Product page</a>
+<a href="reviewer-guide.md">Reviewer guide</a>
+<a href="evaluate.md">Evaluate</a>
+<a href="adoption.md">Adopt</a>
+<a href="pages.md">Pages</a>
+<p>vibebench-proof-packet vibebench-site-preview vibebench-evidence-room</p>
+<code>python3 -m vibebench evidence-room --output-dir PATH --zip</code>
+<code>python3 -m vibebench evidence-room --verify PATH</code>
+<code>python3 -m vibebench ci --dry-run --json</code>
+</body>
+</html>
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    docs.joinpath("reviewer-guide.md").write_text(
+        """
+# VibeBench Arena Reviewer Guide
+
+Run `python3 -m vibebench demo`.
+Run `python3 -m vibebench proof --output-dir PATH --zip`.
+Run `python3 -m vibebench evidence-room --output-dir PATH --zip`.
+Run `python3 -m vibebench ci --dry-run --json`.
+
+Download `vibebench-proof-packet`.
+Download `vibebench-site-preview`.
+Download `vibebench-evidence-room`.
+
+Verify with `python3 -m vibebench proof --verify PATH`.
+Verify with `python3 -m vibebench site-preview --verify PATH`.
+Verify with `python3 -m vibebench evidence-room --verify PATH`.
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
     for name in [
         "evaluate.md",
         "adoption.md",
@@ -2043,6 +2086,9 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
     assert steps["evidence-room"]["status"] == "passed"
     run_dir = latest_run(tmp_path)
     evidence_dir = run_dir / "evidence-room"
+    assert evidence_dir.joinpath("index.html").exists()
+    assert evidence_dir.joinpath("review-hub.html").exists()
+    assert evidence_dir.joinpath("reviewer-guide.md").exists()
     assert evidence_dir.joinpath("evidence-room.html").exists()
     assert evidence_dir.joinpath("evidence-room.json").exists()
     assert evidence_dir.joinpath("evidence-room.md").exists()
@@ -2059,6 +2105,9 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
     }
     assert artifacts.exit_code == 0
     for name in [
+        "evidence-room-index-html",
+        "evidence-room-review-hub-html",
+        "evidence-room-reviewer-guide-md",
         "evidence-room-html",
         "evidence-room-json",
         "evidence-room-md",
@@ -2068,6 +2117,9 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
         assert artifact_map[name]["available"] is True
 
     for artifact_name, suffix in [
+        ("evidence-room-index-html", "evidence-room/index.html"),
+        ("evidence-room-review-hub-html", "evidence-room/review-hub.html"),
+        ("evidence-room-reviewer-guide-md", "evidence-room/reviewer-guide.md"),
         ("evidence-room-html", "evidence-room/evidence-room.html"),
         ("evidence-room-json", "evidence-room/evidence-room.json"),
         ("evidence-room-md", "evidence-room/evidence-room.md"),
@@ -2094,10 +2146,16 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
     manifest_artifacts = {
         item["name"]: item for item in manifest_payload["artifacts"]
     }
+    assert manifest_artifacts["evidence-room-index-html"]["available"] is True
+    assert manifest_artifacts["evidence-room-review-hub-html"]["available"] is True
+    assert manifest_artifacts["evidence-room-reviewer-guide-md"]["available"] is True
     assert manifest_artifacts["evidence-room-html"]["available"] is True
     assert manifest_artifacts["evidence-room-dir"]["available"] is True
 
     names = zip_names(run_dir / "vibebench-bundle.zip")
+    assert "evidence-room/index.html" in names
+    assert "evidence-room/review-hub.html" in names
+    assert "evidence-room/reviewer-guide.md" in names
     assert "evidence-room/evidence-room.html" in names
     assert "evidence-room/evidence-room.json" in names
     assert "evidence-room/evidence-room.md" in names

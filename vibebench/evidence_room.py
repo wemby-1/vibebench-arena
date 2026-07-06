@@ -16,9 +16,19 @@ EVIDENCE_HTML = "evidence-room.html"
 EVIDENCE_MARKDOWN = "evidence-room.md"
 EVIDENCE_JSON = "evidence-room.json"
 EVIDENCE_ZIP = "evidence-room.zip"
+LANDING_HTML = "index.html"
+REVIEW_HUB_HTML = "review-hub.html"
+REVIEWER_GUIDE_MD = "reviewer-guide.md"
 PROOF_DIR = "proof-packet"
 SITE_PREVIEW_DIR = "site-preview"
-TOP_LEVEL_FILES = (EVIDENCE_HTML, EVIDENCE_MARKDOWN, EVIDENCE_JSON)
+TOP_LEVEL_FILES = (
+    LANDING_HTML,
+    REVIEW_HUB_HTML,
+    REVIEWER_GUIDE_MD,
+    EVIDENCE_HTML,
+    EVIDENCE_MARKDOWN,
+    EVIDENCE_JSON,
+)
 PROOF_FILES = (
     "proof.html",
     "proof.json",
@@ -44,6 +54,13 @@ COMMANDS = (
     "python3 -m vibebench evidence-room --output-dir PATH --zip",
     "python3 -m vibebench evidence-room --verify PATH",
 )
+PACKAGE_LINK_REWRITES = {
+    'href="index.html"': 'href="site-preview/index.html"',
+    'href="showcase.html"': 'href="site-preview/showcase.html"',
+    'href="evaluate.md"': 'href="site-preview/evaluate.md"',
+    'href="adoption.md"': 'href="site-preview/adoption.md"',
+    'href="pages.md"': 'href="site-preview/pages.md"',
+}
 FORBIDDEN_LOCAL_PATHS = ("/tmp/", "/home/", "/data/code/")
 FORBIDDEN_HTML = ("http://", "https://", "<script", "</script")
 EXTRA_BANNED_MARKERS = (
@@ -166,6 +183,11 @@ def write_evidence_room(
         evidence_room_html(payload),
         encoding="utf-8",
     )
+    output_dir.joinpath(LANDING_HTML).write_text(
+        evidence_room_landing_html(payload),
+        encoding="utf-8",
+    )
+    write_review_files(site_root, output_dir)
 
     written = {
         "output_dir": "PATH",
@@ -179,6 +201,28 @@ def write_evidence_room(
         written["zip"] = "PATH/evidence-room.zip"
     payload["written"] = written
     return payload
+
+
+def write_review_files(site_root: Path, output_dir: Path) -> None:
+    """Copy package-safe review hub and reviewer guide files."""
+    review_hub = read_required_site_file(site_root, REVIEW_HUB_HTML)
+    for source, target in PACKAGE_LINK_REWRITES.items():
+        review_hub = review_hub.replace(source, target)
+    output_dir.joinpath(REVIEW_HUB_HTML).write_text(review_hub, encoding="utf-8")
+
+    reviewer_guide = read_required_site_file(site_root, REVIEWER_GUIDE_MD)
+    output_dir.joinpath(REVIEWER_GUIDE_MD).write_text(
+        reviewer_guide,
+        encoding="utf-8",
+    )
+
+
+def read_required_site_file(site_root: Path, name: str) -> str:
+    """Read a required review file from the site root."""
+    path = site_root / name
+    if not path.is_file():
+        raise EvidenceRoomError(f"Required site file is missing: {path}")
+    return path.read_text(encoding="utf-8")
 
 
 def write_zip_only_evidence_room(
@@ -235,6 +279,12 @@ def evidence_room_markdown(payload: dict[str, Any]) -> str:
         f"- Generated time: {payload['generated_at']}",
         f"- Status: {payload['status']}",
         "",
+        "## Start here",
+        "",
+        "- `index.html`",
+        "- `review-hub.html`",
+        "- `reviewer-guide.md`",
+        "",
         "## Proof packet",
         "",
         "- `proof-packet/proof.html`",
@@ -280,6 +330,9 @@ def evidence_room_markdown(payload: dict[str, Any]) -> str:
 def evidence_room_html(payload: dict[str, Any]) -> str:
     """Render self-contained static evidence room HTML."""
     links = [
+        "index.html",
+        "review-hub.html",
+        "reviewer-guide.md",
         "proof-packet/proof.html",
         "proof-packet/proof.json",
         "proof-packet/proof.md",
@@ -332,6 +385,75 @@ def evidence_room_html(payload: dict[str, Any]) -> str:
                     (
                         "No automatic publishing, releases, repository settings "
                         "changes, or GitHub Pages enablement."
+                    ),
+                ],
+            ),
+            "  </main>",
+            "</body>",
+            "</html>",
+            "",
+        ]
+    )
+
+
+def evidence_room_landing_html(payload: dict[str, Any]) -> str:
+    """Render the self-opening evidence room landing page."""
+    rows = [
+        ("Evidence summary", "evidence-room.html"),
+        ("Public review flow", "review-hub.html"),
+        ("3-minute review path", "reviewer-guide.md"),
+        ("Proof details", "proof-packet/proof.html"),
+        ("Static site preview", "site-preview/index.html"),
+    ]
+    return "\n".join(
+        [
+            "<!doctype html>",
+            '<html lang="en">',
+            "<head>",
+            '  <meta charset="utf-8">',
+            '  <meta name="viewport" content="width=device-width, initial-scale=1">',
+            "  <title>VibeBench Evidence Room Start</title>",
+            "  <style>",
+            evidence_room_css(),
+            "  </style>",
+            "</head>",
+            "<body>",
+            '  <main class="page">',
+            "    <header>",
+            "      <h1>Start here</h1>",
+            (
+                "      <p>This downloaded VibeBench evidence room is a "
+                "local-first review package. Open the linked files directly "
+                "from this folder to inspect the evidence.</p>"
+            ),
+            "    </header>",
+            html_list_section(
+                "What this package contains",
+                [
+                    "evidence-room.html summary",
+                    "review-hub.html public review flow",
+                    "reviewer-guide.md 3-minute review path",
+                    "proof-packet/proof.html proof details",
+                    "site-preview/index.html static site preview",
+                    "evidence-room.json machine-readable summary",
+                    "evidence-room.zip shareable archive",
+                ],
+            ),
+            html_link_table_section("Open first", rows),
+            html_list_section(
+                "Verify this package",
+                ["python3 -m vibebench evidence-room --verify PATH"],
+            ),
+            html_list_section(
+                "Honest limits",
+                [
+                    (
+                        "This package helps reviewers inspect evidence; it "
+                        "does not replace human review or claim correctness."
+                    ),
+                    (
+                        "It does not publish a site, change repository "
+                        "settings, create releases, or upload packages."
                     ),
                 ],
             ),
@@ -431,6 +553,23 @@ def html_list_section(
         else:
             lines.append(f"        <li>{escape(value)}</li>")
     lines.extend(["      </ul>", "    </section>"])
+    return "\n".join(lines)
+
+
+def html_link_table_section(title: str, rows: list[tuple[str, str]]) -> str:
+    """Render a section of relative package links."""
+    lines = [
+        "    <section>",
+        f"      <h2>{escape(title)}</h2>",
+        "      <dl>",
+    ]
+    for label, target in rows:
+        escaped_target = escape(target)
+        lines.append(f"        <dt>{escape(label)}</dt>")
+        lines.append(
+            f'        <dd><a href="{escaped_target}">{escaped_target}</a></dd>'
+        )
+    lines.extend(["      </dl>", "    </section>"])
     return "\n".join(lines)
 
 

@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added a self-opening evidence-room landing page with packaged review hub, reviewer guide, artifact aliases, manifest entries, bundle inclusion, and GitHub summary visibility.
+
 - Added a public review hub and reviewer guide for 3-minute external evaluation of proof packet, site preview, evidence room, and CI artifacts.
 
 - Added evidence-room generation to local `vibebench ci`, including `--skip-evidence-room`, artifact discovery/latest aliases, manifest entries, bundle inclusion, and GitHub summary visibility.

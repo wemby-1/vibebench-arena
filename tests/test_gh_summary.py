@@ -124,6 +124,18 @@ def write_run(
         (run_dir / "gate-summary.md").write_text("gate\n", encoding="utf-8")
         evidence_dir = run_dir / "evidence-room"
         evidence_dir.mkdir()
+        (evidence_dir / "index.html").write_text(
+            "<html></html>\n",
+            encoding="utf-8",
+        )
+        (evidence_dir / "review-hub.html").write_text(
+            "<html></html>\n",
+            encoding="utf-8",
+        )
+        (evidence_dir / "reviewer-guide.md").write_text(
+            "guide\n",
+            encoding="utf-8",
+        )
         (evidence_dir / "evidence-room.html").write_text(
             "<html></html>\n",
             encoding="utf-8",
@@ -234,6 +246,9 @@ def test_summary_contains_key_sections_and_artifacts(
     assert "`run-index.md` (available)" in markdown
     assert "`compare.json` (available)" in markdown
     assert "`compare.md` (available)" in markdown
+    assert "`evidence-room/index.html` (available)" in markdown
+    assert "`evidence-room/review-hub.html` (available)" in markdown
+    assert "`evidence-room/reviewer-guide.md` (available)" in markdown
     assert "`evidence-room/evidence-room.html` (available)" in markdown
     assert "`evidence-room/evidence-room.json` (available)" in markdown
     assert "`evidence-room/evidence-room.md` (available)" in markdown
