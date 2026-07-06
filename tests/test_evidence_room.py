@@ -81,6 +81,8 @@ def test_evidence_room_output_dir_writes_required_top_level_files(
     assert output_dir.joinpath("reviewer-guide.md").is_file()
     assert output_dir.joinpath("trust-center.html").is_file()
     assert output_dir.joinpath("trust-center.md").is_file()
+    assert output_dir.joinpath("security-questionnaire.html").is_file()
+    assert output_dir.joinpath("security-questionnaire.md").is_file()
     assert output_dir.joinpath("review-scorecard.html").is_file()
     assert output_dir.joinpath("review-scorecard.md").is_file()
     assert output_dir.joinpath("review-scorecard.json").is_file()
@@ -128,6 +130,8 @@ def test_evidence_room_zip_creates_archive_with_safe_names(tmp_path: Path) -> No
     assert "reviewer-guide.md" in names
     assert "trust-center.html" in names
     assert "trust-center.md" in names
+    assert "security-questionnaire.html" in names
+    assert "security-questionnaire.md" in names
     assert "review-scorecard.html" in names
     assert "review-scorecard.md" in names
     assert "review-scorecard.json" in names
@@ -262,6 +266,30 @@ def test_evidence_room_verify_fails_for_missing_trust_center_markdown(
     assert "trust-center.md" in result.output
 
 
+def test_evidence_room_verify_fails_for_missing_security_questionnaire_html(
+    tmp_path: Path,
+) -> None:
+    output_dir, _ = make_room(tmp_path, "--zip")
+    output_dir.joinpath("security-questionnaire.html").unlink()
+
+    result = runner.invoke(app, ["evidence-room", "--verify", str(output_dir)])
+
+    assert result.exit_code == 1
+    assert "security-questionnaire.html" in result.output
+
+
+def test_evidence_room_verify_fails_for_missing_security_questionnaire_markdown(
+    tmp_path: Path,
+) -> None:
+    output_dir, _ = make_room(tmp_path, "--zip")
+    output_dir.joinpath("security-questionnaire.md").unlink()
+
+    result = runner.invoke(app, ["evidence-room", "--verify", str(output_dir)])
+
+    assert result.exit_code == 1
+    assert "security-questionnaire.md" in result.output
+
+
 def test_evidence_room_verify_zip_fails_for_missing_trust_center_file(
     tmp_path: Path,
 ) -> None:
@@ -278,6 +306,24 @@ def test_evidence_room_verify_zip_fails_for_missing_trust_center_file(
 
     assert result.exit_code == 1
     assert "trust-center.html" in result.output
+
+
+def test_evidence_room_verify_zip_fails_for_missing_security_questionnaire(
+    tmp_path: Path,
+) -> None:
+    output_dir, _ = make_room(tmp_path, "--zip")
+    original = output_dir / "evidence-room.zip"
+    tampered = tmp_path / "missing-security-questionnaire.zip"
+    with zipfile.ZipFile(original) as source:
+        with zipfile.ZipFile(tampered, "w") as target:
+            for item in source.infolist():
+                if item.filename != "security-questionnaire.md":
+                    target.writestr(item, source.read(item.filename))
+
+    result = runner.invoke(app, ["evidence-room", "--verify", str(tampered)])
+
+    assert result.exit_code == 1
+    assert "security-questionnaire.md" in result.output
 
 
 def test_evidence_room_verify_fails_for_missing_scorecard_html(
@@ -406,6 +452,39 @@ def test_evidence_room_verify_fails_for_unsafe_trust_center_html(
     assert "trust-center.html" in result.output
 
 
+def test_evidence_room_verify_fails_for_unsafe_security_questionnaire_html(
+    tmp_path: Path,
+) -> None:
+    output_dir, _ = make_room(tmp_path, "--zip")
+    html = output_dir / "security-questionnaire.html"
+    html.write_text(
+        html.read_text(encoding="utf-8") + "\n<script></script>\nhttps://example.test",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(app, ["evidence-room", "--verify", str(output_dir)])
+
+    assert result.exit_code == 1
+    assert "security-questionnaire.html" in result.output
+    assert "<script" in result.output
+    assert "https://" in result.output
+
+
+def test_evidence_room_verify_allows_security_questionnaire_non_claims(
+    tmp_path: Path,
+) -> None:
+    output_dir, _ = make_room(tmp_path, "--zip")
+
+    result = runner.invoke(app, ["evidence-room", "--verify", str(output_dir)])
+
+    assert result.exit_code == 0
+    content = output_dir.joinpath("security-questionnaire.html").read_text(
+        encoding="utf-8"
+    )
+    assert "not claiming SOC 2 certification" in content
+    assert "not claiming ISO 27001 certification" in content
+
+
 def test_evidence_room_verify_fails_for_absolute_local_path(
     tmp_path: Path,
 ) -> None:
@@ -435,6 +514,8 @@ def test_evidence_room_landing_page_links_to_review_package_files(
     assert "reviewer-guide.md" in content
     assert "trust-center.html" in content
     assert "trust-center.md" in content
+    assert "security-questionnaire.html" in content
+    assert "security-questionnaire.md" in content
     assert "project-maintained" in content
     assert "not a third-party audit" in content
     assert "review-scorecard.html" in content
@@ -511,6 +592,43 @@ def test_evidence_room_trust_center_copy_stays_static_and_local(
     assert "trust center" in html_content
     assert "trust center" in markdown_content
     assert "security and privacy" in html_content
+    for content in [html_content, markdown_content]:
+        for marker in [
+            "<script",
+            "http://",
+            "https://",
+            "/tmp/",
+            "/home/",
+            "/data/code/",
+            "soc 2 certified",
+            "iso 27001 certified",
+            "audited by",
+            "independently audited",
+            "guaranteed secure",
+            "enterprise certified",
+            "millions of users",
+            "revenue",
+            "funding guaranteed",
+            "unicorn",
+        ]:
+            assert marker not in content
+
+
+def test_evidence_room_security_questionnaire_copy_stays_static_and_local(
+    tmp_path: Path,
+) -> None:
+    output_dir, result = make_room(tmp_path)
+
+    assert result.exit_code == 0
+    html_content = output_dir.joinpath("security-questionnaire.html").read_text(
+        encoding="utf-8"
+    ).lower()
+    markdown_content = output_dir.joinpath("security-questionnaire.md").read_text(
+        encoding="utf-8"
+    ).lower()
+    assert "security questionnaire" in html_content
+    assert "security questionnaire" in markdown_content
+    assert "not a third-party audit" in html_content
     for content in [html_content, markdown_content]:
         for marker in [
             "<script",

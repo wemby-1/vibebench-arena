@@ -155,6 +155,8 @@ def artifacts_section(run_dir: Path) -> str:
         run_dir / "evidence-room" / "reviewer-guide.md",
         run_dir / "evidence-room" / "trust-center.html",
         run_dir / "evidence-room" / "trust-center.md",
+        run_dir / "evidence-room" / "security-questionnaire.html",
+        run_dir / "evidence-room" / "security-questionnaire.md",
         run_dir / "evidence-room" / "review-scorecard.html",
         run_dir / "evidence-room" / "review-scorecard.md",
         run_dir / "evidence-room" / "review-scorecard.json",

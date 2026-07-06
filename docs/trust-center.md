@@ -1,6 +1,6 @@
 # VibeBench Arena Trust Center
 
-This Trust Center is project-maintained documentation, not a third-party audit or compliance certification. It explains the current security, privacy, reproducibility, local-first, and evidence artifact posture for external reviewers, maintainers, adopters, and due-diligence readers.
+This Trust Center is project-maintained documentation, not a third-party audit or compliance certification. It explains the current security, privacy, reproducibility, local-first, and evidence artifact posture for external reviewers, maintainers, adopters, and due-diligence readers. Open the [Security Questionnaire](security-questionnaire.md) for adopter-facing Q&A about local-first behavior, artifact sharing, CI uploads, static HTML safety, JSON purity, and non-claims.
 
 ## Local-first operation
 
@@ -16,6 +16,7 @@ Local evaluation does not require a hosted VibeBench service. GitHub Actions can
 - Proof packet: local proof files including `proof.html`, `proof.json`, `proof.md`, `proof-manifest.json`, and optional `proof.zip`.
 - Static site preview: a local bundle for the public docs entry and setup guide.
 - Reviewer scorecard: neutral HTML, Markdown, and JSON checklists with `not_reviewed` placeholders.
+- Security Questionnaire: adopter-facing Q&A for local-first behavior, artifact boundaries, CI uploads, sharing review, JSON stdout, static HTML safety, and non-claims. It is project-maintained documentation, not a third-party certification or audit.
 
 ## Evidence-room package
 

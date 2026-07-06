@@ -69,6 +69,8 @@ def test_default_latest_run_artifact_listing(tmp_path: Path) -> None:
     assert "run-index.md" in artifacts
     assert "compare.json" in artifacts
     assert "compare.md" in artifacts
+    assert "evidence-room-security-questionnaire-html" in artifacts
+    assert "evidence-room-security-questionnaire-md" in artifacts
 
 
 def test_explicit_run_dir_is_used(tmp_path: Path) -> None:
@@ -165,6 +167,16 @@ def test_available_and_missing_artifacts_are_detected(tmp_path: Path) -> None:
     report_dir = run_dir / "report"
     report_dir.mkdir()
     report_dir.joinpath("index.html").write_text("<html></html>\n", encoding="utf-8")
+    evidence_dir = run_dir / "evidence-room"
+    evidence_dir.mkdir()
+    evidence_dir.joinpath("security-questionnaire.html").write_text(
+        "<html></html>\n",
+        encoding="utf-8",
+    )
+    evidence_dir.joinpath("security-questionnaire.md").write_text(
+        "questionnaire\n",
+        encoding="utf-8",
+    )
 
     result = runner.invoke(
         app,
@@ -175,6 +187,8 @@ def test_available_and_missing_artifacts_are_detected(tmp_path: Path) -> None:
     artifacts = {item["name"]: item for item in json.loads(result.output)["artifacts"]}
     assert artifacts["report/index.html"]["available"] is True
     assert artifacts["pr-comment.md"]["available"] is False
+    assert artifacts["evidence-room-security-questionnaire-html"]["available"] is True
+    assert artifacts["evidence-room-security-questionnaire-md"]["available"] is True
 
 
 def test_only_available_hides_missing_artifacts(tmp_path: Path) -> None:

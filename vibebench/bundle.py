@@ -45,6 +45,8 @@ STANDARD_ARTIFACTS = [
     Path("evidence-room") / "reviewer-guide.md",
     Path("evidence-room") / "trust-center.html",
     Path("evidence-room") / "trust-center.md",
+    Path("evidence-room") / "security-questionnaire.html",
+    Path("evidence-room") / "security-questionnaire.md",
     Path("evidence-room") / "review-scorecard.html",
     Path("evidence-room") / "review-scorecard.md",
     Path("evidence-room") / "review-scorecard.json",

@@ -26,7 +26,7 @@ Use this guide if you are a developer, maintainer, AI coding team, evaluator, or
    ```
 
 5. Open `PATH/vibebench-evidence-room/index.html` as the downloaded package start page, then use `review-scorecard.html` or `review-scorecard.md` as the neutral checklist.
-   Open `trust-center.html` for project-maintained local-first, privacy, reproducibility, and artifact-safety boundaries. It is not a third-party certification.
+   Open `trust-center.html` for project-maintained local-first, privacy, reproducibility, and artifact-safety boundaries. Open `security-questionnaire.html` for adopter-facing Q&A about local-first behavior, artifact sharing, CI uploads, static HTML safety, JSON purity, and non-claims. The questionnaire is project-maintained documentation, not a third-party certification or audit.
 6. Preview the local CI plan:
 
    ```bash
@@ -39,7 +39,7 @@ Choose any writable temporary or project-local directory for `PATH`.
 
 - `vibebench-proof-packet`: the proof packet with `proof.html`, `proof.json`, `proof.md`, manifest data, and a zip archive.
 - `vibebench-site-preview`: a static preview of the public docs entry, product page, setup guide, and site-check JSON.
-- `vibebench-evidence-room`: the combined review package with `index.html`, `review-scorecard.html`, `review-scorecard.md`, top-level HTML, Markdown, JSON, zip archive, nested proof packet, and nested site preview.
+- `vibebench-evidence-room`: the combined review package with `index.html`, `security-questionnaire.html`, `security-questionnaire.md`, `review-scorecard.html`, `review-scorecard.md`, top-level HTML, Markdown, JSON, zip archive, nested proof packet, and nested site preview.
 
 ## What the artifacts prove
 
@@ -59,7 +59,7 @@ python3 -m vibebench site-preview --verify PATH
 python3 -m vibebench evidence-room --verify PATH
 ```
 
-For an evidence room, start with `index.html`, then open `review-scorecard.html` for the neutral checklist, `trust-center.html` for safety/privacy/reproducibility boundaries, `evidence-room.html` for the human overview, and `evidence-room.json` for the machine-readable summary. The scorecard is a reviewer aid, not a third-party endorsement. The Trust Center is project-maintained documentation, not a third-party certification. The nested `proof-packet/` directory shows the proof report, and `site-preview/` shows the static public docs bundle.
+For an evidence room, start with `index.html`, then open `review-scorecard.html` for the neutral checklist, `trust-center.html` for safety/privacy/reproducibility boundaries, `security-questionnaire.html` for adopter-facing local-first, artifact, CI, sharing, and non-claim Q&A, `evidence-room.html` for the human overview, and `evidence-room.json` for the machine-readable summary. The scorecard is a reviewer aid, not a third-party endorsement. The Trust Center and Security Questionnaire are project-maintained documentation, not third-party certification or audit materials. The nested `proof-packet/` directory shows the proof report, and `site-preview/` shows the static public docs bundle.
 
 ## What this does not claim
 

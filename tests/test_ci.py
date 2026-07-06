@@ -236,6 +236,70 @@ python3 -m vibebench doctor --strict
         + "\n",
         encoding="utf-8",
     )
+    docs.joinpath("security-questionnaire.html").write_text(
+        """
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>VibeBench Arena Security Questionnaire</title></head>
+<body>
+<h1>VibeBench Arena Security Questionnaire</h1>
+<p>This questionnaire is project-maintained documentation, not a third-party audit,
+security certification, or compliance certification.</p>
+<p>Local-first Evidence-room Proof packet Static site preview GitHub Actions
+JSON stdout self-contained.</p>
+<p>No cloud service is required for local evaluation. The local CLI does not
+upload source code.</p>
+<p>Local evaluation does not require secrets or tokens.</p>
+<p>Generated static HTML uses relative links and avoids remote resources.</p>
+<p>VibeBench is not claiming SOC 2 certification.</p>
+<p>VibeBench is not claiming ISO 27001 certification.</p>
+<p>VibeBench is not claiming an independent third-party audit.</p>
+<a href="index.html">Site entry</a>
+<a href="trust-center.html">Trust Center</a>
+<a href="review-hub.html">Review hub</a>
+<a href="reviewer-guide.md">Reviewer guide</a>
+<a href="pages.md">Pages</a>
+<a href="../SECURITY.md">Security policy</a>
+<a href="../README.md">README</a>
+<code>python3 -m vibebench evidence-room --verify PATH</code>
+<code>python3 -m vibebench ci --dry-run --json</code>
+</body>
+</html>
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    docs.joinpath("security-questionnaire.md").write_text(
+        """
+# VibeBench Arena Security Questionnaire
+
+This questionnaire is project-maintained documentation, not a third-party audit,
+security certification, or compliance certification.
+
+Local-first Evidence-room Proof packet Static site preview GitHub Actions
+JSON stdout self-contained.
+
+Local evaluation does not require secrets or tokens.
+
+VibeBench is not claiming SOC 2 certification.
+VibeBench is not claiming ISO 27001 certification.
+VibeBench is not claiming an independent third-party audit.
+
+```bash
+python3 -m vibebench evidence-room --output-dir /tmp/vibebench-evidence-room --zip
+python3 -m vibebench evidence-room --verify /tmp/vibebench-evidence-room
+python3 -m vibebench evidence-room --verify PATH/evidence-room.zip
+python3 -m vibebench proof --verify /tmp/vibebench-evidence-room/proof-packet
+python3 -m vibebench site-preview --verify /tmp/vibebench-evidence-room/site-preview
+python3 -m vibebench site-check
+python3 -m vibebench ci --dry-run --json
+python3 -m vibebench release-check
+python3 -m vibebench doctor --strict
+```
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
     for name in [
         "evaluate.md",
         "adoption.md",
@@ -2143,6 +2207,8 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
     assert evidence_dir.joinpath("reviewer-guide.md").exists()
     assert evidence_dir.joinpath("trust-center.html").exists()
     assert evidence_dir.joinpath("trust-center.md").exists()
+    assert evidence_dir.joinpath("security-questionnaire.html").exists()
+    assert evidence_dir.joinpath("security-questionnaire.md").exists()
     assert evidence_dir.joinpath("review-scorecard.html").exists()
     assert evidence_dir.joinpath("review-scorecard.md").exists()
     assert evidence_dir.joinpath("review-scorecard.json").exists()
@@ -2167,6 +2233,8 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
         "evidence-room-reviewer-guide-md",
         "evidence-room-trust-center-html",
         "evidence-room-trust-center-md",
+        "evidence-room-security-questionnaire-html",
+        "evidence-room-security-questionnaire-md",
         "evidence-room-scorecard-html",
         "evidence-room-scorecard-md",
         "evidence-room-scorecard-json",
@@ -2184,6 +2252,14 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
         ("evidence-room-reviewer-guide-md", "evidence-room/reviewer-guide.md"),
         ("evidence-room-trust-center-html", "evidence-room/trust-center.html"),
         ("evidence-room-trust-center-md", "evidence-room/trust-center.md"),
+        (
+            "evidence-room-security-questionnaire-html",
+            "evidence-room/security-questionnaire.html",
+        ),
+        (
+            "evidence-room-security-questionnaire-md",
+            "evidence-room/security-questionnaire.md",
+        ),
         ("evidence-room-scorecard-html", "evidence-room/review-scorecard.html"),
         ("evidence-room-scorecard-md", "evidence-room/review-scorecard.md"),
         ("evidence-room-scorecard-json", "evidence-room/review-scorecard.json"),
@@ -2218,6 +2294,14 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
     assert manifest_artifacts["evidence-room-reviewer-guide-md"]["available"] is True
     assert manifest_artifacts["evidence-room-trust-center-html"]["available"] is True
     assert manifest_artifacts["evidence-room-trust-center-md"]["available"] is True
+    assert (
+        manifest_artifacts["evidence-room-security-questionnaire-html"]["available"]
+        is True
+    )
+    assert (
+        manifest_artifacts["evidence-room-security-questionnaire-md"]["available"]
+        is True
+    )
     assert manifest_artifacts["evidence-room-scorecard-html"]["available"] is True
     assert manifest_artifacts["evidence-room-scorecard-md"]["available"] is True
     assert manifest_artifacts["evidence-room-scorecard-json"]["available"] is True
@@ -2230,6 +2314,8 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
     assert "evidence-room/reviewer-guide.md" in names
     assert "evidence-room/trust-center.html" in names
     assert "evidence-room/trust-center.md" in names
+    assert "evidence-room/security-questionnaire.html" in names
+    assert "evidence-room/security-questionnaire.md" in names
     assert "evidence-room/review-scorecard.html" in names
     assert "evidence-room/review-scorecard.md" in names
     assert "evidence-room/review-scorecard.json" in names

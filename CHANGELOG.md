@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added a public adopter-facing Security Questionnaire and packaged evidence-room questionnaire artifacts, including verification, artifact aliases, bundle inclusion, and GitHub summary visibility.
+
 - Added a public Trust Center and packaged evidence-room Trust Center artifacts, including verification, artifact aliases, bundle inclusion, and GitHub summary visibility.
 
 - Added a neutral reviewer scorecard to evidence rooms, including HTML, Markdown, JSON, verification, artifact aliases, manifest entries, bundle inclusion, and GitHub summary visibility.

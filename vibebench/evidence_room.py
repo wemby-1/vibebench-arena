@@ -25,6 +25,8 @@ REVIEW_SCORECARD_JSON = "review-scorecard.json"
 REVIEW_SCORECARD_VERSION = "vibebench.review-scorecard.v1"
 TRUST_CENTER_HTML = "trust-center.html"
 TRUST_CENTER_MARKDOWN = "trust-center.md"
+SECURITY_QUESTIONNAIRE_HTML = "security-questionnaire.html"
+SECURITY_QUESTIONNAIRE_MARKDOWN = "security-questionnaire.md"
 PROOF_DIR = "proof-packet"
 SITE_PREVIEW_DIR = "site-preview"
 TOP_LEVEL_FILES = (
@@ -33,6 +35,8 @@ TOP_LEVEL_FILES = (
     REVIEWER_GUIDE_MD,
     TRUST_CENTER_HTML,
     TRUST_CENTER_MARKDOWN,
+    SECURITY_QUESTIONNAIRE_HTML,
+    SECURITY_QUESTIONNAIRE_MARKDOWN,
     REVIEW_SCORECARD_HTML,
     REVIEW_SCORECARD_MARKDOWN,
     REVIEW_SCORECARD_JSON,
@@ -93,6 +97,7 @@ EXTRA_BANNED_MARKERS = (
     "revenue",
     "unicorn",
 )
+SECURITY_QUESTIONNAIRE_ALLOWED_MARKERS = {"token", "secret"}
 FORBIDDEN_ZIP_PARTS = {".git", "__pycache__", ".pytest_cache", ".ruff_cache"}
 FORBIDDEN_ZIP_PREFIXES = (
     ".vibebench/runs/",
@@ -222,6 +227,7 @@ def write_evidence_room(
     )
     write_review_files(site_root, output_dir)
     write_trust_center_files(site_root, output_dir)
+    write_security_questionnaire_files(site_root, output_dir)
 
     written = {
         "output_dir": "PATH",
@@ -266,6 +272,31 @@ def write_trust_center_files(site_root: Path, output_dir: Path) -> None:
     )
     output_dir.joinpath(TRUST_CENTER_MARKDOWN).write_text(
         trust_markdown,
+        encoding="utf-8",
+    )
+
+
+def write_security_questionnaire_files(site_root: Path, output_dir: Path) -> None:
+    """Copy package-safe Security Questionnaire files."""
+    questionnaire_html = read_required_site_file(
+        site_root,
+        SECURITY_QUESTIONNAIRE_HTML,
+    )
+    output_dir.joinpath(SECURITY_QUESTIONNAIRE_HTML).write_text(
+        questionnaire_html,
+        encoding="utf-8",
+    )
+
+    questionnaire_markdown = read_required_site_file(
+        site_root,
+        SECURITY_QUESTIONNAIRE_MARKDOWN,
+    )
+    questionnaire_markdown = questionnaire_markdown.replace(
+        "/tmp/vibebench-evidence-room",
+        "PATH",
+    )
+    output_dir.joinpath(SECURITY_QUESTIONNAIRE_MARKDOWN).write_text(
+        questionnaire_markdown,
         encoding="utf-8",
     )
 
@@ -339,6 +370,8 @@ def evidence_room_markdown(payload: dict[str, Any]) -> str:
         "- `reviewer-guide.md`",
         "- `trust-center.html`",
         "- `trust-center.md`",
+        "- `security-questionnaire.html`",
+        "- `security-questionnaire.md`",
         "- `review-scorecard.html`",
         "- `review-scorecard.md`",
         "- `review-scorecard.json`",
@@ -393,6 +426,8 @@ def evidence_room_html(payload: dict[str, Any]) -> str:
         "reviewer-guide.md",
         "trust-center.html",
         "trust-center.md",
+        "security-questionnaire.html",
+        "security-questionnaire.md",
         "review-scorecard.html",
         "review-scorecard.md",
         "review-scorecard.json",
@@ -466,6 +501,7 @@ def evidence_room_landing_html(payload: dict[str, Any]) -> str:
         ("Public review flow", "review-hub.html"),
         ("3-minute review path", "reviewer-guide.md"),
         ("Trust Center", "trust-center.html"),
+        ("Security Questionnaire", "security-questionnaire.html"),
         ("Reviewer scorecard", "review-scorecard.html"),
         ("Proof details", "proof-packet/proof.html"),
         ("Static site preview", "site-preview/index.html"),
@@ -500,6 +536,11 @@ def evidence_room_landing_html(payload: dict[str, Any]) -> str:
                     "reviewer-guide.md 3-minute review path",
                     "trust-center.html project-maintained safety documentation",
                     "trust-center.md Markdown trust notes",
+                    (
+                        "security-questionnaire.html project-maintained "
+                        "adopter Q&A, not a third-party audit or certification"
+                    ),
+                    "security-questionnaire.md Markdown adopter Q&A",
                     "review-scorecard.html neutral checklist",
                     "review-scorecard.md Markdown checklist",
                     "review-scorecard.json machine-readable checklist",
@@ -521,6 +562,22 @@ def evidence_room_landing_html(payload: dict[str, Any]) -> str:
                     (
                         "The Trust Center is not a third-party audit or "
                         "compliance certification."
+                    ),
+                ],
+            ),
+            html_list_section(
+                "Security Questionnaire",
+                [
+                    (
+                        "Use security-questionnaire.html or "
+                        "security-questionnaire.md for project-maintained "
+                        "adopter documentation about local-first behavior, "
+                        "artifact sharing, CI uploads, static HTML safety, "
+                        "JSON stdout, and non-claims."
+                    ),
+                    (
+                        "The Security Questionnaire is not a third-party audit "
+                        "or certification."
                     ),
                 ],
             ),
@@ -1226,6 +1283,11 @@ def unsafe_text_matches(name: str, text: str) -> list[str]:
         if marker in lowered:
             matches.append(f"{name}: {marker}")
     for marker in BANNED_CLAIMS_OR_MARKERS:
+        if (
+            name in {SECURITY_QUESTIONNAIRE_HTML, SECURITY_QUESTIONNAIRE_MARKDOWN}
+            and marker in SECURITY_QUESTIONNAIRE_ALLOWED_MARKERS
+        ):
+            continue
         if marker in lowered:
             matches.append(f"{name}: {marker}")
     for marker in EXTRA_BANNED_MARKERS:

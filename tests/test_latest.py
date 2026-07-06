@@ -457,3 +457,49 @@ def test_latest_artifact_supports_config_check_alias(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert result.output.strip().endswith("config-check.json")
+
+
+def test_latest_artifact_supports_security_questionnaire_aliases(
+    tmp_path: Path,
+) -> None:
+    run_dir = write_run(tmp_path, "20260701_110000")
+    evidence_dir = run_dir / "evidence-room"
+    evidence_dir.mkdir()
+    evidence_dir.joinpath("security-questionnaire.html").write_text(
+        "<html></html>\n",
+        encoding="utf-8",
+    )
+    evidence_dir.joinpath("security-questionnaire.md").write_text(
+        "questionnaire\n",
+        encoding="utf-8",
+    )
+
+    html_result = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "evidence-room-security-questionnaire-html",
+            "--path-only",
+        ],
+    )
+    md_result = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "evidence-room-security-questionnaire-md",
+            "--path-only",
+        ],
+    )
+
+    assert html_result.exit_code == 0
+    assert html_result.output.strip().endswith(
+        "evidence-room/security-questionnaire.html"
+    )
+    assert md_result.exit_code == 0
+    assert md_result.output.strip().endswith("evidence-room/security-questionnaire.md")

@@ -136,6 +136,22 @@ def write_run(
             "guide\n",
             encoding="utf-8",
         )
+        (evidence_dir / "trust-center.html").write_text(
+            "<html></html>\n",
+            encoding="utf-8",
+        )
+        (evidence_dir / "trust-center.md").write_text(
+            "trust\n",
+            encoding="utf-8",
+        )
+        (evidence_dir / "security-questionnaire.html").write_text(
+            "<html></html>\n",
+            encoding="utf-8",
+        )
+        (evidence_dir / "security-questionnaire.md").write_text(
+            "questionnaire\n",
+            encoding="utf-8",
+        )
         (evidence_dir / "review-scorecard.html").write_text(
             "<html></html>\n",
             encoding="utf-8",
@@ -261,6 +277,10 @@ def test_summary_contains_key_sections_and_artifacts(
     assert "`evidence-room/index.html` (available)" in markdown
     assert "`evidence-room/review-hub.html` (available)" in markdown
     assert "`evidence-room/reviewer-guide.md` (available)" in markdown
+    assert "`evidence-room/trust-center.html` (available)" in markdown
+    assert "`evidence-room/trust-center.md` (available)" in markdown
+    assert "`evidence-room/security-questionnaire.html` (available)" in markdown
+    assert "`evidence-room/security-questionnaire.md` (available)" in markdown
     assert "`evidence-room/review-scorecard.html` (available)" in markdown
     assert "`evidence-room/review-scorecard.md` (available)" in markdown
     assert "`evidence-room/review-scorecard.json` (available)" in markdown

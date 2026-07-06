@@ -25,6 +25,10 @@ EVIDENCE_ROOM_ARTIFACT_NAMES = {
     Path("evidence-room") / "reviewer-guide.md": "evidence-room-reviewer-guide-md",
     Path("evidence-room") / "trust-center.html": "evidence-room-trust-center-html",
     Path("evidence-room") / "trust-center.md": "evidence-room-trust-center-md",
+    Path("evidence-room")
+    / "security-questionnaire.html": "evidence-room-security-questionnaire-html",
+    Path("evidence-room")
+    / "security-questionnaire.md": "evidence-room-security-questionnaire-md",
     Path("evidence-room") / "review-scorecard.html": "evidence-room-scorecard-html",
     Path("evidence-room") / "review-scorecard.md": "evidence-room-scorecard-md",
     Path("evidence-room") / "review-scorecard.json": "evidence-room-scorecard-json",

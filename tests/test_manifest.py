@@ -118,6 +118,16 @@ def test_manifest_output_option(tmp_path: Path) -> None:
 
 def test_manifest_contains_artifact_entries_and_itself(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path)
+    evidence_dir = run_dir / "evidence-room"
+    evidence_dir.mkdir()
+    evidence_dir.joinpath("security-questionnaire.html").write_text(
+        "<html></html>\n",
+        encoding="utf-8",
+    )
+    evidence_dir.joinpath("security-questionnaire.md").write_text(
+        "questionnaire\n",
+        encoding="utf-8",
+    )
 
     result = runner.invoke(
         app,
@@ -133,6 +143,18 @@ def test_manifest_contains_artifact_entries_and_itself(tmp_path: Path) -> None:
     assert manifest["available"] is True
     assert isinstance(manifest["size_bytes"], int)
     assert manifest["size_bytes"] > 0
+    assert (
+        artifact_by_name(payload, "evidence-room-security-questionnaire-html")[
+            "available"
+        ]
+        is True
+    )
+    assert (
+        artifact_by_name(payload, "evidence-room-security-questionnaire-md")[
+            "available"
+        ]
+        is True
+    )
 
 
 def test_manifest_corrupt_metrics_fails_clearly(tmp_path: Path) -> None:
