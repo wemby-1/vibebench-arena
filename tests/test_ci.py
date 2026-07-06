@@ -1163,6 +1163,133 @@ def test_ci_metrics_check_writes_reports_and_json_step(
     assert "VibeBench CI" not in result.output
 
 
+
+def test_ci_dry_run_metrics_diff_json_includes_planned_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--metrics-diff",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["metrics-diff"]["status"] == "planned"
+    assert "compare metrics" in steps["metrics-diff"]["message"]
+
+
+def test_ci_dry_run_skip_metrics_diff_json_includes_skipped_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--skip-metrics-diff",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["metrics-diff"]["status"] == "skipped"
+    assert steps["metrics-diff"]["message"] == "Skipped by --skip-metrics-diff"
+
+
+def test_ci_metrics_diff_writes_reports_and_json_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+    write_run(tmp_path, "20200101_000000", metrics=sample_metrics(score=100))
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--metrics-diff", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("metrics-diff.json").read_text())
+    assert result.exit_code == 0
+    assert steps["metrics-diff"]["status"] in {"passed", "skipped"}
+    assert run_dir.joinpath("metrics-diff.json").exists()
+    assert run_dir.joinpath("metrics-diff.md").exists()
+    assert report["status"] in {"passed", "skipped"}
+    assert "VibeBench CI" not in result.output
+
+    artifacts = runner.invoke(
+        app,
+        ["artifacts", "--project-root", str(tmp_path), "--json"],
+    )
+    artifact_map = {
+        item["name"]: item for item in json.loads(artifacts.output)["artifacts"]
+    }
+    assert artifacts.exit_code == 0
+    assert artifact_map["metrics-diff-json"]["available"] is True
+    assert artifact_map["metrics-diff-md"]["available"] is True
+
+    latest_json = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "metrics-diff-json",
+            "--path-only",
+        ],
+    )
+    latest_md = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "metrics-diff-md",
+            "--path-only",
+        ],
+    )
+    assert latest_json.exit_code == 0
+    assert latest_json.output.strip().endswith("metrics-diff.json")
+    assert latest_md.exit_code == 0
+    assert latest_md.output.strip().endswith("metrics-diff.md")
+
+    manifest = check_manifest(tmp_path, run_dir)
+    manifest_payload = json.loads(run_dir.joinpath("manifest.json").read_text())
+    manifest_artifacts = {
+        item["name"]: item for item in manifest_payload["artifacts"]
+    }
+    assert manifest.passed is True
+    assert manifest_artifacts["metrics-diff-json"]["available"] is True
+    assert manifest_artifacts["metrics-diff-md"]["available"] is True
+
+    names = zip_names(run_dir / "vibebench-bundle.zip")
+    assert "metrics-diff.json" in names
+    assert "metrics-diff.md" in names
+
+    summary = run_dir.joinpath("github-step-summary.md").read_text(encoding="utf-8")
+    assert "`metrics-diff.json` (available)" in summary
+    assert "`metrics-diff.md` (available)" in summary
+
 def test_ci_dry_run_regression_check_json_includes_planned_step(
     tmp_path: Path,
 ) -> None:
@@ -1265,7 +1392,7 @@ def test_ci_regression_check_writes_reports_when_baseline_exists(
 ) -> None:
     write_config(tmp_path)
     init_git_repo(tmp_path)
-    write_run(tmp_path, "20991231_235958", metrics=sample_metrics(score=100))
+    write_run(tmp_path, "20200101_000000", metrics=sample_metrics(score=100))
 
     result = runner.invoke(
         app,

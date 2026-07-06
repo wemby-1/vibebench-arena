@@ -87,6 +87,14 @@ def write_run(
             "# VibeBench Metrics Check\n",
             encoding="utf-8",
         )
+        (run_dir / "metrics-diff.json").write_text(
+            '{"status":"passed"}\n',
+            encoding="utf-8",
+        )
+        (run_dir / "metrics-diff.md").write_text(
+            "# VibeBench Metrics Diff\n",
+            encoding="utf-8",
+        )
         (run_dir / "regression-check.json").write_text(
             '{"status":"passed"}\n',
             encoding="utf-8",
@@ -191,6 +199,8 @@ def test_latest_run_bundle_is_created(tmp_path: Path) -> None:
     assert "compare.md" in names
     assert "metrics-check.json" in names
     assert "metrics-check.md" in names
+    assert "metrics-diff.json" in names
+    assert "metrics-diff.md" in names
     assert "regression-check.json" in names
     assert "regression-check.md" in names
     assert "evidence-room/index.html" in names

@@ -17,6 +17,8 @@ STANDARD_ARTIFACTS = [
     Path("check.log"),
     Path("metrics-check.json"),
     Path("metrics-check.md"),
+    Path("metrics-diff.json"),
+    Path("metrics-diff.md"),
     Path("manifest.json"),
     Path("config-check.json"),
     Path("config-check.md"),

@@ -42,6 +42,8 @@ EVIDENCE_ROOM_ARTIFACT_NAMES = {
 ARTIFACT_NAMES = {
     Path("metrics-check.json"): "metrics-check-json",
     Path("metrics-check.md"): "metrics-check-md",
+    Path("metrics-diff.json"): "metrics-diff-json",
+    Path("metrics-diff.md"): "metrics-diff-md",
     Path("regression-check.json"): "regression-check-json",
     Path("regression-check.md"): "regression-check-md",
     **EVIDENCE_ROOM_ARTIFACT_NAMES,

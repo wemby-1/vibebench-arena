@@ -71,6 +71,8 @@ def test_default_latest_run_artifact_listing(tmp_path: Path) -> None:
     assert "compare.md" in artifacts
     assert "metrics-check-json" in artifacts
     assert "metrics-check-md" in artifacts
+    assert "metrics-diff-json" in artifacts
+    assert "metrics-diff-md" in artifacts
     assert "regression-check-json" in artifacts
     assert "regression-check-md" in artifacts
     assert "evidence-room-security-questionnaire-html" in artifacts
@@ -200,6 +202,14 @@ def test_available_and_missing_artifacts_are_detected(tmp_path: Path) -> None:
         "# VibeBench Metrics Check\n",
         encoding="utf-8",
     )
+    run_dir.joinpath("metrics-diff.json").write_text(
+        '{"status":"passed"}\n',
+        encoding="utf-8",
+    )
+    run_dir.joinpath("metrics-diff.md").write_text(
+        "# VibeBench Metrics Diff\n",
+        encoding="utf-8",
+    )
     run_dir.joinpath("regression-check.json").write_text(
         '{"status":"passed"}\n',
         encoding="utf-8",
@@ -224,6 +234,8 @@ def test_available_and_missing_artifacts_are_detected(tmp_path: Path) -> None:
     assert artifacts["evidence-room-share-check-md"]["available"] is True
     assert artifacts["metrics-check-json"]["available"] is True
     assert artifacts["metrics-check-md"]["available"] is True
+    assert artifacts["metrics-diff-json"]["available"] is True
+    assert artifacts["metrics-diff-md"]["available"] is True
     assert artifacts["regression-check-json"]["available"] is True
     assert artifacts["regression-check-md"]["available"] is True
 

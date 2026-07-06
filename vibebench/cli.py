@@ -115,6 +115,11 @@ from vibebench.metrics_check import (
     metrics_check_json,
     run_metrics_check,
 )
+from vibebench.metrics_diff import (
+    MetricsDiffResult,
+    metrics_diff_json,
+    run_metrics_diff,
+)
 from vibebench.package_check import (
     PackageReadinessResult,
     package_check_json_payload,
@@ -1855,6 +1860,87 @@ def metrics_check_command(
         raise typer.Exit(code=1)
 
 
+@app.command("metrics-diff")
+def metrics_diff_command(
+    project_root: ProjectRootOption = Path("."),
+    runs_dir: Annotated[
+        Path | None,
+        typer.Option("--runs-dir", help="Custom runs directory to compare."),
+    ] = None,
+    baseline_run: Annotated[
+        str | None,
+        typer.Option("--baseline-run", help="Baseline run id or path."),
+    ] = None,
+    candidate_run: Annotated[
+        str | None,
+        typer.Option("--candidate-run", help="Candidate run id or path."),
+    ] = None,
+    baseline_label: Annotated[
+        str | None,
+        typer.Option("--baseline-label", help="Pinned baseline label to use."),
+    ] = None,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print metrics-diff result as pure JSON."),
+    ] = False,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write metrics-diff JSON to PATH."),
+    ] = None,
+    summary_output: Annotated[
+        Path | None,
+        typer.Option("--summary-output", help="Write metrics-diff Markdown."),
+    ] = None,
+    strict: Annotated[
+        bool,
+        typer.Option("--strict", help="Fail when no baseline metrics are available."),
+    ] = False,
+    include_unchanged: Annotated[
+        bool,
+        typer.Option("--include-unchanged", help="Include unchanged numeric metrics."),
+    ] = False,
+    top: Annotated[
+        int | None,
+        typer.Option("--top", help="Limit displayed changed metrics."),
+    ] = None,
+) -> None:
+    """Compare numeric metrics between baseline and candidate runs."""
+    root = project_root.resolve()
+    selected_runs_dir = resolve_optional_output_path(root, runs_dir)
+    selected_json_output = resolve_optional_output_path(root, json_output)
+    selected_summary_output = resolve_optional_output_path(root, summary_output)
+    try:
+        result = run_metrics_diff(
+            root,
+            runs_dir=selected_runs_dir,
+            baseline_run=baseline_run,
+            candidate_run=candidate_run,
+            baseline_label=baseline_label,
+            strict=strict,
+            include_unchanged=include_unchanged,
+            top=top,
+            json_output=selected_json_output,
+            summary_output=selected_summary_output,
+        )
+    except ReportError as exc:
+        target_console = err_console if as_json else console
+        target_console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if as_json:
+        print(metrics_diff_json(result))
+    else:
+        render_metrics_diff_summary(result)
+        if result.json_path is not None:
+            console.print(f"Metrics-diff JSON: {result.json_path}")
+        if result.summary_path is not None:
+            console.print(f"Metrics-diff Markdown: {result.summary_path}")
+
+    if result.status == "failed":
+        raise typer.Exit(code=1)
+
+
+
 @app.command("regression-check")
 def regression_check_command(
     project_root: ProjectRootOption = Path("."),
@@ -2505,6 +2591,20 @@ def ci_command(
             help="Skip optional metrics-check artifact generation.",
         ),
     ] = False,
+    metrics_diff: Annotated[
+        bool,
+        typer.Option(
+            "--metrics-diff",
+            help="Run metrics-diff and write metrics-diff artifacts.",
+        ),
+    ] = False,
+    skip_metrics_diff: Annotated[
+        bool,
+        typer.Option(
+            "--skip-metrics-diff",
+            help="Skip optional metrics-diff artifact generation.",
+        ),
+    ] = False,
     regression_check: Annotated[
         bool,
         typer.Option(
@@ -2682,6 +2782,8 @@ def ci_command(
                 skip_evidence_room=skip_evidence_room,
                 metrics_check=metrics_check,
                 skip_metrics_check=skip_metrics_check,
+                metrics_diff=metrics_diff,
+                skip_metrics_diff=skip_metrics_diff,
                 regression_check=bool(regression_policy["enabled"]),
                 require_regression_baseline=bool(regression_policy["require_baseline"]),
                 baseline_label=regression_policy["baseline_label"],
@@ -2726,6 +2828,8 @@ def ci_command(
                 skip_evidence_room=skip_evidence_room,
                 metrics_check=metrics_check,
                 skip_metrics_check=skip_metrics_check,
+                metrics_diff=metrics_diff,
+                skip_metrics_diff=skip_metrics_diff,
                 regression_check=bool(regression_policy["enabled"]),
                 require_regression_baseline=bool(regression_policy["require_baseline"]),
                 baseline_label=regression_policy["baseline_label"],
@@ -5171,6 +5275,62 @@ def render_metrics_check_summary(result: MetricsCheckResult) -> None:
         for item in result.advice:
             advice_table.add_row(item)
         console.print(advice_table)
+
+
+def render_metrics_diff_summary(result: MetricsDiffResult) -> None:
+    """Render metrics-diff output."""
+    style = "green" if result.status == "passed" else "yellow"
+    if result.status == "failed":
+        style = "red"
+    console.print()
+    console.print("[bold]VibeBench metrics diff[/]")
+    console.print(f"Status: [{style}]{result.status}[/]")
+    console.print(f"Baseline source: {result.baseline_source}")
+    console.print(f"Baseline run: {result.baseline_run or 'none'}")
+    console.print(f"Candidate run: {result.candidate_run or 'none'}")
+    console.print(f"Message: {result.message}")
+
+    counts = Table(title="Metrics diff summary")
+    counts.add_column("Count")
+    counts.add_column("Value", justify="right")
+    counts.add_row("Compared numeric", str(result.summary.compared_numeric_count))
+    counts.add_row("Improved", str(result.summary.improved_count))
+    counts.add_row("Regressed", str(result.summary.regressed_count))
+    counts.add_row("Changed", str(result.summary.changed_count))
+    counts.add_row("Unchanged", str(result.summary.unchanged_count))
+    counts.add_row("Added", str(result.summary.added_count))
+    counts.add_row("Removed", str(result.summary.removed_count))
+    console.print(counts)
+
+    table = Table(title="Metric changes")
+    table.add_column("Metric")
+    table.add_column("Baseline")
+    table.add_column("Candidate")
+    table.add_column("Delta")
+    table.add_column("Class")
+    for change in result.changes[:20]:
+        table.add_row(
+            change.metric,
+            str(change.baseline_value),
+            str(change.candidate_value),
+            str(change.delta),
+            change.classification,
+        )
+    if not result.changes:
+        table.add_row("none", "", "", "", "")
+    console.print(table)
+    if result.warnings:
+        warning_table = Table(title="Warnings")
+        warning_table.add_column("Message")
+        for warning in result.warnings:
+            warning_table.add_row(warning)
+        console.print(warning_table)
+    if result.errors:
+        error_table = Table(title="Errors")
+        error_table.add_column("Message")
+        for error in result.errors:
+            error_table.add_row(error)
+        console.print(error_table)
 
 def render_baseline_verification_summary(result: BaselineVerificationResult) -> None:
     """Render baseline verification output."""

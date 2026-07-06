@@ -32,6 +32,11 @@ from vibebench.metrics_check import (
     METRICS_CHECK_SUMMARY,
     run_metrics_check,
 )
+from vibebench.metrics_diff import (
+    METRICS_DIFF_JSON,
+    METRICS_DIFF_SUMMARY,
+    run_metrics_diff,
+)
 from vibebench.package_check import (
     PACKAGE_CHECK_JSON,
     PACKAGE_CHECK_SUMMARY,
@@ -157,6 +162,8 @@ def plan_ci_pipeline(
     skip_evidence_room: bool = False,
     metrics_check: bool = False,
     skip_metrics_check: bool = False,
+    metrics_diff: bool = False,
+    skip_metrics_diff: bool = False,
     regression_check: bool = False,
     require_regression_baseline: bool = False,
     baseline_label: str | None = None,
@@ -184,16 +191,24 @@ def plan_ci_pipeline(
         planned_step("check", "Would run configured checks"),
         planned_step("gate", "Would evaluate the quality gate"),
     ]
-    if metrics_check and skip_metrics_check:
-        raise ConfigError(
-            "--metrics-check and --skip-metrics-check cannot be combined."
-        )
+    validate_metrics_artifact_flags(
+        metrics_check=metrics_check,
+        skip_metrics_check=skip_metrics_check,
+        metrics_diff=metrics_diff,
+        skip_metrics_diff=skip_metrics_diff,
+    )
     if metrics_check:
         steps.append(
             planned_step("metrics-check", "Would validate metrics.json contract")
         )
     elif skip_metrics_check:
         steps.append(skipped_plan_step("metrics-check", "--skip-metrics-check"))
+    if metrics_diff:
+        steps.append(
+            planned_step("metrics-diff", "Would compare metrics against baseline")
+        )
+    elif skip_metrics_diff:
+        steps.append(skipped_plan_step("metrics-diff", "--skip-metrics-diff"))
     for name, skipped, flag in ci_artifact_step_flags(
         skip_report=skip_report,
         skip_pr_comment=skip_pr_comment,
@@ -568,6 +583,8 @@ def run_ci_pipeline(
     skip_evidence_room: bool = False,
     metrics_check: bool = False,
     skip_metrics_check: bool = False,
+    metrics_diff: bool = False,
+    skip_metrics_diff: bool = False,
     regression_check: bool = False,
     require_regression_baseline: bool = False,
     baseline_label: str | None = None,
@@ -598,10 +615,12 @@ def run_ci_pipeline(
             source="cli",
             message="Disabled because --skip-compare skips compare.",
         )
-    if metrics_check and skip_metrics_check:
-        raise ConfigError(
-            "--metrics-check and --skip-metrics-check cannot be combined."
-        )
+    validate_metrics_artifact_flags(
+        metrics_check=metrics_check,
+        skip_metrics_check=skip_metrics_check,
+        metrics_diff=metrics_diff,
+        skip_metrics_diff=skip_metrics_diff,
+    )
     root = project_root.resolve()
     selected_run_dir = run_dir.resolve() if run_dir is not None else None
     steps: list[CiStepResult] = []
@@ -643,6 +662,8 @@ def run_ci_pipeline(
             skip_evidence_room=skip_evidence_room,
             metrics_check=metrics_check,
             skip_metrics_check=skip_metrics_check,
+            metrics_diff=metrics_diff,
+            skip_metrics_diff=skip_metrics_diff,
             regression_check=regression_check,
         )
         return CiResult(
@@ -666,6 +687,12 @@ def run_ci_pipeline(
     elif skip_metrics_check:
         steps.append(
             CiStepResult("metrics-check", "skipped", 0, message="skipped by flag")
+        )
+    if metrics_diff:
+        steps.append(run_metrics_diff_artifact_step(root, selected_run_dir))
+    elif skip_metrics_diff:
+        steps.append(
+            CiStepResult("metrics-diff", "skipped", 0, message="skipped by flag")
         )
 
     artifact_steps: list[tuple[str, bool, object]] = [
@@ -840,6 +867,8 @@ def append_unavailable_artifact_steps(
     skip_evidence_room: bool,
     metrics_check: bool = False,
     skip_metrics_check: bool = False,
+    metrics_diff: bool = False,
+    skip_metrics_diff: bool = False,
     regression_check: bool = False,
 ) -> None:
     """Append artifact steps when no run directory exists."""
@@ -855,6 +884,19 @@ def append_unavailable_artifact_steps(
     elif skip_metrics_check:
         steps.append(
             CiStepResult("metrics-check", "skipped", 0, message="skipped by flag")
+        )
+    if metrics_diff:
+        steps.append(
+            CiStepResult(
+                "metrics-diff",
+                "failed",
+                1,
+                message="no run directory available",
+            )
+        )
+    elif skip_metrics_diff:
+        steps.append(
+            CiStepResult("metrics-diff", "skipped", 0, message="skipped by flag")
         )
 
     flags = [
@@ -1013,6 +1055,25 @@ def run_artifact_step(name: str, callback: object) -> CiStepResult:
     )
 
 
+
+def validate_metrics_artifact_flags(
+    *,
+    metrics_check: bool,
+    skip_metrics_check: bool,
+    metrics_diff: bool,
+    skip_metrics_diff: bool,
+) -> None:
+    """Validate optional metrics artifact flags."""
+    if metrics_check and skip_metrics_check:
+        raise ConfigError(
+            "--metrics-check and --skip-metrics-check cannot be combined."
+        )
+    if metrics_diff and skip_metrics_diff:
+        raise ConfigError(
+            "--metrics-diff and --skip-metrics-diff cannot be combined."
+        )
+
+
 def run_metrics_check_artifact_step(project_root: Path, run_dir: Path) -> CiStepResult:
     """Generate metrics-check artifacts and return CI step status."""
     started = time.perf_counter()
@@ -1050,6 +1111,54 @@ def run_metrics_check_artifact_step(project_root: Path, run_dir: Path) -> CiStep
         0,
         artifact_path=result.json_path,
         message=message,
+        duration_seconds=elapsed_since(started),
+    )
+
+
+
+def run_metrics_diff_artifact_step(project_root: Path, run_dir: Path) -> CiStepResult:
+    """Generate metrics-diff artifacts and return CI step status."""
+    started = time.perf_counter()
+    try:
+        result = run_metrics_diff(
+            project_root,
+            candidate_run=run_dir,
+            json_output=run_dir / METRICS_DIFF_JSON,
+            summary_output=run_dir / METRICS_DIFF_SUMMARY,
+        )
+    except Exception as exc:
+        return CiStepResult(
+            "metrics-diff",
+            "failed",
+            1,
+            message=str(exc),
+            duration_seconds=elapsed_since(started),
+        )
+
+    if result.status == "skipped":
+        return CiStepResult(
+            "metrics-diff",
+            "skipped",
+            0,
+            artifact_path=result.json_path,
+            message=result.message,
+            duration_seconds=elapsed_since(started),
+        )
+    if result.status == "failed":
+        return CiStepResult(
+            "metrics-diff",
+            "failed",
+            1,
+            artifact_path=result.json_path,
+            message=result.message,
+            duration_seconds=elapsed_since(started),
+        )
+    return CiStepResult(
+        "metrics-diff",
+        "passed",
+        0,
+        artifact_path=result.json_path,
+        message=result.message,
         duration_seconds=elapsed_since(started),
     )
 

@@ -133,6 +133,8 @@ def artifacts_section(run_dir: Path) -> str:
         run_dir / "check.log",
         run_dir / "metrics-check.json",
         run_dir / "metrics-check.md",
+        run_dir / "metrics-diff.json",
+        run_dir / "metrics-diff.md",
         run_dir / "manifest.json",
         run_dir / "package-check.json",
         run_dir / "package-check.md",

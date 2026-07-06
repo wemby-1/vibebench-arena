@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added `metrics-diff` for comparing numeric `metrics.json` changes between baseline and candidate runs, with optional `ci --metrics-diff` artifacts and artifact/latest/manifest/bundle/GitHub summary discovery.
+
 - Added optional `ci --metrics-check` and `--skip-metrics-check` integration, writing `metrics-check.json` and `metrics-check.md` run artifacts with artifact, latest, manifest, bundle, and GitHub summary visibility.
 
 - Added `metrics-check` for explicit `metrics.json` contract validation before baseline promotion or regression comparison, with JSON, Markdown, run selection, and strict modes.
