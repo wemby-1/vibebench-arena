@@ -21,6 +21,7 @@ from vibebench.config_check import (
     write_config_check_json,
     write_config_check_summary,
 )
+from vibebench.evidence_room import write_evidence_room
 from vibebench.explain import generate_explanation
 from vibebench.export import export_json_for_ci
 from vibebench.gate import run_gate
@@ -143,6 +144,7 @@ def plan_ci_pipeline(
     skip_gh_summary: bool = False,
     skip_release_check: bool = False,
     skip_package_check: bool = False,
+    skip_evidence_room: bool = False,
     fail_on_regression: bool = False,
     regression_guard_source: RegressionGuardSource | None = None,
     regression_guard_message: str | None = None,
@@ -180,11 +182,29 @@ def plan_ci_pipeline(
         skip_gh_summary=skip_gh_summary,
         skip_release_check=skip_release_check,
         skip_package_check=skip_package_check,
+        skip_evidence_room=skip_evidence_room,
     ):
         if skipped:
-            steps.append(skipped_plan_step(name, flag))
+            if name == "evidence-room":
+                steps.append(
+                    skipped_plan_step(
+                        name,
+                        flag,
+                        artifact=Path("evidence-room"),
+                    )
+                )
+            else:
+                steps.append(skipped_plan_step(name, flag))
         elif name == "compare" and regression_guard.enabled:
             steps.append(planned_step(name, "Would run compare with regression guard"))
+        elif name == "evidence-room":
+            steps.append(
+                planned_step(
+                    name,
+                    "Would generate evidence room artifact",
+                    artifact=Path("evidence-room"),
+                )
+            )
         else:
             steps.append(planned_step(name, f"Would run {name}"))
     return CiResult(
@@ -196,25 +216,35 @@ def plan_ci_pipeline(
     )
 
 
-def planned_step(name: str, message: str) -> CiStepResult:
+def planned_step(
+    name: str,
+    message: str,
+    *,
+    artifact: Path | None = None,
+) -> CiStepResult:
     """Create a dry-run planned step."""
     return CiStepResult(
         name,
         "planned",
         None,
-        artifact_path=None,
+        artifact_path=artifact,
         message=message,
         duration_seconds=None,
     )
 
 
-def skipped_plan_step(name: str, flag: str) -> CiStepResult:
+def skipped_plan_step(
+    name: str,
+    flag: str,
+    *,
+    artifact: Path | None = None,
+) -> CiStepResult:
     """Create a dry-run skipped step."""
     return CiStepResult(
         name,
         "skipped",
         None,
-        artifact_path=None,
+        artifact_path=artifact,
         message=f"Skipped by {flag}",
         duration_seconds=None,
     )
@@ -238,6 +268,7 @@ def ci_artifact_step_flags(
     skip_gh_summary: bool,
     skip_release_check: bool,
     skip_package_check: bool,
+    skip_evidence_room: bool,
 ) -> list[tuple[str, bool, str]]:
     """Return artifact step skip flags in canonical CI order."""
     return [
@@ -252,6 +283,7 @@ def ci_artifact_step_flags(
         ("trend", skip_trend, "--skip-trend"),
         ("run-index", skip_run_index, "--skip-run-index"),
         ("compare", skip_compare, "--skip-compare"),
+        ("evidence-room", skip_evidence_room, "--skip-evidence-room"),
         ("manifest", skip_manifest, "--skip-manifest"),
         ("manifest-check", skip_manifest, "--skip-manifest"),
         ("release-check", skip_release_check, "--skip-release-check"),
@@ -461,6 +493,7 @@ def run_ci_pipeline(
     skip_gh_summary: bool = False,
     skip_release_check: bool = False,
     skip_package_check: bool = False,
+    skip_evidence_room: bool = False,
     emit_annotations: bool = True,
     bundle_include_report_assets: bool = False,
     bundle_strict: bool = False,
@@ -522,6 +555,7 @@ def run_ci_pipeline(
             skip_gh_summary=skip_gh_summary,
             skip_release_check=skip_release_check,
             skip_package_check=skip_package_check,
+            skip_evidence_room=skip_evidence_room,
         )
         return CiResult(
             run_dir=None,
@@ -591,6 +625,11 @@ def run_ci_pipeline(
             "compare",
             skip_compare,
             lambda: generated_compare_path(root, selected_run_dir),
+        ),
+        (
+            "evidence-room",
+            skip_evidence_room,
+            lambda: generated_evidence_room_path(root, selected_run_dir),
         ),
         (
             "manifest",
@@ -678,6 +717,7 @@ def append_unavailable_artifact_steps(
     skip_gh_summary: bool,
     skip_release_check: bool,
     skip_package_check: bool,
+    skip_evidence_room: bool,
 ) -> None:
     """Append artifact steps when no run directory exists."""
     flags = [
@@ -690,6 +730,7 @@ def append_unavailable_artifact_steps(
         ("trend", skip_trend),
         ("run-index", skip_run_index),
         ("compare", skip_compare),
+        ("evidence-room", skip_evidence_room),
         ("config-check", skip_config_check),
         ("package-check", skip_package_check),
         ("manifest", skip_manifest),
@@ -1000,6 +1041,24 @@ def generated_compare_path(project_root: Path, run_dir: Path | None) -> Path | N
         return None
     result = compare_runs(project_root, head_run=run_dir)
     return result.json_path
+
+
+def generated_evidence_room_path(
+    project_root: Path,
+    run_dir: Path | None,
+) -> Path | None:
+    """Generate the evidence room artifact and return its directory."""
+    if run_dir is None:
+        return None
+    output_dir = run_dir / "evidence-room"
+    write_evidence_room(
+        project_root=project_root,
+        site_root=project_root / "docs",
+        root_label="docs",
+        output_dir=output_dir,
+        create_zip=True,
+    )
+    return output_dir
 
 
 def generated_trend_path(project_root: Path, run_dir: Path | None) -> Path | None:

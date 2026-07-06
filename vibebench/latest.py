@@ -41,6 +41,11 @@ ARTIFACT_ALIASES = {
     "run-index-md": Path("run-index.md"),
     "compare-json": Path("compare.json"),
     "compare-md": Path("compare.md"),
+    "evidence-room-html": Path("evidence-room") / "evidence-room.html",
+    "evidence-room-json": Path("evidence-room") / "evidence-room.json",
+    "evidence-room-md": Path("evidence-room") / "evidence-room.md",
+    "evidence-room-zip": Path("evidence-room") / "evidence-room.zip",
+    "evidence-room-dir": Path("evidence-room"),
     "gate-summary": Path("gate-summary.md"),
     "bundle": Path(BUNDLE_FILENAME),
 }

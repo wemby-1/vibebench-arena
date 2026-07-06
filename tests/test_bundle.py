@@ -79,6 +79,15 @@ def write_run(
         (run_dir / "manifest.json").write_text("{}\n", encoding="utf-8")
         (run_dir / "compare.json").write_text("{}\n", encoding="utf-8")
         (run_dir / "compare.md").write_text("compare\n", encoding="utf-8")
+        evidence_dir = run_dir / "evidence-room"
+        evidence_dir.mkdir()
+        (evidence_dir / "evidence-room.html").write_text(
+            "<html></html>\n",
+            encoding="utf-8",
+        )
+        (evidence_dir / "evidence-room.json").write_text("{}\n", encoding="utf-8")
+        (evidence_dir / "evidence-room.md").write_text("evidence\n", encoding="utf-8")
+        (evidence_dir / "evidence-room.zip").write_text("zip\n", encoding="utf-8")
     return run_dir
 
 
@@ -115,6 +124,10 @@ def test_latest_run_bundle_is_created(tmp_path: Path) -> None:
     assert "manifest.json" in names
     assert "compare.json" in names
     assert "compare.md" in names
+    assert "evidence-room/evidence-room.html" in names
+    assert "evidence-room/evidence-room.json" in names
+    assert "evidence-room/evidence-room.md" in names
+    assert "evidence-room/evidence-room.zip" in names
     assert "vibebench-bundle.zip" not in names
 
 
@@ -137,6 +150,34 @@ def test_run_dir_option_works(tmp_path: Path) -> None:
     assert first.joinpath("vibebench-bundle.zip").exists()
     assert not second.joinpath("vibebench-bundle.zip").exists()
     assert "VibeBench bundle" in result.output
+
+
+def test_bundle_command_refreshes_existing_manifest(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260629_120000")
+    manifest = runner.invoke(
+        app,
+        ["manifest", "--project-root", str(tmp_path), "--run-dir", str(run_dir)],
+    )
+
+    result = runner.invoke(
+        app,
+        ["bundle", "--project-root", str(tmp_path), "--run-dir", str(run_dir)],
+    )
+    check = runner.invoke(
+        app,
+        [
+            "manifest",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--check",
+        ],
+    )
+
+    assert manifest.exit_code == 0
+    assert result.exit_code == 0
+    assert check.exit_code == 0
 
 
 def test_output_writes_custom_path(tmp_path: Path) -> None:

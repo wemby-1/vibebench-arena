@@ -63,6 +63,7 @@ def write_package_metadata(root: Path) -> None:
     docs.joinpath("quickstart.md").write_text("# Quickstart\n", encoding="utf-8")
     docs.joinpath("github-actions.md").write_text("# Actions\n", encoding="utf-8")
     root.joinpath("ROADMAP.md").write_text("# Roadmap\n", encoding="utf-8")
+    write_static_site_docs(docs)
     root.joinpath("pyproject.toml").write_text(
         """
 [project]
@@ -78,6 +79,78 @@ vibebench = "vibebench.cli:main"
         + "\n",
         encoding="utf-8",
     )
+
+
+def write_static_site_docs(docs: Path) -> None:
+    """Write the minimal docs site required by evidence-room generation."""
+    index = """
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>VibeBench Arena</title></head>
+<body>
+<h1>VibeBench Arena</h1>
+<p>Codex-first quality console for vibe-coding projects.</p>
+<a href="showcase.html">Product showcase</a>
+<a href="evaluate.md">Evaluate</a>
+<a href="adoption.md">Adopt</a>
+<a href="demo.md">Demo</a>
+<a href="product-strategy.md">Strategy</a>
+<a href="commercial-potential.md">Commercial potential</a>
+<a href="comparison.md">Comparison</a>
+<a href="faq.md">FAQ</a>
+<a href="pages.md">Pages</a>
+<p>Review the self-contained proof.html report.</p>
+<code>python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip</code>
+<p>VibeBench Arena is not a replacement for SWE-bench.</p>
+</body>
+</html>
+""".strip()
+    showcase = """
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>VibeBench Arena</title></head>
+<body>
+<h1>VibeBench Arena</h1>
+<p>Codex-first quality console for evidence-first review.</p>
+<p>proof.html, proof.json, proof.md, proof-manifest.json, proof.zip</p>
+<a href="showcase.html">Product showcase</a>
+<a href="evaluate.md">Evaluate</a>
+<a href="adoption.md">Adopt</a>
+<a href="demo.md">Demo</a>
+<a href="product-strategy.md">Strategy</a>
+<a href="commercial-potential.md">Commercial potential</a>
+<a href="comparison.md">Comparison</a>
+<a href="faq.md">FAQ</a>
+<a href="pages.md">Pages</a>
+</body>
+</html>
+""".strip()
+    pages = """
+# Pages
+
+`docs/index.html` is the static entry. `docs/showcase.html` is the product page.
+
+Preview locally:
+
+`python3 -m http.server 8000 --directory docs`
+
+Manual setup: Settings, Pages, Deploy from a branch, main, /docs.
+
+GitHub Pages is not enabled automatically.
+""".strip()
+    docs.joinpath("index.html").write_text(index + "\n", encoding="utf-8")
+    docs.joinpath("showcase.html").write_text(showcase + "\n", encoding="utf-8")
+    docs.joinpath("pages.md").write_text(pages + "\n", encoding="utf-8")
+    for name in [
+        "evaluate.md",
+        "adoption.md",
+        "demo.md",
+        "product-strategy.md",
+        "commercial-potential.md",
+        "comparison.md",
+        "faq.md",
+    ]:
+        docs.joinpath(name).write_text(f"# {name}\n", encoding="utf-8")
 
 
 def init_git_repo(root: Path) -> None:
@@ -214,6 +287,12 @@ def test_ci_command_creates_standard_artifacts(tmp_path: Path) -> None:
     assert run_dir.joinpath("run-index.md").exists()
     assert run_dir.joinpath("compare.json").exists()
     assert run_dir.joinpath("compare.md").exists()
+    assert run_dir.joinpath("evidence-room", "evidence-room.html").exists()
+    assert run_dir.joinpath("evidence-room", "evidence-room.json").exists()
+    assert run_dir.joinpath("evidence-room", "evidence-room.md").exists()
+    assert run_dir.joinpath("evidence-room", "evidence-room.zip").exists()
+    assert run_dir.joinpath("evidence-room", "proof-packet", "proof.html").exists()
+    assert run_dir.joinpath("evidence-room", "site-preview", "index.html").exists()
     assert run_dir.joinpath("config-check.json").exists()
     assert run_dir.joinpath("config-check.md").exists()
     assert run_dir.joinpath("package-check.json").exists()
@@ -250,6 +329,8 @@ def test_ci_attempts_artifacts_when_gate_fails(tmp_path: Path) -> None:
     assert run_dir.joinpath("run-index.md").exists()
     assert run_dir.joinpath("compare.json").exists()
     assert run_dir.joinpath("compare.md").exists()
+    assert run_dir.joinpath("evidence-room", "evidence-room.html").exists()
+    assert run_dir.joinpath("evidence-room", "evidence-room.zip").exists()
     assert run_dir.joinpath("config-check.json").exists()
     assert run_dir.joinpath("config-check.md").exists()
     assert run_dir.joinpath("manifest.json").exists()
@@ -277,6 +358,7 @@ def test_skip_flags_skip_artifact_generation(tmp_path: Path) -> None:
             "--skip-trend",
             "--skip-run-index",
             "--skip-compare",
+            "--skip-evidence-room",
             "--skip-config-check",
             "--skip-package-check",
             "--skip-manifest",
@@ -299,6 +381,7 @@ def test_skip_flags_skip_artifact_generation(tmp_path: Path) -> None:
     assert not run_dir.joinpath("run-index.md").exists()
     assert not run_dir.joinpath("compare.json").exists()
     assert not run_dir.joinpath("compare.md").exists()
+    assert not run_dir.joinpath("evidence-room").exists()
     assert not run_dir.joinpath("config-check.json").exists()
     assert not run_dir.joinpath("config-check.md").exists()
     assert not run_dir.joinpath("package-check.json").exists()
@@ -306,6 +389,35 @@ def test_skip_flags_skip_artifact_generation(tmp_path: Path) -> None:
     assert not run_dir.joinpath("manifest.json").exists()
     assert not run_dir.joinpath("github-step-summary.md").exists()
     assert "skipped" in result.output
+
+
+def test_ci_skip_evidence_room_preserves_other_artifacts(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    run_dir = write_run(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--run-dir",
+            str(run_dir),
+            "--skip-evidence-room",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["evidence-room"]["status"] == "skipped"
+    assert steps["evidence-room"]["message"] == "skipped by flag"
+    assert run_dir.joinpath("manifest.json").exists()
+    assert run_dir.joinpath("vibebench-bundle.zip").exists()
+    assert run_dir.joinpath("report", "index.html").exists()
+    assert not run_dir.joinpath("evidence-room").exists()
+
 
 def test_bundle_include_report_assets_passes_through(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -682,6 +794,7 @@ def test_ci_dry_run_human_output_includes_ordered_steps(tmp_path: Path) -> None:
         "trend",
         "run-index",
         "compare",
+        "evidence-room",
         "manifest",
         "manifest-check",
         "release-check",
@@ -721,6 +834,7 @@ def test_ci_dry_run_json_outputs_plan_payload(tmp_path: Path) -> None:
         "trend",
         "run-index",
         "compare",
+        "evidence-room",
         "manifest",
         "manifest-check",
         "release-check",
@@ -739,7 +853,10 @@ def test_ci_dry_run_json_outputs_plan_payload(tmp_path: Path) -> None:
         }
         assert step["status"] == "planned"
         assert step["exit_code"] is None
-        assert step["artifact"] is None
+        if step["name"] == "evidence-room":
+            assert step["artifact"] == "evidence-room"
+        else:
+            assert step["artifact"] is None
         assert step["duration_seconds"] is None
 
 
@@ -1072,6 +1189,31 @@ def test_ci_dry_run_skip_flags_mark_steps_skipped(tmp_path: Path) -> None:
     assert steps["check"]["status"] == "planned"
 
 
+def test_ci_dry_run_skip_evidence_room_marks_step_skipped(tmp_path: Path) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--skip-evidence-room",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["evidence-room"]["status"] == "skipped"
+    assert steps["evidence-room"]["artifact"] == "evidence-room"
+    assert steps["evidence-room"]["message"] == "Skipped by --skip-evidence-room"
+    assert steps["manifest"]["status"] == "planned"
+    assert steps["bundle"]["status"] == "planned"
+
+
 def test_ci_dry_run_json_output_writes_plan_file(tmp_path: Path) -> None:
     write_config(tmp_path)
     output_path = tmp_path / "ci-plan.json"
@@ -1320,6 +1462,7 @@ def test_ci_json_outputs_parseable_payload(tmp_path: Path) -> None:
         "trend",
         "run-index",
         "compare",
+        "evidence-room",
         "manifest",
         "manifest-check",
         "release-check",
@@ -1886,3 +2029,77 @@ def test_ci_bundle_includes_release_check_artifacts(tmp_path: Path) -> None:
     assert "compare.md" in names
     assert "release-check.json" in names
     assert "release-check.md" in names
+
+
+def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(app, ["ci", "--project-root", str(tmp_path), "--json"])
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["evidence-room"]["status"] == "passed"
+    run_dir = latest_run(tmp_path)
+    evidence_dir = run_dir / "evidence-room"
+    assert evidence_dir.joinpath("evidence-room.html").exists()
+    assert evidence_dir.joinpath("evidence-room.json").exists()
+    assert evidence_dir.joinpath("evidence-room.md").exists()
+    assert evidence_dir.joinpath("evidence-room.zip").exists()
+    assert evidence_dir.joinpath("proof-packet", "proof.html").exists()
+    assert evidence_dir.joinpath("site-preview", "site-preview.md").exists()
+
+    artifacts = runner.invoke(
+        app,
+        ["artifacts", "--project-root", str(tmp_path), "--json"],
+    )
+    artifact_map = {
+        item["name"]: item for item in json.loads(artifacts.output)["artifacts"]
+    }
+    assert artifacts.exit_code == 0
+    for name in [
+        "evidence-room-html",
+        "evidence-room-json",
+        "evidence-room-md",
+        "evidence-room-zip",
+        "evidence-room-dir",
+    ]:
+        assert artifact_map[name]["available"] is True
+
+    for artifact_name, suffix in [
+        ("evidence-room-html", "evidence-room/evidence-room.html"),
+        ("evidence-room-json", "evidence-room/evidence-room.json"),
+        ("evidence-room-md", "evidence-room/evidence-room.md"),
+        ("evidence-room-zip", "evidence-room/evidence-room.zip"),
+        ("evidence-room-dir", "evidence-room"),
+    ]:
+        latest = runner.invoke(
+            app,
+            [
+                "latest",
+                "--project-root",
+                str(tmp_path),
+                "--artifact",
+                artifact_name,
+                "--path-only",
+            ],
+        )
+        assert latest.exit_code == 0
+        assert latest.output.strip().endswith(suffix)
+
+    manifest_result = check_manifest(tmp_path, run_dir)
+    assert manifest_result.passed is True
+    manifest_payload = json.loads(run_dir.joinpath("manifest.json").read_text())
+    manifest_artifacts = {
+        item["name"]: item for item in manifest_payload["artifacts"]
+    }
+    assert manifest_artifacts["evidence-room-html"]["available"] is True
+    assert manifest_artifacts["evidence-room-dir"]["available"] is True
+
+    names = zip_names(run_dir / "vibebench-bundle.zip")
+    assert "evidence-room/evidence-room.html" in names
+    assert "evidence-room/evidence-room.json" in names
+    assert "evidence-room/evidence-room.md" in names
+    assert "evidence-room/evidence-room.zip" in names
+    assert "evidence-room/proof-packet/proof.html" not in names

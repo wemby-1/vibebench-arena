@@ -150,6 +150,10 @@ def artifacts_section(run_dir: Path) -> str:
         run_dir / "run-index.md",
         run_dir / "compare.json",
         run_dir / "compare.md",
+        run_dir / "evidence-room" / "evidence-room.html",
+        run_dir / "evidence-room" / "evidence-room.json",
+        run_dir / "evidence-room" / "evidence-room.md",
+        run_dir / "evidence-room" / "evidence-room.zip",
         run_dir / "gate-summary.md",
     ]
     lines = []

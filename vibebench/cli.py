@@ -1042,6 +1042,12 @@ def bundle(
             include_report_assets=include_report_assets,
             strict=strict,
         )
+        if (
+            selected_output is None
+            and result.output_path == result.run_dir / "vibebench-bundle.zip"
+            and result.run_dir.joinpath("manifest.json").exists()
+        ):
+            generate_manifest(root, result.run_dir)
     except ReportError as exc:
         console.print(f"[red]{exc}[/]")
         raise typer.Exit(code=1) from exc
@@ -2061,6 +2067,13 @@ def ci_command(
             help="Skip release-check artifact generation.",
         ),
     ] = False,
+    skip_evidence_room: Annotated[
+        bool,
+        typer.Option(
+            "--skip-evidence-room",
+            help="Skip evidence-room artifact generation.",
+        ),
+    ] = False,
     fail_on_regression: Annotated[
         bool | None,
         typer.Option(
@@ -2203,6 +2216,7 @@ def ci_command(
                 skip_gh_summary=skip_gh_summary,
                 skip_release_check=skip_release_check,
                 skip_package_check=skip_package_check,
+                skip_evidence_room=skip_evidence_room,
                 fail_on_regression=regression_guard.enabled,
                 regression_guard_source=regression_guard.source,
                 regression_guard_message=regression_guard.message,
@@ -2235,6 +2249,7 @@ def ci_command(
                 skip_gh_summary=skip_gh_summary,
                 skip_release_check=skip_release_check,
                 skip_package_check=skip_package_check,
+                skip_evidence_room=skip_evidence_room,
                 emit_annotations=not as_json,
                 bundle_include_report_assets=bundle_include_report_assets,
                 bundle_strict=bundle_strict,

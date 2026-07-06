@@ -10,7 +10,32 @@ from vibebench.bundle import BUNDLE_FILENAME, STANDARD_ARTIFACTS
 from vibebench.explain import find_latest_valid_run
 from vibebench.report import ReportError, load_metrics
 
+
+@dataclass(frozen=True)
+class ArtifactSpec:
+    """Known artifact name and run-relative path."""
+
+    name: str
+    relative_path: Path
+
+
+EVIDENCE_ROOM_ARTIFACT_NAMES = {
+    Path("evidence-room") / "evidence-room.html": "evidence-room-html",
+    Path("evidence-room") / "evidence-room.json": "evidence-room-json",
+    Path("evidence-room") / "evidence-room.md": "evidence-room-md",
+    Path("evidence-room") / "evidence-room.zip": "evidence-room-zip",
+}
+
 KNOWN_ARTIFACTS = [*STANDARD_ARTIFACTS, Path(BUNDLE_FILENAME)]
+
+KNOWN_ARTIFACT_SPECS = [
+    ArtifactSpec(
+        EVIDENCE_ROOM_ARTIFACT_NAMES.get(relative_path, relative_path.as_posix()),
+        relative_path,
+    )
+    for relative_path in [*STANDARD_ARTIFACTS, Path(BUNDLE_FILENAME)]
+]
+KNOWN_ARTIFACT_SPECS.append(ArtifactSpec("evidence-room-dir", Path("evidence-room")))
 
 
 @dataclass(frozen=True)
@@ -47,15 +72,24 @@ def collect_artifact_inventory(
     validate_metrics(selected_run_dir)
 
     artifacts = []
-    for relative_path in KNOWN_ARTIFACTS:
+    for spec in KNOWN_ARTIFACT_SPECS:
+        relative_path = spec.relative_path
         artifact_path = selected_run_dir / relative_path
-        available = artifact_path.is_file() and not artifact_path.is_symlink()
+        available = (
+            artifact_path.exists()
+            and not artifact_path.is_symlink()
+            and (artifact_path.is_file() or artifact_path.is_dir())
+        )
         if only_available and not available:
             continue
-        size_bytes = artifact_path.stat().st_size if available else None
+        size_bytes = (
+            artifact_path.stat().st_size
+            if available and artifact_path.is_file()
+            else None
+        )
         artifacts.append(
             ArtifactItem(
-                name=relative_path.as_posix(),
+                name=spec.name,
                 relative_path=relative_path,
                 display_path=display_path(project_root, artifact_path),
                 available=available,

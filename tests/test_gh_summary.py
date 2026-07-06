@@ -122,6 +122,15 @@ def write_run(
         (run_dir / "release-check.json").write_text("{}\n", encoding="utf-8")
         (run_dir / "release-check.md").write_text("release\n", encoding="utf-8")
         (run_dir / "gate-summary.md").write_text("gate\n", encoding="utf-8")
+        evidence_dir = run_dir / "evidence-room"
+        evidence_dir.mkdir()
+        (evidence_dir / "evidence-room.html").write_text(
+            "<html></html>\n",
+            encoding="utf-8",
+        )
+        (evidence_dir / "evidence-room.json").write_text("{}\n", encoding="utf-8")
+        (evidence_dir / "evidence-room.md").write_text("evidence\n", encoding="utf-8")
+        (evidence_dir / "evidence-room.zip").write_text("zip\n", encoding="utf-8")
     return run_dir
 
 
@@ -225,6 +234,10 @@ def test_summary_contains_key_sections_and_artifacts(
     assert "`run-index.md` (available)" in markdown
     assert "`compare.json` (available)" in markdown
     assert "`compare.md` (available)" in markdown
+    assert "`evidence-room/evidence-room.html` (available)" in markdown
+    assert "`evidence-room/evidence-room.json` (available)" in markdown
+    assert "`evidence-room/evidence-room.md` (available)" in markdown
+    assert "`evidence-room/evidence-room.zip` (available)" in markdown
     assert "`manifest.json` (available)" in markdown
     assert "`package-check.json` (available)" in markdown
     assert "`package-check.md` (available)" in markdown

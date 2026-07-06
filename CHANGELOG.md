@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added evidence-room generation to local `vibebench ci`, including `--skip-evidence-room`, artifact discovery/latest aliases, manifest entries, bundle inclusion, and GitHub summary visibility.
+
 - Added CI evidence room generation and upload as the downloadable `vibebench-evidence-room` artifact for external evaluation without enabling GitHub Pages automatically.
 
 - Added `python3 -m vibebench evidence-room` for creating, zipping, JSON-exporting, and verifying a local evidence room that combines the proof packet and static site preview for external evaluation.

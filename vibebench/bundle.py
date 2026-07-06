@@ -40,6 +40,10 @@ STANDARD_ARTIFACTS = [
     Path("run-index.md"),
     Path("compare.json"),
     Path("compare.md"),
+    Path("evidence-room") / "evidence-room.html",
+    Path("evidence-room") / "evidence-room.json",
+    Path("evidence-room") / "evidence-room.md",
+    Path("evidence-room") / "evidence-room.zip",
 ]
 
 

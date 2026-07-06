@@ -26,6 +26,7 @@ CANONICAL_CI_STEPS = [
     "trend",
     "run-index",
     "compare",
+    "evidence-room",
     "manifest",
     "manifest-check",
     "release-check",
@@ -104,6 +105,7 @@ def test_ci_dry_run_skip_flag_contract(tmp_path: Path) -> None:
             "--skip-manifest",
             "--skip-run-index",
             "--skip-compare",
+            "--skip-evidence-room",
             "--skip-release-check",
             "--skip-bundle",
             "--skip-gh-summary",
@@ -118,6 +120,7 @@ def test_ci_dry_run_skip_flag_contract(tmp_path: Path) -> None:
         "package-check": "--skip-package-check",
         "run-index": "--skip-run-index",
         "compare": "--skip-compare",
+        "evidence-room": "--skip-evidence-room",
         "manifest": "--skip-manifest",
         "manifest-check": "--skip-manifest",
         "release-check": "--skip-release-check",
@@ -148,6 +151,7 @@ def test_plan_ci_pipeline_skip_contract() -> None:
         skip_compare=True,
         skip_release_check=True,
         skip_manifest=True,
+        skip_evidence_room=True,
     )
     steps = {step.name: step for step in result.steps}
 
@@ -157,6 +161,8 @@ def test_plan_ci_pipeline_skip_contract() -> None:
     assert steps["run-index"].message == "Skipped by --skip-run-index"
     assert steps["compare"].status == "skipped"
     assert steps["compare"].message == "Skipped by --skip-compare"
+    assert steps["evidence-room"].status == "skipped"
+    assert steps["evidence-room"].message == "Skipped by --skip-evidence-room"
     assert steps["release-check"].status == "skipped"
     assert steps["release-check"].message == "Skipped by --skip-release-check"
     assert steps["manifest"].status == "skipped"

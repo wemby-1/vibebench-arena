@@ -72,6 +72,8 @@ python3 -m vibebench config --path
 python3 -m vibebench config --show --json
 python3 -m vibebench ci --dry-run
 python3 -m vibebench ci
+python3 -m vibebench ci --skip-evidence-room
+python3 -m vibebench latest --artifact evidence-room-html --path-only
 python3 -m vibebench latest --all-paths
 python3 -m vibebench artifacts --json
 python3 -m vibebench release-check
@@ -85,7 +87,7 @@ If `/tmp/vibebench-release-audit-demo` already exists, remove it first or choose
 - `config --path` prints the expected `.vibebench/config.yaml` path.
 - `config --show --json` prints machine-readable project and policy configuration.
 - `ci --dry-run` prints the planned check, gate, artifact, manifest, release-check, bundle, and summary steps.
-- `evidence-room` writes a local-first, evidence-first package with top-level HTML, Markdown, JSON, nested proof packet, nested static site preview, and optional `evidence-room.zip` for external review. CI uploads it as `vibebench-evidence-room`; it does not enable GitHub Pages automatically or claim traction, funding, customers, revenue, or adoption.
+- `evidence-room` writes a local-first, evidence-first package with top-level HTML, Markdown, JSON, nested proof packet, nested static site preview, and optional `evidence-room.zip` for external review. Normal `ci` also writes `evidence-room/` into the run directory unless `--skip-evidence-room` is used. GitHub Actions uploads it as `vibebench-evidence-room`; it does not enable GitHub Pages automatically or claim traction, funding, customers, revenue, or adoption.
 - `proof` prints a concise Codex-first / vibe-coding, local-first, evidence-first proof packet summary; run `python3 -m vibebench proof --output-dir PATH --zip` to write `proof.md`, `proof.json`, self-contained `proof.html`, `proof-manifest.json`, and `proof.zip`. GitHub Actions shows a proof packet summary card and uploads the same packet as `vibebench-proof-packet`.
 - `site-check` verifies the static GitHub Pages entry for required proof/evaluation links and obvious unsafe publishing markers; `site-preview` writes the reusable preview bundle, optional `site-preview.zip`, `site-check.json`, and `site-preview.md`. In CI, GitHub Actions reuses `site-preview` and uploads `vibebench-site-preview`. It does not enable GitHub Pages automatically.
 - `ci` runs the local pipeline and writes a timestamped run directory.
