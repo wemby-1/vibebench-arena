@@ -40,6 +40,8 @@ EVIDENCE_ROOM_ARTIFACT_NAMES = {
     Path("evidence-room") / "evidence-room.zip": "evidence-room-zip",
 }
 ARTIFACT_NAMES = {
+    Path("metrics-check.json"): "metrics-check-json",
+    Path("metrics-check.md"): "metrics-check-md",
     Path("regression-check.json"): "regression-check-json",
     Path("regression-check.md"): "regression-check-md",
     **EVIDENCE_ROOM_ARTIFACT_NAMES,

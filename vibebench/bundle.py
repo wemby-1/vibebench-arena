@@ -15,6 +15,8 @@ BUNDLE_FILENAME = "vibebench-bundle.zip"
 STANDARD_ARTIFACTS = [
     Path("metrics.json"),
     Path("check.log"),
+    Path("metrics-check.json"),
+    Path("metrics-check.md"),
     Path("manifest.json"),
     Path("config-check.json"),
     Path("config-check.md"),

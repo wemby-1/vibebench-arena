@@ -27,6 +27,11 @@ from vibebench.export import export_json_for_ci
 from vibebench.gate import run_gate
 from vibebench.gh_summary import generate_github_summary
 from vibebench.manifest import check_manifest, generate_manifest
+from vibebench.metrics_check import (
+    METRICS_CHECK_JSON,
+    METRICS_CHECK_SUMMARY,
+    run_metrics_check,
+)
 from vibebench.package_check import (
     PACKAGE_CHECK_JSON,
     PACKAGE_CHECK_SUMMARY,
@@ -150,6 +155,8 @@ def plan_ci_pipeline(
     skip_release_check: bool = False,
     skip_package_check: bool = False,
     skip_evidence_room: bool = False,
+    metrics_check: bool = False,
+    skip_metrics_check: bool = False,
     regression_check: bool = False,
     require_regression_baseline: bool = False,
     baseline_label: str | None = None,
@@ -177,6 +184,16 @@ def plan_ci_pipeline(
         planned_step("check", "Would run configured checks"),
         planned_step("gate", "Would evaluate the quality gate"),
     ]
+    if metrics_check and skip_metrics_check:
+        raise ConfigError(
+            "--metrics-check and --skip-metrics-check cannot be combined."
+        )
+    if metrics_check:
+        steps.append(
+            planned_step("metrics-check", "Would validate metrics.json contract")
+        )
+    elif skip_metrics_check:
+        steps.append(skipped_plan_step("metrics-check", "--skip-metrics-check"))
     for name, skipped, flag in ci_artifact_step_flags(
         skip_report=skip_report,
         skip_pr_comment=skip_pr_comment,
@@ -549,6 +566,8 @@ def run_ci_pipeline(
     skip_release_check: bool = False,
     skip_package_check: bool = False,
     skip_evidence_room: bool = False,
+    metrics_check: bool = False,
+    skip_metrics_check: bool = False,
     regression_check: bool = False,
     require_regression_baseline: bool = False,
     baseline_label: str | None = None,
@@ -578,6 +597,10 @@ def run_ci_pipeline(
             enabled=False,
             source="cli",
             message="Disabled because --skip-compare skips compare.",
+        )
+    if metrics_check and skip_metrics_check:
+        raise ConfigError(
+            "--metrics-check and --skip-metrics-check cannot be combined."
         )
     root = project_root.resolve()
     selected_run_dir = run_dir.resolve() if run_dir is not None else None
@@ -618,6 +641,8 @@ def run_ci_pipeline(
             skip_release_check=skip_release_check,
             skip_package_check=skip_package_check,
             skip_evidence_room=skip_evidence_room,
+            metrics_check=metrics_check,
+            skip_metrics_check=skip_metrics_check,
             regression_check=regression_check,
         )
         return CiResult(
@@ -636,6 +661,12 @@ def run_ci_pipeline(
         require_status_passed=require_status_passed,
     )
     steps.append(gate_step)
+    if metrics_check:
+        steps.append(run_metrics_check_artifact_step(root, selected_run_dir))
+    elif skip_metrics_check:
+        steps.append(
+            CiStepResult("metrics-check", "skipped", 0, message="skipped by flag")
+        )
 
     artifact_steps: list[tuple[str, bool, object]] = [
         (
@@ -807,9 +838,25 @@ def append_unavailable_artifact_steps(
     skip_release_check: bool,
     skip_package_check: bool,
     skip_evidence_room: bool,
+    metrics_check: bool = False,
+    skip_metrics_check: bool = False,
     regression_check: bool = False,
 ) -> None:
     """Append artifact steps when no run directory exists."""
+    if metrics_check:
+        steps.append(
+            CiStepResult(
+                "metrics-check",
+                "failed",
+                1,
+                message="no run directory available",
+            )
+        )
+    elif skip_metrics_check:
+        steps.append(
+            CiStepResult("metrics-check", "skipped", 0, message="skipped by flag")
+        )
+
     flags = [
         ("report", skip_report),
         ("pr-comment", skip_pr_comment),
@@ -962,6 +1009,47 @@ def run_artifact_step(name: str, callback: object) -> CiStepResult:
         "passed",
         0,
         artifact_path=artifact_path,
+        duration_seconds=elapsed_since(started),
+    )
+
+
+def run_metrics_check_artifact_step(project_root: Path, run_dir: Path) -> CiStepResult:
+    """Generate metrics-check artifacts and return CI step status."""
+    started = time.perf_counter()
+    try:
+        result = run_metrics_check(
+            project_root,
+            run_dir=run_dir,
+            json_output=run_dir / METRICS_CHECK_JSON,
+            summary_output=run_dir / METRICS_CHECK_SUMMARY,
+        )
+    except Exception as exc:
+        return CiStepResult(
+            "metrics-check",
+            "failed",
+            1,
+            message=str(exc),
+            duration_seconds=elapsed_since(started),
+        )
+
+    if result.status == "failed":
+        return CiStepResult(
+            "metrics-check",
+            "failed",
+            1,
+            artifact_path=result.json_path,
+            message="metrics contract failed",
+            duration_seconds=elapsed_since(started),
+        )
+    message = "metrics contract passed"
+    if result.status == "warning":
+        message = "metrics contract passed with warnings"
+    return CiStepResult(
+        "metrics-check",
+        "passed",
+        0,
+        artifact_path=result.json_path,
+        message=message,
         duration_seconds=elapsed_since(started),
     )
 

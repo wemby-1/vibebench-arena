@@ -11,6 +11,8 @@ from vibebench.history import resolve_runs_dir
 from vibebench.report import ReportError
 
 RISK_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+METRICS_CHECK_JSON = "metrics-check.json"
+METRICS_CHECK_SUMMARY = "metrics-check.md"
 
 MetricsCheckStatus = Literal["passed", "warning", "failed"]
 CheckStatus = Literal["passed", "warning", "failed"]

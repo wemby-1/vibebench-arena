@@ -137,6 +137,14 @@ def test_manifest_contains_artifact_entries_and_itself(tmp_path: Path) -> None:
         "not a third-party audit; not a guarantee\n",
         encoding="utf-8",
     )
+    run_dir.joinpath("metrics-check.json").write_text(
+        '{"status":"passed"}\n',
+        encoding="utf-8",
+    )
+    run_dir.joinpath("metrics-check.md").write_text(
+        "# VibeBench Metrics Check\n",
+        encoding="utf-8",
+    )
     run_dir.joinpath("regression-check.json").write_text(
         '{"status":"passed"}\n',
         encoding="utf-8",
@@ -180,6 +188,8 @@ def test_manifest_contains_artifact_entries_and_itself(tmp_path: Path) -> None:
         artifact_by_name(payload, "evidence-room-share-check-md")["available"]
         is True
     )
+    assert artifact_by_name(payload, "metrics-check-json")["available"] is True
+    assert artifact_by_name(payload, "metrics-check-md")["available"] is True
     assert artifact_by_name(payload, "regression-check-json")["available"] is True
     assert artifact_by_name(payload, "regression-check-md")["available"] is True
 

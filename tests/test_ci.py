@@ -458,6 +458,8 @@ def test_ci_command_creates_standard_artifacts(tmp_path: Path) -> None:
     assert run_dir.joinpath("run-index.md").exists()
     assert run_dir.joinpath("compare.json").exists()
     assert run_dir.joinpath("compare.md").exists()
+    assert not run_dir.joinpath("metrics-check.json").exists()
+    assert not run_dir.joinpath("metrics-check.md").exists()
     assert not run_dir.joinpath("regression-check.json").exists()
     assert not run_dir.joinpath("regression-check.md").exists()
     assert run_dir.joinpath("evidence-room", "evidence-room.html").exists()
@@ -1031,6 +1033,134 @@ def test_ci_dry_run_json_outputs_plan_payload(tmp_path: Path) -> None:
         else:
             assert step["artifact"] is None
         assert step["duration_seconds"] is None
+
+
+def test_ci_dry_run_metrics_check_json_includes_planned_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--metrics-check",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["metrics-check"]["status"] == "planned"
+    assert "metrics.json contract" in steps["metrics-check"]["message"]
+
+
+def test_ci_dry_run_skip_metrics_check_json_includes_skipped_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--skip-metrics-check",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["metrics-check"]["status"] == "skipped"
+    assert steps["metrics-check"]["message"] == "Skipped by --skip-metrics-check"
+
+
+def test_ci_metrics_check_writes_reports_and_json_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--metrics-check", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("metrics-check.json").read_text())
+    assert result.exit_code == 0
+    assert payload["run_id"] == run_dir.name
+    assert steps["metrics-check"]["status"] == "passed"
+    assert steps["metrics-check"]["artifact"].endswith("metrics-check.json")
+    assert report["status"] == "passed"
+    assert report["usable_for_regression"] is True
+    assert run_dir.joinpath("metrics-check.md").exists()
+
+    artifacts = runner.invoke(
+        app,
+        ["artifacts", "--project-root", str(tmp_path), "--json"],
+    )
+    artifact_map = {
+        item["name"]: item for item in json.loads(artifacts.output)["artifacts"]
+    }
+    assert artifacts.exit_code == 0
+    assert artifact_map["metrics-check-json"]["available"] is True
+    assert artifact_map["metrics-check-md"]["available"] is True
+
+    latest_json = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "metrics-check-json",
+            "--path-only",
+        ],
+    )
+    latest_md = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "metrics-check-md",
+            "--path-only",
+        ],
+    )
+    assert latest_json.exit_code == 0
+    assert latest_json.output.strip().endswith("metrics-check.json")
+    assert latest_md.exit_code == 0
+    assert latest_md.output.strip().endswith("metrics-check.md")
+
+    manifest = check_manifest(tmp_path, run_dir)
+    manifest_payload = json.loads(run_dir.joinpath("manifest.json").read_text())
+    manifest_artifacts = {
+        item["name"]: item for item in manifest_payload["artifacts"]
+    }
+    assert manifest.passed is True
+    assert manifest_artifacts["metrics-check-json"]["available"] is True
+    assert manifest_artifacts["metrics-check-md"]["available"] is True
+
+    names = zip_names(run_dir / "vibebench-bundle.zip")
+    assert "metrics-check.json" in names
+    assert "metrics-check.md" in names
+
+    summary = run_dir.joinpath("github-step-summary.md").read_text(encoding="utf-8")
+    assert "`metrics-check.json` (available)" in summary
+    assert "`metrics-check.md` (available)" in summary
+    assert "VibeBench CI" not in result.output
 
 
 def test_ci_dry_run_regression_check_json_includes_planned_step(

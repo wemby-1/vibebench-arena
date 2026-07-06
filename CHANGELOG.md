@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added optional `ci --metrics-check` and `--skip-metrics-check` integration, writing `metrics-check.json` and `metrics-check.md` run artifacts with artifact, latest, manifest, bundle, and GitHub summary visibility.
+
 - Added `metrics-check` for explicit `metrics.json` contract validation before baseline promotion or regression comparison, with JSON, Markdown, run selection, and strict modes.
 
 - Added `baseline --verify` for pinned and exported baseline regression-readiness checks, including JSON, Markdown, strict, portable, and live-metrics modes.

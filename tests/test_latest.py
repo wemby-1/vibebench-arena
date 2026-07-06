@@ -251,6 +251,40 @@ def test_latest_package_check_artifact_path_only(tmp_path: Path) -> None:
     assert "package-check.md" in md_result.output
 
 
+def test_latest_metrics_check_artifact_path_only(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260701_110000")
+    run_dir.joinpath("metrics-check.json").write_text("{}\n", encoding="utf-8")
+    run_dir.joinpath("metrics-check.md").write_text("metrics check\n", encoding="utf-8")
+
+    json_result = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "metrics-check-json",
+            "--path-only",
+        ],
+    )
+    md_result = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "metrics-check-md",
+            "--path-only",
+        ],
+    )
+
+    assert json_result.exit_code == 0
+    assert "metrics-check.json" in json_result.output
+    assert md_result.exit_code == 0
+    assert "metrics-check.md" in md_result.output
+
+
 def test_latest_unknown_artifact_fails_clearly(tmp_path: Path) -> None:
     write_run(tmp_path, "20260701_110000")
 

@@ -2491,6 +2491,20 @@ def ci_command(
             help="Skip evidence-room artifact generation.",
         ),
     ] = False,
+    metrics_check: Annotated[
+        bool,
+        typer.Option(
+            "--metrics-check",
+            help="Run metrics-check and write metrics-check artifacts.",
+        ),
+    ] = False,
+    skip_metrics_check: Annotated[
+        bool,
+        typer.Option(
+            "--skip-metrics-check",
+            help="Skip optional metrics-check artifact generation.",
+        ),
+    ] = False,
     regression_check: Annotated[
         bool,
         typer.Option(
@@ -2666,6 +2680,8 @@ def ci_command(
                 skip_release_check=skip_release_check,
                 skip_package_check=skip_package_check,
                 skip_evidence_room=skip_evidence_room,
+                metrics_check=metrics_check,
+                skip_metrics_check=skip_metrics_check,
                 regression_check=bool(regression_policy["enabled"]),
                 require_regression_baseline=bool(regression_policy["require_baseline"]),
                 baseline_label=regression_policy["baseline_label"],
@@ -2708,6 +2724,8 @@ def ci_command(
                 skip_release_check=skip_release_check,
                 skip_package_check=skip_package_check,
                 skip_evidence_room=skip_evidence_room,
+                metrics_check=metrics_check,
+                skip_metrics_check=skip_metrics_check,
                 regression_check=bool(regression_policy["enabled"]),
                 require_regression_baseline=bool(regression_policy["require_baseline"]),
                 baseline_label=regression_policy["baseline_label"],
