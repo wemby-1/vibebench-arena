@@ -16,8 +16,10 @@ def test_config_loader_reads_generated_config(tmp_path: Path) -> None:
     config = load_config(tmp_path / ".vibebench" / "config.yaml")
 
     assert config.project.name == "vibebench-project"
-    assert config.checks.test == ["pytest -q"]
-    assert config.checks.lint == ["ruff check ."]
+    assert config.checks.test == [
+        "python3 -c \"print('vibebench generic check')\""
+    ]
+    assert config.checks.lint == []
     assert config.risk_rules.forbidden_paths == [".env", ".env.*", "secrets/"]
     assert config.risk_rules.large_patch_lines == 500
     assert config.gate.min_score == 80
@@ -25,7 +27,7 @@ def test_config_loader_reads_generated_config(tmp_path: Path) -> None:
     assert config.gate.allow_findings == 0
     assert config.gate.require_status_passed is True
     assert config.regression.enabled is False
-    assert config.regression.baseline_label is None
+    assert config.regression.baseline_label == "stable"
     assert config.regression.require_baseline is False
     assert config.regression.max_score_drop == 0.0
     assert config.regression.max_risk_increase == 0.0

@@ -27,112 +27,209 @@ def config_path(root: Path) -> Path:
 def workflow_path(root: Path) -> Path:
     return root / ".github" / "workflows" / "vibebench.yml"
 
-def test_init_creates_config_and_workflow(tmp_path: Path) -> None:
+def test_init_creates_config_yaml(tmp_path: Path) -> None:
     result = runner.invoke(app, ["init", "--project-root", str(tmp_path)])
-
-    assert result.exit_code == 0
-    assert config_path(tmp_path).exists()
-    assert workflow_path(tmp_path).exists()
-    assert "vibebench-project" in config_path(tmp_path).read_text(encoding="utf-8")
-    assert "created" in result.output
-    assert "python -m vibebench doctor" in result.output
-
-def test_init_generated_config_loads(tmp_path: Path) -> None:
-    result = runner.invoke(app, ["init", "--project-root", str(tmp_path)])
-
-    assert result.exit_code == 0
-    config = load_config(config_path(tmp_path))
-    assert config.project.name == "vibebench-project"
-    assert config.gate.min_score == 80
-    assert config.risk is not None
-    assert config.risk.max_patch_lines == 500
-
-def test_init_generated_workflow_contains_required_commands(tmp_path: Path) -> None:
-    result = runner.invoke(app, ["init", "--project-root", str(tmp_path)])
-
-    assert result.exit_code == 0
-    workflow = workflow_path(tmp_path).read_text(encoding="utf-8")
-    assert "actions/checkout@v5" in workflow
-    assert "actions/setup-python@v6" in workflow
-    assert "python -m pip install -e" in workflow
-    assert "git+https://github.com/wemby-1/vibebench-arena.git@main" in workflow
-    assert "python -m ruff check ." in workflow
-    assert "python -m pytest -q" in workflow
-    assert "python -m vibebench ci" in workflow
-    assert "pull-requests: write" in workflow
-    assert "if: github.event_name == 'pull_request'" in workflow
-    assert "python -m vibebench pr-comment --post --no-fail-on-error" in workflow
-    assert "GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}" in workflow
-    assert "actions/upload-artifact@v7" in workflow
-    assert "name: vibebench-run-artifacts" in workflow
-    assert ".vibebench/runs/**/metrics.json" in workflow
-    assert ".vibebench/runs/**/release-check.json" in workflow
-    assert ".vibebench/runs/**/package-check.json" in workflow
-    assert ".vibebench/runs/**/package-check.md" in workflow
-    assert ".vibebench/runs/**/run-index.json" in workflow
-    assert ".vibebench/runs/**/run-index.md" in workflow
-    assert ".vibebench/runs/**/report/**" in workflow
-    assert workflow.count("if: always()") >= 1
-
-def test_init_does_not_overwrite_existing_files_by_default(tmp_path: Path) -> None:
-    config_path(tmp_path).parent.mkdir(parents=True)
-    workflow_path(tmp_path).parent.mkdir(parents=True)
-    config_path(tmp_path).write_text("existing config", encoding="utf-8")
-    workflow_path(tmp_path).write_text("existing workflow", encoding="utf-8")
-
-    result = runner.invoke(app, ["init", "--project-root", str(tmp_path)])
-
-    assert result.exit_code == 0
-    assert config_path(tmp_path).read_text(encoding="utf-8") == "existing config"
-    assert workflow_path(tmp_path).read_text(encoding="utf-8") == "existing workflow"
-    assert "skipped" in result.output
-
-def test_init_force_overwrites_existing_files(tmp_path: Path) -> None:
-    config_path(tmp_path).parent.mkdir(parents=True)
-    workflow_path(tmp_path).parent.mkdir(parents=True)
-    config_path(tmp_path).write_text("existing config", encoding="utf-8")
-    workflow_path(tmp_path).write_text("existing workflow", encoding="utf-8")
-
-    result = runner.invoke(app, ["init", "--project-root", str(tmp_path), "--force"])
-
-    assert result.exit_code == 0
-    assert "vibebench-project" in config_path(tmp_path).read_text(encoding="utf-8")
-    assert "python -m vibebench ci" in workflow_path(tmp_path).read_text(
-        encoding="utf-8"
-    )
-
-def test_init_no_workflow_creates_only_config(tmp_path: Path) -> None:
-    result = runner.invoke(
-        app, ["init", "--project-root", str(tmp_path), "--no-workflow"]
-    )
 
     assert result.exit_code == 0
     assert config_path(tmp_path).exists()
     assert not workflow_path(tmp_path).exists()
+    assert not (tmp_path / ".vibebench" / "runs").exists()
+    assert not (tmp_path / ".vibebench" / "baselines").exists()
+    assert "Selected profile:" in result.output
+    assert "python3 -m vibebench config --check" in result.output
 
-def test_init_workflow_only_creates_only_workflow(tmp_path: Path) -> None:
-    result = runner.invoke(
-        app, ["init", "--project-root", str(tmp_path), "--workflow-only"]
-    )
+
+def test_init_generated_config_passes_config_check(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["init", "--project-root", str(tmp_path)])
+    check = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--check"])
 
     assert result.exit_code == 0
-    assert not config_path(tmp_path).exists()
-    assert workflow_path(tmp_path).exists()
+    assert check.exit_code == 0
+    config = load_config(config_path(tmp_path))
+    assert config.project.name == "vibebench-project"
 
-def test_init_conflicting_workflow_options_fail_clearly(tmp_path: Path) -> None:
+
+def test_init_refuses_existing_config_by_default(tmp_path: Path) -> None:
+    config_path(tmp_path).parent.mkdir(parents=True)
+    config_path(tmp_path).write_text("existing: true\n", encoding="utf-8")
+
+    result = runner.invoke(app, ["init", "--project-root", str(tmp_path)])
+
+    assert result.exit_code == 1
+    assert "Config already exists" in result.output
+    assert "--force" in result.output
+    assert config_path(tmp_path).read_text(encoding="utf-8") == "existing: true\n"
+
+
+def test_init_force_overwrites_only_config_file(tmp_path: Path) -> None:
+    config_path(tmp_path).parent.mkdir(parents=True)
+    runs = tmp_path / ".vibebench" / "runs"
+    baselines = tmp_path / ".vibebench" / "baselines"
+    runs.mkdir()
+    baselines.mkdir()
+    runs.joinpath("keep.txt").write_text("run", encoding="utf-8")
+    baselines.joinpath("stable.json").write_text("{}", encoding="utf-8")
+    config_path(tmp_path).write_text("existing: true\n", encoding="utf-8")
+
     result = runner.invoke(
         app,
         [
             "init",
             "--project-root",
             str(tmp_path),
-            "--no-workflow",
-            "--workflow-only",
+            "--profile",
+            "python",
+            "--force",
         ],
     )
 
+    generated = config_path(tmp_path).read_text(encoding="utf-8")
+    assert result.exit_code == 0
+    assert "existing: true" not in generated
+    assert "python3 -m pytest -q" in generated
+    assert runs.joinpath("keep.txt").read_text(encoding="utf-8") == "run"
+    assert baselines.joinpath("stable.json").read_text(encoding="utf-8") == "{}"
+
+
+def test_init_dry_run_writes_nothing(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        ["init", "--project-root", str(tmp_path), "--profile", "generic", "--dry-run"],
+    )
+
+    assert result.exit_code == 0
+    assert not config_path(tmp_path).exists()
+    assert not config_path(tmp_path).parent.exists()
+    assert "Dry run only" in result.output
+
+
+def test_init_json_stdout_is_pure_json(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "init",
+            "--project-root",
+            str(tmp_path),
+            "--profile",
+            "generic",
+            "--dry-run",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    assert payload["status"] == "planned"
+    assert payload["dry_run"] is True
+    assert payload["selected_profile"] == "generic"
+    assert payload["created"] is False
+
+
+def test_init_json_output_writes_file_with_human_stdout(tmp_path: Path) -> None:
+    output = tmp_path / "init-result.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "init",
+            "--project-root",
+            str(tmp_path),
+            "--profile",
+            "generic",
+            "--json-output",
+            str(output),
+        ],
+    )
+
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert result.exit_code == 0
+    assert "VibeBench init" in result.output
+    assert not result.output.lstrip().startswith("{")
+    assert payload["status"] == "created"
+    assert payload["created"] is True
+
+
+def test_init_profile_python(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app, ["init", "--project-root", str(tmp_path), "--profile", "python"]
+    )
+
+    generated = config_path(tmp_path).read_text(encoding="utf-8")
+    assert result.exit_code == 0
+    assert "python3 -m ruff check ." in generated
+    assert "python3 -m pytest -q" in generated
+
+
+def test_init_profile_generic(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app, ["init", "--project-root", str(tmp_path), "--profile", "generic"]
+    )
+
+    generated = config_path(tmp_path).read_text(encoding="utf-8")
+    assert result.exit_code == 0
+    assert "python3 -m pytest -q" not in generated
+    assert "python3 -m ruff check ." not in generated
+    assert "vibebench generic check" in generated
+
+
+def test_init_profile_auto_detects_python_project(tmp_path: Path) -> None:
+    tmp_path.joinpath("pyproject.toml").write_text("[project]\nname='demo'\n")
+
+    result = runner.invoke(
+        app,
+        ["init", "--project-root", str(tmp_path), "--profile", "auto", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["requested_profile"] == "auto"
+    assert payload["selected_profile"] == "python"
+    assert "python3 -m pytest -q" in config_path(tmp_path).read_text(encoding="utf-8")
+
+
+def test_init_profile_auto_falls_back_to_generic(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        ["init", "--project-root", str(tmp_path), "--profile", "auto", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["selected_profile"] == "generic"
+
+
+def test_init_invalid_profile_fails_clearly(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app, ["init", "--project-root", str(tmp_path), "--profile", "node"]
+    )
+
     assert result.exit_code == 1
-    assert "cannot be used together" in result.output
+    assert "Unknown init profile" in result.output
+    assert not config_path(tmp_path).exists()
+
+
+def test_init_does_not_create_runs_or_baselines(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["init", "--project-root", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert not (tmp_path / ".vibebench" / "runs").exists()
+    assert not (tmp_path / ".vibebench" / "baselines").exists()
+
+
+def test_init_generated_config_can_be_used_with_config_check(tmp_path: Path) -> None:
+    init_result = runner.invoke(
+        app, ["init", "--project-root", str(tmp_path), "--profile", "generic"]
+    )
+    check = runner.invoke(
+        app, ["config", "--project-root", str(tmp_path), "--check", "--json"]
+    )
+    payload = json.loads(check.output)
+
+    assert init_result.exit_code == 0
+    assert check.exit_code == 0
+    assert payload["overall_status"] == "passed"
+
 
 def test_config_command_without_file_prints_defaults(tmp_path: Path) -> None:
     result = runner.invoke(app, ["config", "--project-root", str(tmp_path)])
@@ -145,7 +242,7 @@ def test_config_command_without_file_prints_defaults(tmp_path: Path) -> None:
     assert "risk" in result.output
 
 def test_config_command_with_valid_config(tmp_path: Path) -> None:
-    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+    runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
 
     result = runner.invoke(app, ["config", "--project-root", str(tmp_path)])
 
@@ -441,7 +538,7 @@ def test_config_command_json_is_valid(tmp_path: Path) -> None:
     assert payload["regression"]["enabled"] is False
 
 def test_config_command_validate_succeeds_for_valid_config(tmp_path: Path) -> None:
-    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+    runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
 
     result = runner.invoke(
         app, ["config", "--project-root", str(tmp_path), "--validate"]
@@ -461,7 +558,7 @@ def test_config_command_invalid_config_fails_clearly(tmp_path: Path) -> None:
     assert "project.name" in result.output
 
 def test_config_command_show_source_includes_sources(tmp_path: Path) -> None:
-    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+    runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
 
     result = runner.invoke(
         app, ["config", "--project-root", str(tmp_path), "--show-source"]
@@ -472,7 +569,7 @@ def test_config_command_show_source_includes_sources(tmp_path: Path) -> None:
     assert "config file" in result.output
 
 def test_config_command_does_not_break_existing_check_and_gate(tmp_path: Path) -> None:
-    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+    runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
     config = config_path(tmp_path).read_text(encoding="utf-8")
     config = config.replace("pytest -q", f"{sys.executable} -c \"print('test ok')\"")
     config = config.replace("ruff check .", f"{sys.executable} -c \"print('lint ok')\"")
@@ -496,7 +593,7 @@ def test_config_command_does_not_break_existing_check_and_gate(tmp_path: Path) -
     assert gate.exit_code == 0
 
 def test_config_show_human_output(tmp_path: Path) -> None:
-    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+    runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
 
     result = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--show"])
 
@@ -508,7 +605,7 @@ def test_config_show_human_output(tmp_path: Path) -> None:
     assert "max_patch_lines" in result.output
 
 def test_config_show_json_output(tmp_path: Path) -> None:
-    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+    runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
 
     result = runner.invoke(
         app,
@@ -558,7 +655,7 @@ def test_config_show_invalid_config_fails_clearly(tmp_path: Path) -> None:
     assert "project.name" in result.output
 
 def test_config_validate_still_works_with_show_option_added(tmp_path: Path) -> None:
-    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+    runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
 
     result = runner.invoke(
         app,
@@ -569,7 +666,7 @@ def test_config_validate_still_works_with_show_option_added(tmp_path: Path) -> N
     assert "VibeBench config is valid" in result.output
 
 def test_config_check_human_output(tmp_path: Path) -> None:
-    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+    runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
 
     result = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--check"])
 
@@ -580,7 +677,7 @@ def test_config_check_human_output(tmp_path: Path) -> None:
     assert "command_strings" in result.output
 
 def test_config_check_json_output(tmp_path: Path) -> None:
-    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+    runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
 
     result = runner.invoke(
         app,
@@ -663,7 +760,7 @@ checks:
     assert "Empty command string" in command_check["message"]
 
 def test_config_check_does_not_break_validate_or_show(tmp_path: Path) -> None:
-    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+    runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
 
     validate = runner.invoke(
         app,
@@ -779,7 +876,7 @@ def test_config_check_missing_config_advice(tmp_path: Path) -> None:
     assert "python -m vibebench init" in result.output
 
 def test_config_check_write_json(tmp_path: Path) -> None:
-    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+    runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
     output = tmp_path / "config-check.json"
 
     result = runner.invoke(
@@ -800,7 +897,7 @@ def test_config_check_write_json(tmp_path: Path) -> None:
     assert payload["config_path"] == str(config_path(tmp_path))
 
 def test_config_check_write_summary(tmp_path: Path) -> None:
-    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+    runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
     output = tmp_path / "config-check.md"
 
     result = runner.invoke(
@@ -821,7 +918,7 @@ def test_config_check_write_summary(tmp_path: Path) -> None:
     assert "Overall status" in markdown
 
 def test_config_check_json_write_json_keeps_stdout_pure(tmp_path: Path) -> None:
-    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--no-workflow"])
+    runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
     output = tmp_path / "config-check.json"
 
     result = runner.invoke(

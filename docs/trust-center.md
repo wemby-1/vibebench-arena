@@ -78,6 +78,8 @@ python3 -m vibebench site-preview --verify /tmp/vibebench-evidence-room/site-pre
 python3 -m vibebench site-check
 python3 -m vibebench share-check PATH
 python3 -m vibebench share-check PATH --json
+python3 -m vibebench init --profile auto
+python3 -m vibebench config --check
 python3 -m vibebench regression-check
 python3 -m vibebench ci --regression-check
 python3 -m vibebench baseline --set-latest --label stable

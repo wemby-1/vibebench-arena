@@ -398,6 +398,84 @@ def config_example_yaml() -> str:
     return yaml.safe_dump(payload, sort_keys=False)
 
 
+INIT_PROFILE_NAMES = {"generic", "python", "auto"}
+PYTHON_PROJECT_MARKERS = (
+    "pyproject.toml",
+    "setup.py",
+    "setup.cfg",
+    "requirements.txt",
+    "tests",
+)
+
+
+def init_config_profile_yaml(profile: str, project_root: Path) -> tuple[str, str]:
+    """Return selected init profile and valid starter config YAML."""
+    if profile not in INIT_PROFILE_NAMES:
+        allowed = ", ".join(sorted(INIT_PROFILE_NAMES))
+        raise ConfigError(
+            f"Unknown init profile '{profile}'. Choose one of: {allowed}."
+        )
+    selected = detect_init_profile(project_root) if profile == "auto" else profile
+    return selected, yaml.safe_dump(
+        init_config_profile_payload(selected), sort_keys=False
+    )
+
+
+def detect_init_profile(project_root: Path) -> str:
+    """Select an init profile from lightweight project markers."""
+    for marker in PYTHON_PROJECT_MARKERS:
+        if (project_root / marker).exists():
+            return "python"
+    return "generic"
+
+
+def init_config_profile_payload(profile: str) -> dict[str, Any]:
+    """Return a starter config payload for an init profile."""
+    if profile == "python":
+        checks = {
+            "test": ["python3 -m pytest -q"],
+            "lint": ["python3 -m ruff check ."],
+        }
+    elif profile == "generic":
+        checks = {
+            "test": ["python3 -c \"print('vibebench generic check')\""],
+            "lint": [],
+        }
+    else:
+        raise ConfigError(f"Unknown init profile '{profile}'.")
+    return {
+        "project": {"name": "vibebench-project"},
+        "checks": checks,
+        "gate": {
+            "min_score": 80,
+            "max_risk": "medium",
+            "allow_findings": 0,
+            "require_status_passed": True,
+        },
+        "compare": {"fail_on_regression": False},
+        "regression": {
+            "enabled": False,
+            "baseline_label": "stable",
+            "require_baseline": False,
+            "max_score_drop": 0.0,
+            "max_risk_increase": 0.0,
+            "fail_on_missing_metrics": True,
+        },
+        "metrics_diff": {
+            "policy": {
+                "enabled": False,
+                "baseline_label": "stable",
+                "fail_on_added_errors": False,
+                "fail_on_added_warnings": False,
+                "fail_on_removed_metrics": False,
+                "max_score_drop": 0.0,
+                "max_risk_increase": 0.0,
+                "custom_rules": [],
+            },
+        },
+    }
+
+
 def load_config(path: Path | None = None) -> VibeBenchConfig:
     """Load and validate a VibeBench config file."""
     config_path = path or config_file()

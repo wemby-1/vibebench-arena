@@ -2300,19 +2300,11 @@ def test_ci_json_suppresses_annotation_stdout(tmp_path: Path) -> None:
     assert steps["annotate"]["status"] == "passed"
 
 
-def test_generated_init_workflow_uses_ci_command(tmp_path: Path) -> None:
+def test_init_does_not_create_generated_workflow(tmp_path: Path) -> None:
     result = runner.invoke(app, ["init", "--project-root", str(tmp_path)])
 
-    workflow = workflow_path(tmp_path).read_text(encoding="utf-8")
     assert result.exit_code == 0
-    assert "python -m ruff check ." in workflow
-    assert "python -m pytest -q" in workflow
-    assert "python -m vibebench ci" in workflow
-    assert "pull-requests: write" in workflow
-    assert "if: github.event_name == 'pull_request'" in workflow
-    assert "python -m vibebench pr-comment --post --no-fail-on-error" in workflow
-    assert "GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}" in workflow
-    assert "python -m vibebench check" not in workflow
+    assert not workflow_path(tmp_path).exists()
 
 def test_active_github_workflow_uses_ci_command() -> None:
     workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")

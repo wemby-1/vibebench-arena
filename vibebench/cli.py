@@ -66,8 +66,8 @@ from vibebench.config import (
     ConfigError,
     EffectiveConfigResult,
     config_example_yaml,
-    default_config_yaml,
     effective_config_payload,
+    init_config_profile_yaml,
     load_config,
     load_effective_config,
 )
@@ -329,94 +329,213 @@ def version() -> None:
 @app.command()
 def init(
     project_root: ProjectRootOption = Path("."),
+    profile: Annotated[
+        str,
+        typer.Option(
+            "--profile",
+            help="Starter config profile: generic, python, or auto.",
+        ),
+    ] = "auto",
     force: Annotated[
         bool,
         typer.Option(
             "--force",
             "-f",
-            help="Overwrite existing generated files.",
+            help="Overwrite .vibebench/config.yaml when it already exists.",
         ),
     ] = False,
-    no_workflow: Annotated[
+    dry_run: Annotated[
         bool,
-        typer.Option("--no-workflow", help="Create only .vibebench/config.yaml."),
+        typer.Option("--dry-run", help="Preview init without writing files."),
     ] = False,
-    workflow_only: Annotated[
+    as_json: Annotated[
         bool,
-        typer.Option(
-            "--workflow-only",
-            help="Create only the GitHub Actions workflow.",
-        ),
+        typer.Option("--json", help="Print init result as pure JSON."),
     ] = False,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write init result JSON to PATH."),
+    ] = None,
 ) -> None:
-    """Bootstrap VibeBench config and GitHub Actions workflow."""
-    if no_workflow and workflow_only:
-        console.print(
-            "[red]--no-workflow and --workflow-only cannot be used together.[/]"
-        )
-        raise typer.Exit(code=1)
-
+    """Create a safe starter .vibebench/config.yaml."""
     root = project_root.resolve()
-    created: list[Path] = []
-    skipped: list[Path] = []
-
-    if not workflow_only:
-        config_target = config_file(root)
-        write_init_file(
-            config_target,
-            default_config_yaml(),
+    target = config_file(root)
+    try:
+        result = run_project_init(
+            root,
+            target,
+            requested_profile=profile,
             force=force,
-            created=created,
-            skipped=skipped,
+            dry_run=dry_run,
         )
+        if json_output is not None:
+            write_init_json_output(resolve_output_path(root, json_output), result)
+    except ConfigError as exc:
+        result = init_error_payload(root, target, profile, force, dry_run, str(exc))
+        if json_output is not None:
+            try:
+                write_init_json_output(resolve_output_path(root, json_output), result)
+            except ConfigError as output_exc:
+                err_console.print(f"[red]{output_exc}[/]")
+        if as_json:
+            print(json.dumps(result, indent=2, sort_keys=True))
+        else:
+            err_console.print(f"[red]{exc}[/]")
+            err_console.print("Use --force only when overwriting is intentional.")
+        raise typer.Exit(code=1) from exc
 
-    if not no_workflow:
-        workflow_target = root / WORKFLOW_RELATIVE_PATH
-        write_init_file(
-            workflow_target,
-            DEFAULT_WORKFLOW,
-            force=force,
-            created=created,
-            skipped=skipped,
-        )
-
-    render_init_summary(created, skipped)
+    if as_json:
+        print(json.dumps(result, indent=2, sort_keys=True))
+    else:
+        render_project_init_result(result)
 
 
-def write_init_file(
-    target: Path,
-    content: str,
+def run_project_init(
+    project_root: Path,
+    config_path: Path,
     *,
+    requested_profile: str,
     force: bool,
-    created: list[Path],
-    skipped: list[Path],
-) -> None:
-    """Write an init file unless it exists and force is false."""
-    if target.exists() and not force:
-        skipped.append(target)
-        return
+    dry_run: bool,
+) -> dict[str, object]:
+    """Plan or create a starter project config."""
+    selected_profile, content = init_config_profile_yaml(
+        requested_profile, project_root
+    )
+    exists = config_path.exists()
+    next_steps = init_next_steps()
+    base_payload = {
+        "dry_run": dry_run,
+        "project_root": str(project_root),
+        "config_path": str(config_path),
+        "config_exists": exists,
+        "selected_profile": selected_profile,
+        "requested_profile": requested_profile,
+        "created": False,
+        "overwritten": False,
+        "next_steps": next_steps,
+    }
+    if config_path.exists() and config_path.is_dir():
+        raise ConfigError(f"Config path is a directory: {config_path}")
+    if dry_run:
+        blocked = exists and not force
+        return {
+            **base_payload,
+            "status": "blocked" if blocked else "planned",
+            "message": (
+                "Config already exists; init would not overwrite without --force."
+                if blocked
+                else "Dry run only; no files were written."
+            ),
+        }
+    if exists and not force:
+        raise ConfigError(
+            f"Config already exists at {config_path}. "
+            "Init refused to overwrite it."
+        )
+    write_project_init_config(config_path, content)
+    return {
+        **base_payload,
+        "status": "overwritten" if exists else "created",
+        "config_exists": True,
+        "created": not exists,
+        "overwritten": exists,
+        "message": "Config overwritten." if exists else "Config created.",
+    }
 
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(content, encoding="utf-8")
-    created.append(target)
+
+def write_project_init_config(config_path: Path, content: str) -> None:
+    """Atomically write and validate an init config."""
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = config_path.with_name(config_path.name + ".tmp")
+    try:
+        temp_path.write_text(content, encoding="utf-8")
+        loaded = load_config(temp_path)
+        checks = config_consistency_checks(
+            EffectiveConfigResult(
+                config=loaded,
+                sources={
+                    "project": "generated",
+                    "checks": "generated",
+                    "gate": "generated",
+                    "risk": "generated",
+                    "compare": "generated",
+                    "regression": "generated",
+                    "metrics_diff": "generated",
+                },
+                config_path=temp_path,
+                config_exists=True,
+            )
+        )
+        failed = [check for check in checks if check["status"] == "failed"]
+        if failed:
+            messages = "; ".join(check["message"] for check in failed)
+            raise ConfigError(f"Generated config failed validation: {messages}")
+        temp_path.replace(config_path)
+    except Exception:
+        temp_path.unlink(missing_ok=True)
+        raise
 
 
-def render_init_summary(created: list[Path], skipped: list[Path]) -> None:
-    """Render init result and next steps."""
-    table = Table(title="VibeBench init")
-    table.add_column("Status")
-    table.add_column("Path")
-    for path in created:
-        table.add_row("created", str(path))
-    for path in skipped:
-        table.add_row("skipped", str(path))
-    if not created and not skipped:
-        table.add_row("none", "No files selected")
-    console.print(table)
+def init_error_payload(
+    project_root: Path,
+    config_path: Path,
+    requested_profile: str,
+    force: bool,
+    dry_run: bool,
+    message: str,
+) -> dict[str, object]:
+    """Return JSON-safe init error details."""
+    return {
+        "status": "failed",
+        "dry_run": dry_run,
+        "project_root": str(project_root),
+        "config_path": str(config_path),
+        "config_exists": config_path.exists(),
+        "selected_profile": None,
+        "requested_profile": requested_profile,
+        "created": False,
+        "overwritten": False,
+        "force": force,
+        "message": message,
+        "next_steps": init_next_steps(),
+    }
+
+
+def init_next_steps() -> list[str]:
+    """Return standard onboarding next-step commands."""
+    return [
+        "python3 -m vibebench config --check",
+        "python3 -m vibebench ci --dry-run",
+        "python3 -m vibebench ci",
+    ]
+
+
+def write_init_json_output(path: Path, payload: dict[str, object]) -> Path:
+    """Write init JSON output."""
+    if path.exists() and path.is_dir():
+        raise ConfigError(f"JSON output path is a directory: {path}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def render_project_init_result(payload: dict[str, object]) -> None:
+    """Render concise project init output."""
+    status = str(payload["status"])
+    console.print("VibeBench init")
+    console.print(f"Status: {status}")
+    console.print(f"Config path: {payload['config_path']}")
+    console.print(f"Selected profile: {payload['selected_profile']}")
+    console.print(str(payload["message"]))
+    if status == "blocked":
+        console.print("Use --force only when overwriting is intentional.")
     console.print("Next steps:")
-    console.print("  python -m vibebench doctor")
-    console.print("  python -m vibebench check")
-    console.print("  python -m vibebench gate --write-gate-summary")
+    for step in payload["next_steps"]:
+        console.print(f"  {step}")
 
 
 @app.command("config")
