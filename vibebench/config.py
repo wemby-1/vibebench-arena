@@ -117,6 +117,16 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "require_recommended_profile": False,
         },
     },
+    "onboard": {
+        "policy": {
+            "enabled": False,
+            "fail_on_blockers": True,
+            "fail_on_errors": True,
+            "fail_on_warnings": False,
+            "require_config": True,
+            "require_ci_ready": False,
+        },
+    },
 }
 
 
@@ -389,6 +399,27 @@ class ProjectScanConfig(BaseModel):
     policy: ProjectScanPolicyConfig = Field(default_factory=ProjectScanPolicyConfig)
 
 
+class OnboardPolicyConfig(BaseModel):
+    """Onboarding policy gate defaults."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: StrictBool = False
+    fail_on_blockers: StrictBool = True
+    fail_on_errors: StrictBool = True
+    fail_on_warnings: StrictBool = False
+    require_config: StrictBool = True
+    require_ci_ready: StrictBool = False
+
+
+class OnboardConfig(BaseModel):
+    """Onboarding plan configuration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    policy: OnboardPolicyConfig = Field(default_factory=OnboardPolicyConfig)
+
+
 class VibeBenchConfig(BaseModel):
     """Top-level VibeBench configuration."""
 
@@ -403,6 +434,7 @@ class VibeBenchConfig(BaseModel):
     regression: RegressionConfig = Field(default_factory=RegressionConfig)
     metrics_diff: MetricsDiffConfig = Field(default_factory=MetricsDiffConfig)
     project_scan: ProjectScanConfig = Field(default_factory=ProjectScanConfig)
+    onboard: OnboardConfig = Field(default_factory=OnboardConfig)
 
     def effective_risk(self) -> RiskConfig:
         """Return the active Git diff risk policy."""
@@ -466,6 +498,16 @@ def config_example_yaml() -> str:
                 "fail_on_error_findings": True,
                 "fail_on_warning_findings": False,
                 "require_recommended_profile": False,
+            },
+        },
+        "onboard": {
+            "policy": {
+                "enabled": False,
+                "fail_on_blockers": True,
+                "fail_on_errors": True,
+                "fail_on_warnings": False,
+                "require_config": True,
+                "require_ci_ready": False,
             },
         },
     }
@@ -587,6 +629,16 @@ def init_config_profile_payload(
                 "require_recommended_profile": False,
             },
         },
+        "onboard": {
+            "policy": {
+                "enabled": False,
+                "fail_on_blockers": True,
+                "fail_on_errors": True,
+                "fail_on_warnings": False,
+                "require_config": True,
+                "require_ci_ready": False,
+            },
+        },
     }
 
 
@@ -687,6 +739,7 @@ def load_effective_config(path: Path | None = None) -> EffectiveConfigResult:
                 "regression": "built-in defaults",
                 "metrics_diff": "built-in defaults",
                 "project_scan": "built-in defaults",
+                "onboard": "built-in defaults",
             },
             config_path=config_path,
             config_exists=False,
@@ -711,6 +764,9 @@ def load_effective_config(path: Path | None = None) -> EffectiveConfigResult:
         "project_scan": (
             "config file" if "project_scan" in raw_config else "built-in defaults"
         ),
+        "onboard": (
+            "config file" if "onboard" in raw_config else "built-in defaults"
+        ),
     }
     return EffectiveConfigResult(
         config=config,
@@ -730,6 +786,7 @@ def effective_config_payload(result: EffectiveConfigResult) -> dict[str, Any]:
         "regression": result.config.regression.model_dump(),
         "metrics_diff": result.config.metrics_diff.model_dump(),
         "project_scan": result.config.project_scan.model_dump(),
+        "onboard": result.config.onboard.model_dump(),
         "risk": result.config.effective_risk().model_dump(),
     }
     return payload

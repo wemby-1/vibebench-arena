@@ -171,11 +171,13 @@ These Git diff rules are configurable in `.vibebench/config.yaml` under the `ris
 python -m pip install -e ".[dev]"
 python3 -m vibebench onboard
 python3 -m vibebench onboard --json
+python3 -m vibebench onboard --enforce-policy
 python3 -m vibebench project-scan
 python3 -m vibebench init --profile auto
 python3 -m vibebench config --check
 python3 -m vibebench ci --dry-run
 python3 -m vibebench ci --onboard
+python3 -m vibebench ci --onboard-policy
 python3 -m vibebench ci --project-scan
 python3 -m vibebench ci --project-scan-policy
 python3 -m vibebench ci
@@ -223,7 +225,7 @@ python -m vibebench gh-summary
 python -m vibebench compare
 ```
 
-`vibebench onboard` is a read-only adoption plan; `vibebench ci --onboard` writes report-only `onboard.json` and `onboard.md` artifacts for that plan, and default CI does not run it. `vibebench project-scan` is read-only onboarding inspection and report-only by default. `vibebench project-scan --enforce-policy` evaluates `project_scan.policy`; `vibebench ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `vibebench ci --project-scan-policy` writes the same artifacts and fails CI when policy fails. `vibebench init --profile auto` creates a safe starter `.vibebench/config.yaml` without installing dependencies, creating runs/baselines/workflows, or changing repository settings. Auto can select `generic`, `python`, `node`, or `fullstack`; use `--profile python` for `python3 -m pytest -q` plus `python3 -m ruff check .`, `--profile node` for existing `package.json` lint/test scripts, or `--profile generic` for a conservative dependency-free starter. Existing config is not overwritten unless `--force` is used. Then run `python3 -m vibebench config --check`, `python3 -m vibebench ci --dry-run`, and `python3 -m vibebench ci`.
+`vibebench project-scan` is read-only inspection: it describes project readiness signals and is report-only by default. `vibebench project-scan --enforce-policy` evaluates `project_scan.policy`; `vibebench ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `vibebench ci --project-scan-policy` writes the same artifacts and fails CI when policy fails. `vibebench onboard` is a read-only human adoption plan; `vibebench onboard --enforce-policy` evaluates whether that plan is acceptable under `onboard.policy`. `vibebench ci --onboard` writes report-only `onboard.json` and `onboard.md`, while `vibebench ci --onboard-policy` writes the same artifacts and fails CI only when the onboarding policy fails. `vibebench init --profile auto` creates a safe starter `.vibebench/config.yaml` without installing dependencies, creating runs/baselines/workflows, or changing repository settings. Auto can select `generic`, `python`, `node`, or `fullstack`; use `--profile python` for `python3 -m pytest -q` plus `python3 -m ruff check .`, `--profile node` for existing `package.json` lint/test scripts, or `--profile generic` for a conservative dependency-free starter. Existing config is not overwritten unless `--force` is used. Then run `python3 -m vibebench config --check`, `python3 -m vibebench ci --dry-run`, and `python3 -m vibebench ci`.
 
 For packaging readiness, use editable install and local metadata checks:
 
@@ -316,6 +318,15 @@ project_scan:
     fail_on_error_findings: true
     fail_on_warning_findings: false
     require_recommended_profile: false
+
+onboard:
+  policy:
+    enabled: true
+    fail_on_blockers: true
+    fail_on_errors: true
+    fail_on_warnings: false
+    require_config: true
+    require_ci_ready: false
 ```
 
 ## Example Workflow
@@ -324,6 +335,7 @@ project_scan:
 # Inspect onboarding readiness without writing files
 python3 -m vibebench onboard
 python3 -m vibebench onboard --json
+python3 -m vibebench onboard --enforce-policy
 python3 -m vibebench project-scan
 python3 -m vibebench project-scan --json
 python3 -m vibebench project-scan --enforce-policy
@@ -516,9 +528,9 @@ It compares the latest run with the previous run, including score, risk level, c
 
 ## One-Shot CI Pipeline
 
-`vibebench ci` is the recommended CI entrypoint. It runs check, gate, config check artifact generation, package-check artifacts, report, PR comment, explanation, export, badge, status block, trend summaries, run-index artifacts, compare artifacts, evidence-room generation, manifest checks, release-check artifacts, GitHub annotations, bundle, and GitHub summary in order. The check and gate steps decide the final pass/fail verdict by default, while artifact steps are still attempted even when the quality gate fails. Compare remains reporting-only unless teams opt in with `--fail-on-regression` or `compare.fail_on_regression: true`; `--no-fail-on-regression` disables that policy for one run, and `--skip-compare` skips compare plus its regression failure. Use `--onboard` to add report-only `onboard.json` and `onboard.md` onboarding plan artifacts; default CI does not run that step. Use `--skip-onboard` to suppress optional onboarding artifacts when relevant, and `--skip-evidence-room` to omit only the local evidence-room artifact. Human-readable Rich output remains the default; use `--json` for automation or `--json-output PATH` to save the same machine-readable pipeline result to a file. Use `--dry-run` or `--plan` to inspect the ordered pipeline and skip flags without running checks or writing artifacts. Add `--write-plan` to persist `ci-plan.json` and `ci-plan.md` in a run-like `.vibebench/runs/<timestamp>_plan/` directory, or use `--plan-json-output PATH` and `--plan-summary-output PATH` for explicit destinations.
+`vibebench ci` is the recommended CI entrypoint. It runs check, gate, config check artifact generation, package-check artifacts, report, PR comment, explanation, export, badge, status block, trend summaries, run-index artifacts, compare artifacts, evidence-room generation, manifest checks, release-check artifacts, GitHub annotations, bundle, and GitHub summary in order. The check and gate steps decide the final pass/fail verdict by default, while artifact steps are still attempted even when the quality gate fails. Compare remains reporting-only unless teams opt in with `--fail-on-regression` or `compare.fail_on_regression: true`; `--no-fail-on-regression` disables that policy for one run, and `--skip-compare` skips compare plus its regression failure. Use `--onboard` to add report-only `onboard.json` and `onboard.md` onboarding plan artifacts, or `--onboard-policy` to write the same artifacts and enforce `onboard.policy`; default CI does not run either step. Use `--skip-onboard` to suppress optional onboarding artifacts and policy when relevant, and `--skip-evidence-room` to omit only the local evidence-room artifact. Human-readable Rich output remains the default; use `--json` for automation or `--json-output PATH` to save the same machine-readable pipeline result to a file. Use `--dry-run` or `--plan` to inspect the ordered pipeline and skip flags without running checks or writing artifacts. Add `--write-plan` to persist `ci-plan.json` and `ci-plan.md` in a run-like `.vibebench/runs/<timestamp>_plan/` directory, or use `--plan-json-output PATH` and `--plan-summary-output PATH` for explicit destinations.
 
-Useful options include `--dry-run`, `--plan`, `--write-plan`, `--plan-json-output PATH`, `--plan-summary-output PATH`, `--json`, `--json-output PATH`, `--fail-on-regression`, `--no-fail-on-regression`, `--skip-report`, `--skip-pr-comment`, `--skip-explain`, `--skip-export`, `--skip-badge`, `--skip-status-block`, `--skip-trend`, `--skip-run-index`, `--skip-compare`, `--skip-config-check`, `--skip-package-check`, `--skip-release-check`, `--onboard`, `--skip-onboard`, `--skip-bundle`, `--skip-annotate`, `--skip-gh-summary`, `--bundle-include-report-assets`, and `--bundle-strict`. Gate overrides such as `--min-score`, `--max-risk`, `--allow-findings`, and `--no-require-status-passed` are passed through to the gate step. Use `--run-dir .vibebench/runs/<run-id>` to generate artifacts and enforce the gate against an existing run without creating a fresh check run.
+Useful options include `--dry-run`, `--plan`, `--write-plan`, `--plan-json-output PATH`, `--plan-summary-output PATH`, `--json`, `--json-output PATH`, `--fail-on-regression`, `--no-fail-on-regression`, `--skip-report`, `--skip-pr-comment`, `--skip-explain`, `--skip-export`, `--skip-badge`, `--skip-status-block`, `--skip-trend`, `--skip-run-index`, `--skip-compare`, `--skip-config-check`, `--skip-package-check`, `--skip-release-check`, `--onboard`, `--onboard-policy`, `--skip-onboard`, `--skip-bundle`, `--skip-annotate`, `--skip-gh-summary`, `--bundle-include-report-assets`, and `--bundle-strict`. Gate overrides such as `--min-score`, `--max-risk`, `--allow-findings`, and `--no-require-status-passed` are passed through to the gate step. Use `--run-dir .vibebench/runs/<run-id>` to generate artifacts and enforce the gate against an existing run without creating a fresh check run.
 
 ## What The HTML Report Shows
 

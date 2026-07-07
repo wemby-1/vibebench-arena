@@ -4,14 +4,20 @@ import json
 from pathlib import Path
 from typing import Any
 
-from vibebench.config import ConfigError
+from vibebench.config import ConfigError, default_config_model, load_effective_config
+from vibebench.paths import config_file
 from vibebench.project_scan import run_project_scan
 
 ONBOARD_JSON = "onboard.json"
 ONBOARD_SUMMARY = "onboard.md"
 
 
-def onboard_payload(project_root: Path, *, strict: bool = False) -> dict[str, Any]:
+def onboard_payload(
+    project_root: Path,
+    *,
+    strict: bool = False,
+    enforce_policy: bool = False,
+) -> dict[str, Any]:
     """Return a deterministic read-only onboarding plan."""
     root = project_root.resolve()
     scan = run_project_scan(root)
@@ -45,6 +51,8 @@ def onboard_payload(project_root: Path, *, strict: bool = False) -> dict[str, An
         payload["message"] = "Onboarding is not ready for immediate CI adoption."
     else:
         payload["message"] = "Onboarding plan generated without writing files."
+    if enforce_policy:
+        attach_onboard_policy(payload, root, enforced=True)
     return payload
 
 
@@ -85,6 +93,134 @@ def onboard_suggested_commands(scan: dict[str, Any]) -> list[str]:
         ]
     )
     return commands
+
+
+def attach_onboard_policy(
+    payload: dict[str, Any],
+    project_root: Path,
+    *,
+    enforced: bool,
+) -> None:
+    """Attach onboarding policy evaluation fields to a plan payload."""
+    policy_source, effective_policy = resolve_onboard_policy(project_root)
+    policy_findings = evaluate_onboard_policy(payload, effective_policy)
+    payload["policy_source"] = policy_source
+    payload["effective_policy"] = effective_policy
+    payload["policy_status"] = "failed" if policy_findings else "passed"
+    payload["policy_findings"] = policy_findings
+    payload["policy_enforced"] = enforced
+
+
+def resolve_onboard_policy(project_root: Path) -> tuple[str, dict[str, Any]]:
+    """Return the effective onboarding policy and source."""
+    try:
+        result = load_effective_config(config_file(project_root))
+        policy = result.config.onboard.policy.model_dump()
+        raw_source = result.sources.get("onboard", "built-in defaults")
+        source = "config" if raw_source == "config file" else raw_source
+    except ConfigError:
+        policy = default_config_model().onboard.policy.model_dump()
+        source = "built-in defaults"
+    return source, policy
+
+
+def evaluate_onboard_policy(
+    payload: dict[str, Any],
+    policy: dict[str, Any],
+) -> list[dict[str, str]]:
+    """Evaluate onboarding policy against an existing onboard payload."""
+    findings: list[dict[str, str]] = []
+    status = str(payload.get("status") or "")
+    scan_status = str(payload.get("scan_status") or "")
+    warnings = [str(warning) for warning in payload.get("warnings", [])]
+
+    if policy.get("require_config") and not payload.get("config_exists"):
+        findings.append(
+            onboard_policy_finding(
+                "config_required",
+                "error",
+                "VibeBench config is required",
+                "No .vibebench/config.yaml file exists for this project.",
+                "Run python3 -m vibebench init --profile auto, then config --check.",
+                "require_config",
+            )
+        )
+
+    if policy.get("require_ci_ready") and status != "ready":
+        findings.append(
+            onboard_policy_finding(
+                "ci_ready_required",
+                "error",
+                "Onboarding plan must be CI-ready",
+                f"Onboarding status is {status!r}, not ready.",
+                "Resolve onboarding warnings or relax onboard.policy.require_ci_ready.",
+                "require_ci_ready",
+            )
+        )
+
+    if policy.get("fail_on_blockers") and (
+        status == "blocked" or scan_status == "blocked"
+    ):
+        findings.append(
+            onboard_policy_finding(
+                "onboarding_blocked",
+                "error",
+                "Onboarding blockers are not allowed",
+                "The onboarding plan or project scan is blocked.",
+                (
+                    "Fix blocking project-scan findings before enforcing "
+                    "onboarding policy."
+                ),
+                "fail_on_blockers",
+            )
+        )
+
+    if policy.get("fail_on_errors") and (
+        status == "blocked" or scan_status == "blocked"
+    ):
+        findings.append(
+            onboard_policy_finding(
+                "onboarding_errors",
+                "error",
+                "Onboarding errors are not allowed",
+                "The onboarding plan includes error-level readiness signals.",
+                "Fix onboarding errors or relax onboard.policy.fail_on_errors.",
+                "fail_on_errors",
+            )
+        )
+
+    if policy.get("fail_on_warnings") and warnings:
+        for index, warning in enumerate(warnings):
+            findings.append(
+                onboard_policy_finding(
+                    f"onboarding_warning:{index}",
+                    "warning",
+                    "Onboarding warning is not allowed",
+                    warning,
+                    "Resolve the warning or relax onboard.policy.fail_on_warnings.",
+                    "fail_on_warnings",
+                )
+            )
+    return findings
+
+
+def onboard_policy_finding(
+    finding_id: str,
+    severity: str,
+    title: str,
+    message: str,
+    recommendation: str,
+    rule: str,
+) -> dict[str, str]:
+    """Return a deterministic onboarding policy finding."""
+    return {
+        "id": finding_id,
+        "severity": severity,
+        "title": title,
+        "message": message,
+        "recommendation": recommendation,
+        "rule": rule,
+    }
 
 
 def onboard_json(payload: dict[str, Any]) -> str:
@@ -132,7 +268,43 @@ def onboard_markdown(payload: dict[str, Any]) -> str:
         lines.extend(["", "## Warnings", ""])
         for warning in warnings:
             lines.append(f"- {warning}")
+    if "policy_status" in payload:
+        lines.extend(
+            [
+                "",
+                "## Policy",
+                "",
+                f"- Status: {payload['policy_status']}",
+                f"- Source: {payload['policy_source']}",
+                f"- Enforced: {str(payload['policy_enforced']).lower()}",
+                (
+                    "- Default onboard remains report-only unless "
+                    "enforcement is requested."
+                ),
+                "",
+                "| Severity | Finding | Rule | Recommendation |",
+                "| --- | --- | --- | --- |",
+            ]
+        )
+        policy_findings = payload.get("policy_findings") or []
+        if policy_findings:
+            for finding in policy_findings:
+                lines.append(
+                    "| {severity} | {title} | {rule} | {recommendation} |".format(
+                        severity=finding["severity"],
+                        title=markdown_cell(finding["title"]),
+                        rule=markdown_cell(finding["rule"]),
+                        recommendation=markdown_cell(finding["recommendation"]),
+                    )
+                )
+        else:
+            lines.append("| info | Policy passed | none | No action needed. |")
     return "\n".join(lines) + "\n"
+
+
+def markdown_cell(value: object) -> str:
+    """Escape Markdown table cell text."""
+    return str(value).replace("|", "\\|").replace("\n", " ")
 
 
 def validate_output_path(path: Path, *, label: str) -> None:

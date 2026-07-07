@@ -601,11 +601,18 @@ def onboard_command(
             help="Exit non-zero when onboarding is not ready for immediate CI.",
         ),
     ] = False,
+    enforce_policy: Annotated[
+        bool,
+        typer.Option(
+            "--enforce-policy",
+            help="Evaluate onboard policy and fail when it is violated.",
+        ),
+    ] = False,
 ) -> None:
     """Plan read-only VibeBench adoption steps for this project."""
     root = project_root.resolve()
     try:
-        payload = onboard_payload(root, strict=strict)
+        payload = onboard_payload(root, strict=strict, enforce_policy=enforce_policy)
         if json_output is not None:
             write_onboard_json(resolve_output_path(root, json_output), payload)
         if summary_output is not None:
@@ -631,7 +638,9 @@ def onboard_command(
         print(onboard_json(payload))
     else:
         render_onboard_result(payload)
-    if payload.get("strict_failed"):
+    if payload.get("strict_failed") or (
+        payload.get("policy_enforced") and payload.get("policy_status") == "failed"
+    ):
         raise typer.Exit(code=1)
 
 
@@ -658,6 +667,25 @@ def render_onboard_result(payload: dict[str, object]) -> None:
         for warning in warnings:
             table.add_row(str(warning))
         console.print(table)
+    policy_findings = payload.get("policy_findings") or []
+    if "policy_status" in payload:
+        console.print(f"Policy status: {payload['policy_status']}")
+        console.print(f"Policy source: {payload['policy_source']}")
+        console.print(f"Policy enforced: {str(payload['policy_enforced']).lower()}")
+        if policy_findings:
+            policy_table = Table(title="Policy Findings")
+            policy_table.add_column("Severity")
+            policy_table.add_column("Finding")
+            policy_table.add_column("Rule")
+            policy_table.add_column("Recommendation")
+            for finding in policy_findings:
+                policy_table.add_row(
+                    str(finding["severity"]),
+                    str(finding["title"]),
+                    str(finding["rule"]),
+                    str(finding["recommendation"]),
+                )
+            console.print(policy_table)
     console.print("Suggested commands:")
     for command in payload.get("suggested_commands", []):
         console.print(f"  {command}")
@@ -1063,6 +1091,9 @@ def config_show_payload(result: EffectiveConfigResult) -> dict[str, object]:
         "gate": payload["gate"],
         "risk": payload["risk"],
         "regression": payload["regression"],
+        "metrics_diff": payload["metrics_diff"],
+        "project_scan": payload["project_scan"],
+        "onboard": payload["onboard"],
     }
 
 
@@ -1076,7 +1107,16 @@ def render_config_summary(
     console.print(f"[bold]VibeBench config[/] ({source})")
 
     payload = effective_config_payload(result)
-    for section_name in ["project", "checks", "gate", "risk", "regression"]:
+    for section_name in [
+        "project",
+        "checks",
+        "gate",
+        "risk",
+        "regression",
+        "metrics_diff",
+        "project_scan",
+        "onboard",
+    ]:
         table = Table(title=section_name)
         table.add_column("Key")
         table.add_column("Value")
@@ -2971,6 +3011,13 @@ def ci_command(
             help="Skip optional onboarding plan artifact generation.",
         ),
     ] = False,
+    onboard_policy: Annotated[
+        bool,
+        typer.Option(
+            "--onboard-policy",
+            help="Write onboard artifacts with policy enforcement.",
+        ),
+    ] = False,
     project_scan: Annotated[
         bool,
         typer.Option(
@@ -3211,6 +3258,7 @@ def ci_command(
                 skip_evidence_room=skip_evidence_room,
                 onboard=onboard,
                 skip_onboard=skip_onboard,
+                onboard_policy=onboard_policy,
                 project_scan=project_scan,
                 skip_project_scan=skip_project_scan,
                 project_scan_policy=project_scan_policy,
@@ -3264,6 +3312,7 @@ def ci_command(
                 skip_evidence_room=skip_evidence_room,
                 onboard=onboard,
                 skip_onboard=skip_onboard,
+                onboard_policy=onboard_policy,
                 project_scan=project_scan,
                 skip_project_scan=skip_project_scan,
                 project_scan_policy=project_scan_policy,

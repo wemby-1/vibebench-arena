@@ -176,6 +176,7 @@ def plan_ci_pipeline(
     skip_evidence_room: bool = False,
     onboard: bool = False,
     skip_onboard: bool = False,
+    onboard_policy: bool = False,
     project_scan: bool = False,
     skip_project_scan: bool = False,
     project_scan_policy: bool = False,
@@ -241,6 +242,13 @@ def plan_ci_pipeline(
         steps.append(skipped_plan_step("metrics-diff", "--skip-metrics-diff"))
     if skip_onboard:
         steps.append(skipped_plan_step("onboard", "--skip-onboard"))
+    elif onboard_policy:
+        steps.append(
+            planned_step(
+                "onboard",
+                "Would write onboarding plan artifacts with policy enforcement",
+            )
+        )
     elif onboard:
         steps.append(planned_step("onboard", "Would write onboarding plan artifacts"))
     if project_scan_policy:
@@ -628,6 +636,7 @@ def run_ci_pipeline(
     skip_evidence_room: bool = False,
     onboard: bool = False,
     skip_onboard: bool = False,
+    onboard_policy: bool = False,
     project_scan: bool = False,
     skip_project_scan: bool = False,
     project_scan_policy: bool = False,
@@ -681,6 +690,7 @@ def run_ci_pipeline(
         skip_metrics_diff_policy=skip_metrics_diff_policy,
     )
     metrics_diff_enabled = metrics_diff or metrics_diff_policy
+    onboard_enabled = onboard or onboard_policy
     project_scan_enabled = project_scan or project_scan_policy
     root = project_root.resolve()
     selected_run_dir = run_dir.resolve() if run_dir is not None else None
@@ -721,7 +731,7 @@ def run_ci_pipeline(
             skip_release_check=skip_release_check,
             skip_package_check=skip_package_check,
             skip_evidence_room=skip_evidence_room,
-            onboard=onboard,
+            onboard=onboard_enabled,
             skip_onboard=skip_onboard,
             project_scan=project_scan_enabled,
             skip_project_scan=skip_project_scan,
@@ -767,8 +777,14 @@ def run_ci_pipeline(
         )
     if skip_onboard:
         steps.append(CiStepResult("onboard", "skipped", 0, message="skipped by flag"))
-    elif onboard:
-        steps.append(run_onboard_artifact_step(root, selected_run_dir))
+    elif onboard_enabled:
+        steps.append(
+            run_onboard_artifact_step(
+                root,
+                selected_run_dir,
+                enforce_policy=onboard_policy,
+            )
+        )
     if project_scan_enabled:
         steps.append(
             run_project_scan_artifact_step(
@@ -954,6 +970,7 @@ def append_unavailable_artifact_steps(
     skip_evidence_room: bool,
     onboard: bool = False,
     skip_onboard: bool = False,
+    onboard_policy: bool = False,
     project_scan: bool = False,
     skip_project_scan: bool = False,
     metrics_check: bool = False,
@@ -1213,11 +1230,16 @@ def validate_metrics_artifact_flags(
         )
 
 
-def run_onboard_artifact_step(project_root: Path, run_dir: Path) -> CiStepResult:
+def run_onboard_artifact_step(
+    project_root: Path,
+    run_dir: Path,
+    *,
+    enforce_policy: bool = False,
+) -> CiStepResult:
     """Generate onboard artifacts and return CI step status."""
     started = time.perf_counter()
     try:
-        payload = onboard_payload(project_root)
+        payload = onboard_payload(project_root, enforce_policy=enforce_policy)
         json_path = run_dir / ONBOARD_JSON
         summary_path = run_dir / ONBOARD_SUMMARY
         write_onboard_json(json_path, payload)
@@ -1230,12 +1252,18 @@ def run_onboard_artifact_step(project_root: Path, run_dir: Path) -> CiStepResult
             message=str(exc),
             duration_seconds=elapsed_since(started),
         )
+    policy_failed = (
+        payload.get("policy_enforced") and payload.get("policy_status") == "failed"
+    )
+    message = f"plan {payload['status']}"
+    if payload.get("policy_status") is not None:
+        message = f"policy {payload['policy_status']}"
     return CiStepResult(
         "onboard",
-        "passed",
-        0,
+        "failed" if policy_failed else "passed",
+        1 if policy_failed else 0,
         artifact_path=json_path,
-        message=f"plan {payload['status']}",
+        message=message,
         duration_seconds=elapsed_since(started),
     )
 

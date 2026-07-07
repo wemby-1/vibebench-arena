@@ -186,6 +186,31 @@ def config_consistency_checks(
             "readiness should become an explicit gate."
         )
     checks.append(project_scan_check)
+
+    onboard_policy = config.onboard.policy
+    onboard_check = {
+        "name": "onboard_policy",
+        "status": "passed",
+        "message": (
+            "Onboard policy is internally consistent "
+            f"(enabled={str(onboard_policy.enabled).lower()}, "
+            f"fail_on_blockers="
+            f"{str(onboard_policy.fail_on_blockers).lower()}, "
+            f"fail_on_errors="
+            f"{str(onboard_policy.fail_on_errors).lower()}, "
+            f"fail_on_warnings="
+            f"{str(onboard_policy.fail_on_warnings).lower()}, "
+            f"require_config={str(onboard_policy.require_config).lower()}, "
+            f"require_ci_ready={str(onboard_policy.require_ci_ready).lower()})"
+        ),
+    }
+    if include_advice and not onboard_policy.enabled:
+        onboard_check["advice"] = (
+            "Use `python3 -m vibebench onboard --enforce-policy` or "
+            "`python3 -m vibebench ci --onboard-policy` when the onboarding "
+            "plan should become an explicit gate."
+        )
+    checks.append(onboard_check)
     return checks
 
 

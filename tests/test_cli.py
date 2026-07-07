@@ -560,6 +560,85 @@ def test_onboard_json_and_summary_keep_stdout_json(tmp_path: Path) -> None:
     assert summary.exists()
 
 
+def test_onboard_default_omits_policy_fields(tmp_path: Path) -> None:
+    payload = onboard_payload_for(tmp_path)
+
+    assert "policy_status" not in payload
+    assert "policy_findings" not in payload
+
+
+def test_onboard_enforce_policy_passes_on_healthy_project(tmp_path: Path) -> None:
+    tmp_path.joinpath("tests").mkdir()
+    tmp_path.joinpath("pyproject.toml").write_text("[project]\nname=demo\n")
+    init = runner.invoke(
+        app,
+        ["init", "--project-root", str(tmp_path), "--profile", "python"],
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "onboard",
+            "--project-root",
+            str(tmp_path),
+            "--enforce-policy",
+            "--json",
+        ],
+    )
+    payload = json.loads(result.output)
+
+    assert init.exit_code == 0
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    assert payload["policy_enforced"] is True
+    assert payload["policy_status"] == "passed"
+    assert payload["policy_findings"] == []
+
+
+def test_onboard_enforce_policy_fails_without_config(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "onboard",
+            "--project-root",
+            str(tmp_path),
+            "--enforce-policy",
+            "--json",
+        ],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert result.output.lstrip().startswith("{")
+    assert payload["policy_status"] == "failed"
+    assert "config_required" in {
+        finding["id"] for finding in payload["policy_findings"]
+    }
+
+
+def test_onboard_enforce_policy_summary_includes_policy_section(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "onboard-policy.md"
+
+    result = runner.invoke(
+        app,
+        [
+            "onboard",
+            "--project-root",
+            str(tmp_path),
+            "--enforce-policy",
+            "--summary-output",
+            str(output),
+        ],
+    )
+    markdown = output.read_text(encoding="utf-8")
+
+    assert result.exit_code == 1
+    assert "## Policy" in markdown
+    assert "Default onboard remains report-only" in markdown
+
+
 def project_scan_payload(root: Path, *extra: str) -> dict[str, object]:
     result = runner.invoke(
         app,
@@ -1283,6 +1362,7 @@ def test_config_command_json_is_valid(tmp_path: Path) -> None:
         "compare",
         "gate",
         "metrics_diff",
+        "onboard",
         "project",
         "project_scan",
         "regression",
@@ -1293,8 +1373,10 @@ def test_config_command_json_is_valid(tmp_path: Path) -> None:
     assert payload["checks"]["test"] == ["pytest -q"]
     assert payload["gate"]["min_score"] == 80
     assert payload["risk"]["max_patch_lines"] == 500
+    assert payload["onboard"]["policy"]["fail_on_blockers"] is True
     assert payload["regression"]["fail_on_missing_metrics"] is True
     assert payload["regression"]["enabled"] is False
+    assert payload["onboard"]["policy"]["require_config"] is True
 
 def test_config_command_validate_succeeds_for_valid_config(tmp_path: Path) -> None:
     runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
@@ -1377,7 +1459,10 @@ def test_config_show_json_output(tmp_path: Path) -> None:
         "commands",
         "config_path",
         "gate",
+        "metrics_diff",
+        "onboard",
         "project",
+        "project_scan",
         "regression",
         "risk",
     ]
@@ -1457,6 +1542,7 @@ def test_config_check_json_output(tmp_path: Path) -> None:
         "gate_policy",
         "risk_policy",
         "regression_policy",
+        "onboard_policy",
     }
     assert all(
         sorted(check) == ["message", "name", "status"]
@@ -2154,6 +2240,23 @@ def test_config_check_reports_metrics_diff_policy(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert "Metrics-diff policy is internally consistent" in policy["message"]
     assert "metrics_diff.policy.enabled=true" in policy["advice"]
+
+
+def test_config_check_reports_onboard_policy(tmp_path: Path) -> None:
+    runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
+
+    result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--check", "--advice", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    policy = next(
+        check for check in payload["checks"] if check["name"] == "onboard_policy"
+    )
+    assert result.exit_code == 0
+    assert "Onboard policy is internally consistent" in policy["message"]
+    assert "onboard --enforce-policy" in policy["advice"]
 
 
 def test_config_check_rejects_invalid_metrics_diff_policy(tmp_path: Path) -> None:

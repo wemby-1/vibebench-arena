@@ -17,6 +17,7 @@ python -m vibebench package-check
 ```bash
 python3 -m vibebench onboard
 python3 -m vibebench onboard --json
+python3 -m vibebench onboard --enforce-policy
 python3 -m vibebench project-scan
 python3 -m vibebench project-scan --json
 python3 -m vibebench project-scan --enforce-policy
@@ -24,12 +25,13 @@ python3 -m vibebench init --profile auto
 python3 -m vibebench config --check
 python3 -m vibebench ci --dry-run
 python3 -m vibebench ci --onboard
+python3 -m vibebench ci --onboard-policy
 python3 -m vibebench ci --project-scan
 python3 -m vibebench ci --project-scan-policy
 python3 -m vibebench ci
 ```
 
-`onboard` is a read-only adoption plan. `ci --onboard` writes report-only `onboard.json` and `onboard.md` artifacts for that plan; default CI does not run it. `project-scan` is read-only and report-only by default: it detects stacks, recommends an init profile, inspects config status, and never creates config, runs, baselines, dependencies, or workflow files. `project-scan --enforce-policy` evaluates `project_scan.policy`; `ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `ci --project-scan-policy` writes the same artifacts and enforces the policy. Default CI is unchanged unless one of those flags is passed.
+`project-scan` is read-only inspection: it describes readiness signals, detects stacks, recommends an init profile, inspects config status, and never creates config, runs, baselines, dependencies, or workflow files. `project-scan --enforce-policy` evaluates `project_scan.policy`; `ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `ci --project-scan-policy` writes the same artifacts and enforces the policy. `onboard` is a read-only human adoption plan. `onboard --enforce-policy` evaluates whether that plan is acceptable under `onboard.policy`; `ci --onboard` writes report-only `onboard.json` and `onboard.md`, while `ci --onboard-policy` writes the same artifacts and fails CI only when the onboarding policy fails. Default CI is unchanged unless one of those flags is passed.
 
 ```yaml
 project_scan:
@@ -41,6 +43,15 @@ project_scan:
     fail_on_error_findings: true
     fail_on_warning_findings: false
     require_recommended_profile: false
+
+onboard:
+  policy:
+    enabled: true
+    fail_on_blockers: true
+    fail_on_errors: true
+    fail_on_warnings: false
+    require_config: true
+    require_ci_ready: false
 ```
 
 `init --profile auto` creates `.vibebench/config.yaml` only. It can select `generic`, `python`, `node`, or `fullstack` from project markers, reusing existing `package.json` lint/test scripts when present. Init never installs dependencies, never overwrites config unless `--force` is provided, and does not create `.vibebench/runs`, `.vibebench/baselines`, workflows, or repository settings.

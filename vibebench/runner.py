@@ -110,7 +110,7 @@ def run_command(
     group: str,
     command: str,
     project_root: Path,
-    timeout_seconds: int = 300,
+    timeout_seconds: int = 600,
 ) -> CommandResult:
     """Run one configured command and capture its result."""
     start = time.perf_counter()
@@ -298,7 +298,7 @@ def write_log(result: CheckRunResult) -> None:
 def run_checks(
     config: VibeBenchConfig,
     project_root: Path,
-    timeout_seconds: int = 300,
+    timeout_seconds: int = 600,
 ) -> CheckRunResult:
     """Run all configured checks and persist metrics artifacts."""
     root = project_root.resolve()

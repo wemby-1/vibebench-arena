@@ -390,6 +390,64 @@ def test_invalid_project_scan_policy_unknown_key_fails_clearly(
         load_config(config_path)
 
 
+def write_onboard_config(tmp_path: Path, policy_yaml: str) -> Path:
+    config_dir = tmp_path / ".vibebench"
+    config_dir.mkdir(parents=True)
+    config_path = config_dir / "config.yaml"
+    config_path.write_text(
+        f"""project:
+  name: demo
+checks:
+  test:
+    - pytest -q
+  lint:
+    - ruff check .
+onboard:
+  policy:
+{policy_yaml}
+""",
+        encoding="utf-8",
+    )
+    return config_path
+
+
+def test_config_loader_reads_onboard_policy(tmp_path: Path) -> None:
+    config_path = write_onboard_config(
+        tmp_path,
+        """    enabled: true
+    fail_on_blockers: true
+    fail_on_errors: true
+    fail_on_warnings: true
+    require_config: true
+    require_ci_ready: true
+""",
+    )
+
+    config = load_config(config_path)
+
+    policy = config.onboard.policy
+    assert policy.enabled is True
+    assert policy.fail_on_blockers is True
+    assert policy.fail_on_errors is True
+    assert policy.fail_on_warnings is True
+    assert policy.require_config is True
+    assert policy.require_ci_ready is True
+
+
+def test_invalid_onboard_policy_boolean_fails_clearly(tmp_path: Path) -> None:
+    config_path = write_onboard_config(tmp_path, "    enabled: maybe\n")
+
+    with pytest.raises(ConfigError, match="onboard.policy.enabled"):
+        load_config(config_path)
+
+
+def test_invalid_onboard_policy_unknown_key_fails_clearly(tmp_path: Path) -> None:
+    config_path = write_onboard_config(tmp_path, "    unknown: true\n")
+
+    with pytest.raises(ConfigError, match="onboard.policy.unknown"):
+        load_config(config_path)
+
+
 def test_invalid_project_scan_policy_allowed_profile_fails_clearly(
     tmp_path: Path,
 ) -> None:
