@@ -136,6 +136,11 @@ from vibebench.pr_comment import (
     post_pr_comment,
     pr_comment_post_json,
 )
+from vibebench.project_scan import (
+    run_project_scan,
+    write_project_scan_json,
+    write_project_scan_summary,
+)
 from vibebench.proof import (
     ProofError,
     proof_json,
@@ -564,6 +569,94 @@ def render_project_init_result(payload: dict[str, object]) -> None:
         console.print("Use --force only when overwriting is intentional.")
     console.print("Next steps:")
     for step in payload["next_steps"]:
+        console.print(f"  {step}")
+
+
+@app.command("project-scan")
+def project_scan_command(
+    project_root: ProjectRootOption = Path("."),
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print project scan result as pure JSON."),
+    ] = False,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write project scan JSON to PATH."),
+    ] = None,
+    summary_output: Annotated[
+        Path | None,
+        typer.Option("--summary-output", help="Write project scan Markdown to PATH."),
+    ] = None,
+    strict: Annotated[
+        bool,
+        typer.Option(
+            "--strict",
+            help="Exit non-zero for invalid config or malformed package.json.",
+        ),
+    ] = False,
+) -> None:
+    """Inspect onboarding readiness without writing project artifacts."""
+    root = project_root.resolve()
+    try:
+        payload = run_project_scan(root, strict=strict)
+        if json_output is not None:
+            write_project_scan_json(resolve_output_path(root, json_output), payload)
+        if summary_output is not None:
+            write_project_scan_summary(
+                resolve_output_path(root, summary_output), payload
+            )
+    except ConfigError as exc:
+        if as_json:
+            print(
+                json.dumps(
+                    {
+                        "status": "failed",
+                        "project_root": str(root),
+                        "message": str(exc),
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+        else:
+            err_console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if as_json:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    else:
+        render_project_scan_result(payload)
+    if payload.get("strict_failed"):
+        raise typer.Exit(code=1)
+
+
+def render_project_scan_result(payload: dict[str, object]) -> None:
+    """Render concise project scan output."""
+    stacks = payload.get("detected_stacks") or []
+    stack_text = ", ".join(str(stack) for stack in stacks) if stacks else "none"
+    console.print("VibeBench project scan")
+    console.print(f"Project root: {payload['project_root']}")
+    console.print(f"Status: {payload['status']}")
+    console.print(f"Recommended profile: {payload['recommended_profile']}")
+    console.print(f"Detected stacks: {stack_text}")
+    console.print(f"Config status: {payload['config_status']}")
+    findings = payload.get("findings") or []
+    if findings:
+        table = Table(title="Findings")
+        table.add_column("Severity")
+        table.add_column("Finding")
+        table.add_column("Recommendation")
+        for finding in findings:
+            if not isinstance(finding, dict):
+                continue
+            table.add_row(
+                str(finding.get("severity", "")),
+                str(finding.get("title", "")),
+                str(finding.get("recommendation", "")),
+            )
+        console.print(table)
+    console.print("Next steps:")
+    for step in payload.get("next_steps", []):
         console.print(f"  {step}")
 
 

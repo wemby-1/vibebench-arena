@@ -15,13 +15,15 @@ python -m vibebench package-check
 ## Initialize VibeBench
 
 ```bash
+python3 -m vibebench project-scan
+python3 -m vibebench project-scan --json
 python3 -m vibebench init --profile auto
 python3 -m vibebench config --check
 python3 -m vibebench ci --dry-run
 python3 -m vibebench ci
 ```
 
-`init --profile auto` creates `.vibebench/config.yaml` only. It can select `generic`, `python`, `node`, or `fullstack` from project markers, reusing existing `package.json` lint/test scripts when present. Init never installs dependencies, never overwrites config unless `--force` is provided, and does not create `.vibebench/runs`, `.vibebench/baselines`, workflows, or repository settings.
+`project-scan` is read-only: it detects stacks, recommends an init profile, inspects existing config status, and never creates config, runs, baselines, dependencies, or workflow files. `init --profile auto` creates `.vibebench/config.yaml` only. It can select `generic`, `python`, `node`, or `fullstack` from project markers, reusing existing `package.json` lint/test scripts when present. Init never installs dependencies, never overwrites config unless `--force` is provided, and does not create `.vibebench/runs`, `.vibebench/baselines`, workflows, or repository settings.
 
 ## Inspect Effective Config
 
@@ -48,6 +50,8 @@ python3 -m vibebench config --path --json
 ## Diagnose Project Readiness
 
 ```bash
+python3 -m vibebench project-scan
+python3 -m vibebench project-scan --summary-output /tmp/vibebench-scan.md
 python -m vibebench doctor
 python -m vibebench package-check
 python -m vibebench package-check --json
@@ -55,7 +59,7 @@ python -m vibebench release-check
 python -m vibebench release-checklist
 ```
 
-`vibebench config --show` validates and summarizes the active `.vibebench/config.yaml`. Use `python -m vibebench config --show --json` for machine-readable config inspection. Use `python -m vibebench config --check`, `python -m vibebench config --check --advice`, or `python -m vibebench config --check --json --advice` for focused consistency diagnostics and optional repair guidance. Add `--write-json PATH` or `--write-summary PATH` to persist config check artifacts.
+`vibebench project-scan` is the read-only onboarding check; use `--strict` when invalid config or malformed `package.json` should fail automation. `vibebench config --show` validates and summarizes the active `.vibebench/config.yaml`. Use `python -m vibebench config --show --json` for machine-readable config inspection. Use `python -m vibebench config --check`, `python -m vibebench config --check --advice`, or `python -m vibebench config --check --json --advice` for focused consistency diagnostics and optional repair guidance. Add `--write-json PATH` or `--write-summary PATH` to persist config check artifacts.
 
 `vibebench package-check` validates local package metadata, imports, console script configuration, README/license references, and key docs without network access or PyPI publishing. Add `--write-json PATH` or `--write-summary PATH` to save package-check artifacts.
 

@@ -391,6 +391,261 @@ def test_init_generated_config_can_be_used_with_config_check(tmp_path: Path) -> 
     assert payload["overall_status"] == "passed"
 
 
+def project_scan_payload(root: Path, *extra: str) -> dict[str, object]:
+    result = runner.invoke(
+        app,
+        ["project-scan", "--project-root", str(root), "--json", *extra],
+    )
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    return json.loads(result.output)
+
+
+def finding_ids(payload: dict[str, object]) -> set[str]:
+    findings = payload["findings"]
+    assert isinstance(findings, list)
+    return {finding["id"] for finding in findings}
+
+
+def test_project_scan_empty_project_recommends_generic(tmp_path: Path) -> None:
+    payload = project_scan_payload(tmp_path)
+
+    assert payload["recommended_profile"] == "generic"
+    assert payload["detected_stacks"] == []
+    assert payload["status"] == "needs_init"
+    assert "no_vibebench_config" in finding_ids(payload)
+    assert "no_stack_detected" in finding_ids(payload)
+    assert not config_path(tmp_path).exists()
+    assert not config_path(tmp_path).parent.exists()
+
+
+def test_project_scan_python_project_recommends_python(tmp_path: Path) -> None:
+    tmp_path.joinpath("tests").mkdir()
+    tmp_path.joinpath("pyproject.toml").write_text(
+        "[tool.pytest.ini_options]\n[tool.ruff]\n",
+        encoding="utf-8",
+    )
+
+    payload = project_scan_payload(tmp_path)
+
+    assert payload["recommended_profile"] == "python"
+    assert payload["detected_stacks"] == ["python"]
+    assert "python:pyproject.toml" in payload["detection_reasons"]
+    assert payload["tests_dir_present"] is True
+    assert payload["pytest_likely"] is True
+    assert payload["ruff_likely"] is True
+
+
+def test_project_scan_node_project_recommends_node(tmp_path: Path) -> None:
+    write_package_json(tmp_path, {"lint": "eslint .", "test": "vitest run"})
+
+    payload = project_scan_payload(tmp_path)
+
+    assert payload["recommended_profile"] == "node"
+    assert payload["detected_stacks"] == ["node"]
+    assert payload["package_json_present"] is True
+    assert payload["package_manager_guess"] == "npm"
+    assert payload["node_scripts"] == ["lint", "test"]
+    assert payload["has_lint_script"] is True
+    assert payload["has_test_script"] is True
+
+
+def test_project_scan_fullstack_project_recommends_fullstack(tmp_path: Path) -> None:
+    tmp_path.joinpath("tests").mkdir()
+    tmp_path.joinpath("pyproject.toml").write_text("[project]\nname='demo'\n")
+    write_package_json(tmp_path, {"lint": "eslint ."})
+
+    payload = project_scan_payload(tmp_path)
+
+    assert payload["recommended_profile"] == "fullstack"
+    assert payload["detected_stacks"] == ["python", "node"]
+    assert "fullstack_detected" in finding_ids(payload)
+
+
+def test_project_scan_package_manager_guess(tmp_path: Path) -> None:
+    cases = [
+        ("package-lock.json", "npm"),
+        ("pnpm-lock.yaml", "pnpm"),
+        ("yarn.lock", "yarn"),
+        ("bun.lockb", "bun"),
+    ]
+    for lockfile, expected in cases:
+        root = tmp_path / expected
+        root.mkdir()
+        write_package_json(root, {"test": "vitest run"})
+        root.joinpath(lockfile).write_text("", encoding="utf-8")
+
+        payload = project_scan_payload(root)
+
+        assert payload["package_manager_guess"] == expected
+
+
+def test_project_scan_package_json_scripts_detected(tmp_path: Path) -> None:
+    write_package_json(
+        tmp_path,
+        {"build": "vite build", "lint": "eslint .", "test": "vitest run"},
+    )
+
+    payload = project_scan_payload(tmp_path)
+
+    assert payload["node_scripts"] == ["build", "lint", "test"]
+    assert payload["has_build_script"] is True
+    assert payload["has_lint_script"] is True
+    assert payload["has_test_script"] is True
+
+
+def test_project_scan_package_json_without_scripts_warns_without_writes(
+    tmp_path: Path,
+) -> None:
+    write_package_json(tmp_path)
+
+    payload = project_scan_payload(tmp_path)
+
+    assert {"node_without_test_script", "node_without_lint_script"} <= finding_ids(
+        payload
+    )
+    assert not config_path(tmp_path).exists()
+    assert not (tmp_path / ".vibebench" / "runs").exists()
+    assert not (tmp_path / ".vibebench" / "baselines").exists()
+
+
+def test_project_scan_malformed_package_json_reports_finding(tmp_path: Path) -> None:
+    tmp_path.joinpath("package.json").write_text("{not-json", encoding="utf-8")
+
+    payload = project_scan_payload(tmp_path)
+
+    assert payload["recommended_profile"] == "node"
+    assert "malformed_package_json" in finding_ids(payload)
+    assert payload["status"] == "blocked"
+
+
+def test_project_scan_strict_fails_on_malformed_package_json(
+    tmp_path: Path,
+) -> None:
+    tmp_path.joinpath("package.json").write_text("{not-json", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["project-scan", "--project-root", str(tmp_path), "--strict", "--json"],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert payload["strict_failed"] is True
+    assert "malformed_package_json" in finding_ids(payload)
+
+
+def test_project_scan_existing_valid_config_reported_valid(tmp_path: Path) -> None:
+    init_result = runner.invoke(app, ["init", "--project-root", str(tmp_path)])
+
+    payload = project_scan_payload(tmp_path)
+
+    assert init_result.exit_code == 0
+    assert payload["config_present"] is True
+    assert payload["config_valid"] is True
+    assert payload["config_status"] == "valid"
+    assert payload["active_command_groups"]["test"]
+    assert "existing_config_valid" in finding_ids(payload)
+
+
+def test_project_scan_existing_invalid_config_reported_invalid(
+    tmp_path: Path,
+) -> None:
+    config_path(tmp_path).parent.mkdir(parents=True)
+    config_path(tmp_path).write_text("project:\n  name: ''\n", encoding="utf-8")
+
+    payload = project_scan_payload(tmp_path)
+
+    assert payload["config_present"] is True
+    assert payload["config_valid"] is False
+    assert payload["config_status"] == "invalid"
+    assert "invalid_vibebench_config" in finding_ids(payload)
+
+
+def test_project_scan_strict_fails_on_invalid_config(tmp_path: Path) -> None:
+    config_path(tmp_path).parent.mkdir(parents=True)
+    config_path(tmp_path).write_text("project:\n  name: ''\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["project-scan", "--project-root", str(tmp_path), "--strict", "--json"],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert payload["strict_failed"] is True
+    assert "invalid_vibebench_config" in finding_ids(payload)
+
+
+def test_project_scan_json_output_writes_file_with_human_stdout(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "scan" / "result.json"
+
+    result = runner.invoke(
+        app,
+        ["project-scan", "--project-root", str(tmp_path), "--json-output", str(output)],
+    )
+    payload = json.loads(output.read_text(encoding="utf-8"))
+
+    assert result.exit_code == 0
+    assert "VibeBench project scan" in result.output
+    assert not result.output.lstrip().startswith("{")
+    assert payload["recommended_profile"] == "generic"
+
+
+def test_project_scan_summary_output_writes_markdown(tmp_path: Path) -> None:
+    output = tmp_path / "scan.md"
+
+    result = runner.invoke(
+        app,
+        [
+            "project-scan",
+            "--project-root",
+            str(tmp_path),
+            "--summary-output",
+            str(output),
+        ],
+    )
+    markdown = output.read_text(encoding="utf-8")
+
+    assert result.exit_code == 0
+    assert markdown.startswith("# VibeBench Project Scan")
+    assert "| Severity | Finding | Recommendation |" in markdown
+    assert "python3 -m vibebench init --profile auto" in markdown
+
+
+def test_project_scan_json_and_summary_keep_stdout_json(tmp_path: Path) -> None:
+    output = tmp_path / "scan.md"
+
+    result = runner.invoke(
+        app,
+        [
+            "project-scan",
+            "--project-root",
+            str(tmp_path),
+            "--summary-output",
+            str(output),
+            "--json",
+        ],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    assert payload["recommended_profile"] == "generic"
+    assert output.exists()
+
+
+def test_project_scan_creates_no_runs_baselines_or_config(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["project-scan", "--project-root", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert not config_path(tmp_path).exists()
+    assert not (tmp_path / ".vibebench" / "runs").exists()
+    assert not (tmp_path / ".vibebench" / "baselines").exists()
+
+
 def test_config_command_without_file_prints_defaults(tmp_path: Path) -> None:
     result = runner.invoke(app, ["config", "--project-root", str(tmp_path)])
 

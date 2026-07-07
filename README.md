@@ -305,11 +305,17 @@ regression:
 ## Example Workflow
 
 ```bash
+# Inspect onboarding readiness without writing files
+python3 -m vibebench project-scan
+python3 -m vibebench project-scan --json
+
 # Create project config once
-python -m vibebench init
+python3 -m vibebench init --profile auto
 
 # Inspect and validate the effective configuration
-python -m vibebench config --show-source
+python3 -m vibebench config --check
+python3 -m vibebench ci --dry-run
+python3 -m vibebench ci
 
 # Diagnose whether the project is ready for VibeBench
 python -m vibebench doctor

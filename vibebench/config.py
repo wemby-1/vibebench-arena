@@ -1,6 +1,5 @@
 """Configuration models and loader for VibeBench Arena."""
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -18,6 +17,10 @@ from pydantic import (
 )
 
 from vibebench.paths import config_file
+from vibebench.project_detect import (
+    detect_project,
+    select_profile_for_stacks,
+)
 
 DEFAULT_RISK_FORBIDDEN_PATHS = [".env", ".env.*", "secrets/"]
 DEFAULT_SECRET_LIKE_PATHS = [
@@ -400,21 +403,6 @@ def config_example_yaml() -> str:
 
 
 INIT_PROFILE_NAMES = {"generic", "python", "node", "fullstack", "auto"}
-PYTHON_PROJECT_MARKERS = (
-    "pyproject.toml",
-    "setup.py",
-    "setup.cfg",
-    "requirements.txt",
-    "tests",
-)
-NODE_PROJECT_MARKERS = (
-    "package.json",
-    "pnpm-lock.yaml",
-    "yarn.lock",
-    "package-lock.json",
-    "tsconfig.json",
-)
-NODE_GLOB_MARKERS = ("vite.config.*", "next.config.*")
 
 
 @dataclass(frozen=True)
@@ -441,9 +429,11 @@ def resolve_init_config_profile(profile: str, project_root: Path) -> InitProfile
         raise ConfigError(
             f"Unknown init profile '{profile}'. Choose one of: {allowed}."
         )
-    detected_stacks, detection_reasons = detect_init_stacks(project_root)
+    detection = detect_project(project_root)
+    detected_stacks = detection.detected_stacks
+    detection_reasons = detection.detection_reasons
     selected = select_init_profile(profile, detected_stacks)
-    package_scripts = package_json_scripts(project_root)
+    package_scripts = detection.node_scripts
     payload = init_config_profile_payload(selected, package_scripts=package_scripts)
     return InitProfileResult(
         selected_profile=selected,
@@ -458,58 +448,12 @@ def select_init_profile(requested_profile: str, detected_stacks: list[str]) -> s
     """Select the concrete init profile for a request."""
     if requested_profile != "auto":
         return requested_profile
-    has_python = "python" in detected_stacks
-    has_node = "node" in detected_stacks
-    if has_python and has_node:
-        return "fullstack"
-    if has_node:
-        return "node"
-    if has_python:
-        return "python"
-    return "generic"
+    return select_profile_for_stacks(detected_stacks)
 
 
 def detect_init_profile(project_root: Path) -> str:
     """Select an init profile from lightweight project markers."""
-    detected_stacks, _reasons = detect_init_stacks(project_root)
-    return select_init_profile("auto", detected_stacks)
-
-
-def detect_init_stacks(project_root: Path) -> tuple[list[str], list[str]]:
-    """Detect likely project stacks from filesystem markers."""
-    detected: list[str] = []
-    reasons: list[str] = []
-    for marker in PYTHON_PROJECT_MARKERS:
-        if (project_root / marker).exists():
-            if "python" not in detected:
-                detected.append("python")
-            reasons.append(f"python:{marker}")
-    for marker in NODE_PROJECT_MARKERS:
-        if (project_root / marker).exists():
-            if "node" not in detected:
-                detected.append("node")
-            reasons.append(f"node:{marker}")
-    for pattern in NODE_GLOB_MARKERS:
-        for path in sorted(project_root.glob(pattern)):
-            if "node" not in detected:
-                detected.append("node")
-            reasons.append(f"node:{path.name}")
-    return detected, reasons
-
-
-def package_json_scripts(project_root: Path) -> list[str]:
-    """Return script names from package.json without modifying the project."""
-    package_json = project_root / "package.json"
-    if not package_json.exists() or not package_json.is_file():
-        return []
-    try:
-        payload = json.loads(package_json.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return []
-    scripts = payload.get("scripts")
-    if not isinstance(scripts, dict):
-        return []
-    return sorted(key for key, value in scripts.items() if isinstance(value, str))
+    return detect_project(project_root).recommended_profile
 
 
 def init_config_profile_payload(

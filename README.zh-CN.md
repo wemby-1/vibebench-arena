@@ -302,11 +302,17 @@ regression:
 ## 示例流程
 
 ```bash
+# 先以只读方式检查项目接入状态
+python3 -m vibebench project-scan
+python3 -m vibebench project-scan --json
+
 # 第一次使用时创建配置
-python -m vibebench init
+python3 -m vibebench init --profile auto
 
 # 查看并验证最终生效的配置
-python -m vibebench config --show-source
+python3 -m vibebench config --check
+python3 -m vibebench ci --dry-run
+python3 -m vibebench ci
 
 # 检查当前项目是否已经准备好运行 VibeBench
 python -m vibebench doctor
