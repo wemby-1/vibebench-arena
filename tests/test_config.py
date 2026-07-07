@@ -324,3 +324,81 @@ def test_invalid_metrics_diff_policy_rule_shape_fails_clearly(tmp_path: Path) ->
         ConfigError, match="metrics_diff.policy.custom_rules.0.unknown"
     ):
         load_config(config_path)
+
+
+def write_project_scan_config(tmp_path: Path, policy_yaml: str) -> Path:
+    config_dir = tmp_path / ".vibebench"
+    config_dir.mkdir(parents=True)
+    config_path = config_dir / "config.yaml"
+    config_path.write_text(
+        f"""project:
+  name: demo
+checks:
+  test:
+    - pytest -q
+  lint:
+    - ruff check .
+project_scan:
+  policy:
+{policy_yaml}
+""",
+        encoding="utf-8",
+    )
+    return config_path
+
+
+def test_config_loader_reads_project_scan_policy(tmp_path: Path) -> None:
+    config_path = write_project_scan_config(
+        tmp_path,
+        """    enabled: true
+    require_config_valid: true
+    require_supported_stack: true
+    allowed_profiles:
+      - python
+      - node
+    fail_on_error_findings: true
+    fail_on_warning_findings: true
+    require_recommended_profile: false
+""",
+    )
+
+    config = load_config(config_path)
+
+    policy = config.project_scan.policy
+    assert policy.enabled is True
+    assert policy.require_config_valid is True
+    assert policy.require_supported_stack is True
+    assert policy.allowed_profiles == ["python", "node"]
+    assert policy.fail_on_error_findings is True
+    assert policy.fail_on_warning_findings is True
+    assert policy.require_recommended_profile is False
+
+
+def test_invalid_project_scan_policy_boolean_fails_clearly(tmp_path: Path) -> None:
+    config_path = write_project_scan_config(tmp_path, "    enabled: maybe\n")
+
+    with pytest.raises(ConfigError, match="project_scan.policy.enabled"):
+        load_config(config_path)
+
+
+def test_invalid_project_scan_policy_unknown_key_fails_clearly(
+    tmp_path: Path,
+) -> None:
+    config_path = write_project_scan_config(tmp_path, "    unknown: true\n")
+
+    with pytest.raises(ConfigError, match="project_scan.policy.unknown"):
+        load_config(config_path)
+
+
+def test_invalid_project_scan_policy_allowed_profile_fails_clearly(
+    tmp_path: Path,
+) -> None:
+    config_path = write_project_scan_config(
+        tmp_path,
+        """    allowed_profiles:
+      - rails
+""",
+    )
+
+    with pytest.raises(ConfigError, match="project_scan.policy.allowed_profiles"):
+        load_config(config_path)

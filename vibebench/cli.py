@@ -472,6 +472,7 @@ def write_project_init_config(config_path: Path, content: str) -> None:
                     "compare": "generated",
                     "regression": "generated",
                     "metrics_diff": "generated",
+                    "project_scan": "generated",
                 },
                 config_path=temp_path,
                 config_exists=True,
@@ -594,11 +595,18 @@ def project_scan_command(
             help="Exit non-zero for invalid config or malformed package.json.",
         ),
     ] = False,
+    enforce_policy: Annotated[
+        bool,
+        typer.Option(
+            "--enforce-policy",
+            help="Evaluate project-scan policy and fail when it is violated.",
+        ),
+    ] = False,
 ) -> None:
     """Inspect onboarding readiness without writing project artifacts."""
     root = project_root.resolve()
     try:
-        payload = run_project_scan(root, strict=strict)
+        payload = run_project_scan(root, strict=strict, enforce_policy=enforce_policy)
         if json_output is not None:
             write_project_scan_json(resolve_output_path(root, json_output), payload)
         if summary_output is not None:
@@ -626,7 +634,9 @@ def project_scan_command(
         print(json.dumps(payload, indent=2, sort_keys=True))
     else:
         render_project_scan_result(payload)
-    if payload.get("strict_failed"):
+    if payload.get("strict_failed") or (
+        payload.get("policy_enforced") and payload.get("policy_status") == "failed"
+    ):
         raise typer.Exit(code=1)
 
 
@@ -655,6 +665,27 @@ def render_project_scan_result(payload: dict[str, object]) -> None:
                 str(finding.get("recommendation", "")),
             )
         console.print(table)
+    policy_findings = payload.get("policy_findings") or []
+    if "policy_status" in payload:
+        console.print(f"Policy status: {payload['policy_status']}")
+        console.print(f"Policy source: {payload['policy_source']}")
+        console.print(f"Policy enforced: {str(payload['policy_enforced']).lower()}")
+        if policy_findings:
+            policy_table = Table(title="Policy Findings")
+            policy_table.add_column("Severity")
+            policy_table.add_column("Finding")
+            policy_table.add_column("Rule")
+            policy_table.add_column("Recommendation")
+            for finding in policy_findings:
+                if not isinstance(finding, dict):
+                    continue
+                policy_table.add_row(
+                    str(finding.get("severity", "")),
+                    str(finding.get("title", "")),
+                    str(finding.get("rule", "")),
+                    str(finding.get("recommendation", "")),
+                )
+            console.print(policy_table)
     console.print("Next steps:")
     for step in payload.get("next_steps", []):
         console.print(f"  {step}")
@@ -2848,6 +2879,13 @@ def ci_command(
             help="Skip optional project-scan artifact generation.",
         ),
     ] = False,
+    project_scan_policy: Annotated[
+        bool,
+        typer.Option(
+            "--project-scan-policy",
+            help="Run project-scan artifacts with policy enforcement.",
+        ),
+    ] = False,
     metrics_check: Annotated[
         bool,
         typer.Option(
@@ -3067,6 +3105,7 @@ def ci_command(
                 skip_evidence_room=skip_evidence_room,
                 project_scan=project_scan,
                 skip_project_scan=skip_project_scan,
+                project_scan_policy=project_scan_policy,
                 metrics_check=metrics_check,
                 skip_metrics_check=skip_metrics_check,
                 metrics_diff=metrics_diff,
@@ -3117,6 +3156,7 @@ def ci_command(
                 skip_evidence_room=skip_evidence_room,
                 project_scan=project_scan,
                 skip_project_scan=skip_project_scan,
+                project_scan_policy=project_scan_policy,
                 metrics_check=metrics_check,
                 skip_metrics_check=skip_metrics_check,
                 metrics_diff=metrics_diff,

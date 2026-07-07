@@ -106,6 +106,17 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "custom_rules": [],
         },
     },
+    "project_scan": {
+        "policy": {
+            "enabled": False,
+            "require_config_valid": True,
+            "require_supported_stack": True,
+            "allowed_profiles": ["generic", "python", "node", "fullstack"],
+            "fail_on_error_findings": True,
+            "fail_on_warning_findings": False,
+            "require_recommended_profile": False,
+        },
+    },
 }
 
 
@@ -331,6 +342,53 @@ class MetricsDiffConfig(BaseModel):
     policy: MetricsDiffPolicyConfig = Field(default_factory=MetricsDiffPolicyConfig)
 
 
+
+class ProjectScanPolicyConfig(BaseModel):
+    """Project-scan policy gate defaults."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: StrictBool = False
+    require_config_valid: StrictBool = True
+    require_supported_stack: StrictBool = True
+    allowed_profiles: list[StrictStr] = Field(
+        default_factory=lambda: ["generic", "python", "node", "fullstack"]
+    )
+    fail_on_error_findings: StrictBool = True
+    fail_on_warning_findings: StrictBool = False
+    require_recommended_profile: StrictBool = False
+
+    @field_validator("allowed_profiles")
+    @classmethod
+    def validate_allowed_profiles(cls, value: list[str]) -> list[str]:
+        """Validate project-scan profile allowlist."""
+        allowed = {"generic", "python", "node", "fullstack"}
+        if not value:
+            raise ValueError("project_scan.policy.allowed_profiles must not be empty")
+        seen: set[str] = set()
+        for profile in value:
+            if profile not in allowed:
+                allowed_text = ", ".join(sorted(allowed))
+                raise ValueError(
+                    "project_scan.policy.allowed_profiles entries must be one of: "
+                    f"{allowed_text}"
+                )
+            if profile in seen:
+                raise ValueError(
+                    f"project_scan.policy.allowed_profiles.{profile} is duplicated"
+                )
+            seen.add(profile)
+        return value
+
+
+class ProjectScanConfig(BaseModel):
+    """Project-scan configuration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    policy: ProjectScanPolicyConfig = Field(default_factory=ProjectScanPolicyConfig)
+
+
 class VibeBenchConfig(BaseModel):
     """Top-level VibeBench configuration."""
 
@@ -344,6 +402,7 @@ class VibeBenchConfig(BaseModel):
     compare: CompareConfig = Field(default_factory=CompareConfig)
     regression: RegressionConfig = Field(default_factory=RegressionConfig)
     metrics_diff: MetricsDiffConfig = Field(default_factory=MetricsDiffConfig)
+    project_scan: ProjectScanConfig = Field(default_factory=ProjectScanConfig)
 
     def effective_risk(self) -> RiskConfig:
         """Return the active Git diff risk policy."""
@@ -396,6 +455,17 @@ def config_example_yaml() -> str:
                     {"metric": "quality.accuracy", "max_drop": 0.01},
                     {"metric": "latency.p95_ms", "max_increase": 50},
                 ],
+            },
+        },
+        "project_scan": {
+            "policy": {
+                "enabled": False,
+                "require_config_valid": True,
+                "require_supported_stack": True,
+                "allowed_profiles": ["generic", "python", "node", "fullstack"],
+                "fail_on_error_findings": True,
+                "fail_on_warning_findings": False,
+                "require_recommended_profile": False,
             },
         },
     }
@@ -506,6 +576,17 @@ def init_config_profile_payload(
                 "custom_rules": [],
             },
         },
+        "project_scan": {
+            "policy": {
+                "enabled": False,
+                "require_config_valid": True,
+                "require_supported_stack": True,
+                "allowed_profiles": ["generic", "python", "node", "fullstack"],
+                "fail_on_error_findings": True,
+                "fail_on_warning_findings": False,
+                "require_recommended_profile": False,
+            },
+        },
     }
 
 
@@ -605,6 +686,7 @@ def load_effective_config(path: Path | None = None) -> EffectiveConfigResult:
                 "compare": "built-in defaults",
                 "regression": "built-in defaults",
                 "metrics_diff": "built-in defaults",
+                "project_scan": "built-in defaults",
             },
             config_path=config_path,
             config_exists=False,
@@ -626,6 +708,9 @@ def load_effective_config(path: Path | None = None) -> EffectiveConfigResult:
         "metrics_diff": (
             "config file" if "metrics_diff" in raw_config else "built-in defaults"
         ),
+        "project_scan": (
+            "config file" if "project_scan" in raw_config else "built-in defaults"
+        ),
     }
     return EffectiveConfigResult(
         config=config,
@@ -644,6 +729,7 @@ def effective_config_payload(result: EffectiveConfigResult) -> dict[str, Any]:
         "compare": result.config.compare.model_dump(),
         "regression": result.config.regression.model_dump(),
         "metrics_diff": result.config.metrics_diff.model_dump(),
+        "project_scan": result.config.project_scan.model_dump(),
         "risk": result.config.effective_risk().model_dump(),
     }
     return payload

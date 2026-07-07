@@ -169,6 +169,7 @@ def plan_ci_pipeline(
     skip_evidence_room: bool = False,
     project_scan: bool = False,
     skip_project_scan: bool = False,
+    project_scan_policy: bool = False,
     metrics_check: bool = False,
     skip_metrics_check: bool = False,
     metrics_diff: bool = False,
@@ -205,6 +206,7 @@ def plan_ci_pipeline(
     validate_project_scan_flags(
         project_scan=project_scan,
         skip_project_scan=skip_project_scan,
+        project_scan_policy=project_scan_policy,
     )
     validate_metrics_artifact_flags(
         metrics_check=metrics_check,
@@ -228,7 +230,14 @@ def plan_ci_pipeline(
         steps.append(planned_step("metrics-diff", message))
     elif skip_metrics_diff:
         steps.append(skipped_plan_step("metrics-diff", "--skip-metrics-diff"))
-    if project_scan:
+    if project_scan_policy:
+        steps.append(
+            planned_step(
+                "project-scan",
+                "Would run project-scan report with policy enforcement",
+            )
+        )
+    elif project_scan:
         steps.append(planned_step("project-scan", "Would run project-scan report"))
     elif skip_project_scan:
         steps.append(skipped_plan_step("project-scan", "--skip-project-scan"))
@@ -606,6 +615,7 @@ def run_ci_pipeline(
     skip_evidence_room: bool = False,
     project_scan: bool = False,
     skip_project_scan: bool = False,
+    project_scan_policy: bool = False,
     metrics_check: bool = False,
     skip_metrics_check: bool = False,
     metrics_diff: bool = False,
@@ -645,6 +655,7 @@ def run_ci_pipeline(
     validate_project_scan_flags(
         project_scan=project_scan,
         skip_project_scan=skip_project_scan,
+        project_scan_policy=project_scan_policy,
     )
     validate_metrics_artifact_flags(
         metrics_check=metrics_check,
@@ -655,6 +666,7 @@ def run_ci_pipeline(
         skip_metrics_diff_policy=skip_metrics_diff_policy,
     )
     metrics_diff_enabled = metrics_diff or metrics_diff_policy
+    project_scan_enabled = project_scan or project_scan_policy
     root = project_root.resolve()
     selected_run_dir = run_dir.resolve() if run_dir is not None else None
     steps: list[CiStepResult] = []
@@ -694,7 +706,7 @@ def run_ci_pipeline(
             skip_release_check=skip_release_check,
             skip_package_check=skip_package_check,
             skip_evidence_room=skip_evidence_room,
-            project_scan=project_scan,
+            project_scan=project_scan_enabled,
             skip_project_scan=skip_project_scan,
             metrics_check=metrics_check,
             skip_metrics_check=skip_metrics_check,
@@ -736,8 +748,14 @@ def run_ci_pipeline(
         steps.append(
             CiStepResult("metrics-diff", "skipped", 0, message="skipped by flag")
         )
-    if project_scan:
-        steps.append(run_project_scan_artifact_step(root, selected_run_dir))
+    if project_scan_enabled:
+        steps.append(
+            run_project_scan_artifact_step(
+                root,
+                selected_run_dir,
+                enforce_policy=project_scan_policy,
+            )
+        )
     elif skip_project_scan:
         steps.append(
             CiStepResult("project-scan", "skipped", 0, message="skipped by flag")
@@ -1122,10 +1140,15 @@ def validate_project_scan_flags(
     *,
     project_scan: bool,
     skip_project_scan: bool,
+    project_scan_policy: bool = False,
 ) -> None:
     """Validate optional project-scan artifact flags."""
     if project_scan and skip_project_scan:
         raise ConfigError("--project-scan and --skip-project-scan cannot be combined.")
+    if project_scan_policy and skip_project_scan:
+        raise ConfigError(
+            "--project-scan-policy cannot be combined with --skip-project-scan."
+        )
 
 
 def validate_metrics_artifact_flags(
@@ -1156,11 +1179,18 @@ def validate_metrics_artifact_flags(
         )
 
 
-def run_project_scan_artifact_step(project_root: Path, run_dir: Path) -> CiStepResult:
+def run_project_scan_artifact_step(
+    project_root: Path,
+    run_dir: Path,
+    *,
+    enforce_policy: bool = False,
+) -> CiStepResult:
     """Generate project-scan artifacts and return CI step status."""
     started = time.perf_counter()
     try:
-        payload = run_project_scan(project_root, strict=False)
+        payload = run_project_scan(
+            project_root, strict=False, enforce_policy=enforce_policy
+        )
         json_path = run_dir / PROJECT_SCAN_JSON
         summary_path = run_dir / PROJECT_SCAN_SUMMARY
         write_project_scan_json(json_path, payload)
@@ -1173,12 +1203,16 @@ def run_project_scan_artifact_step(project_root: Path, run_dir: Path) -> CiStepR
             message=str(exc),
             duration_seconds=elapsed_since(started),
         )
+    policy_failed = enforce_policy and payload.get("policy_status") == "failed"
+    message = f"readiness {payload['status']}"
+    if enforce_policy:
+        message += f"; policy {payload['policy_status']}"
     return CiStepResult(
         "project-scan",
-        "passed",
-        0,
+        "failed" if policy_failed else "passed",
+        1 if policy_failed else 0,
         artifact_path=json_path,
-        message=f"readiness {payload['status']}",
+        message=message,
         duration_seconds=elapsed_since(started),
     )
 

@@ -159,6 +159,33 @@ def config_consistency_checks(
             "when metrics-diff drift should become an explicit gate."
         )
     checks.append(metrics_diff_check)
+
+    project_scan_policy = config.project_scan.policy
+    project_scan_check = {
+        "name": "project_scan_policy",
+        "status": "passed",
+        "message": (
+            "Project-scan policy is internally consistent "
+            f"(enabled={str(project_scan_policy.enabled).lower()}, "
+            f"require_config_valid="
+            f"{str(project_scan_policy.require_config_valid).lower()}, "
+            f"require_supported_stack="
+            f"{str(project_scan_policy.require_supported_stack).lower()}, "
+            f"allowed_profiles="
+            f"{','.join(project_scan_policy.allowed_profiles)}, "
+            f"fail_on_error_findings="
+            f"{str(project_scan_policy.fail_on_error_findings).lower()}, "
+            f"fail_on_warning_findings="
+            f"{str(project_scan_policy.fail_on_warning_findings).lower()})"
+        ),
+    }
+    if include_advice and not project_scan_policy.enabled:
+        project_scan_check["advice"] = (
+            "Use `python3 -m vibebench project-scan --enforce-policy` or "
+            "`python3 -m vibebench ci --project-scan-policy` when onboarding "
+            "readiness should become an explicit gate."
+        )
+    checks.append(project_scan_check)
     return checks
 
 

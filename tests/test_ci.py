@@ -79,6 +79,19 @@ def append_metrics_diff_policy(root: Path, policy_yaml: str) -> None:
     )
 
 
+def append_project_scan_policy(root: Path, policy_yaml: str) -> None:
+    target = config_path(root)
+    config = target.read_text(encoding="utf-8")
+    if "project_scan:" in config:
+        config = config.split("project_scan:\n", 1)[0].rstrip() + "\n"
+    target.write_text(
+        config
+        + "project_scan:\n  policy:\n"
+        + policy_yaml,
+        encoding="utf-8",
+    )
+
+
 def write_package_metadata(root: Path) -> None:
     docs = root / "docs"
     docs.mkdir(parents=True, exist_ok=True)
@@ -1123,6 +1136,30 @@ def test_ci_dry_run_project_scan_json_includes_planned_step(
     assert "project-scan report" in steps["project-scan"]["message"]
 
 
+def test_ci_dry_run_project_scan_policy_json_includes_enforced_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--project-scan-policy",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["project-scan"]["status"] == "planned"
+    assert "policy enforcement" in steps["project-scan"]["message"]
+
+
 def test_ci_dry_run_skip_project_scan_json_includes_skipped_step(
     tmp_path: Path,
 ) -> None:
@@ -1226,6 +1263,109 @@ def test_ci_project_scan_writes_reports_and_json_step(
     summary = run_dir.joinpath("github-step-summary.md").read_text(encoding="utf-8")
     assert "`project-scan.json` (available)" in summary
     assert "`project-scan.md` (available)" in summary
+
+
+def test_ci_project_scan_policy_writes_reports_and_enforces_success(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--project-scan-policy", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("project-scan.json").read_text())
+    assert result.exit_code == 0
+    assert steps["project-scan"]["status"] == "passed"
+    assert "policy passed" in steps["project-scan"]["message"]
+    assert report["policy_enforced"] is True
+    assert report["policy_status"] == "passed"
+    assert run_dir.joinpath("project-scan.md").exists()
+
+    artifacts = runner.invoke(
+        app,
+        ["artifacts", "--project-root", str(tmp_path), "--json"],
+    )
+    artifact_map = {
+        item["name"]: item for item in json.loads(artifacts.output)["artifacts"]
+    }
+    assert artifact_map["project-scan-json"]["available"] is True
+    assert artifact_map["project-scan-md"]["available"] is True
+    assert "project-scan.json" in zip_names(run_dir / "vibebench-bundle.zip")
+
+
+def test_ci_project_scan_policy_enforces_failure(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    append_project_scan_policy(
+        tmp_path,
+        """    allowed_profiles:
+      - node
+""",
+    )
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--project-scan-policy", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("project-scan.json").read_text())
+    assert result.exit_code == 1
+    assert steps["project-scan"]["status"] == "failed"
+    assert report["policy_status"] == "failed"
+    assert "recommended_profile_not_allowed" in {
+        finding["id"] for finding in report["policy_findings"]
+    }
+
+
+def test_ci_project_scan_report_only_ignores_policy_failure(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    append_project_scan_policy(
+        tmp_path,
+        """    allowed_profiles:
+      - node
+""",
+    )
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--project-scan", "--json"],
+    )
+
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("project-scan.json").read_text())
+    assert result.exit_code == 0
+    assert "policy_status" not in report
+
+
+def test_ci_project_scan_policy_conflicts_with_skip_project_scan(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--project-scan-policy",
+            "--skip-project-scan",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "--project-scan-policy cannot be combined" in result.output
 
 
 def test_ci_metrics_check_writes_reports_and_json_step(

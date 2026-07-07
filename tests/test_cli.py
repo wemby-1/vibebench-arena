@@ -646,6 +646,180 @@ def test_project_scan_creates_no_runs_baselines_or_config(tmp_path: Path) -> Non
     assert not (tmp_path / ".vibebench" / "baselines").exists()
 
 
+def write_project_scan_policy_config(root: Path, policy_yaml: str) -> None:
+    config_path(root).parent.mkdir(parents=True, exist_ok=True)
+    config_path(root).write_text(
+        """project:
+  name: demo
+checks:
+  test:
+    - python3 -c "print(1)"
+  lint: []
+project_scan:
+  policy:
+"""
+        + policy_yaml,
+        encoding="utf-8",
+    )
+
+
+def test_project_scan_default_omits_policy_fields(tmp_path: Path) -> None:
+    payload = project_scan_payload(tmp_path)
+
+    assert "policy_status" not in payload
+    assert "policy_findings" not in payload
+
+
+def test_project_scan_enforce_policy_passes_on_supported_project(
+    tmp_path: Path,
+) -> None:
+    tmp_path.joinpath("tests").mkdir()
+    tmp_path.joinpath("pyproject.toml").write_text("[project]\nname='demo'\n")
+    init = runner.invoke(
+        app,
+        ["init", "--project-root", str(tmp_path), "--profile", "python"],
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "project-scan",
+            "--project-root",
+            str(tmp_path),
+            "--enforce-policy",
+            "--json",
+        ],
+    )
+    payload = json.loads(result.output)
+
+    assert init.exit_code == 0
+    assert result.exit_code == 0
+    assert payload["policy_enforced"] is True
+    assert payload["policy_status"] == "passed"
+    assert payload["policy_findings"] == []
+
+
+def test_project_scan_enforce_policy_fails_on_unsupported_project(
+    tmp_path: Path,
+) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "project-scan",
+            "--project-root",
+            str(tmp_path),
+            "--enforce-policy",
+            "--json",
+        ],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert payload["policy_status"] == "failed"
+    assert "unsupported_stack" in {
+        finding["id"] for finding in payload["policy_findings"]
+    }
+
+
+def test_project_scan_enforce_policy_summary_includes_policy_section(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "scan-policy.md"
+
+    result = runner.invoke(
+        app,
+        [
+            "project-scan",
+            "--project-root",
+            str(tmp_path),
+            "--enforce-policy",
+            "--summary-output",
+            str(output),
+        ],
+    )
+    markdown = output.read_text(encoding="utf-8")
+
+    assert result.exit_code == 1
+    assert "## Policy" in markdown
+    assert "Default project-scan remains report-only" in markdown
+
+
+def test_project_scan_policy_allowed_profiles_fails(tmp_path: Path) -> None:
+    write_package_json(tmp_path, {"lint": "eslint .", "test": "vitest run"})
+    write_project_scan_policy_config(
+        tmp_path,
+        """    allowed_profiles:
+      - python
+""",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "project-scan",
+            "--project-root",
+            str(tmp_path),
+            "--enforce-policy",
+            "--json",
+        ],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert "recommended_profile_not_allowed" in {
+        finding["id"] for finding in payload["policy_findings"]
+    }
+
+
+def test_project_scan_policy_fail_on_warning_findings(tmp_path: Path) -> None:
+    write_package_json(tmp_path)
+    write_project_scan_policy_config(
+        tmp_path,
+        """    fail_on_warning_findings: true
+""",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "project-scan",
+            "--project-root",
+            str(tmp_path),
+            "--enforce-policy",
+            "--json",
+        ],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert any(
+        finding["rule"] == "fail_on_warning_findings"
+        for finding in payload["policy_findings"]
+    )
+
+
+def test_project_scan_policy_fail_on_error_findings(tmp_path: Path) -> None:
+    tmp_path.joinpath("package.json").write_text("{not-json", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "project-scan",
+            "--project-root",
+            str(tmp_path),
+            "--enforce-policy",
+            "--json",
+        ],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert any(
+        finding["rule"] == "fail_on_error_findings"
+        for finding in payload["policy_findings"]
+    )
+
+
 def test_config_command_without_file_prints_defaults(tmp_path: Path) -> None:
     result = runner.invoke(app, ["config", "--project-root", str(tmp_path)])
 
@@ -941,6 +1115,7 @@ def test_config_command_json_is_valid(tmp_path: Path) -> None:
         "gate",
         "metrics_diff",
         "project",
+        "project_scan",
         "regression",
         "risk",
     ]
