@@ -56,7 +56,7 @@ GitHub Actions can upload downloadable proof packet, static site preview, and ev
 
 ## Security and privacy boundaries
 
-`project-scan` is read-only, report-only by default, and does not create config, runs, baselines, dependency files, or workflow files unless an explicit output path is provided for JSON or Markdown. `project-scan --enforce-policy` evaluates `project_scan.policy`; `ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `ci --project-scan-policy` writes the same artifacts and enforces the policy. Default CI remains unchanged. VibeBench records local evidence and CI-readable artifacts. It is not a credential leak scanner, a sandbox, a hosted security product, or a replacement for human security review. Treat generated artifacts as review materials and inspect them before sharing.
+`onboard` is read-only and suggests the adoption flow. `project-scan` is read-only, report-only by default, and does not create config, runs, baselines, dependency files, or workflow files unless an explicit output path is provided for JSON or Markdown. `project-scan --enforce-policy` evaluates `project_scan.policy`; `ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `ci --project-scan-policy` writes the same artifacts and enforces the policy. Default CI remains unchanged. VibeBench records local evidence and CI-readable artifacts. It is not a credential leak scanner, a sandbox, a hosted security product, or a replacement for human security review. Treat generated artifacts as review materials and inspect them before sharing.
 
 ## What the project does not claim
 
@@ -78,6 +78,8 @@ python3 -m vibebench site-preview --verify /tmp/vibebench-evidence-room/site-pre
 python3 -m vibebench site-check
 python3 -m vibebench share-check PATH
 python3 -m vibebench share-check PATH --json
+python3 -m vibebench onboard
+python3 -m vibebench onboard --json
 python3 -m vibebench project-scan
 python3 -m vibebench project-scan --json
 python3 -m vibebench project-scan --enforce-policy

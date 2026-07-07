@@ -166,6 +166,8 @@ Git diff 风险分析会标记：
 
 ```bash
 python -m pip install -e ".[dev]"
+python3 -m vibebench onboard
+python3 -m vibebench onboard --json
 python3 -m vibebench project-scan
 python3 -m vibebench init --profile auto
 python3 -m vibebench config --check
@@ -217,7 +219,7 @@ python -m vibebench gh-summary
 python -m vibebench compare
 ```
 
-`vibebench project-scan` 是只读 onboarding 检查，默认只报告不失败。`vibebench project-scan --enforce-policy` 会执行 `project_scan.policy`；`vibebench ci --project-scan` 只写入 report-only 的 `project-scan.json` 和 `project-scan.md`，`vibebench ci --project-scan-policy` 写入同名 artifacts 并在策略失败时让 CI 失败。`vibebench init --profile auto` 会安全创建 starter `.vibebench/config.yaml`，不会安装依赖、创建 runs/baselines/workflow 或修改仓库设置。auto 可选择 `generic`、`python`、`node` 或 `fullstack`；`--profile python` 使用 `python3 -m pytest -q` 和 `python3 -m ruff check .`，`--profile node` 复用已有 `package.json` lint/test scripts，`--profile generic` 使用保守的无额外依赖 starter。已有配置默认拒绝覆盖，只有明确传入 `--force` 才会覆盖。随后运行 `python3 -m vibebench config --check`、`python3 -m vibebench ci --dry-run` 和 `python3 -m vibebench ci`。
+`vibebench onboard` 是只读接入计划；`vibebench project-scan` 是只读 onboarding 检查，默认只报告不失败。`vibebench project-scan --enforce-policy` 会执行 `project_scan.policy`；`vibebench ci --project-scan` 只写入 report-only 的 `project-scan.json` 和 `project-scan.md`，`vibebench ci --project-scan-policy` 写入同名 artifacts 并在策略失败时让 CI 失败。`vibebench init --profile auto` 会安全创建 starter `.vibebench/config.yaml`，不会安装依赖、创建 runs/baselines/workflow 或修改仓库设置。auto 可选择 `generic`、`python`、`node` 或 `fullstack`；`--profile python` 使用 `python3 -m pytest -q` 和 `python3 -m ruff check .`，`--profile node` 复用已有 `package.json` lint/test scripts，`--profile generic` 使用保守的无额外依赖 starter。已有配置默认拒绝覆盖，只有明确传入 `--force` 才会覆盖。随后运行 `python3 -m vibebench config --check`、`python3 -m vibebench ci --dry-run` 和 `python3 -m vibebench ci`。
 
 如果要检查安装与打包准备情况，可以使用 editable install 和本地 metadata 检查：
 
@@ -306,6 +308,8 @@ regression:
 
 ```bash
 # 先以只读方式检查项目接入状态
+python3 -m vibebench onboard
+python3 -m vibebench onboard --json
 python3 -m vibebench project-scan
 python3 -m vibebench project-scan --json
 python3 -m vibebench project-scan --enforce-policy

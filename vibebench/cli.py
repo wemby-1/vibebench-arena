@@ -120,6 +120,12 @@ from vibebench.metrics_diff import (
     metrics_diff_json,
     run_metrics_diff,
 )
+from vibebench.onboard import (
+    onboard_json,
+    onboard_payload,
+    write_onboard_json,
+    write_onboard_summary,
+)
 from vibebench.package_check import (
     PackageReadinessResult,
     package_check_json_payload,
@@ -571,6 +577,92 @@ def render_project_init_result(payload: dict[str, object]) -> None:
     console.print("Next steps:")
     for step in payload["next_steps"]:
         console.print(f"  {step}")
+
+
+@app.command("onboard")
+def onboard_command(
+    project_root: ProjectRootOption = Path("."),
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print onboarding plan as pure JSON."),
+    ] = False,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write onboarding plan JSON to PATH."),
+    ] = None,
+    summary_output: Annotated[
+        Path | None,
+        typer.Option("--summary-output", help="Write onboarding plan Markdown."),
+    ] = None,
+    strict: Annotated[
+        bool,
+        typer.Option(
+            "--strict",
+            help="Exit non-zero when onboarding is not ready for immediate CI.",
+        ),
+    ] = False,
+) -> None:
+    """Plan read-only VibeBench adoption steps for this project."""
+    root = project_root.resolve()
+    try:
+        payload = onboard_payload(root, strict=strict)
+        if json_output is not None:
+            write_onboard_json(resolve_output_path(root, json_output), payload)
+        if summary_output is not None:
+            write_onboard_summary(resolve_output_path(root, summary_output), payload)
+    except ConfigError as exc:
+        if as_json:
+            print(
+                json.dumps(
+                    {
+                        "status": "failed",
+                        "project_root": str(root),
+                        "message": str(exc),
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+        else:
+            err_console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if as_json:
+        print(onboard_json(payload))
+    else:
+        render_onboard_result(payload)
+    if payload.get("strict_failed"):
+        raise typer.Exit(code=1)
+
+
+def render_onboard_result(payload: dict[str, object]) -> None:
+    """Render concise onboarding plan output."""
+    stacks = payload.get("detected_stacks") or []
+    reasons = payload.get("detection_reasons") or []
+    stack_text = ", ".join(str(stack) for stack in stacks) if stacks else "none"
+    console.print("VibeBench onboarding plan")
+    console.print(f"Project root: {payload['project_root']}")
+    console.print(f"Status: {payload['status']}")
+    console.print(f"Detected stacks: {stack_text}")
+    if reasons:
+        console.print(
+            "Detection reasons: " + ", ".join(str(reason) for reason in reasons)
+        )
+    console.print(f"Recommended init profile: {payload['recommended_profile']}")
+    console.print(f"Project-scan readiness: {payload['scan_readiness']}")
+    console.print(f"Config exists: {str(payload['config_exists']).lower()}")
+    warnings = payload.get("warnings") or []
+    if warnings:
+        table = Table(title="Warnings")
+        table.add_column("Warning")
+        for warning in warnings:
+            table.add_row(str(warning))
+        console.print(table)
+    console.print("Suggested commands:")
+    for command in payload.get("suggested_commands", []):
+        console.print(f"  {command}")
+    if payload.get("strict_failed"):
+        console.print("Strict mode: onboarding is not ready for immediate CI.")
 
 
 @app.command("project-scan")

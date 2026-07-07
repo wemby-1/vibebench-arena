@@ -15,6 +15,8 @@ python -m vibebench package-check
 ## Initialize VibeBench
 
 ```bash
+python3 -m vibebench onboard
+python3 -m vibebench onboard --json
 python3 -m vibebench project-scan
 python3 -m vibebench project-scan --json
 python3 -m vibebench project-scan --enforce-policy
@@ -26,7 +28,7 @@ python3 -m vibebench ci --project-scan-policy
 python3 -m vibebench ci
 ```
 
-`project-scan` is read-only and report-only by default: it detects stacks, recommends an init profile, inspects config status, and never creates config, runs, baselines, dependencies, or workflow files. `project-scan --enforce-policy` evaluates `project_scan.policy`; `ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `ci --project-scan-policy` writes the same artifacts and enforces the policy. Default CI is unchanged unless one of those flags is passed.
+`onboard` is a read-only adoption plan. `project-scan` is read-only and report-only by default: it detects stacks, recommends an init profile, inspects config status, and never creates config, runs, baselines, dependencies, or workflow files. `project-scan --enforce-policy` evaluates `project_scan.policy`; `ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `ci --project-scan-policy` writes the same artifacts and enforces the policy. Default CI is unchanged unless one of those flags is passed.
 
 ```yaml
 project_scan:

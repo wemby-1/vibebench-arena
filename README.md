@@ -169,6 +169,8 @@ These Git diff rules are configurable in `.vibebench/config.yaml` under the `ris
 
 ```bash
 python -m pip install -e ".[dev]"
+python3 -m vibebench onboard
+python3 -m vibebench onboard --json
 python3 -m vibebench project-scan
 python3 -m vibebench init --profile auto
 python3 -m vibebench config --check
@@ -220,7 +222,7 @@ python -m vibebench gh-summary
 python -m vibebench compare
 ```
 
-`vibebench project-scan` is read-only onboarding inspection and report-only by default. `vibebench project-scan --enforce-policy` evaluates `project_scan.policy`; `vibebench ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `vibebench ci --project-scan-policy` writes the same artifacts and fails CI when policy fails. `vibebench init --profile auto` creates a safe starter `.vibebench/config.yaml` without installing dependencies, creating runs/baselines/workflows, or changing repository settings. Auto can select `generic`, `python`, `node`, or `fullstack`; use `--profile python` for `python3 -m pytest -q` plus `python3 -m ruff check .`, `--profile node` for existing `package.json` lint/test scripts, or `--profile generic` for a conservative dependency-free starter. Existing config is not overwritten unless `--force` is used. Then run `python3 -m vibebench config --check`, `python3 -m vibebench ci --dry-run`, and `python3 -m vibebench ci`.
+`vibebench onboard` is a read-only adoption plan; `vibebench project-scan` is read-only onboarding inspection and report-only by default. `vibebench project-scan --enforce-policy` evaluates `project_scan.policy`; `vibebench ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `vibebench ci --project-scan-policy` writes the same artifacts and fails CI when policy fails. `vibebench init --profile auto` creates a safe starter `.vibebench/config.yaml` without installing dependencies, creating runs/baselines/workflows, or changing repository settings. Auto can select `generic`, `python`, `node`, or `fullstack`; use `--profile python` for `python3 -m pytest -q` plus `python3 -m ruff check .`, `--profile node` for existing `package.json` lint/test scripts, or `--profile generic` for a conservative dependency-free starter. Existing config is not overwritten unless `--force` is used. Then run `python3 -m vibebench config --check`, `python3 -m vibebench ci --dry-run`, and `python3 -m vibebench ci`.
 
 For packaging readiness, use editable install and local metadata checks:
 
@@ -319,6 +321,8 @@ project_scan:
 
 ```bash
 # Inspect onboarding readiness without writing files
+python3 -m vibebench onboard
+python3 -m vibebench onboard --json
 python3 -m vibebench project-scan
 python3 -m vibebench project-scan --json
 python3 -m vibebench project-scan --enforce-policy

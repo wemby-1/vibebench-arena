@@ -391,6 +391,175 @@ def test_init_generated_config_can_be_used_with_config_check(tmp_path: Path) -> 
     assert payload["overall_status"] == "passed"
 
 
+
+
+def onboard_payload_for(root: Path, *extra: str) -> dict[str, object]:
+    result = runner.invoke(
+        app,
+        ["onboard", "--project-root", str(root), "--json", *extra],
+    )
+    assert result.output.lstrip().startswith("{")
+    assert result.exit_code == 0
+    return json.loads(result.output)
+
+
+def test_onboard_human_output(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["onboard", "--project-root", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert "VibeBench onboarding plan" in result.output
+    assert "Recommended init profile: generic" in result.output
+    assert "python3 -m vibebench init --profile auto" in result.output
+
+
+def test_onboard_json_stdout_is_pure_json(tmp_path: Path) -> None:
+    payload = onboard_payload_for(tmp_path)
+
+    assert payload["recommended_profile"] == "generic"
+    assert payload["config_exists"] is False
+    assert payload["next_step"] == "python3 -m vibebench init --profile auto"
+
+
+def test_onboard_json_output_writes_file_with_human_stdout(tmp_path: Path) -> None:
+    output = tmp_path / "onboard" / "plan.json"
+
+    result = runner.invoke(
+        app,
+        ["onboard", "--project-root", str(tmp_path), "--json-output", str(output)],
+    )
+    payload = json.loads(output.read_text(encoding="utf-8"))
+
+    assert result.exit_code == 0
+    assert "VibeBench onboarding plan" in result.output
+    assert not result.output.lstrip().startswith("{")
+    assert payload["recommended_profile"] == "generic"
+
+
+def test_onboard_summary_output_writes_markdown(tmp_path: Path) -> None:
+    output = tmp_path / "onboard.md"
+
+    result = runner.invoke(
+        app,
+        ["onboard", "--project-root", str(tmp_path), "--summary-output", str(output)],
+    )
+    markdown = output.read_text(encoding="utf-8")
+
+    assert result.exit_code == 0
+    assert markdown.startswith("# VibeBench Onboarding Plan")
+    assert "python3 -m vibebench init --profile auto" in markdown
+
+
+def test_onboard_empty_project_detection(tmp_path: Path) -> None:
+    payload = onboard_payload_for(tmp_path)
+
+    assert payload["recommended_profile"] == "generic"
+    assert payload["detected_stacks"] == []
+    assert payload["scan_status"] == "needs_init"
+    assert "No VibeBench config exists yet." in payload["warnings"]
+
+
+def test_onboard_python_project_detection(tmp_path: Path) -> None:
+    tmp_path.joinpath("tests").mkdir()
+    tmp_path.joinpath("pyproject.toml").write_text("[project]\nname='demo'\n")
+
+    payload = onboard_payload_for(tmp_path)
+
+    assert payload["recommended_profile"] == "python"
+    assert payload["detected_stacks"] == ["python"]
+    assert "python:pyproject.toml" in payload["detection_reasons"]
+
+
+def test_onboard_node_project_detection(tmp_path: Path) -> None:
+    write_package_json(tmp_path, {"lint": "eslint .", "test": "vitest run"})
+
+    payload = onboard_payload_for(tmp_path)
+
+    assert payload["recommended_profile"] == "node"
+    assert payload["detected_stacks"] == ["node"]
+
+
+def test_onboard_fullstack_project_detection(tmp_path: Path) -> None:
+    tmp_path.joinpath("tests").mkdir()
+    tmp_path.joinpath("pyproject.toml").write_text("[project]\nname='demo'\n")
+    write_package_json(tmp_path, {"lint": "eslint ."})
+
+    payload = onboard_payload_for(tmp_path)
+
+    assert payload["recommended_profile"] == "fullstack"
+    assert payload["detected_stacks"] == ["python", "node"]
+
+
+def test_onboard_config_exists_true_false(tmp_path: Path) -> None:
+    missing = onboard_payload_for(tmp_path)
+    init = runner.invoke(app, ["init", "--project-root", str(tmp_path)])
+    present = onboard_payload_for(tmp_path)
+
+    assert init.exit_code == 0
+    assert missing["config_exists"] is False
+    assert present["config_exists"] is True
+    assert present["next_step"] == "python3 -m vibebench config --check"
+
+
+def test_onboard_strict_passes_when_config_is_valid(tmp_path: Path) -> None:
+    init = runner.invoke(app, ["init", "--project-root", str(tmp_path)])
+
+    result = runner.invoke(
+        app,
+        ["onboard", "--project-root", str(tmp_path), "--strict", "--json"],
+    )
+    payload = json.loads(result.output)
+
+    assert init.exit_code == 0
+    assert result.exit_code == 0
+    assert payload["strict_failed"] is False
+
+
+def test_onboard_strict_fails_without_config(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        ["onboard", "--project-root", str(tmp_path), "--strict", "--json"],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert payload["strict_failed"] is True
+    assert payload["message"] == "Onboarding is not ready for immediate CI adoption."
+
+
+def test_onboard_creates_no_runs_baselines_or_config(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["onboard", "--project-root", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert not config_path(tmp_path).exists()
+    assert not (tmp_path / ".vibebench" / "runs").exists()
+    assert not (tmp_path / ".vibebench" / "baselines").exists()
+
+
+def test_onboard_json_and_summary_keep_stdout_json(tmp_path: Path) -> None:
+    summary = tmp_path / "onboard.md"
+    json_output = tmp_path / "onboard.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "onboard",
+            "--project-root",
+            str(tmp_path),
+            "--json",
+            "--json-output",
+            str(json_output),
+            "--summary-output",
+            str(summary),
+        ],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    assert payload == json.loads(json_output.read_text(encoding="utf-8"))
+    assert summary.exists()
+
+
 def project_scan_payload(root: Path, *extra: str) -> dict[str, object]:
     result = runner.invoke(
         app,
