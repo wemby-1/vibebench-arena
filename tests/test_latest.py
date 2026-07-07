@@ -353,6 +353,40 @@ def test_latest_project_scan_artifact_path_only(tmp_path: Path) -> None:
     assert "project-scan.md" in md_result.output
 
 
+def test_latest_onboard_artifact_path_only(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260701_110000")
+    run_dir.joinpath("onboard.json").write_text("{}\n", encoding="utf-8")
+    run_dir.joinpath("onboard.md").write_text("onboard\n", encoding="utf-8")
+
+    json_result = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "onboard-json",
+            "--path-only",
+        ],
+    )
+    md_result = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "onboard-md",
+            "--path-only",
+        ],
+    )
+
+    assert json_result.exit_code == 0
+    assert "onboard.json" in json_result.output
+    assert md_result.exit_code == 0
+    assert "onboard.md" in md_result.output
+
+
 def test_latest_unknown_artifact_fails_clearly(tmp_path: Path) -> None:
     write_run(tmp_path, "20260701_110000")
 

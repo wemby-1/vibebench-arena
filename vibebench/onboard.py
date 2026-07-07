@@ -7,6 +7,9 @@ from typing import Any
 from vibebench.config import ConfigError
 from vibebench.project_scan import run_project_scan
 
+ONBOARD_JSON = "onboard.json"
+ONBOARD_SUMMARY = "onboard.md"
+
 
 def onboard_payload(project_root: Path, *, strict: bool = False) -> dict[str, Any]:
     """Return a deterministic read-only onboarding plan."""

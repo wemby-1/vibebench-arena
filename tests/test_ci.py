@@ -488,6 +488,8 @@ def test_ci_command_creates_standard_artifacts(tmp_path: Path) -> None:
     assert not run_dir.joinpath("metrics-check.md").exists()
     assert not run_dir.joinpath("project-scan.json").exists()
     assert not run_dir.joinpath("project-scan.md").exists()
+    assert not run_dir.joinpath("onboard.json").exists()
+    assert not run_dir.joinpath("onboard.md").exists()
     assert not run_dir.joinpath("regression-check.json").exists()
     assert not run_dir.joinpath("regression-check.md").exists()
     assert run_dir.joinpath("evidence-room", "evidence-room.html").exists()
@@ -1046,6 +1048,7 @@ def test_ci_dry_run_json_outputs_plan_payload(tmp_path: Path) -> None:
         "gh-summary",
     ]
     assert "project-scan" not in [step["name"] for step in payload["steps"]]
+    assert "onboard" not in [step["name"] for step in payload["steps"]]
     for step in payload["steps"]:
         assert set(step) == {
             "name",
@@ -1110,6 +1113,68 @@ def test_ci_dry_run_skip_metrics_check_json_includes_skipped_step(
     assert result.exit_code == 0
     assert steps["metrics-check"]["status"] == "skipped"
     assert steps["metrics-check"]["message"] == "Skipped by --skip-metrics-check"
+
+
+def test_ci_dry_run_onboard_json_includes_planned_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--onboard",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["onboard"]["status"] == "planned"
+    assert "onboarding plan artifacts" in steps["onboard"]["message"]
+
+
+def test_ci_dry_run_default_omits_onboard_step(tmp_path: Path) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--dry-run", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    step_names = [step["name"] for step in payload["steps"]]
+    assert result.exit_code == 0
+    assert "onboard" not in step_names
+
+
+def test_ci_dry_run_skip_onboard_json_includes_skipped_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--skip-onboard",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["onboard"]["status"] == "skipped"
+    assert steps["onboard"]["message"] == "Skipped by --skip-onboard"
 
 
 def test_ci_dry_run_project_scan_json_includes_planned_step(
@@ -1182,6 +1247,112 @@ def test_ci_dry_run_skip_project_scan_json_includes_skipped_step(
     assert result.exit_code == 0
     assert steps["project-scan"]["status"] == "skipped"
     assert steps["project-scan"]["message"] == "Skipped by --skip-project-scan"
+
+
+def test_ci_onboard_writes_reports_and_json_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--onboard", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("onboard.json").read_text())
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    assert "VibeBench onboarding" not in result.output
+    assert payload["run_id"] == run_dir.name
+    assert steps["onboard"]["status"] == "passed"
+    assert steps["onboard"]["artifact"].endswith("onboard.json")
+    assert report["project_root"] == str(tmp_path.resolve())
+    assert "suggested_commands" in report
+    assert run_dir.joinpath("onboard.md").exists()
+
+    artifacts = runner.invoke(
+        app,
+        ["artifacts", "--project-root", str(tmp_path), "--json"],
+    )
+    artifact_map = {
+        item["name"]: item for item in json.loads(artifacts.output)["artifacts"]
+    }
+    assert artifacts.exit_code == 0
+    assert artifact_map["onboard-json"]["available"] is True
+    assert artifact_map["onboard-md"]["available"] is True
+
+    latest_json = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "onboard-json",
+            "--path-only",
+        ],
+    )
+    latest_md = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "onboard-md",
+            "--path-only",
+        ],
+    )
+    assert latest_json.exit_code == 0
+    assert latest_json.output.strip().endswith("onboard.json")
+    assert latest_md.exit_code == 0
+    assert latest_md.output.strip().endswith("onboard.md")
+
+    manifest = check_manifest(tmp_path, run_dir)
+    manifest_payload = json.loads(run_dir.joinpath("manifest.json").read_text())
+    manifest_artifacts = {
+        item["name"]: item for item in manifest_payload["artifacts"]
+    }
+    assert manifest.passed is True
+    assert manifest_artifacts["onboard-json"]["available"] is True
+    assert manifest_artifacts["onboard-md"]["available"] is True
+
+    names = zip_names(run_dir / "vibebench-bundle.zip")
+    assert "onboard.json" in names
+    assert "onboard.md" in names
+
+    summary = run_dir.joinpath("github-step-summary.md").read_text(encoding="utf-8")
+    assert "`onboard.json` (available)" in summary
+    assert "`onboard.md` (available)" in summary
+
+
+def test_ci_skip_onboard_suppresses_onboard_artifacts(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--onboard",
+            "--skip-onboard",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    assert result.exit_code == 0
+    assert steps["onboard"]["status"] == "skipped"
+    assert not run_dir.joinpath("onboard.json").exists()
+    assert not run_dir.joinpath("onboard.md").exists()
 
 
 def test_ci_project_scan_writes_reports_and_json_step(

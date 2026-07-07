@@ -37,6 +37,13 @@ from vibebench.metrics_diff import (
     METRICS_DIFF_SUMMARY,
     run_metrics_diff,
 )
+from vibebench.onboard import (
+    ONBOARD_JSON,
+    ONBOARD_SUMMARY,
+    onboard_payload,
+    write_onboard_json,
+    write_onboard_summary,
+)
 from vibebench.package_check import (
     PACKAGE_CHECK_JSON,
     PACKAGE_CHECK_SUMMARY,
@@ -167,6 +174,8 @@ def plan_ci_pipeline(
     skip_release_check: bool = False,
     skip_package_check: bool = False,
     skip_evidence_room: bool = False,
+    onboard: bool = False,
+    skip_onboard: bool = False,
     project_scan: bool = False,
     skip_project_scan: bool = False,
     project_scan_policy: bool = False,
@@ -230,6 +239,10 @@ def plan_ci_pipeline(
         steps.append(planned_step("metrics-diff", message))
     elif skip_metrics_diff:
         steps.append(skipped_plan_step("metrics-diff", "--skip-metrics-diff"))
+    if skip_onboard:
+        steps.append(skipped_plan_step("onboard", "--skip-onboard"))
+    elif onboard:
+        steps.append(planned_step("onboard", "Would write onboarding plan artifacts"))
     if project_scan_policy:
         steps.append(
             planned_step(
@@ -613,6 +626,8 @@ def run_ci_pipeline(
     skip_release_check: bool = False,
     skip_package_check: bool = False,
     skip_evidence_room: bool = False,
+    onboard: bool = False,
+    skip_onboard: bool = False,
     project_scan: bool = False,
     skip_project_scan: bool = False,
     project_scan_policy: bool = False,
@@ -706,6 +721,8 @@ def run_ci_pipeline(
             skip_release_check=skip_release_check,
             skip_package_check=skip_package_check,
             skip_evidence_room=skip_evidence_room,
+            onboard=onboard,
+            skip_onboard=skip_onboard,
             project_scan=project_scan_enabled,
             skip_project_scan=skip_project_scan,
             metrics_check=metrics_check,
@@ -748,6 +765,10 @@ def run_ci_pipeline(
         steps.append(
             CiStepResult("metrics-diff", "skipped", 0, message="skipped by flag")
         )
+    if skip_onboard:
+        steps.append(CiStepResult("onboard", "skipped", 0, message="skipped by flag"))
+    elif onboard:
+        steps.append(run_onboard_artifact_step(root, selected_run_dir))
     if project_scan_enabled:
         steps.append(
             run_project_scan_artifact_step(
@@ -931,6 +952,8 @@ def append_unavailable_artifact_steps(
     skip_release_check: bool,
     skip_package_check: bool,
     skip_evidence_room: bool,
+    onboard: bool = False,
+    skip_onboard: bool = False,
     project_scan: bool = False,
     skip_project_scan: bool = False,
     metrics_check: bool = False,
@@ -965,6 +988,17 @@ def append_unavailable_artifact_steps(
     elif skip_metrics_diff:
         steps.append(
             CiStepResult("metrics-diff", "skipped", 0, message="skipped by flag")
+        )
+    if skip_onboard:
+        steps.append(CiStepResult("onboard", "skipped", 0, message="skipped by flag"))
+    elif onboard:
+        steps.append(
+            CiStepResult(
+                "onboard",
+                "failed",
+                1,
+                message="no run directory available",
+            )
         )
     if project_scan:
         steps.append(
@@ -1177,6 +1211,33 @@ def validate_metrics_artifact_flags(
         raise ConfigError(
             "--metrics-diff-policy cannot be combined with --skip-metrics-diff."
         )
+
+
+def run_onboard_artifact_step(project_root: Path, run_dir: Path) -> CiStepResult:
+    """Generate onboard artifacts and return CI step status."""
+    started = time.perf_counter()
+    try:
+        payload = onboard_payload(project_root)
+        json_path = run_dir / ONBOARD_JSON
+        summary_path = run_dir / ONBOARD_SUMMARY
+        write_onboard_json(json_path, payload)
+        write_onboard_summary(summary_path, payload)
+    except Exception as exc:
+        return CiStepResult(
+            "onboard",
+            "failed",
+            1,
+            message=str(exc),
+            duration_seconds=elapsed_since(started),
+        )
+    return CiStepResult(
+        "onboard",
+        "passed",
+        0,
+        artifact_path=json_path,
+        message=f"plan {payload['status']}",
+        duration_seconds=elapsed_since(started),
+    )
 
 
 def run_project_scan_artifact_step(

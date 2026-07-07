@@ -47,6 +47,8 @@ ARTIFACT_ALIASES = {
     "metrics-diff-md": Path("metrics-diff.md"),
     "project-scan-json": Path("project-scan.json"),
     "project-scan-md": Path("project-scan.md"),
+    "onboard-json": Path("onboard.json"),
+    "onboard-md": Path("onboard.md"),
     "regression-check-json": Path("regression-check.json"),
     "regression-check-md": Path("regression-check.md"),
     "evidence-room-index-html": Path("evidence-room") / "index.html",

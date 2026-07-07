@@ -75,6 +75,8 @@ def test_default_latest_run_artifact_listing(tmp_path: Path) -> None:
     assert "metrics-diff-md" in artifacts
     assert "project-scan-json" in artifacts
     assert "project-scan-md" in artifacts
+    assert "onboard-json" in artifacts
+    assert "onboard-md" in artifacts
     assert "regression-check-json" in artifacts
     assert "regression-check-md" in artifacts
     assert "evidence-room-security-questionnaire-html" in artifacts
@@ -220,6 +222,14 @@ def test_available_and_missing_artifacts_are_detected(tmp_path: Path) -> None:
         "# VibeBench Project Scan\n",
         encoding="utf-8",
     )
+    run_dir.joinpath("onboard.json").write_text(
+        '{"status":"ready"}\n',
+        encoding="utf-8",
+    )
+    run_dir.joinpath("onboard.md").write_text(
+        "# VibeBench Onboarding Plan\n",
+        encoding="utf-8",
+    )
     run_dir.joinpath("regression-check.json").write_text(
         '{"status":"passed"}\n',
         encoding="utf-8",
@@ -248,6 +258,8 @@ def test_available_and_missing_artifacts_are_detected(tmp_path: Path) -> None:
     assert artifacts["metrics-diff-md"]["available"] is True
     assert artifacts["project-scan-json"]["available"] is True
     assert artifacts["project-scan-md"]["available"] is True
+    assert artifacts["onboard-json"]["available"] is True
+    assert artifacts["onboard-md"]["available"] is True
     assert artifacts["regression-check-json"]["available"] is True
     assert artifacts["regression-check-md"]["available"] is True
 

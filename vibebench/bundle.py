@@ -21,6 +21,8 @@ STANDARD_ARTIFACTS = [
     Path("metrics-diff.md"),
     Path("project-scan.json"),
     Path("project-scan.md"),
+    Path("onboard.json"),
+    Path("onboard.md"),
     Path("manifest.json"),
     Path("config-check.json"),
     Path("config-check.md"),

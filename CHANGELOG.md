@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added opt-in `vibebench ci --onboard` artifacts (`onboard.json` and `onboard.md`) for report-only onboarding plans, with artifact/latest/manifest/bundle/GitHub summary visibility while default CI remains unchanged.
+
 - Added read-only `vibebench onboard` planning with JSON/Markdown outputs, strict mode, stack-aware recommendations, and no config/run/baseline writes.
 
 - Added optional `project-scan --enforce-policy` and `ci --project-scan-policy` gates backed by `project_scan.policy`, reusing `project-scan.json` and `project-scan.md` while keeping default project-scan and `ci --project-scan` report-only.
