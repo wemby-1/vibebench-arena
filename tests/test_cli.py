@@ -27,6 +27,11 @@ def config_path(root: Path) -> Path:
 def workflow_path(root: Path) -> Path:
     return root / ".github" / "workflows" / "vibebench.yml"
 
+def write_package_json(root: Path, scripts: dict[str, str] | None = None) -> None:
+    payload = {"scripts": scripts or {}}
+    root.joinpath("package.json").write_text(json.dumps(payload), encoding="utf-8")
+
+
 def test_init_creates_config_yaml(tmp_path: Path) -> None:
     result = runner.invoke(app, ["init", "--project-root", str(tmp_path)])
 
@@ -123,6 +128,8 @@ def test_init_json_stdout_is_pure_json(tmp_path: Path) -> None:
     assert payload["status"] == "planned"
     assert payload["dry_run"] is True
     assert payload["selected_profile"] == "generic"
+    assert payload["detected_stacks"] == []
+    assert payload["detection_reasons"] == []
     assert payload["created"] is False
 
 
@@ -147,6 +154,8 @@ def test_init_json_output_writes_file_with_human_stdout(tmp_path: Path) -> None:
     assert "VibeBench init" in result.output
     assert not result.output.lstrip().startswith("{")
     assert payload["status"] == "created"
+    assert payload["detected_stacks"] == []
+    assert payload["detection_reasons"] == []
     assert payload["created"] is True
 
 
@@ -199,9 +208,160 @@ def test_init_profile_auto_falls_back_to_generic(tmp_path: Path) -> None:
     assert payload["selected_profile"] == "generic"
 
 
+def test_init_profile_node_uses_existing_package_scripts(tmp_path: Path) -> None:
+    write_package_json(
+        tmp_path,
+        {
+            "lint": "eslint .",
+            "test": "vitest run",
+            "build": "vite build",
+        },
+    )
+
+    result = runner.invoke(
+        app, ["init", "--project-root", str(tmp_path), "--profile", "node", "--json"]
+    )
+
+    payload = json.loads(result.output)
+    generated = config_path(tmp_path).read_text(encoding="utf-8")
+    config = load_config(config_path(tmp_path))
+    assert result.exit_code == 0
+    assert payload["selected_profile"] == "node"
+    assert payload["detected_stacks"] == ["node"]
+    assert "node:package.json" in payload["detection_reasons"]
+    assert "Build script detected" in "\n".join(payload["next_steps"])
+    assert config.checks.lint == ["npm run lint"]
+    assert config.checks.test == ["npm test"]
+    assert "npm run build" not in generated
+
+
+def test_init_profile_node_without_scripts_uses_safe_placeholder(
+    tmp_path: Path,
+) -> None:
+    write_package_json(tmp_path)
+
+    result = runner.invoke(
+        app, ["init", "--project-root", str(tmp_path), "--profile", "node", "--json"]
+    )
+
+    payload = json.loads(result.output)
+    generated = config_path(tmp_path).read_text(encoding="utf-8")
+    check = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--check"])
+    assert result.exit_code == 0
+    assert check.exit_code == 0
+    assert "npm test" not in generated
+    assert "npm run lint" not in generated
+    assert "vibebench generic check" in generated
+    assert "Add package.json lint/test scripts" in "\n".join(payload["next_steps"])
+
+
+def test_init_profile_fullstack_includes_python_and_node_checks(
+    tmp_path: Path,
+) -> None:
+    tmp_path.joinpath("pyproject.toml").write_text("[project]\nname='demo'\n")
+    write_package_json(tmp_path, {"lint": "eslint .", "test": "vitest run"})
+
+    result = runner.invoke(
+        app, ["init", "--project-root", str(tmp_path), "--profile", "fullstack"]
+    )
+
+    config = load_config(config_path(tmp_path))
+    check = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--check"])
+    assert result.exit_code == 0
+    assert check.exit_code == 0
+    assert config.checks.lint == ["python3 -m ruff check .", "npm run lint"]
+    assert config.checks.test == ["python3 -m pytest -q", "npm test"]
+
+
+def test_init_profile_auto_detects_node_project(tmp_path: Path) -> None:
+    write_package_json(tmp_path, {"test": "vitest run"})
+
+    result = runner.invoke(
+        app,
+        ["init", "--project-root", str(tmp_path), "--profile", "auto", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["selected_profile"] == "node"
+    assert payload["detected_stacks"] == ["node"]
+    assert "node:package.json" in payload["detection_reasons"]
+
+
+def test_init_profile_auto_detects_fullstack_project(tmp_path: Path) -> None:
+    tmp_path.joinpath("tests").mkdir()
+    write_package_json(tmp_path, {"lint": "eslint ."})
+
+    result = runner.invoke(
+        app,
+        ["init", "--project-root", str(tmp_path), "--profile", "auto", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["selected_profile"] == "fullstack"
+    assert payload["detected_stacks"] == ["python", "node"]
+    assert "python:tests" in payload["detection_reasons"]
+    assert "node:package.json" in payload["detection_reasons"]
+
+
+def test_init_dry_run_writes_nothing_for_stack_profiles(tmp_path: Path) -> None:
+    for profile in ["node", "fullstack", "auto"]:
+        root = tmp_path / profile
+        root.mkdir()
+        write_package_json(root, {"test": "vitest run"})
+        if profile in {"fullstack", "auto"}:
+            root.joinpath("pyproject.toml").write_text("[project]\nname='demo'\n")
+
+        result = runner.invoke(
+            app,
+            [
+                "init",
+                "--project-root",
+                str(root),
+                "--profile",
+                profile,
+                "--dry-run",
+                "--json",
+            ],
+        )
+        payload = json.loads(result.output)
+
+        assert result.exit_code == 0
+        assert payload["dry_run"] is True
+        assert not config_path(root).exists()
+        assert not config_path(root).parent.exists()
+        assert not (root / ".vibebench" / "runs").exists()
+        assert not (root / ".vibebench" / "baselines").exists()
+
+
+def test_init_json_output_includes_stack_metadata(tmp_path: Path) -> None:
+    write_package_json(tmp_path, {"lint": "eslint ."})
+    output = tmp_path / "init" / "result.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "init",
+            "--project-root",
+            str(tmp_path),
+            "--profile",
+            "auto",
+            "--json-output",
+            str(output),
+        ],
+    )
+
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert result.exit_code == 0
+    assert payload["selected_profile"] == "node"
+    assert payload["detected_stacks"] == ["node"]
+    assert "node:package.json" in payload["detection_reasons"]
+
+
 def test_init_invalid_profile_fails_clearly(tmp_path: Path) -> None:
     result = runner.invoke(
-        app, ["init", "--project-root", str(tmp_path), "--profile", "node"]
+        app, ["init", "--project-root", str(tmp_path), "--profile", "ruby"]
     )
 
     assert result.exit_code == 1

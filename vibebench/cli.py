@@ -67,9 +67,9 @@ from vibebench.config import (
     EffectiveConfigResult,
     config_example_yaml,
     effective_config_payload,
-    init_config_profile_yaml,
     load_config,
     load_effective_config,
+    resolve_init_config_profile,
 )
 from vibebench.config_check import (
     advice_for_config_error,
@@ -333,7 +333,7 @@ def init(
         str,
         typer.Option(
             "--profile",
-            help="Starter config profile: generic, python, or auto.",
+            help="Starter config profile: generic, python, node, fullstack, or auto.",
         ),
     ] = "auto",
     force: Annotated[
@@ -399,11 +399,14 @@ def run_project_init(
     dry_run: bool,
 ) -> dict[str, object]:
     """Plan or create a starter project config."""
-    selected_profile, content = init_config_profile_yaml(
-        requested_profile, project_root
-    )
+    profile_result = resolve_init_config_profile(requested_profile, project_root)
+    selected_profile = profile_result.selected_profile
+    content = profile_result.config_yaml
     exists = config_path.exists()
-    next_steps = init_next_steps()
+    next_steps = init_next_steps(
+        selected_profile=selected_profile,
+        package_scripts=profile_result.package_scripts,
+    )
     base_payload = {
         "dry_run": dry_run,
         "project_root": str(project_root),
@@ -411,6 +414,8 @@ def run_project_init(
         "config_exists": exists,
         "selected_profile": selected_profile,
         "requested_profile": requested_profile,
+        "detected_stacks": profile_result.detected_stacks,
+        "detection_reasons": profile_result.detection_reasons,
         "created": False,
         "overwritten": False,
         "next_steps": next_steps,
@@ -494,6 +499,8 @@ def init_error_payload(
         "config_exists": config_path.exists(),
         "selected_profile": None,
         "requested_profile": requested_profile,
+        "detected_stacks": [],
+        "detection_reasons": [],
         "created": False,
         "overwritten": False,
         "force": force,
@@ -502,13 +509,29 @@ def init_error_payload(
     }
 
 
-def init_next_steps() -> list[str]:
+def init_next_steps(
+    *,
+    selected_profile: str | None = None,
+    package_scripts: list[str] | None = None,
+) -> list[str]:
     """Return standard onboarding next-step commands."""
-    return [
+    steps = [
         "python3 -m vibebench config --check",
         "python3 -m vibebench ci --dry-run",
         "python3 -m vibebench ci",
     ]
+    scripts = set(package_scripts or [])
+    if selected_profile in {"node", "fullstack"}:
+        if "lint" not in scripts and "test" not in scripts:
+            steps.append(
+                "Add package.json lint/test scripts, then rerun "
+                "python3 -m vibebench init --profile node --force"
+            )
+        elif "build" in scripts:
+            steps.append(
+                "Build script detected; add npm run build to your workflow if needed."
+            )
+    return steps
 
 
 def write_init_json_output(path: Path, payload: dict[str, object]) -> Path:
@@ -530,6 +553,12 @@ def render_project_init_result(payload: dict[str, object]) -> None:
     console.print(f"Status: {status}")
     console.print(f"Config path: {payload['config_path']}")
     console.print(f"Selected profile: {payload['selected_profile']}")
+    stacks = payload.get("detected_stacks") or []
+    reasons = payload.get("detection_reasons") or []
+    console.print("Detected stacks: " + (", ".join(stacks) if stacks else "none"))
+    if reasons:
+        reason_text = ", ".join(str(reason) for reason in reasons)
+        console.print("Detection reasons: " + reason_text)
     console.print(str(payload["message"]))
     if status == "blocked":
         console.print("Use --force only when overwriting is intentional.")

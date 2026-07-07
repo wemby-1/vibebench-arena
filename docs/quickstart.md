@@ -21,7 +21,7 @@ python3 -m vibebench ci --dry-run
 python3 -m vibebench ci
 ```
 
-`init --profile auto` creates `.vibebench/config.yaml` only. It detects common Python project markers and otherwise falls back to a conservative generic starter. Existing config is never overwritten unless `--force` is provided, and init does not create `.vibebench/runs`, `.vibebench/baselines`, workflows, or repository settings.
+`init --profile auto` creates `.vibebench/config.yaml` only. It can select `generic`, `python`, `node`, or `fullstack` from project markers, reusing existing `package.json` lint/test scripts when present. Init never installs dependencies, never overwrites config unless `--force` is provided, and does not create `.vibebench/runs`, `.vibebench/baselines`, workflows, or repository settings.
 
 ## Inspect Effective Config
 
@@ -35,13 +35,15 @@ python -m vibebench config --show-source
 python3 -m vibebench init --profile auto --dry-run --json
 python3 -m vibebench init --profile python
 python3 -m vibebench init --profile generic
+python3 -m vibebench init --profile node
+python3 -m vibebench init --profile fullstack
 python3 -m vibebench config --example
 python3 -m vibebench config --write-example .vibebench/config.example.yaml
 python3 -m vibebench config --path
 python3 -m vibebench config --path --json
 ```
 
-`vibebench config` shows the effective project, checks, gate, and risk settings. It uses `.vibebench/config.yaml` when present and falls back to built-in defaults when no config file exists. Use `python3 -m vibebench init --profile auto --dry-run --json` to preview safe initialization, `python3 -m vibebench init --profile auto` to write config, and `--force` only when overwriting is intentional. Use `python3 -m vibebench config --example`, `python3 -m vibebench config --write-example .vibebench/config.example.yaml`, or `python3 -m vibebench config --path --json` for lower-level config inspection.
+`vibebench config` shows the effective project, checks, gate, and risk settings. It uses `.vibebench/config.yaml` when present and falls back to built-in defaults when no config file exists. Use `python3 -m vibebench init --profile auto --dry-run --json` to preview stack-aware initialization, `python3 -m vibebench init --profile auto` to write config, and `--force` only when overwriting is intentional. Use `python3 -m vibebench config --example`, `python3 -m vibebench config --write-example .vibebench/config.example.yaml`, or `python3 -m vibebench config --path --json` for lower-level config inspection.
 
 ## Diagnose Project Readiness
 

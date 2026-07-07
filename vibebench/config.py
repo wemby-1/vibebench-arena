@@ -1,5 +1,6 @@
 """Configuration models and loader for VibeBench Arena."""
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -398,7 +399,7 @@ def config_example_yaml() -> str:
     return yaml.safe_dump(payload, sort_keys=False)
 
 
-INIT_PROFILE_NAMES = {"generic", "python", "auto"}
+INIT_PROFILE_NAMES = {"generic", "python", "node", "fullstack", "auto"}
 PYTHON_PROJECT_MARKERS = (
     "pyproject.toml",
     "setup.py",
@@ -406,41 +407,129 @@ PYTHON_PROJECT_MARKERS = (
     "requirements.txt",
     "tests",
 )
+NODE_PROJECT_MARKERS = (
+    "package.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "package-lock.json",
+    "tsconfig.json",
+)
+NODE_GLOB_MARKERS = ("vite.config.*", "next.config.*")
+
+
+@dataclass(frozen=True)
+class InitProfileResult:
+    """Resolved init profile, generated YAML, and detection metadata."""
+
+    selected_profile: str
+    config_yaml: str
+    detected_stacks: list[str]
+    detection_reasons: list[str]
+    package_scripts: list[str]
 
 
 def init_config_profile_yaml(profile: str, project_root: Path) -> tuple[str, str]:
     """Return selected init profile and valid starter config YAML."""
+    result = resolve_init_config_profile(profile, project_root)
+    return result.selected_profile, result.config_yaml
+
+
+def resolve_init_config_profile(profile: str, project_root: Path) -> InitProfileResult:
+    """Resolve an init profile and render valid starter config YAML."""
     if profile not in INIT_PROFILE_NAMES:
         allowed = ", ".join(sorted(INIT_PROFILE_NAMES))
         raise ConfigError(
             f"Unknown init profile '{profile}'. Choose one of: {allowed}."
         )
-    selected = detect_init_profile(project_root) if profile == "auto" else profile
-    return selected, yaml.safe_dump(
-        init_config_profile_payload(selected), sort_keys=False
+    detected_stacks, detection_reasons = detect_init_stacks(project_root)
+    selected = select_init_profile(profile, detected_stacks)
+    package_scripts = package_json_scripts(project_root)
+    payload = init_config_profile_payload(selected, package_scripts=package_scripts)
+    return InitProfileResult(
+        selected_profile=selected,
+        config_yaml=yaml.safe_dump(payload, sort_keys=False),
+        detected_stacks=detected_stacks,
+        detection_reasons=detection_reasons,
+        package_scripts=package_scripts,
     )
+
+
+def select_init_profile(requested_profile: str, detected_stacks: list[str]) -> str:
+    """Select the concrete init profile for a request."""
+    if requested_profile != "auto":
+        return requested_profile
+    has_python = "python" in detected_stacks
+    has_node = "node" in detected_stacks
+    if has_python and has_node:
+        return "fullstack"
+    if has_node:
+        return "node"
+    if has_python:
+        return "python"
+    return "generic"
 
 
 def detect_init_profile(project_root: Path) -> str:
     """Select an init profile from lightweight project markers."""
+    detected_stacks, _reasons = detect_init_stacks(project_root)
+    return select_init_profile("auto", detected_stacks)
+
+
+def detect_init_stacks(project_root: Path) -> tuple[list[str], list[str]]:
+    """Detect likely project stacks from filesystem markers."""
+    detected: list[str] = []
+    reasons: list[str] = []
     for marker in PYTHON_PROJECT_MARKERS:
         if (project_root / marker).exists():
-            return "python"
-    return "generic"
+            if "python" not in detected:
+                detected.append("python")
+            reasons.append(f"python:{marker}")
+    for marker in NODE_PROJECT_MARKERS:
+        if (project_root / marker).exists():
+            if "node" not in detected:
+                detected.append("node")
+            reasons.append(f"node:{marker}")
+    for pattern in NODE_GLOB_MARKERS:
+        for path in sorted(project_root.glob(pattern)):
+            if "node" not in detected:
+                detected.append("node")
+            reasons.append(f"node:{path.name}")
+    return detected, reasons
 
 
-def init_config_profile_payload(profile: str) -> dict[str, Any]:
+def package_json_scripts(project_root: Path) -> list[str]:
+    """Return script names from package.json without modifying the project."""
+    package_json = project_root / "package.json"
+    if not package_json.exists() or not package_json.is_file():
+        return []
+    try:
+        payload = json.loads(package_json.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    scripts = payload.get("scripts")
+    if not isinstance(scripts, dict):
+        return []
+    return sorted(key for key, value in scripts.items() if isinstance(value, str))
+
+
+def init_config_profile_payload(
+    profile: str,
+    *,
+    package_scripts: list[str] | None = None,
+) -> dict[str, Any]:
     """Return a starter config payload for an init profile."""
+    selected_scripts = package_scripts or []
     if profile == "python":
-        checks = {
-            "test": ["python3 -m pytest -q"],
-            "lint": ["python3 -m ruff check ."],
-        }
+        checks = python_profile_checks()
+    elif profile == "node":
+        checks = node_profile_checks(selected_scripts, fallback_to_generic=True)
+    elif profile == "fullstack":
+        checks = merge_check_groups(
+            python_profile_checks(),
+            node_profile_checks(selected_scripts, fallback_to_generic=False),
+        )
     elif profile == "generic":
-        checks = {
-            "test": ["python3 -c \"print('vibebench generic check')\""],
-            "lint": [],
-        }
+        checks = generic_profile_checks()
     else:
         raise ConfigError(f"Unknown init profile '{profile}'.")
     return {
@@ -474,6 +563,52 @@ def init_config_profile_payload(profile: str) -> dict[str, Any]:
             },
         },
     }
+
+
+def generic_profile_checks() -> dict[str, list[str]]:
+    """Return conservative generic checks."""
+    return {
+        "test": ["python3 -c \"print('vibebench generic check')\""],
+        "lint": [],
+    }
+
+
+def python_profile_checks() -> dict[str, list[str]]:
+    """Return Python-oriented checks."""
+    return {
+        "test": ["python3 -m pytest -q"],
+        "lint": ["python3 -m ruff check ."],
+    }
+
+
+def node_profile_checks(
+    package_scripts: list[str],
+    *,
+    fallback_to_generic: bool,
+) -> dict[str, list[str]]:
+    """Return Node-oriented checks that only reference existing scripts."""
+    checks = {"test": [], "lint": []}
+    if "test" in package_scripts:
+        checks["test"].append("npm test")
+    if "lint" in package_scripts:
+        checks["lint"].append("npm run lint")
+    if checks["test"] or checks["lint"]:
+        return checks
+    return generic_profile_checks() if fallback_to_generic else checks
+
+
+def merge_check_groups(
+    first: dict[str, list[str]],
+    second: dict[str, list[str]],
+) -> dict[str, list[str]]:
+    """Merge schema-compatible check groups without duplicate commands."""
+    merged: dict[str, list[str]] = {"test": [], "lint": []}
+    for group in [first, second]:
+        for key in merged:
+            for command in group.get(key, []):
+                if command not in merged[key]:
+                    merged[key].append(command)
+    return merged
 
 
 def load_config(path: Path | None = None) -> VibeBenchConfig:

@@ -8,7 +8,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
-- Added safe `vibebench init` project onboarding with `generic`, `python`, and `auto` profiles, dry-run/JSON output, atomic config validation, and overwrite protection.
+- Added stack-aware `vibebench init` onboarding with `generic`, `python`, `node`, `fullstack`, and `auto` profiles, package-script detection, dry-run/JSON output, atomic config validation, and overwrite protection.
 
 - Added optional metrics-diff policy enforcement with `metrics-diff --enforce-policy` and `ci --metrics-diff-policy`, reusing metrics-diff JSON/Markdown artifacts while keeping default CI and `ci --metrics-diff` report-only.
 
