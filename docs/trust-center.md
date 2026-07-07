@@ -56,7 +56,7 @@ GitHub Actions can upload downloadable proof packet, static site preview, and ev
 
 ## Security and privacy boundaries
 
-`project-scan` is read-only inspection, report-only by default, and does not create config, runs, baselines, dependency files, or workflow files unless an explicit output path is provided for JSON or Markdown. `project-scan --enforce-policy` evaluates `project_scan.policy`; `ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `ci --project-scan-policy` writes the same artifacts and gates readiness signals. `onboard` is read-only and suggests the adoption flow. `onboard --enforce-policy` evaluates `onboard.policy`; `ci --onboard` writes report-only `onboard.json` and `onboard.md`, while `ci --onboard-policy` writes the same artifacts and gates whether the onboarding plan is acceptable. Default CI remains unchanged. VibeBench records local evidence and CI-readable artifacts. It is not a credential leak scanner, a sandbox, a hosted security product, or a replacement for human security review. Treat generated artifacts as review materials and inspect them before sharing.
+`project-scan` is read-only inspection, report-only by default, and does not create config, runs, baselines, dependency files, or workflow files unless an explicit output path is provided for JSON or Markdown. `workflow-template` previews a conservative GitHub Actions workflow by default and writes one only with `--write`; it does not call GitHub, add credentials, enable Pages, publish packages, create releases, or change repository settings. `project-scan --enforce-policy` evaluates `project_scan.policy`; `ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `ci --project-scan-policy` writes the same artifacts and gates readiness signals. `onboard` is read-only and suggests the adoption flow. `onboard --enforce-policy` evaluates `onboard.policy`; `ci --onboard` writes report-only `onboard.json` and `onboard.md`, while `ci --onboard-policy` writes the same artifacts and gates whether the onboarding plan is acceptable. Default CI remains unchanged. VibeBench records local evidence and CI-readable artifacts. It is not a credential leak scanner, a sandbox, a hosted security product, or a replacement for human security review. Treat generated artifacts as review materials and inspect them before sharing.
 
 ## What the project does not claim
 
@@ -90,6 +90,8 @@ python3 -m vibebench ci --project-scan
 python3 -m vibebench ci --project-scan-policy
 python3 -m vibebench init --profile auto
 python3 -m vibebench config --check
+python3 -m vibebench workflow-template
+python3 -m vibebench workflow-template --ci-mode adoption --write
 python3 -m vibebench regression-check
 python3 -m vibebench ci --regression-check
 python3 -m vibebench baseline --set-latest --label stable

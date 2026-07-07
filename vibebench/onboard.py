@@ -84,6 +84,9 @@ def onboard_suggested_commands(scan: dict[str, Any]) -> list[str]:
     commands.extend(
         [
             "python3 -m vibebench config --check",
+            "python3 -m vibebench workflow-template",
+            "python3 -m vibebench workflow-template --write",
+            "python3 -m vibebench workflow-template --ci-mode adoption --write",
             "python3 -m vibebench ci --dry-run",
             "python3 -m vibebench ci",
             "python3 -m vibebench ci --project-scan",

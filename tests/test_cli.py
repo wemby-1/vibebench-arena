@@ -1068,6 +1068,306 @@ def test_project_scan_policy_fail_on_error_findings(tmp_path: Path) -> None:
     )
 
 
+
+def workflow_template_payload_for(root: Path, *extra: str) -> dict[str, object]:
+    result = runner.invoke(
+        app,
+        ["workflow-template", "--project-root", str(root), "--json", *extra],
+    )
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    return json.loads(result.output)
+
+
+def test_workflow_template_default_does_not_write_files(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["workflow-template", "--project-root", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert "VibeBench workflow template" in result.output
+    assert not workflow_path(tmp_path).exists()
+    assert not (tmp_path / ".github").exists()
+    assert not (tmp_path / ".vibebench" / "runs").exists()
+    assert not (tmp_path / ".vibebench" / "baselines").exists()
+
+
+def test_workflow_template_json_stdout_is_pure_json(tmp_path: Path) -> None:
+    payload = workflow_template_payload_for(tmp_path)
+
+    assert payload["status"] == "planned"
+    assert payload["profile"] == "auto"
+    assert payload["resolved_profile"] == "generic"
+    assert payload["workflow_written"] is False
+    assert payload["output_path"] == str(workflow_path(tmp_path))
+    assert "permissions:\n  contents: read" in payload["workflow_yaml"]
+
+
+def test_workflow_template_json_output_writes_deterministic_json(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "workflow" / "template.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "workflow-template",
+            "--project-root",
+            str(tmp_path),
+            "--json-output",
+            str(output),
+        ],
+    )
+    payload = json.loads(output.read_text(encoding="utf-8"))
+
+    assert result.exit_code == 0
+    assert "VibeBench workflow template" in result.output
+    assert payload["status"] == "planned"
+    assert output.read_text(encoding="utf-8").endswith("\n")
+
+
+def test_workflow_template_summary_output_writes_markdown_with_yaml(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "workflow.md"
+
+    result = runner.invoke(
+        app,
+        [
+            "workflow-template",
+            "--project-root",
+            str(tmp_path),
+            "--summary-output",
+            str(output),
+        ],
+    )
+    markdown = output.read_text(encoding="utf-8")
+
+    assert result.exit_code == 0
+    assert markdown.startswith("# VibeBench Workflow Template")
+    assert "```yaml" in markdown
+    assert "name: VibeBench" in markdown
+    assert "permissions:" in markdown
+
+
+def test_workflow_template_dry_run_does_not_create_workflow_dir(
+    tmp_path: Path,
+) -> None:
+    payload = workflow_template_payload_for(tmp_path, "--write", "--dry-run")
+
+    assert payload["write"] is True
+    assert payload["dry_run"] is True
+    assert payload["would_write"] is True
+    assert payload["workflow_written"] is False
+    assert not workflow_path(tmp_path).exists()
+    assert not (tmp_path / ".github").exists()
+
+
+def test_workflow_template_write_creates_default_workflow(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        ["workflow-template", "--project-root", str(tmp_path), "--write"],
+    )
+
+    assert result.exit_code == 0
+    workflow = workflow_path(tmp_path).read_text(encoding="utf-8")
+    assert "name: VibeBench" in workflow
+    assert "permissions:\n  contents: read" in workflow
+    assert "python3 -m vibebench config --check" in workflow
+
+
+def test_workflow_template_refuses_existing_without_force(tmp_path: Path) -> None:
+    workflow_path(tmp_path).parent.mkdir(parents=True)
+    workflow_path(tmp_path).write_text("existing: true\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["workflow-template", "--project-root", str(tmp_path), "--write"],
+    )
+
+    assert result.exit_code == 1
+    assert "Workflow already exists" in result.output
+    assert workflow_path(tmp_path).read_text(encoding="utf-8") == "existing: true\n"
+
+
+def test_workflow_template_force_overwrites_intentionally(tmp_path: Path) -> None:
+    workflow_path(tmp_path).parent.mkdir(parents=True)
+    workflow_path(tmp_path).write_text("existing: true\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "workflow-template",
+            "--project-root",
+            str(tmp_path),
+            "--write",
+            "--force",
+        ],
+    )
+
+    assert result.exit_code == 0
+    workflow = workflow_path(tmp_path).read_text(encoding="utf-8")
+    assert "existing: true" not in workflow
+    assert "name: VibeBench" in workflow
+
+
+def test_workflow_template_output_writes_only_with_write(tmp_path: Path) -> None:
+    output = tmp_path / "custom" / "vibebench.yml"
+
+    preview = runner.invoke(
+        app,
+        [
+            "workflow-template",
+            "--project-root",
+            str(tmp_path),
+            "--output",
+            str(output),
+        ],
+    )
+    assert preview.exit_code == 0
+    assert not output.exists()
+
+    written = runner.invoke(
+        app,
+        [
+            "workflow-template",
+            "--project-root",
+            str(tmp_path),
+            "--output",
+            str(output),
+            "--write",
+        ],
+    )
+
+    assert written.exit_code == 0
+    assert output.exists()
+
+
+def test_workflow_template_profile_auto_uses_shared_detection(tmp_path: Path) -> None:
+    tmp_path.joinpath("pyproject.toml").write_text("[project]\nname='demo'\n")
+    write_package_json(tmp_path, {"test": "vitest run"})
+
+    payload = workflow_template_payload_for(tmp_path, "--profile", "auto")
+
+    assert payload["resolved_profile"] == "fullstack"
+    assert payload["detected_stacks"] == ["python", "node"]
+    assert "python:pyproject.toml" in payload["detection_reasons"]
+    assert "node:package.json" in payload["detection_reasons"]
+    assert "actions/setup-node" in payload["workflow_yaml"]
+
+
+def test_workflow_template_profiles_produce_expected_metadata(
+    tmp_path: Path,
+) -> None:
+    expected_node = {
+        "generic": False,
+        "python": False,
+        "node": True,
+        "fullstack": True,
+    }
+    for profile, has_node in expected_node.items():
+        payload = workflow_template_payload_for(tmp_path, "--profile", profile)
+        assert payload["profile"] == profile
+        assert payload["resolved_profile"] == profile
+        assert ("actions/setup-node" in payload["workflow_yaml"]) is has_node
+
+
+def test_workflow_template_install_command_is_not_executed(tmp_path: Path) -> None:
+    marker = tmp_path / "SHOULD_NOT_EXIST"
+    command = "python3 -c \"open('SHOULD_NOT_EXIST','w').write('x')\""
+
+    payload = workflow_template_payload_for(
+        tmp_path,
+        "--install-command",
+        command,
+    )
+
+    assert command in payload["workflow_yaml"]
+    assert not marker.exists()
+
+
+def test_workflow_template_ci_modes_generate_expected_commands(tmp_path: Path) -> None:
+    basic = workflow_template_payload_for(tmp_path, "--ci-mode", "basic")
+    adoption = workflow_template_payload_for(tmp_path, "--ci-mode", "adoption")
+    strict = workflow_template_payload_for(tmp_path, "--ci-mode", "strict")
+
+    assert basic["commands"] == [
+        "python3 -m vibebench config --check",
+        "python3 -m vibebench ci",
+    ]
+    assert "python3 -m vibebench ci --project-scan --onboard" in adoption["commands"]
+    assert (
+        "python3 -m vibebench ci --project-scan-policy --onboard-policy"
+        in strict["commands"]
+    )
+
+
+def test_workflow_template_invalid_profile_and_ci_mode_fail_clearly(
+    tmp_path: Path,
+) -> None:
+    bad_profile = runner.invoke(
+        app,
+        [
+            "workflow-template",
+            "--project-root",
+            str(tmp_path),
+            "--profile",
+            "ruby",
+        ],
+    )
+    bad_mode = runner.invoke(
+        app,
+        [
+            "workflow-template",
+            "--project-root",
+            str(tmp_path),
+            "--ci-mode",
+            "maximum",
+        ],
+    )
+
+    assert bad_profile.exit_code == 1
+    assert "Unknown workflow profile" in bad_profile.output
+    assert bad_mode.exit_code == 1
+    assert "Unknown CI mode" in bad_mode.output
+
+
+def test_workflow_template_excludes_unsafe_github_automation(
+    tmp_path: Path,
+) -> None:
+    payload = workflow_template_payload_for(tmp_path, "--ci-mode", "strict")
+    workflow = payload["workflow_yaml"].lower()
+
+    assert "permissions:\n  contents: read" in payload["workflow_yaml"]
+    assert "secrets" not in workflow
+    assert "github_token" not in workflow
+    assert "\ngh " not in workflow
+    assert "deploy-pages" not in workflow
+    assert "pages: write" not in workflow
+    assert "upload-release" not in workflow
+    assert "npm publish" not in workflow
+    assert "twine upload" not in workflow
+    assert "repository settings" not in workflow
+
+
+def test_workflow_template_creates_no_runs_or_baselines(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        ["workflow-template", "--project-root", str(tmp_path), "--json"],
+    )
+
+    assert result.exit_code == 0
+    assert not (tmp_path / ".vibebench" / "runs").exists()
+    assert not (tmp_path / ".vibebench" / "baselines").exists()
+
+
+def test_onboard_mentions_workflow_template(tmp_path: Path) -> None:
+    payload = onboard_payload_for(tmp_path)
+
+    assert "python3 -m vibebench workflow-template" in payload["suggested_commands"]
+    assert "python3 -m vibebench workflow-template --write" in payload[
+        "suggested_commands"
+    ]
+
+
 def test_config_command_without_file_prints_defaults(tmp_path: Path) -> None:
     result = runner.invoke(app, ["config", "--project-root", str(tmp_path)])
 

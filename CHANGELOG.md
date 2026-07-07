@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added preview-first `vibebench workflow-template` generation for safe GitHub Actions adoption, with JSON/Markdown outputs, auto profile detection, CI strictness modes, explicit `--write`, atomic overwrite protection, and no GitHub API, secrets, Pages, release, or publishing automation.
+
 - Added optional `onboard --enforce-policy` and `ci --onboard-policy` gates backed by `onboard.policy`, reusing `onboard.json` and `onboard.md` while keeping default onboard and `ci --onboard` report-only.
 
 - Added opt-in `vibebench ci --onboard` artifacts (`onboard.json` and `onboard.md`) for report-only onboarding plans, with artifact/latest/manifest/bundle/GitHub summary visibility while default CI remains unchanged.

@@ -9,13 +9,19 @@ This repository's active CI runs direct `ruff` and `pytest` checks first, then r
 
 ## Generate The Workflow
 
-Generate the default VibeBench workflow with:
+Preview the default VibeBench workflow with:
 
 ```bash
-python -m vibebench init
+python -m vibebench workflow-template
 ```
 
-This creates `.github/workflows/vibebench.yml` unless it already exists. Use `python -m vibebench init --workflow-only` to create only the workflow, or `--force` to overwrite generated files. The template also lives at:
+Write `.github/workflows/vibebench.yml` only after review:
+
+```bash
+python -m vibebench workflow-template --ci-mode adoption --write
+```
+
+Use `--output PATH` for a different workflow path and `--force` only when overwriting is intentional. The template also lives at:
 
 ```text
 docs/examples/github-actions/vibebench.yml

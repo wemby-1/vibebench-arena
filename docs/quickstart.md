@@ -23,6 +23,8 @@ python3 -m vibebench project-scan --json
 python3 -m vibebench project-scan --enforce-policy
 python3 -m vibebench init --profile auto
 python3 -m vibebench config --check
+python3 -m vibebench workflow-template
+python3 -m vibebench workflow-template --ci-mode adoption --write
 python3 -m vibebench ci --dry-run
 python3 -m vibebench ci --onboard
 python3 -m vibebench ci --onboard-policy
@@ -54,7 +56,7 @@ onboard:
     require_ci_ready: false
 ```
 
-`init --profile auto` creates `.vibebench/config.yaml` only. It can select `generic`, `python`, `node`, or `fullstack` from project markers, reusing existing `package.json` lint/test scripts when present. Init never installs dependencies, never overwrites config unless `--force` is provided, and does not create `.vibebench/runs`, `.vibebench/baselines`, workflows, or repository settings.
+`init --profile auto` creates `.vibebench/config.yaml` only. It can select `generic`, `python`, `node`, or `fullstack` from project markers, reusing existing `package.json` lint/test scripts when present. Init never installs dependencies, never overwrites config unless `--force` is provided, and does not create `.vibebench/runs`, `.vibebench/baselines`, workflows, or repository settings. `workflow-template` previews a conservative GitHub Actions workflow by default; use `workflow-template --ci-mode adoption --write` to create `.github/workflows/vibebench.yml` after review. It does not call GitHub, add secrets, enable Pages, publish packages, or create releases.
 
 ## Inspect Effective Config
 
