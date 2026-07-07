@@ -142,6 +142,8 @@ def artifacts_section(run_dir: Path) -> str:
         run_dir / "workflow-template.json",
         run_dir / "workflow-template.md",
         run_dir / "workflow-template.yml",
+        run_dir / "workflow-check.json",
+        run_dir / "workflow-check.md",
         run_dir / "manifest.json",
         run_dir / "package-check.json",
         run_dir / "package-check.md",

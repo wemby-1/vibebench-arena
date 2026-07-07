@@ -55,9 +55,7 @@ def artifact_by_name(payload: dict[str, object], name: str) -> dict[str, object]
     artifacts = payload["artifacts"]
     assert isinstance(artifacts, list)
     return next(
-        item
-        for item in artifacts
-        if isinstance(item, dict) and item["name"] == name
+        item for item in artifacts if isinstance(item, dict) and item["name"] == name
     )
 
 
@@ -181,6 +179,14 @@ def test_manifest_contains_artifact_entries_and_itself(tmp_path: Path) -> None:
         "name: VibeBench\n",
         encoding="utf-8",
     )
+    run_dir.joinpath("workflow-check.json").write_text(
+        '{"status":"passed"}\n',
+        encoding="utf-8",
+    )
+    run_dir.joinpath("workflow-check.md").write_text(
+        "# VibeBench Workflow Check\n",
+        encoding="utf-8",
+    )
     run_dir.joinpath("regression-check.json").write_text(
         '{"status":"passed"}\n',
         encoding="utf-8",
@@ -217,12 +223,10 @@ def test_manifest_contains_artifact_entries_and_itself(tmp_path: Path) -> None:
         is True
     )
     assert (
-        artifact_by_name(payload, "evidence-room-share-check-json")["available"]
-        is True
+        artifact_by_name(payload, "evidence-room-share-check-json")["available"] is True
     )
     assert (
-        artifact_by_name(payload, "evidence-room-share-check-md")["available"]
-        is True
+        artifact_by_name(payload, "evidence-room-share-check-md")["available"] is True
     )
     assert artifact_by_name(payload, "metrics-check-json")["available"] is True
     assert artifact_by_name(payload, "metrics-check-md")["available"] is True
@@ -235,6 +239,8 @@ def test_manifest_contains_artifact_entries_and_itself(tmp_path: Path) -> None:
     assert artifact_by_name(payload, "workflow-template-json")["available"] is True
     assert artifact_by_name(payload, "workflow-template-md")["available"] is True
     assert artifact_by_name(payload, "workflow-template-yml")["available"] is True
+    assert artifact_by_name(payload, "workflow-check-json")["available"] is True
+    assert artifact_by_name(payload, "workflow-check-md")["available"] is True
     assert artifact_by_name(payload, "regression-check-json")["available"] is True
     assert artifact_by_name(payload, "regression-check-md")["available"] is True
 

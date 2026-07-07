@@ -160,6 +160,14 @@ def write_run(
             "name: VibeBench\n",
             encoding="utf-8",
         )
+        (run_dir / "workflow-check.json").write_text(
+            "{}\n",
+            encoding="utf-8",
+        )
+        (run_dir / "workflow-check.md").write_text(
+            "workflow check\n",
+            encoding="utf-8",
+        )
         (run_dir / "regression-check.json").write_text(
             '{"status":"passed"}\n',
             encoding="utf-8",
@@ -346,6 +354,8 @@ def test_summary_contains_key_sections_and_artifacts(
     assert "`workflow-template.json` (available)" in markdown
     assert "`workflow-template.md` (available)" in markdown
     assert "`workflow-template.yml` (available)" in markdown
+    assert "`workflow-check.json` (available)" in markdown
+    assert "`workflow-check.md` (available)" in markdown
     assert "`regression-check.json` (available)" in markdown
     assert "`regression-check.md` (available)" in markdown
     assert "`evidence-room/index.html` (available)" in markdown

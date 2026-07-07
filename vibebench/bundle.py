@@ -26,6 +26,8 @@ STANDARD_ARTIFACTS = [
     Path("workflow-template.json"),
     Path("workflow-template.md"),
     Path("workflow-template.yml"),
+    Path("workflow-check.json"),
+    Path("workflow-check.md"),
     Path("manifest.json"),
     Path("config-check.json"),
     Path("config-check.md"),

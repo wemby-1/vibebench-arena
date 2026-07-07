@@ -3275,6 +3275,20 @@ def ci_command(
             help="Disable metrics-diff policy enforcement for this CI run.",
         ),
     ] = False,
+    workflow_check: Annotated[
+        bool,
+        typer.Option(
+            "--workflow-check",
+            help="Run workflow-check and write report-only artifacts.",
+        ),
+    ] = False,
+    skip_workflow_check: Annotated[
+        bool,
+        typer.Option(
+            "--skip-workflow-check",
+            help="Skip optional workflow-check artifact generation.",
+        ),
+    ] = False,
     workflow_template: Annotated[
         bool,
         typer.Option(
@@ -3498,6 +3512,8 @@ def ci_command(
                 skip_metrics_diff=skip_metrics_diff,
                 metrics_diff_policy=metrics_diff_policy,
                 skip_metrics_diff_policy=skip_metrics_diff_policy,
+                workflow_check=workflow_check,
+                skip_workflow_check=skip_workflow_check,
                 workflow_template=workflow_template,
                 skip_workflow_template=skip_workflow_template,
                 workflow_template_profile=workflow_template_profile,
@@ -3557,6 +3573,8 @@ def ci_command(
                 skip_metrics_diff=skip_metrics_diff,
                 metrics_diff_policy=metrics_diff_policy,
                 skip_metrics_diff_policy=skip_metrics_diff_policy,
+                workflow_check=workflow_check,
+                skip_workflow_check=skip_workflow_check,
                 workflow_template=workflow_template,
                 skip_workflow_template=skip_workflow_template,
                 workflow_template_profile=workflow_template_profile,

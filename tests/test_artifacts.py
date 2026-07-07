@@ -80,6 +80,8 @@ def test_default_latest_run_artifact_listing(tmp_path: Path) -> None:
     assert "workflow-template-json" in artifacts
     assert "workflow-template-md" in artifacts
     assert "workflow-template-yml" in artifacts
+    assert "workflow-check-json" in artifacts
+    assert "workflow-check-md" in artifacts
     assert "regression-check-json" in artifacts
     assert "regression-check-md" in artifacts
     assert "evidence-room-security-questionnaire-html" in artifacts
@@ -233,6 +235,14 @@ def test_available_and_missing_artifacts_are_detected(tmp_path: Path) -> None:
         "# VibeBench Onboarding Plan\n",
         encoding="utf-8",
     )
+    run_dir.joinpath("workflow-check.json").write_text(
+        '{"status":"passed"}\n',
+        encoding="utf-8",
+    )
+    run_dir.joinpath("workflow-check.md").write_text(
+        "# VibeBench Workflow Check\n",
+        encoding="utf-8",
+    )
     run_dir.joinpath("regression-check.json").write_text(
         '{"status":"passed"}\n',
         encoding="utf-8",
@@ -323,7 +333,6 @@ def test_json_output_is_valid_and_stable(tmp_path: Path) -> None:
     missing = next(item for item in artifacts if item["name"] == "pr-comment.md")
     assert missing["available"] is False
     assert missing["size_bytes"] is None
-
 
 
 def test_pinned_baseline_state_is_not_listed_as_run_artifact(tmp_path: Path) -> None:

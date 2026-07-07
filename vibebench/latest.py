@@ -52,6 +52,8 @@ ARTIFACT_ALIASES = {
     "workflow-template-json": Path("workflow-template.json"),
     "workflow-template-md": Path("workflow-template.md"),
     "workflow-template-yml": Path("workflow-template.yml"),
+    "workflow-check-json": Path("workflow-check.json"),
+    "workflow-check-md": Path("workflow-check.md"),
     "regression-check-json": Path("regression-check.json"),
     "regression-check-md": Path("regression-check.md"),
     "evidence-room-index-html": Path("evidence-room") / "index.html",

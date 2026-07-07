@@ -51,6 +51,8 @@ ARTIFACT_NAMES = {
     Path("workflow-template.json"): "workflow-template-json",
     Path("workflow-template.md"): "workflow-template-md",
     Path("workflow-template.yml"): "workflow-template-yml",
+    Path("workflow-check.json"): "workflow-check-json",
+    Path("workflow-check.md"): "workflow-check-md",
     Path("regression-check.json"): "regression-check-json",
     Path("regression-check.md"): "regression-check-md",
     **EVIDENCE_ROOM_ARTIFACT_NAMES,

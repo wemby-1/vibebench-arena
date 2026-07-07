@@ -8,6 +8,9 @@ from typing import Any
 
 from vibebench.config import ConfigError
 
+WORKFLOW_CHECK_JSON = "workflow-check.json"
+WORKFLOW_CHECK_SUMMARY = "workflow-check.md"
+
 DEFAULT_WORKFLOW_CANDIDATES = [
     Path(".github") / "workflows" / "vibebench.yml",
     Path(".github") / "workflows" / "vibebench.yaml",

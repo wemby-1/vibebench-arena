@@ -72,9 +72,7 @@ def append_metrics_diff_policy(root: Path, policy_yaml: str) -> None:
     if "metrics_diff:" in config:
         config = config.split("metrics_diff:\n", 1)[0].rstrip() + "\n"
     target.write_text(
-        config
-        + "metrics_diff:\n  policy:\n"
-        + policy_yaml,
+        config + "metrics_diff:\n  policy:\n" + policy_yaml,
         encoding="utf-8",
     )
 
@@ -85,9 +83,7 @@ def append_project_scan_policy(root: Path, policy_yaml: str) -> None:
     if "project_scan:" in config:
         config = config.split("project_scan:\n", 1)[0].rstrip() + "\n"
     target.write_text(
-        config
-        + "project_scan:\n  policy:\n"
-        + policy_yaml,
+        config + "project_scan:\n  policy:\n" + policy_yaml,
         encoding="utf-8",
     )
 
@@ -98,9 +94,7 @@ def append_onboard_policy(root: Path, policy_yaml: str) -> None:
     if "onboard:" in config:
         config = config.split("onboard:\n", 1)[0].rstrip() + "\n"
     target.write_text(
-        config
-        + "onboard:\n  policy:\n"
-        + policy_yaml,
+        config + "onboard:\n  policy:\n" + policy_yaml,
         encoding="utf-8",
     )
 
@@ -464,6 +458,7 @@ def zip_names(path: Path) -> list[str]:
     with zipfile.ZipFile(path) as archive:
         return sorted(archive.namelist())
 
+
 def test_ci_command_succeeds_on_clean_passing_run(tmp_path: Path) -> None:
     write_config(tmp_path)
     init_git_repo(tmp_path)
@@ -474,6 +469,7 @@ def test_ci_command_succeeds_on_clean_passing_run(tmp_path: Path) -> None:
     assert "Final CI verdict: passed" in result.output
     run_dir = latest_run(tmp_path)
     assert run_dir.joinpath("metrics.json").exists()
+
 
 def test_ci_command_creates_standard_artifacts(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -521,6 +517,7 @@ def test_ci_command_creates_standard_artifacts(tmp_path: Path) -> None:
     assert run_dir.joinpath("gate-summary.md").exists()
     assert run_dir.joinpath("github-step-summary.md").exists()
 
+
 def test_ci_attempts_artifacts_when_gate_fails(tmp_path: Path) -> None:
     write_config(tmp_path)
     run_dir = write_run(tmp_path, metrics=sample_metrics(score=70))
@@ -553,6 +550,7 @@ def test_ci_attempts_artifacts_when_gate_fails(tmp_path: Path) -> None:
     assert run_dir.joinpath("config-check.md").exists()
     assert run_dir.joinpath("manifest.json").exists()
     assert run_dir.joinpath("github-step-summary.md").exists()
+
 
 def test_skip_flags_skip_artifact_generation(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -658,6 +656,7 @@ def test_bundle_include_report_assets_passes_through(tmp_path: Path) -> None:
     names = zip_names(run_dir / "vibebench-bundle.zip")
     assert "report/assets/style.css" in names
 
+
 def test_bundle_strict_passes_through(tmp_path: Path) -> None:
     write_config(tmp_path)
     run_dir = write_run(tmp_path)
@@ -687,6 +686,7 @@ def test_bundle_strict_passes_through(tmp_path: Path) -> None:
     assert "bundle" in result.output
     assert "failed" in result.output
 
+
 def test_gate_override_flags_affect_gate_decision(tmp_path: Path) -> None:
     write_config(tmp_path)
     run_dir = write_run(tmp_path, metrics=sample_metrics(score=70))
@@ -715,6 +715,7 @@ def test_gate_override_flags_affect_gate_decision(tmp_path: Path) -> None:
     assert failed.exit_code == 1
     assert passed.exit_code == 0
 
+
 def test_no_require_status_passed_override(tmp_path: Path) -> None:
     write_config(tmp_path)
     run_dir = write_run(
@@ -736,6 +737,7 @@ def test_no_require_status_passed_override(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
 
+
 def test_run_dir_mode_does_not_create_fresh_check_run(tmp_path: Path) -> None:
     write_config(tmp_path)
     run_dir = write_run(tmp_path)
@@ -749,6 +751,7 @@ def test_run_dir_mode_does_not_create_fresh_check_run(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert run_dirs == [run_dir]
     assert "using --run-dir" in result.output
+
 
 def test_ci_writes_only_to_explicit_github_summary_env(
     tmp_path: Path,
@@ -769,6 +772,7 @@ def test_ci_writes_only_to_explicit_github_summary_env(
     assert "# VibeBench Summary" in summary_file.read_text(encoding="utf-8")
     assert not run_dir.joinpath("github-step-summary.md").exists()
 
+
 def test_invalid_run_dir_fails_clearly(tmp_path: Path) -> None:
     result = runner.invoke(
         app,
@@ -777,6 +781,7 @@ def test_invalid_run_dir_fails_clearly(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "Run directory does not exist" in result.output
+
 
 def test_ci_runs_export_and_badge_before_bundle_and_summary(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -818,6 +823,7 @@ def test_ci_runs_export_and_badge_before_bundle_and_summary(tmp_path: Path) -> N
     assert result.output.index("manifest") < result.output.index("bundle")
     assert result.output.index("manifest-check") < result.output.index("bundle")
 
+
 def test_ci_skip_export_skips_export_generation(tmp_path: Path) -> None:
     write_config(tmp_path)
     run_dir = write_run(tmp_path)
@@ -838,6 +844,7 @@ def test_ci_skip_export_skips_export_generation(tmp_path: Path) -> None:
     assert not run_dir.joinpath("export.json").exists()
     assert "export" in result.output
     assert "skipped" in result.output
+
 
 def test_ci_skip_badge_skips_badge_generation(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -861,6 +868,7 @@ def test_ci_skip_badge_skips_badge_generation(tmp_path: Path) -> None:
     assert "badge" in result.output
     assert "skipped" in result.output
 
+
 def test_ci_skip_status_block_skips_status_block_generation(tmp_path: Path) -> None:
     write_config(tmp_path)
     run_dir = write_run(tmp_path)
@@ -881,6 +889,7 @@ def test_ci_skip_status_block_skips_status_block_generation(tmp_path: Path) -> N
     assert not run_dir.joinpath("status-block.md").exists()
     assert "status-block" in result.output
     assert "skipped" in result.output
+
 
 def test_ci_skip_trend_skips_trend_generation(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -903,6 +912,7 @@ def test_ci_skip_trend_skips_trend_generation(tmp_path: Path) -> None:
     assert not run_dir.joinpath("trend.json").exists()
     assert "trend" in result.output
     assert "skipped" in result.output
+
 
 def test_ci_runs_annotations_by_default(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -937,6 +947,7 @@ def test_ci_runs_annotations_by_default(tmp_path: Path) -> None:
     assert "annotate" in result.output
     assert "::warning" in result.output
     assert "demo_warning" in result.output
+
 
 def test_ci_skip_annotate_suppresses_annotation_output(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -973,6 +984,7 @@ def test_ci_skip_annotate_suppresses_annotation_output(tmp_path: Path) -> None:
     assert "skipped" in result.output
     assert "::warning" not in result.output
     assert "demo_warning" not in result.output
+
 
 def test_ci_dry_run_does_not_create_run_or_execute_commands(tmp_path: Path) -> None:
     marker = tmp_path / "executed.txt"
@@ -1062,6 +1074,7 @@ def test_ci_dry_run_json_outputs_plan_payload(tmp_path: Path) -> None:
     ]
     assert "project-scan" not in [step["name"] for step in payload["steps"]]
     assert "onboard" not in [step["name"] for step in payload["steps"]]
+    assert "workflow-check" not in [step["name"] for step in payload["steps"]]
     for step in payload["steps"]:
         assert set(step) == {
             "name",
@@ -1128,6 +1141,55 @@ def test_ci_dry_run_skip_metrics_check_json_includes_skipped_step(
     assert steps["metrics-check"]["message"] == "Skipped by --skip-metrics-check"
 
 
+def test_ci_dry_run_workflow_check_json_includes_planned_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--workflow-check",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["workflow-check"]["status"] == "planned"
+    assert steps["workflow-check"]["artifact"] == "workflow-check.json"
+
+
+def test_ci_dry_run_skip_workflow_check_suppresses_enabled_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--workflow-check",
+            "--skip-workflow-check",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["workflow-check"]["status"] == "skipped"
+    assert steps["workflow-check"]["message"] == "Skipped by --skip-workflow-check"
+
+
 def test_ci_dry_run_workflow_template_json_includes_planned_step(
     tmp_path: Path,
 ) -> None:
@@ -1175,8 +1237,7 @@ def test_ci_dry_run_skip_workflow_template_suppresses_enabled_step(
     assert result.exit_code == 0
     assert steps["workflow-template"]["status"] == "skipped"
     assert (
-        steps["workflow-template"]["message"]
-        == "Skipped by --skip-workflow-template"
+        steps["workflow-template"]["message"] == "Skipped by --skip-workflow-template"
     )
 
 
@@ -1403,9 +1464,7 @@ def test_ci_onboard_writes_reports_and_json_step(
 
     manifest = check_manifest(tmp_path, run_dir)
     manifest_payload = json.loads(run_dir.joinpath("manifest.json").read_text())
-    manifest_artifacts = {
-        item["name"]: item for item in manifest_payload["artifacts"]
-    }
+    manifest_artifacts = {item["name"]: item for item in manifest_payload["artifacts"]}
     assert manifest.passed is True
     assert manifest_artifacts["onboard-json"]["available"] is True
     assert manifest_artifacts["onboard-md"]["available"] is True
@@ -1606,9 +1665,7 @@ def test_ci_project_scan_writes_reports_and_json_step(
 
     manifest = check_manifest(tmp_path, run_dir)
     manifest_payload = json.loads(run_dir.joinpath("manifest.json").read_text())
-    manifest_artifacts = {
-        item["name"]: item for item in manifest_payload["artifacts"]
-    }
+    manifest_artifacts = {item["name"]: item for item in manifest_payload["artifacts"]}
     assert manifest.passed is True
     assert manifest_artifacts["project-scan-json"]["available"] is True
     assert manifest_artifacts["project-scan-md"]["available"] is True
@@ -1654,6 +1711,132 @@ def test_ci_project_scan_policy_writes_reports_and_enforces_success(
     assert artifact_map["project-scan-json"]["available"] is True
     assert artifact_map["project-scan-md"]["available"] is True
     assert "project-scan.json" in zip_names(run_dir / "vibebench-bundle.zip")
+
+
+def test_ci_workflow_check_writes_report_only_artifacts(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--workflow-check", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    workflow_json = run_dir / "workflow-check.json"
+    workflow_md = run_dir / "workflow-check.md"
+    report = json.loads(workflow_json.read_text(encoding="utf-8"))
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    assert steps["workflow-check"]["status"] == "passed"
+    assert steps["workflow-check"]["artifact"].endswith("workflow-check.json")
+    assert workflow_json.exists()
+    assert workflow_md.exists()
+    assert report["safe_preview_only"] is True
+    assert not (tmp_path / ".github" / "workflows").exists()
+
+    artifacts = runner.invoke(
+        app,
+        ["artifacts", "--project-root", str(tmp_path), "--json"],
+    )
+    artifact_map = {
+        item["name"]: item for item in json.loads(artifacts.output)["artifacts"]
+    }
+    assert artifact_map["workflow-check-json"]["available"] is True
+    assert artifact_map["workflow-check-md"]["available"] is True
+
+    latest_json = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "workflow-check-json",
+            "--path-only",
+        ],
+    )
+    latest_md = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "workflow-check-md",
+            "--path-only",
+        ],
+    )
+    assert latest_json.exit_code == 0
+    assert latest_md.exit_code == 0
+    assert latest_json.output.strip().endswith("workflow-check.json")
+    assert latest_md.output.strip().endswith("workflow-check.md")
+
+    manifest_payload = json.loads(run_dir.joinpath("manifest.json").read_text())
+    manifest_artifacts = {item["name"]: item for item in manifest_payload["artifacts"]}
+    assert manifest_artifacts["workflow-check-json"]["available"] is True
+    assert manifest_artifacts["workflow-check-md"]["available"] is True
+
+    names = zip_names(run_dir / "vibebench-bundle.zip")
+    assert "workflow-check.json" in names
+    assert "workflow-check.md" in names
+
+    summary = run_dir.joinpath("github-step-summary.md").read_text(encoding="utf-8")
+    assert "`workflow-check.json` (available)" in summary
+    assert "`workflow-check.md` (available)" in summary
+
+
+def test_ci_workflow_check_remains_report_only_without_workflow(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--workflow-check", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("workflow-check.json").read_text())
+    assert result.exit_code == 0
+    assert payload["status"] == "passed"
+    assert steps["workflow-check"]["status"] == "passed"
+    assert report["workflow_path"] is None
+    assert report["summary"]["warning"] >= 1
+
+
+def test_ci_skip_workflow_check_suppresses_artifacts(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--workflow-check",
+            "--skip-workflow-check",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    assert result.exit_code == 0
+    assert steps["workflow-check"]["status"] == "skipped"
+    assert not run_dir.joinpath("workflow-check.json").exists()
+    assert not run_dir.joinpath("workflow-check.md").exists()
 
 
 def test_ci_workflow_template_writes_report_only_artifacts(
@@ -1845,9 +2028,7 @@ def test_ci_metrics_check_writes_reports_and_json_step(
 
     manifest = check_manifest(tmp_path, run_dir)
     manifest_payload = json.loads(run_dir.joinpath("manifest.json").read_text())
-    manifest_artifacts = {
-        item["name"]: item for item in manifest_payload["artifacts"]
-    }
+    manifest_artifacts = {item["name"]: item for item in manifest_payload["artifacts"]}
     assert manifest.passed is True
     assert manifest_artifacts["metrics-check-json"]["available"] is True
     assert manifest_artifacts["metrics-check-md"]["available"] is True
@@ -1860,7 +2041,6 @@ def test_ci_metrics_check_writes_reports_and_json_step(
     assert "`metrics-check.json` (available)" in summary
     assert "`metrics-check.md` (available)" in summary
     assert "VibeBench CI" not in result.output
-
 
 
 def test_ci_dry_run_metrics_diff_json_includes_planned_step(
@@ -1974,9 +2154,7 @@ def test_ci_metrics_diff_writes_reports_and_json_step(
 
     manifest = check_manifest(tmp_path, run_dir)
     manifest_payload = json.loads(run_dir.joinpath("manifest.json").read_text())
-    manifest_artifacts = {
-        item["name"]: item for item in manifest_payload["artifacts"]
-    }
+    manifest_artifacts = {item["name"]: item for item in manifest_payload["artifacts"]}
     assert manifest.passed is True
     assert manifest_artifacts["metrics-diff-json"]["available"] is True
     assert manifest_artifacts["metrics-diff-md"]["available"] is True
@@ -1988,6 +2166,7 @@ def test_ci_metrics_diff_writes_reports_and_json_step(
     summary = run_dir.joinpath("github-step-summary.md").read_text(encoding="utf-8")
     assert "`metrics-diff.json` (available)" in summary
     assert "`metrics-diff.md` (available)" in summary
+
 
 def test_ci_dry_run_regression_check_json_includes_planned_step(
     tmp_path: Path,
@@ -2149,9 +2328,7 @@ def test_ci_regression_check_writes_reports_when_baseline_exists(
 
     manifest = check_manifest(tmp_path, run_dir)
     manifest_payload = json.loads(run_dir.joinpath("manifest.json").read_text())
-    manifest_artifacts = {
-        item["name"]: item for item in manifest_payload["artifacts"]
-    }
+    manifest_artifacts = {item["name"]: item for item in manifest_payload["artifacts"]}
     assert manifest.passed is True
     assert manifest_artifacts["regression-check-json"]["available"] is True
     assert manifest_artifacts["regression-check-md"]["available"] is True
@@ -2159,7 +2336,6 @@ def test_ci_regression_check_writes_reports_when_baseline_exists(
     names = zip_names(run_dir / "vibebench-bundle.zip")
     assert "regression-check.json" in names
     assert "regression-check.md" in names
-
 
 
 def test_ci_regression_check_uses_pinned_baseline_label(tmp_path: Path) -> None:
@@ -2202,7 +2378,6 @@ def test_ci_regression_check_uses_pinned_baseline_label(tmp_path: Path) -> None:
     assert report["baseline_source"] == "pinned"
     assert report["baseline_label"] == "stable"
     assert run_dir.joinpath("regression-check.md").exists()
-
 
 
 def test_ci_dry_run_fail_on_regression_mentions_compare_guard(
@@ -2285,7 +2460,6 @@ def test_ci_default_dry_run_compare_step_remains_reporting_only(
     steps = {step["name"]: step for step in payload["steps"]}
     assert result.exit_code == 0
     assert steps["compare"]["message"] == "Would run compare"
-
 
 
 def test_ci_missing_compare_config_keeps_regression_guard_disabled(
@@ -2484,6 +2658,7 @@ def test_ci_fail_on_regression_fails_compare_step_after_writing_artifacts(
     assert "Regression guard failed" in steps["compare"]["message"]
     assert compare_payload["verdict"] == "regressed"
     assert compare_payload["regression_guard"]["status"] == "failed"
+
 
 def test_ci_plan_alias_json_outputs_plan_payload(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -2992,6 +3167,7 @@ def test_init_does_not_create_generated_workflow(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert not workflow_path(tmp_path).exists()
 
+
 def test_active_github_workflow_uses_ci_command() -> None:
     workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
 
@@ -3080,6 +3256,7 @@ def test_example_github_workflow_posts_pr_comments_safely() -> None:
     assert "GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}" in workflow
     assert "actions/upload-artifact@v7" in workflow
 
+
 def test_ci_skip_manifest_skips_manifest_generation(tmp_path: Path) -> None:
     write_config(tmp_path)
     run_dir = write_run(tmp_path)
@@ -3101,6 +3278,7 @@ def test_ci_skip_manifest_skips_manifest_generation(tmp_path: Path) -> None:
     assert "manifest" in result.output
     assert "manifest-check" in result.output
     assert "skipped" in result.output
+
 
 def test_ci_skip_config_check_skips_config_check_generation(tmp_path: Path) -> None:
     write_config(tmp_path)
@@ -3473,9 +3651,7 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
     manifest_result = check_manifest(tmp_path, run_dir)
     assert manifest_result.passed is True
     manifest_payload = json.loads(run_dir.joinpath("manifest.json").read_text())
-    manifest_artifacts = {
-        item["name"]: item for item in manifest_payload["artifacts"]
-    }
+    manifest_artifacts = {item["name"]: item for item in manifest_payload["artifacts"]}
     assert manifest_artifacts["evidence-room-index-html"]["available"] is True
     assert manifest_artifacts["evidence-room-review-hub-html"]["available"] is True
     assert manifest_artifacts["evidence-room-reviewer-guide-md"]["available"] is True
@@ -3515,7 +3691,6 @@ def test_ci_evidence_room_is_discoverable_and_bundled(tmp_path: Path) -> None:
     assert "evidence-room/evidence-room.md" in names
     assert "evidence-room/evidence-room.zip" in names
     assert "evidence-room/proof-packet/proof.html" not in names
-
 
 
 def test_ci_config_regression_enabled_runs_check_by_default(

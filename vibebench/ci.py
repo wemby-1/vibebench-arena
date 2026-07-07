@@ -81,6 +81,13 @@ from vibebench.run_index import (
 from vibebench.runner import run_checks
 from vibebench.status_block import generate_status_block
 from vibebench.trend import analyze_trend, write_trend_json, write_trend_summary
+from vibebench.workflow_check import (
+    WORKFLOW_CHECK_JSON,
+    WORKFLOW_CHECK_SUMMARY,
+    workflow_check_payload,
+    write_workflow_check_json,
+    write_workflow_check_summary,
+)
 from vibebench.workflow_template import (
     DEFAULT_WORKFLOW_INSTALL_COMMAND,
     WORKFLOW_TEMPLATE_JSON,
@@ -195,6 +202,8 @@ def plan_ci_pipeline(
     skip_metrics_diff: bool = False,
     metrics_diff_policy: bool = False,
     skip_metrics_diff_policy: bool = False,
+    workflow_check: bool = False,
+    skip_workflow_check: bool = False,
     workflow_template: bool = False,
     skip_workflow_template: bool = False,
     workflow_template_profile: str = "auto",
@@ -276,6 +285,22 @@ def plan_ci_pipeline(
         steps.append(planned_step("project-scan", "Would run project-scan report"))
     elif skip_project_scan:
         steps.append(skipped_plan_step("project-scan", "--skip-project-scan"))
+    if workflow_check and not skip_workflow_check:
+        steps.append(
+            planned_step(
+                "workflow-check",
+                "Would write workflow-check artifacts",
+                artifact=Path(WORKFLOW_CHECK_JSON),
+            )
+        )
+    elif skip_workflow_check:
+        steps.append(
+            skipped_plan_step(
+                "workflow-check",
+                "--skip-workflow-check",
+                artifact=Path(WORKFLOW_CHECK_JSON),
+            )
+        )
     if workflow_template and not skip_workflow_template:
         steps.append(
             planned_step(
@@ -676,6 +701,8 @@ def run_ci_pipeline(
     skip_metrics_diff: bool = False,
     metrics_diff_policy: bool = False,
     skip_metrics_diff_policy: bool = False,
+    workflow_check: bool = False,
+    skip_workflow_check: bool = False,
     workflow_template: bool = False,
     skip_workflow_template: bool = False,
     workflow_template_profile: str = "auto",
@@ -774,6 +801,8 @@ def run_ci_pipeline(
             skip_metrics_check=skip_metrics_check,
             metrics_diff=metrics_diff_enabled,
             skip_metrics_diff=skip_metrics_diff,
+            workflow_check=workflow_check,
+            skip_workflow_check=skip_workflow_check,
             workflow_template=workflow_template,
             skip_workflow_template=skip_workflow_template,
             regression_check=regression_check,
@@ -834,6 +863,12 @@ def run_ci_pipeline(
         steps.append(
             CiStepResult("project-scan", "skipped", 0, message="skipped by flag")
         )
+    if workflow_check and not skip_workflow_check:
+        steps.append(run_workflow_check_artifact_step(root, selected_run_dir))
+    elif skip_workflow_check:
+        steps.append(
+            CiStepResult("workflow-check", "skipped", 0, message="skipped by flag")
+        )
     if workflow_template and not skip_workflow_template:
         steps.append(
             run_workflow_template_artifact_step(
@@ -846,9 +881,7 @@ def run_ci_pipeline(
         )
     elif skip_workflow_template:
         steps.append(
-            CiStepResult(
-                "workflow-template", "skipped", 0, message="skipped by flag"
-            )
+            CiStepResult("workflow-template", "skipped", 0, message="skipped by flag")
         )
 
     artifact_steps: list[tuple[str, bool, object]] = [
@@ -935,12 +968,14 @@ def run_ci_pipeline(
         (
             "bundle",
             skip_bundle,
-            lambda: create_bundle(
-                root,
-                selected_run_dir,
-                include_report_assets=bundle_include_report_assets,
-                strict=bundle_strict,
-            ).output_path,
+            lambda: (
+                create_bundle(
+                    root,
+                    selected_run_dir,
+                    include_report_assets=bundle_include_report_assets,
+                    strict=bundle_strict,
+                ).output_path
+            ),
         ),
         (
             "gh-summary",
@@ -1030,6 +1065,8 @@ def append_unavailable_artifact_steps(
     skip_metrics_check: bool = False,
     metrics_diff: bool = False,
     skip_metrics_diff: bool = False,
+    workflow_check: bool = False,
+    skip_workflow_check: bool = False,
     workflow_template: bool = False,
     skip_workflow_template: bool = False,
     regression_check: bool = False,
@@ -1085,6 +1122,19 @@ def append_unavailable_artifact_steps(
         steps.append(
             CiStepResult("project-scan", "skipped", 0, message="skipped by flag")
         )
+    if workflow_check and not skip_workflow_check:
+        steps.append(
+            CiStepResult(
+                "workflow-check",
+                "failed",
+                1,
+                message="no run directory available",
+            )
+        )
+    elif skip_workflow_check:
+        steps.append(
+            CiStepResult("workflow-check", "skipped", 0, message="skipped by flag")
+        )
     if workflow_template and not skip_workflow_template:
         steps.append(
             CiStepResult(
@@ -1096,9 +1146,7 @@ def append_unavailable_artifact_steps(
         )
     elif skip_workflow_template:
         steps.append(
-            CiStepResult(
-                "workflow-template", "skipped", 0, message="skipped by flag"
-            )
+            CiStepResult("workflow-template", "skipped", 0, message="skipped by flag")
         )
 
     flags = [
@@ -1287,9 +1335,7 @@ def validate_metrics_artifact_flags(
             "--metrics-check and --skip-metrics-check cannot be combined."
         )
     if metrics_diff and skip_metrics_diff:
-        raise ConfigError(
-            "--metrics-diff and --skip-metrics-diff cannot be combined."
-        )
+        raise ConfigError("--metrics-diff and --skip-metrics-diff cannot be combined.")
     if metrics_diff_policy and skip_metrics_diff_policy:
         raise ConfigError(
             "--metrics-diff-policy and --skip-metrics-diff-policy cannot be combined."
@@ -1298,6 +1344,33 @@ def validate_metrics_artifact_flags(
         raise ConfigError(
             "--metrics-diff-policy cannot be combined with --skip-metrics-diff."
         )
+
+
+def run_workflow_check_artifact_step(project_root: Path, run_dir: Path) -> CiStepResult:
+    """Generate workflow-check artifacts and return CI step status."""
+    started = time.perf_counter()
+    try:
+        payload = workflow_check_payload(project_root, strict=False)
+        json_path = run_dir / WORKFLOW_CHECK_JSON
+        summary_path = run_dir / WORKFLOW_CHECK_SUMMARY
+        write_workflow_check_json(json_path, payload)
+        write_workflow_check_summary(summary_path, payload)
+    except Exception as exc:
+        return CiStepResult(
+            "workflow-check",
+            "failed",
+            1,
+            message=str(exc),
+            duration_seconds=elapsed_since(started),
+        )
+    return CiStepResult(
+        "workflow-check",
+        "passed",
+        0,
+        artifact_path=json_path,
+        message=f"status {payload['status']}; findings {len(payload['findings'])}",
+        duration_seconds=elapsed_since(started),
+    )
 
 
 def run_workflow_template_artifact_step(
@@ -1460,7 +1533,6 @@ def run_metrics_check_artifact_step(project_root: Path, run_dir: Path) -> CiStep
         message=message,
         duration_seconds=elapsed_since(started),
     )
-
 
 
 def run_metrics_diff_artifact_step(
@@ -1633,11 +1705,7 @@ def ci_json_payload(result: CiResult) -> dict[str, object]:
     run_id = result.run_dir.name if result.run_dir is not None else None
     return {
         "status": (
-            "planned"
-            if result.dry_run
-            else "passed"
-            if result.passed
-            else "failed"
+            "planned" if result.dry_run else "passed" if result.passed else "failed"
         ),
         "dry_run": result.dry_run,
         "run_dir": str(result.run_dir) if result.run_dir is not None else None,

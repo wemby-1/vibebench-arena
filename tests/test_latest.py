@@ -50,6 +50,7 @@ def write_run(
     )
     return run_dir
 
+
 def test_latest_selects_latest_valid_run(tmp_path: Path) -> None:
     write_run(tmp_path, "20260701_100000", metrics(score=90))
     write_run(tmp_path, "20260701_110000", metrics(score=95, risk="medium"))
@@ -61,6 +62,7 @@ def test_latest_selects_latest_valid_run(tmp_path: Path) -> None:
     assert "VibeScore: 95" in result.output
     assert "Risk: medium" in result.output
 
+
 def test_latest_empty_runs_dir_fails_clearly(tmp_path: Path) -> None:
     (tmp_path / ".vibebench" / "runs").mkdir(parents=True)
 
@@ -68,6 +70,7 @@ def test_latest_empty_runs_dir_fails_clearly(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "No valid VibeBench runs found" in result.output
+
 
 def test_latest_skips_corrupt_newer_run(tmp_path: Path) -> None:
     write_run(tmp_path, "20260701_100000", metrics(score=90))
@@ -81,6 +84,7 @@ def test_latest_skips_corrupt_newer_run(tmp_path: Path) -> None:
     assert "20260701_100000" in result.output
     assert "Skipped corrupt runs: 1" in result.output
 
+
 def test_latest_all_corrupt_runs_fail_clearly(tmp_path: Path) -> None:
     corrupt = tmp_path / ".vibebench" / "runs" / "20260701_110000"
     corrupt.mkdir(parents=True)
@@ -90,6 +94,7 @@ def test_latest_all_corrupt_runs_fail_clearly(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "all metrics.json files were unreadable" in result.output
+
 
 def test_latest_json_output_shape(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260701_110000", metrics(score=95))
@@ -108,6 +113,7 @@ def test_latest_json_output_shape(tmp_path: Path) -> None:
     assert artifacts["metrics.json"]["available"] is True
     assert artifacts["check.log"]["available"] is True
 
+
 def test_latest_runs_dir_option(tmp_path: Path) -> None:
     runs_dir = tmp_path / "custom-runs"
     run_dir = runs_dir / "20260701_110000"
@@ -123,6 +129,7 @@ def test_latest_runs_dir_option(tmp_path: Path) -> None:
     assert "20260701_110000" in result.output
     assert "VibeScore: 77" in result.output
 
+
 def test_latest_artifact_available(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260701_110000")
     run_dir.joinpath("check.log").write_text("log\n", encoding="utf-8")
@@ -137,6 +144,7 @@ def test_latest_artifact_available(tmp_path: Path) -> None:
     assert "available" in result.output
     assert "metrics.json" not in result.output
 
+
 def test_latest_artifact_unavailable(tmp_path: Path) -> None:
     write_run(tmp_path, "20260701_110000")
 
@@ -148,6 +156,7 @@ def test_latest_artifact_unavailable(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert "vibebench-bundle.zip" in result.output
     assert "missing" in result.output
+
 
 def test_latest_run_index_artifact_path_only(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260701_110000")
@@ -181,6 +190,42 @@ def test_latest_run_index_artifact_path_only(tmp_path: Path) -> None:
     assert "run-index.json" in json_result.output
     assert md_result.exit_code == 0
     assert "run-index.md" in md_result.output
+
+
+def test_latest_workflow_check_artifact_path_only(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260701_110000")
+    run_dir.joinpath("workflow-check.json").write_text("{}\n", encoding="utf-8")
+    run_dir.joinpath("workflow-check.md").write_text(
+        "workflow check\n", encoding="utf-8"
+    )
+
+    json_result = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "workflow-check-json",
+            "--path-only",
+        ],
+    )
+    md_result = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "workflow-check-md",
+            "--path-only",
+        ],
+    )
+
+    assert json_result.exit_code == 0
+    assert "workflow-check.json" in json_result.output
+    assert md_result.exit_code == 0
+    assert "workflow-check.md" in md_result.output
 
 
 def test_latest_compare_artifact_path_only(tmp_path: Path) -> None:
@@ -321,9 +366,7 @@ def test_latest_metrics_diff_artifact_path_only(tmp_path: Path) -> None:
 
 def test_latest_workflow_template_artifact_path_only(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260701_111500")
-    run_dir.joinpath("workflow-template.json").write_text(
-        "{}\n", encoding="utf-8"
-    )
+    run_dir.joinpath("workflow-template.json").write_text("{}\n", encoding="utf-8")
     run_dir.joinpath("workflow-template.md").write_text(
         "workflow md\n", encoding="utf-8"
     )
@@ -453,6 +496,7 @@ def test_latest_unknown_artifact_fails_clearly(tmp_path: Path) -> None:
     assert "Unknown artifact 'nope'" in result.output
     assert "check-log" in result.output
 
+
 def test_latest_path_only_success(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260701_110000")
     run_dir.joinpath("check.log").write_text("log\n", encoding="utf-8")
@@ -472,6 +516,7 @@ def test_latest_path_only_success(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert result.output.strip() == ".vibebench/runs/20260701_110000/check.log"
 
+
 def test_latest_path_only_requires_artifact(tmp_path: Path) -> None:
     write_run(tmp_path, "20260701_110000")
 
@@ -482,6 +527,7 @@ def test_latest_path_only_requires_artifact(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "--path-only requires --artifact" in result.output
+
 
 def test_latest_path_only_fails_when_artifact_unavailable(tmp_path: Path) -> None:
     write_run(tmp_path, "20260701_110000")
@@ -501,6 +547,7 @@ def test_latest_path_only_fails_when_artifact_unavailable(tmp_path: Path) -> Non
     assert result.exit_code == 1
     assert "unavailable" in result.output
 
+
 def test_latest_all_paths_prints_only_available_artifact_paths(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260701_110000")
     run_dir.joinpath("check.log").write_text("log\n", encoding="utf-8")
@@ -519,6 +566,7 @@ def test_latest_all_paths_prints_only_available_artifact_paths(tmp_path: Path) -
     assert "check-log: .vibebench/runs/20260701_110000/check.log" in lines
     assert "report: .vibebench/runs/20260701_110000/report/index.html" in lines
 
+
 def test_latest_all_paths_omits_unavailable_artifacts(tmp_path: Path) -> None:
     write_run(tmp_path, "20260701_110000")
 
@@ -531,6 +579,7 @@ def test_latest_all_paths_omits_unavailable_artifacts(tmp_path: Path) -> None:
     assert "metrics:" in result.output
     assert "bundle:" not in result.output
     assert "report:" not in result.output
+
 
 def test_latest_all_paths_json_output_shape(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260701_110000")
@@ -548,6 +597,7 @@ def test_latest_all_paths_json_output_shape(tmp_path: Path) -> None:
     assert paths["metrics"]["path"] == ".vibebench/runs/20260701_110000/metrics.json"
     assert paths["check-log"]["size_bytes"] == 4
     assert "bundle" not in paths
+
 
 def test_latest_all_paths_rejects_artifact(tmp_path: Path) -> None:
     write_run(tmp_path, "20260701_110000")
@@ -567,6 +617,7 @@ def test_latest_all_paths_rejects_artifact(tmp_path: Path) -> None:
     assert result.exit_code == 1
     assert "--all-paths cannot be combined with --artifact" in result.output
 
+
 def test_latest_all_paths_rejects_path_only(tmp_path: Path) -> None:
     write_run(tmp_path, "20260701_110000")
 
@@ -577,6 +628,7 @@ def test_latest_all_paths_rejects_path_only(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "--all-paths cannot be combined with --path-only" in result.output
+
 
 def test_latest_artifact_path_only_still_works_with_all_paths_added(
     tmp_path: Path,
@@ -599,6 +651,7 @@ def test_latest_artifact_path_only_still_works_with_all_paths_added(
     assert result.exit_code == 0
     assert result.output.strip() == ".vibebench/runs/20260701_110000/check.log"
 
+
 def test_latest_json_output_remains_full_inventory(tmp_path: Path) -> None:
     write_run(tmp_path, "20260701_110000")
 
@@ -609,6 +662,7 @@ def test_latest_json_output_remains_full_inventory(tmp_path: Path) -> None:
     assert "artifacts" in payload
     assert "paths" not in payload
     assert any(item["available"] is False for item in payload["artifacts"])
+
 
 def test_latest_manifest_path_only(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260701_110000")
@@ -628,6 +682,7 @@ def test_latest_manifest_path_only(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert result.output.strip() == ".vibebench/runs/20260701_110000/manifest.json"
+
 
 def test_latest_artifact_supports_config_check_alias(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260701_110000", metrics(score=95))
