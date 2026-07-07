@@ -10,6 +10,8 @@ from vibebench.paths import config_file
 from vibebench.project_detect import ProjectDetection, detect_project
 
 FindingSeverity = Literal["info", "warning", "error"]
+PROJECT_SCAN_JSON = "project-scan.json"
+PROJECT_SCAN_SUMMARY = "project-scan.md"
 
 
 @dataclass(frozen=True)

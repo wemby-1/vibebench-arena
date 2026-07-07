@@ -46,6 +46,13 @@ from vibebench.package_check import (
 )
 from vibebench.paths import config_dir, config_file
 from vibebench.pr_comment import generate_pr_comment
+from vibebench.project_scan import (
+    PROJECT_SCAN_JSON,
+    PROJECT_SCAN_SUMMARY,
+    run_project_scan,
+    write_project_scan_json,
+    write_project_scan_summary,
+)
 from vibebench.regression_check import (
     REGRESSION_CHECK_JSON,
     REGRESSION_CHECK_SUMMARY,
@@ -160,6 +167,8 @@ def plan_ci_pipeline(
     skip_release_check: bool = False,
     skip_package_check: bool = False,
     skip_evidence_room: bool = False,
+    project_scan: bool = False,
+    skip_project_scan: bool = False,
     metrics_check: bool = False,
     skip_metrics_check: bool = False,
     metrics_diff: bool = False,
@@ -193,6 +202,10 @@ def plan_ci_pipeline(
         planned_step("check", "Would run configured checks"),
         planned_step("gate", "Would evaluate the quality gate"),
     ]
+    validate_project_scan_flags(
+        project_scan=project_scan,
+        skip_project_scan=skip_project_scan,
+    )
     validate_metrics_artifact_flags(
         metrics_check=metrics_check,
         skip_metrics_check=skip_metrics_check,
@@ -215,6 +228,10 @@ def plan_ci_pipeline(
         steps.append(planned_step("metrics-diff", message))
     elif skip_metrics_diff:
         steps.append(skipped_plan_step("metrics-diff", "--skip-metrics-diff"))
+    if project_scan:
+        steps.append(planned_step("project-scan", "Would run project-scan report"))
+    elif skip_project_scan:
+        steps.append(skipped_plan_step("project-scan", "--skip-project-scan"))
     for name, skipped, flag in ci_artifact_step_flags(
         skip_report=skip_report,
         skip_pr_comment=skip_pr_comment,
@@ -587,6 +604,8 @@ def run_ci_pipeline(
     skip_release_check: bool = False,
     skip_package_check: bool = False,
     skip_evidence_room: bool = False,
+    project_scan: bool = False,
+    skip_project_scan: bool = False,
     metrics_check: bool = False,
     skip_metrics_check: bool = False,
     metrics_diff: bool = False,
@@ -623,6 +642,10 @@ def run_ci_pipeline(
             source="cli",
             message="Disabled because --skip-compare skips compare.",
         )
+    validate_project_scan_flags(
+        project_scan=project_scan,
+        skip_project_scan=skip_project_scan,
+    )
     validate_metrics_artifact_flags(
         metrics_check=metrics_check,
         skip_metrics_check=skip_metrics_check,
@@ -671,6 +694,8 @@ def run_ci_pipeline(
             skip_release_check=skip_release_check,
             skip_package_check=skip_package_check,
             skip_evidence_room=skip_evidence_room,
+            project_scan=project_scan,
+            skip_project_scan=skip_project_scan,
             metrics_check=metrics_check,
             skip_metrics_check=skip_metrics_check,
             metrics_diff=metrics_diff_enabled,
@@ -710,6 +735,12 @@ def run_ci_pipeline(
     elif skip_metrics_diff:
         steps.append(
             CiStepResult("metrics-diff", "skipped", 0, message="skipped by flag")
+        )
+    if project_scan:
+        steps.append(run_project_scan_artifact_step(root, selected_run_dir))
+    elif skip_project_scan:
+        steps.append(
+            CiStepResult("project-scan", "skipped", 0, message="skipped by flag")
         )
 
     artifact_steps: list[tuple[str, bool, object]] = [
@@ -882,6 +913,8 @@ def append_unavailable_artifact_steps(
     skip_release_check: bool,
     skip_package_check: bool,
     skip_evidence_room: bool,
+    project_scan: bool = False,
+    skip_project_scan: bool = False,
     metrics_check: bool = False,
     skip_metrics_check: bool = False,
     metrics_diff: bool = False,
@@ -914,6 +947,19 @@ def append_unavailable_artifact_steps(
     elif skip_metrics_diff:
         steps.append(
             CiStepResult("metrics-diff", "skipped", 0, message="skipped by flag")
+        )
+    if project_scan:
+        steps.append(
+            CiStepResult(
+                "project-scan",
+                "failed",
+                1,
+                message="no run directory available",
+            )
+        )
+    elif skip_project_scan:
+        steps.append(
+            CiStepResult("project-scan", "skipped", 0, message="skipped by flag")
         )
 
     flags = [
@@ -1072,6 +1118,15 @@ def run_artifact_step(name: str, callback: object) -> CiStepResult:
     )
 
 
+def validate_project_scan_flags(
+    *,
+    project_scan: bool,
+    skip_project_scan: bool,
+) -> None:
+    """Validate optional project-scan artifact flags."""
+    if project_scan and skip_project_scan:
+        raise ConfigError("--project-scan and --skip-project-scan cannot be combined.")
+
 
 def validate_metrics_artifact_flags(
     *,
@@ -1099,6 +1154,33 @@ def validate_metrics_artifact_flags(
         raise ConfigError(
             "--metrics-diff-policy cannot be combined with --skip-metrics-diff."
         )
+
+
+def run_project_scan_artifact_step(project_root: Path, run_dir: Path) -> CiStepResult:
+    """Generate project-scan artifacts and return CI step status."""
+    started = time.perf_counter()
+    try:
+        payload = run_project_scan(project_root, strict=False)
+        json_path = run_dir / PROJECT_SCAN_JSON
+        summary_path = run_dir / PROJECT_SCAN_SUMMARY
+        write_project_scan_json(json_path, payload)
+        write_project_scan_summary(summary_path, payload)
+    except Exception as exc:
+        return CiStepResult(
+            "project-scan",
+            "failed",
+            1,
+            message=str(exc),
+            duration_seconds=elapsed_since(started),
+        )
+    return CiStepResult(
+        "project-scan",
+        "passed",
+        0,
+        artifact_path=json_path,
+        message=f"readiness {payload['status']}",
+        duration_seconds=elapsed_since(started),
+    )
 
 
 def run_metrics_check_artifact_step(project_root: Path, run_dir: Path) -> CiStepResult:

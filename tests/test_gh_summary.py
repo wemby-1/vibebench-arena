@@ -132,6 +132,14 @@ def write_run(
             "# VibeBench Metrics Diff\n",
             encoding="utf-8",
         )
+        (run_dir / "project-scan.json").write_text(
+            '{"status":"ready"}\n',
+            encoding="utf-8",
+        )
+        (run_dir / "project-scan.md").write_text(
+            "# VibeBench Project Scan\n",
+            encoding="utf-8",
+        )
         (run_dir / "regression-check.json").write_text(
             '{"status":"passed"}\n',
             encoding="utf-8",
@@ -311,6 +319,8 @@ def test_summary_contains_key_sections_and_artifacts(
     assert "`metrics-check.md` (available)" in markdown
     assert "`metrics-diff.json` (available)" in markdown
     assert "`metrics-diff.md` (available)" in markdown
+    assert "`project-scan.json` (available)" in markdown
+    assert "`project-scan.md` (available)" in markdown
     assert "`regression-check.json` (available)" in markdown
     assert "`regression-check.md` (available)" in markdown
     assert "`evidence-room/index.html` (available)" in markdown

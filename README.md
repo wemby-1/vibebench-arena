@@ -172,6 +172,7 @@ python -m pip install -e ".[dev]"
 python3 -m vibebench init --profile auto
 python3 -m vibebench config --check
 python3 -m vibebench ci --dry-run
+python3 -m vibebench ci --project-scan
 python3 -m vibebench ci
 python -m vibebench config
 python -m vibebench doctor
@@ -217,7 +218,7 @@ python -m vibebench gh-summary
 python -m vibebench compare
 ```
 
-`vibebench init --profile auto` creates a safe starter `.vibebench/config.yaml` without installing dependencies, creating runs/baselines/workflows, or changing repository settings. Auto can select `generic`, `python`, `node`, or `fullstack`; use `--profile python` for `python3 -m pytest -q` plus `python3 -m ruff check .`, `--profile node` for existing `package.json` lint/test scripts, or `--profile generic` for a conservative dependency-free starter. Existing config is not overwritten unless `--force` is used. Then run `python3 -m vibebench config --check`, `python3 -m vibebench ci --dry-run`, and `python3 -m vibebench ci`.
+`vibebench project-scan` is read-only onboarding inspection. `vibebench ci --project-scan` keeps default CI unchanged unless requested and writes report-only `project-scan.json` and `project-scan.md` artifacts for onboarding evidence. `vibebench init --profile auto` creates a safe starter `.vibebench/config.yaml` without installing dependencies, creating runs/baselines/workflows, or changing repository settings. Auto can select `generic`, `python`, `node`, or `fullstack`; use `--profile python` for `python3 -m pytest -q` plus `python3 -m ruff check .`, `--profile node` for existing `package.json` lint/test scripts, or `--profile generic` for a conservative dependency-free starter. Existing config is not overwritten unless `--force` is used. Then run `python3 -m vibebench config --check`, `python3 -m vibebench ci --dry-run`, and `python3 -m vibebench ci`.
 
 For packaging readiness, use editable install and local metadata checks:
 

@@ -20,10 +20,11 @@ python3 -m vibebench project-scan --json
 python3 -m vibebench init --profile auto
 python3 -m vibebench config --check
 python3 -m vibebench ci --dry-run
+python3 -m vibebench ci --project-scan
 python3 -m vibebench ci
 ```
 
-`project-scan` is read-only: it detects stacks, recommends an init profile, inspects existing config status, and never creates config, runs, baselines, dependencies, or workflow files. `init --profile auto` creates `.vibebench/config.yaml` only. It can select `generic`, `python`, `node`, or `fullstack` from project markers, reusing existing `package.json` lint/test scripts when present. Init never installs dependencies, never overwrites config unless `--force` is provided, and does not create `.vibebench/runs`, `.vibebench/baselines`, workflows, or repository settings.
+`project-scan` is read-only: it detects stacks, recommends an init profile, inspects existing config status, and never creates config, runs, baselines, dependencies, or workflow files. `ci --project-scan` is opt-in and writes report-only `project-scan.json` and `project-scan.md` artifacts for onboarding evidence; default CI is unchanged. `init --profile auto` creates `.vibebench/config.yaml` only. It can select `generic`, `python`, `node`, or `fullstack` from project markers, reusing existing `package.json` lint/test scripts when present. Init never installs dependencies, never overwrites config unless `--force` is provided, and does not create `.vibebench/runs`, `.vibebench/baselines`, workflows, or repository settings.
 
 ## Inspect Effective Config
 

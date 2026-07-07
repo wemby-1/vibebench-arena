@@ -2834,6 +2834,20 @@ def ci_command(
             help="Skip evidence-room artifact generation.",
         ),
     ] = False,
+    project_scan: Annotated[
+        bool,
+        typer.Option(
+            "--project-scan",
+            help="Run project-scan and write onboarding readiness artifacts.",
+        ),
+    ] = False,
+    skip_project_scan: Annotated[
+        bool,
+        typer.Option(
+            "--skip-project-scan",
+            help="Skip optional project-scan artifact generation.",
+        ),
+    ] = False,
     metrics_check: Annotated[
         bool,
         typer.Option(
@@ -3051,6 +3065,8 @@ def ci_command(
                 skip_release_check=skip_release_check,
                 skip_package_check=skip_package_check,
                 skip_evidence_room=skip_evidence_room,
+                project_scan=project_scan,
+                skip_project_scan=skip_project_scan,
                 metrics_check=metrics_check,
                 skip_metrics_check=skip_metrics_check,
                 metrics_diff=metrics_diff,
@@ -3099,6 +3115,8 @@ def ci_command(
                 skip_release_check=skip_release_check,
                 skip_package_check=skip_package_check,
                 skip_evidence_room=skip_evidence_room,
+                project_scan=project_scan,
+                skip_project_scan=skip_project_scan,
                 metrics_check=metrics_check,
                 skip_metrics_check=skip_metrics_check,
                 metrics_diff=metrics_diff,

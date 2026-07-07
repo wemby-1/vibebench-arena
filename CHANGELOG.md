@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added opt-in `vibebench ci --project-scan` artifacts (`project-scan.json` and `project-scan.md`) for report-only onboarding evidence, with artifact/latest/manifest/bundle/GitHub summary visibility while default CI remains unchanged.
+
 - Added read-only `vibebench project-scan` onboarding readiness inspection with shared stack detection, config status, package script signals, JSON/Markdown outputs, and strict mode for invalid config or malformed package.json.
 
 - Added stack-aware `vibebench init` onboarding with `generic`, `python`, `node`, `fullstack`, and `auto` profiles, package-script detection, dry-run/JSON output, atomic config validation, and overwrite protection.

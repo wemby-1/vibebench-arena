@@ -56,7 +56,7 @@ GitHub Actions can upload downloadable proof packet, static site preview, and ev
 
 ## Security and privacy boundaries
 
-`project-scan` is read-only and does not create config, runs, baselines, dependency files, or workflow files unless an explicit output path is provided for JSON or Markdown. VibeBench records local evidence and CI-readable artifacts. It is not a credential leak scanner, a sandbox, a hosted security product, or a replacement for human security review. Treat generated artifacts as review materials and inspect them before sharing.
+`project-scan` is read-only and does not create config, runs, baselines, dependency files, or workflow files unless an explicit output path is provided for JSON or Markdown. `ci --project-scan` is opt-in and writes report-only `project-scan.json` and `project-scan.md` artifacts for onboarding evidence; default CI remains unchanged. VibeBench records local evidence and CI-readable artifacts. It is not a credential leak scanner, a sandbox, a hosted security product, or a replacement for human security review. Treat generated artifacts as review materials and inspect them before sharing.
 
 ## What the project does not claim
 
@@ -80,6 +80,7 @@ python3 -m vibebench share-check PATH
 python3 -m vibebench share-check PATH --json
 python3 -m vibebench project-scan
 python3 -m vibebench project-scan --json
+python3 -m vibebench ci --project-scan
 python3 -m vibebench init --profile auto
 python3 -m vibebench config --check
 python3 -m vibebench regression-check
