@@ -11,6 +11,7 @@ from vibebench.config import load_config
 
 runner = CliRunner()
 
+
 def test_cli_help_works() -> None:
     result = runner.invoke(app, ["--help"])
 
@@ -26,6 +27,7 @@ def config_path(root: Path) -> Path:
 
 def workflow_path(root: Path) -> Path:
     return root / ".github" / "workflows" / "vibebench.yml"
+
 
 def write_package_json(root: Path, scripts: dict[str, str] | None = None) -> None:
     payload = {"scripts": scripts or {}}
@@ -389,8 +391,6 @@ def test_init_generated_config_can_be_used_with_config_check(tmp_path: Path) -> 
     assert init_result.exit_code == 0
     assert check.exit_code == 0
     assert payload["overall_status"] == "passed"
-
-
 
 
 def onboard_payload_for(root: Path, *extra: str) -> dict[str, object]:
@@ -1068,7 +1068,6 @@ def test_project_scan_policy_fail_on_error_findings(tmp_path: Path) -> None:
     )
 
 
-
 def workflow_template_payload_for(root: Path, *extra: str) -> dict[str, object]:
     result = runner.invoke(
         app,
@@ -1363,9 +1362,206 @@ def test_onboard_mentions_workflow_template(tmp_path: Path) -> None:
     payload = onboard_payload_for(tmp_path)
 
     assert "python3 -m vibebench workflow-template" in payload["suggested_commands"]
-    assert "python3 -m vibebench workflow-template --write" in payload[
-        "suggested_commands"
-    ]
+    assert (
+        "python3 -m vibebench workflow-template --write"
+        in payload["suggested_commands"]
+    )
+
+
+def write_workflow(root: Path, body: str, name: str = "vibebench.yml") -> Path:
+    path = root / ".github" / "workflows" / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(body, encoding="utf-8")
+    return path
+
+
+def minimal_vibebench_workflow() -> str:
+    return """name: VibeBench
+on:
+  pull_request:
+jobs:
+  vibebench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: python3 -m vibebench ci
+"""
+
+
+def workflow_check_payload_for(root: Path, *extra: str) -> dict[str, object]:
+    result = runner.invoke(
+        app,
+        ["workflow-check", "--project-root", str(root), "--json", *extra],
+    )
+    assert result.output.lstrip().startswith("{")
+    assert result.exit_code == 0
+    return json.loads(result.output)
+
+
+def test_workflow_check_missing_default_does_not_create_workflow_dir(
+    tmp_path: Path,
+) -> None:
+    payload = workflow_check_payload_for(tmp_path)
+
+    assert payload["status"] == "passed"
+    assert payload["summary"]["warning"] >= 1
+    assert payload["workflow_path"] is None
+    assert not (tmp_path / ".github").exists()
+
+
+def test_workflow_check_valid_minimal_vibebench_workflow_passes(
+    tmp_path: Path,
+) -> None:
+    workflow = write_workflow(tmp_path, minimal_vibebench_workflow())
+
+    payload = workflow_check_payload_for(tmp_path)
+
+    assert payload["status"] == "passed"
+    assert payload["workflow_path"] == str(workflow)
+    assert payload["usable_for_vibebench_ci"] is True
+    assert payload["summary"]["failed"] == 0
+
+
+def test_workflow_check_reports_missing_vibebench_invocation(
+    tmp_path: Path,
+) -> None:
+    write_workflow(
+        tmp_path,
+        minimal_vibebench_workflow().replace(
+            "python3 -m vibebench ci", "python3 -m pytest -q"
+        ),
+    )
+
+    payload = workflow_check_payload_for(tmp_path)
+
+    assert payload["status"] == "passed"
+    assert "vibebench_ci_invocation" in {
+        finding["id"] for finding in payload["findings"]
+    }
+
+
+def test_workflow_check_strict_fails_when_vibebench_invocation_missing(
+    tmp_path: Path,
+) -> None:
+    write_workflow(
+        tmp_path,
+        minimal_vibebench_workflow().replace(
+            "python3 -m vibebench ci", "python3 -m pytest -q"
+        ),
+    )
+
+    result = runner.invoke(
+        app,
+        ["workflow-check", "--project-root", str(tmp_path), "--strict", "--json"],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert "vibebench_ci_invocation" in {
+        finding["id"] for finding in payload["findings"]
+    }
+
+
+def test_workflow_check_risky_commands_warn_and_strict_fails(tmp_path: Path) -> None:
+    body = (
+        minimal_vibebench_workflow()
+        + "      - run: gh release create v1\n      - run: npm publish\n"
+    )
+    workflow = write_workflow(tmp_path, body)
+
+    payload = workflow_check_payload_for(tmp_path, "--path", str(workflow))
+    strict = runner.invoke(
+        app,
+        [
+            "workflow-check",
+            "--project-root",
+            str(tmp_path),
+            "--path",
+            str(workflow),
+            "--strict",
+            "--json",
+        ],
+    )
+    strict_payload = json.loads(strict.output)
+
+    assert payload["status"] == "passed"
+    assert {"gh_release", "npm_publish"} <= {
+        finding["id"] for finding in payload["findings"]
+    }
+    assert strict.exit_code == 1
+    assert strict_payload["status"] == "failed"
+
+
+def test_workflow_check_path_checks_specific_file(tmp_path: Path) -> None:
+    other = write_workflow(tmp_path, minimal_vibebench_workflow(), name="other.yml")
+
+    payload = workflow_check_payload_for(tmp_path, "--path", str(other))
+
+    assert payload["workflow_path"] == str(other)
+    assert payload["status"] == "passed"
+
+
+def test_workflow_check_json_output_and_summary_output(tmp_path: Path) -> None:
+    write_workflow(tmp_path, minimal_vibebench_workflow())
+    json_output = tmp_path / "check" / "workflow-check.json"
+    summary_output = tmp_path / "check" / "workflow-check.md"
+
+    result = runner.invoke(
+        app,
+        [
+            "workflow-check",
+            "--project-root",
+            str(tmp_path),
+            "--json",
+            "--json-output",
+            str(json_output),
+            "--summary-output",
+            str(summary_output),
+        ],
+    )
+    payload = json.loads(result.output)
+    written = json.loads(json_output.read_text(encoding="utf-8"))
+    markdown = summary_output.read_text(encoding="utf-8")
+
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    assert payload == written
+    assert markdown.startswith("# VibeBench Workflow Check")
+
+
+def test_workflow_check_does_not_modify_existing_workflow(tmp_path: Path) -> None:
+    workflow = write_workflow(tmp_path, minimal_vibebench_workflow())
+    before = workflow.read_text(encoding="utf-8")
+
+    result = runner.invoke(app, ["workflow-check", "--project-root", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert workflow.read_text(encoding="utf-8") == before
+
+
+def test_workflow_check_empty_workflow_reports_clearly(tmp_path: Path) -> None:
+    write_workflow(tmp_path, "")
+
+    payload = workflow_check_payload_for(tmp_path)
+
+    assert "workflow_not_empty" in {finding["id"] for finding in payload["findings"]}
+
+
+def test_workflow_check_existing_template_output_passes(tmp_path: Path) -> None:
+    generated = runner.invoke(
+        app,
+        ["workflow-template", "--project-root", str(tmp_path), "--write"],
+    )
+    checked = runner.invoke(
+        app,
+        ["workflow-check", "--project-root", str(tmp_path), "--strict", "--json"],
+    )
+    payload = json.loads(checked.output)
+
+    assert generated.exit_code == 0
+    assert checked.exit_code == 0
+    assert payload["usable_for_vibebench_ci"] is True
 
 
 def test_config_command_without_file_prints_defaults(tmp_path: Path) -> None:
@@ -1377,6 +1573,7 @@ def test_config_command_without_file_prints_defaults(tmp_path: Path) -> None:
     assert "checks" in result.output
     assert "gate" in result.output
     assert "risk" in result.output
+
 
 def test_config_command_with_valid_config(tmp_path: Path) -> None:
     runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
@@ -1442,7 +1639,6 @@ def test_config_command_write_example_missing_parent_fails_clearly(
     assert result.exit_code == 1
     assert "parent does not exist" in result.output
     assert not output.exists()
-
 
 
 def test_config_command_init_creates_starter_config(tmp_path: Path) -> None:
@@ -1678,6 +1874,7 @@ def test_config_command_json_is_valid(tmp_path: Path) -> None:
     assert payload["regression"]["enabled"] is False
     assert payload["onboard"]["policy"]["require_config"] is True
 
+
 def test_config_command_validate_succeeds_for_valid_config(tmp_path: Path) -> None:
     runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
 
@@ -1687,6 +1884,7 @@ def test_config_command_validate_succeeds_for_valid_config(tmp_path: Path) -> No
 
     assert result.exit_code == 0
     assert "VibeBench config is valid" in result.output
+
 
 def test_config_command_invalid_config_fails_clearly(tmp_path: Path) -> None:
     config_path(tmp_path).parent.mkdir(parents=True)
@@ -1698,6 +1896,7 @@ def test_config_command_invalid_config_fails_clearly(tmp_path: Path) -> None:
     assert "invalid" in result.output
     assert "project.name" in result.output
 
+
 def test_config_command_show_source_includes_sources(tmp_path: Path) -> None:
     runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
 
@@ -1708,6 +1907,7 @@ def test_config_command_show_source_includes_sources(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert "Source" in result.output
     assert "config file" in result.output
+
 
 def test_config_command_does_not_break_existing_check_and_gate(tmp_path: Path) -> None:
     runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
@@ -1733,6 +1933,7 @@ def test_config_command_does_not_break_existing_check_and_gate(tmp_path: Path) -
     assert check.exit_code == 0
     assert gate.exit_code == 0
 
+
 def test_config_show_human_output(tmp_path: Path) -> None:
     runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
 
@@ -1744,6 +1945,7 @@ def test_config_show_human_output(tmp_path: Path) -> None:
     assert "pytest -q" in result.output
     assert "min_score" in result.output
     assert "max_patch_lines" in result.output
+
 
 def test_config_show_json_output(tmp_path: Path) -> None:
     runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
@@ -1772,11 +1974,13 @@ def test_config_show_json_output(tmp_path: Path) -> None:
     assert payload["gate"]["min_score"] == 80
     assert payload["risk"]["max_patch_lines"] == 500
 
+
 def test_config_show_missing_config_fails_clearly(tmp_path: Path) -> None:
     result = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--show"])
 
     assert result.exit_code == 1
     assert "No VibeBench config found" in result.output
+
 
 def test_config_show_json_missing_config_keeps_stdout_clean(tmp_path: Path) -> None:
     result = runner.invoke(
@@ -1788,6 +1992,7 @@ def test_config_show_json_missing_config_keeps_stdout_clean(tmp_path: Path) -> N
     assert result.stdout == ""
     assert "No VibeBench config found" in result.stderr
 
+
 def test_config_show_invalid_config_fails_clearly(tmp_path: Path) -> None:
     config_path(tmp_path).parent.mkdir(parents=True)
     config_path(tmp_path).write_text("project:\n  name: ''\n", encoding="utf-8")
@@ -1797,6 +2002,7 @@ def test_config_show_invalid_config_fails_clearly(tmp_path: Path) -> None:
     assert result.exit_code == 1
     assert "invalid" in result.output
     assert "project.name" in result.output
+
 
 def test_config_validate_still_works_with_show_option_added(tmp_path: Path) -> None:
     runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
@@ -1809,6 +2015,7 @@ def test_config_validate_still_works_with_show_option_added(tmp_path: Path) -> N
     assert result.exit_code == 0
     assert "VibeBench config is valid" in result.output
 
+
 def test_config_check_human_output(tmp_path: Path) -> None:
     runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
 
@@ -1819,6 +2026,7 @@ def test_config_check_human_output(tmp_path: Path) -> None:
     assert "overall" in result.output.lower()
     assert "config_file_exists" in result.output
     assert "command_strings" in result.output
+
 
 def test_config_check_json_output(tmp_path: Path) -> None:
     runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
@@ -1845,15 +2053,16 @@ def test_config_check_json_output(tmp_path: Path) -> None:
         "onboard_policy",
     }
     assert all(
-        sorted(check) == ["message", "name", "status"]
-        for check in payload["checks"]
+        sorted(check) == ["message", "name", "status"] for check in payload["checks"]
     )
+
 
 def test_config_check_missing_config_fails_clearly(tmp_path: Path) -> None:
     result = runner.invoke(app, ["config", "--project-root", str(tmp_path), "--check"])
 
     assert result.exit_code == 1
     assert "No VibeBench config found" in result.output
+
 
 def test_config_check_json_missing_config_keeps_stdout_clean(tmp_path: Path) -> None:
     result = runner.invoke(
@@ -1865,6 +2074,7 @@ def test_config_check_json_missing_config_keeps_stdout_clean(tmp_path: Path) -> 
     assert result.stdout == ""
     assert "No VibeBench config found" in result.stderr
 
+
 def test_config_check_invalid_config_fails_clearly(tmp_path: Path) -> None:
     config_path(tmp_path).parent.mkdir(parents=True)
     config_path(tmp_path).write_text("project:\n  name: ''\n", encoding="utf-8")
@@ -1874,6 +2084,7 @@ def test_config_check_invalid_config_fails_clearly(tmp_path: Path) -> None:
     assert result.exit_code == 1
     assert "invalid" in result.output
     assert "project.name" in result.output
+
 
 def test_config_check_detects_empty_command_string(tmp_path: Path) -> None:
     config_path(tmp_path).parent.mkdir(parents=True)
@@ -1904,6 +2115,7 @@ checks:
     assert command_check["status"] == "failed"
     assert "Empty command string" in command_check["message"]
 
+
 def test_config_check_does_not_break_validate_or_show(tmp_path: Path) -> None:
     runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
 
@@ -1923,6 +2135,7 @@ def test_config_check_does_not_break_validate_or_show(tmp_path: Path) -> None:
     assert "vibebench-project" in show.output
     assert show_json.exit_code == 0
     assert json.loads(show_json.output)["project"]["name"] == "vibebench-project"
+
 
 def test_config_check_advice_human_output_for_empty_command(tmp_path: Path) -> None:
     config_path(tmp_path).parent.mkdir(parents=True)
@@ -1947,6 +2160,7 @@ checks:
     assert result.exit_code == 1
     assert "Advice" in result.output
     assert "Replace empty command entries" in result.output
+
 
 def test_config_check_json_advice_output(tmp_path: Path) -> None:
     config_path(tmp_path).parent.mkdir(parents=True)
@@ -1985,6 +2199,7 @@ checks:
     assert "advice" in command_check
     assert "pytest -q" in command_check["advice"]
 
+
 def test_config_check_json_without_advice_has_no_advice_fields(tmp_path: Path) -> None:
     config_path(tmp_path).parent.mkdir(parents=True)
     config_path(tmp_path).write_text(
@@ -2010,6 +2225,7 @@ checks:
     assert "advice" not in payload
     assert all("advice" not in check for check in payload["checks"])
 
+
 def test_config_check_missing_config_advice(tmp_path: Path) -> None:
     result = runner.invoke(
         app,
@@ -2019,6 +2235,7 @@ def test_config_check_missing_config_advice(tmp_path: Path) -> None:
     assert result.exit_code == 1
     assert "No VibeBench config found" in result.output
     assert "python -m vibebench init" in result.output
+
 
 def test_config_check_write_json(tmp_path: Path) -> None:
     runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
@@ -2041,6 +2258,7 @@ def test_config_check_write_json(tmp_path: Path) -> None:
     assert payload["overall_status"] == "passed"
     assert payload["config_path"] == str(config_path(tmp_path))
 
+
 def test_config_check_write_summary(tmp_path: Path) -> None:
     runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
     output = tmp_path / "config-check.md"
@@ -2061,6 +2279,7 @@ def test_config_check_write_summary(tmp_path: Path) -> None:
     markdown = output.read_text(encoding="utf-8")
     assert "# VibeBench Config Check" in markdown
     assert "Overall status" in markdown
+
 
 def test_config_check_json_write_json_keeps_stdout_pure(tmp_path: Path) -> None:
     runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
@@ -2083,6 +2302,7 @@ def test_config_check_json_write_json_keeps_stdout_pure(tmp_path: Path) -> None:
     stdout_payload = json.loads(result.output)
     file_payload = json.loads(output.read_text(encoding="utf-8"))
     assert stdout_payload == file_payload
+
 
 def test_config_check_advice_write_summary_includes_advice(tmp_path: Path) -> None:
     config_path(tmp_path).parent.mkdir(parents=True)
@@ -2126,9 +2346,7 @@ def write_release_checklist_project(
     notes_version: str | None = "v0.3.0",
 ) -> None:
     root.joinpath("pyproject.toml").write_text(
-        '[project]\n'
-        'name = "vibebench-arena"\n'
-        f'version = "{version}"\n',
+        f'[project]\nname = "vibebench-arena"\nversion = "{version}"\n',
         encoding="utf-8",
     )
     if notes_version is not None:
@@ -2480,7 +2698,6 @@ def test_release_checklist_does_not_modify_files(tmp_path: Path, monkeypatch) ->
     }
     assert result.exit_code == 0
     assert after == before
-
 
 
 def test_config_check_advice_mentions_stable_regression_gate(

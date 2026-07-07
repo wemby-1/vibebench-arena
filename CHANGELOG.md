@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added read-only `vibebench workflow-check` validation for existing GitHub Actions workflows, with JSON/Markdown outputs, strict mode, VibeBench CI readiness checks, and warnings for risky release, publish, deploy, or repository-write automation without calling GitHub or modifying workflow files.
+
 - Added optional `vibebench ci --workflow-template` run artifacts (`workflow-template.json`, `workflow-template.md`, and `workflow-template.yml`) for reviewable CI workflow setup evidence without creating or modifying repository workflow files.
 
 - Added preview-first `vibebench workflow-template` generation for safe GitHub Actions adoption, with JSON/Markdown outputs, auto profile detection, CI strictness modes, explicit `--write`, atomic overwrite protection, and no GitHub API, secrets, Pages, release, or publishing automation.

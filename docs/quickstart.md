@@ -15,16 +15,17 @@ python -m vibebench package-check
 ## Initialize VibeBench
 
 ```bash
+python3 -m vibebench project-scan
 python3 -m vibebench onboard
 python3 -m vibebench onboard --json
 python3 -m vibebench onboard --enforce-policy
-python3 -m vibebench project-scan
 python3 -m vibebench project-scan --json
 python3 -m vibebench project-scan --enforce-policy
 python3 -m vibebench init --profile auto
 python3 -m vibebench config --check
 python3 -m vibebench workflow-template
 python3 -m vibebench workflow-template --ci-mode adoption --write
+python3 -m vibebench workflow-check
 python3 -m vibebench ci --dry-run
 python3 -m vibebench ci --onboard
 python3 -m vibebench ci --onboard-policy
@@ -56,7 +57,7 @@ onboard:
     require_ci_ready: false
 ```
 
-`init --profile auto` creates `.vibebench/config.yaml` only. It can select `generic`, `python`, `node`, or `fullstack` from project markers, reusing existing `package.json` lint/test scripts when present. Init never installs dependencies, never overwrites config unless `--force` is provided, and does not create `.vibebench/runs`, `.vibebench/baselines`, workflows, or repository settings. `workflow-template` previews a conservative GitHub Actions workflow by default; use `workflow-template --ci-mode adoption --write` to create `.github/workflows/vibebench.yml` after review. `ci --workflow-template` creates `workflow-template.json`, `workflow-template.md`, and `workflow-template.yml` artifacts in the run directory only. Neither path calls GitHub, adds credentials, enables Pages, publishes packages, or creates releases.
+`init --profile auto` creates `.vibebench/config.yaml` only. It can select `generic`, `python`, `node`, or `fullstack` from project markers, reusing existing `package.json` lint/test scripts when present. Init never installs dependencies, never overwrites config unless `--force` is provided, and does not create `.vibebench/runs`, `.vibebench/baselines`, workflows, or repository settings. `workflow-template` previews a conservative GitHub Actions workflow by default; use `workflow-template --ci-mode adoption --write` to create `.github/workflows/vibebench.yml` after review. `workflow-check` validates an existing workflow read-only and warns about missing VibeBench CI shape or risky release/publish/deploy commands. `ci --workflow-template` creates `workflow-template.json`, `workflow-template.md`, and `workflow-template.yml` artifacts in the run directory only. These paths do not call GitHub, add credentials, enable Pages, publish packages, create releases, or modify workflows except explicit template `--write`.
 
 ## Inspect Effective Config
 

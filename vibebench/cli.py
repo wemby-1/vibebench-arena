@@ -238,6 +238,12 @@ from vibebench.trend import (
     write_trend_json,
     write_trend_summary,
 )
+from vibebench.workflow_check import (
+    workflow_check_json,
+    workflow_check_payload,
+    write_workflow_check_json,
+    write_workflow_check_summary,
+)
 from vibebench.workflow_template import (
     DEFAULT_WORKFLOW_INSTALL_COMMAND,
     WORKFLOW_RELATIVE_PATH,
@@ -263,7 +269,6 @@ ProjectRootOption = Annotated[
         help="Project directory where VibeBench should run.",
     ),
 ]
-
 
 
 @app.command()
@@ -381,8 +386,7 @@ def run_project_init(
         }
     if exists and not force:
         raise ConfigError(
-            f"Config already exists at {config_path}. "
-            "Init refused to overwrite it."
+            f"Config already exists at {config_path}. Init refused to overwrite it."
         )
     write_project_init_config(config_path, content)
     return {
@@ -889,6 +893,116 @@ def render_workflow_template_result(payload: dict[str, object]) -> None:
     console.print(str(payload["workflow_yaml"]))
 
 
+@app.command("workflow-check")
+def workflow_check_command(
+    project_root: ProjectRootOption = Path("."),
+    path: Annotated[
+        Path | None,
+        typer.Option("--path", help="Workflow file to check."),
+    ] = None,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print workflow check as pure JSON."),
+    ] = False,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write workflow check JSON to PATH."),
+    ] = None,
+    summary_output: Annotated[
+        Path | None,
+        typer.Option("--summary-output", help="Write workflow check Markdown."),
+    ] = None,
+    strict: Annotated[
+        bool,
+        typer.Option("--strict", help="Fail on missing or risky workflow signals."),
+    ] = False,
+    check_all: Annotated[
+        bool,
+        typer.Option("--all", help="Check all likely workflow candidates."),
+    ] = False,
+) -> None:
+    """Check existing GitHub Actions workflows for VibeBench readiness."""
+    root = project_root.resolve()
+    try:
+        payload = workflow_check_payload(
+            root,
+            path=path,
+            strict=strict,
+            check_all=check_all,
+        )
+        if json_output is not None:
+            write_workflow_check_json(resolve_output_path(root, json_output), payload)
+        if summary_output is not None:
+            write_workflow_check_summary(
+                resolve_output_path(root, summary_output), payload
+            )
+    except ConfigError as exc:
+        if as_json:
+            print(
+                workflow_check_json(
+                    {
+                        "status": "failed",
+                        "strict": strict,
+                        "workflow_path": None,
+                        "discovered_paths": [],
+                        "checks": [],
+                        "findings": [],
+                        "summary": {
+                            "total": 0,
+                            "passed": 0,
+                            "warning": 0,
+                            "failed": 1,
+                        },
+                        "usable_for_vibebench_ci": False,
+                        "safe_preview_only": True,
+                        "message": str(exc),
+                    }
+                )
+            )
+        else:
+            err_console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if as_json:
+        print(workflow_check_json(payload))
+    else:
+        render_workflow_check_result(payload)
+    if payload["status"] == "failed":
+        raise typer.Exit(code=1)
+
+
+def render_workflow_check_result(payload: dict[str, object]) -> None:
+    """Render concise workflow-check output."""
+    console.print("VibeBench workflow check")
+    console.print(f"Status: {payload['status']}")
+    console.print(f"Workflow path: {payload['workflow_path']}")
+    console.print(f"Strict: {format_bool(payload['strict'])}")
+    summary = payload["summary"]
+    if isinstance(summary, dict):
+        console.print(
+            "Summary: "
+            f"{summary['passed']} passed, "
+            f"{summary['warning']} warnings, "
+            f"{summary['failed']} failed"
+        )
+    findings = payload.get("findings") or []
+    if findings:
+        table = Table(title="Findings")
+        table.add_column("Severity")
+        table.add_column("Finding")
+        table.add_column("Advice")
+        for finding in findings:
+            if not isinstance(finding, dict):
+                continue
+            table.add_row(
+                str(finding.get("severity", "")),
+                str(finding.get("title", "")),
+                str(finding.get("advice", "")),
+            )
+        console.print(table)
+    console.print(str(payload["message"]))
+
+
 @app.command("config")
 def config_command(
     project_root: ProjectRootOption = Path("."),
@@ -1279,8 +1393,7 @@ def check(project_root: ProjectRootOption = Path(".")) -> None:
     except ConfigError as exc:
         if not target.exists():
             console.print(
-                "[red]No .vibebench/config.yaml found. "
-                "Run 'vibebench init' first.[/]"
+                "[red]No .vibebench/config.yaml found. Run 'vibebench init' first.[/]"
             )
         else:
             console.print(f"[red]{exc}[/]")
@@ -1429,6 +1542,7 @@ def pr_comment(
     console.print(f"Run directory: {comment_path.parent}")
     console.print(f"Output path: {comment_path}")
     console.print(f"Recommendation: {recommendation}")
+
 
 def render_pr_comment_post_result(result: PrCommentPostResult) -> None:
     """Render the GitHub PR comment posting result."""
@@ -1724,6 +1838,7 @@ def status_block(
         if check_readme and not all(item.current for item in readme_results):
             raise typer.Exit(code=1)
 
+
 @app.command("trend")
 def trend_command(
     project_root: ProjectRootOption = Path("."),
@@ -1793,6 +1908,7 @@ def trend_command(
         console.print(f"Trend summary: {summary_path}")
     if json_path is not None:
         console.print(f"Trend JSON: {json_path}")
+
 
 @app.command("latest")
 def latest_command(
@@ -2254,9 +2370,7 @@ def evidence_room_command(
         else:
             payload = evidence_room_payload(root_label=root_label)
             if create_zip:
-                raise EvidenceRoomError(
-                    "--zip requires --output-dir or --zip-output."
-                )
+                raise EvidenceRoomError("--zip requires --output-dir or --zip-output.")
     except EvidenceRoomError as exc:
         payload = evidence_room_payload(
             root_label=root_label,
@@ -2436,7 +2550,6 @@ def metrics_diff_command(
 
     if result.status == "failed":
         raise typer.Exit(code=1)
-
 
 
 @app.command("regression-check")
@@ -2708,6 +2821,7 @@ def manifest_command(
 
     render_manifest_summary(result)
 
+
 @app.command("artifacts")
 def artifacts_command(
     project_root: ProjectRootOption = Path("."),
@@ -2755,6 +2869,7 @@ def artifacts_command(
         return
 
     render_artifacts_summary(result)
+
 
 @app.command("export")
 def export_command(
@@ -2849,7 +2964,6 @@ def annotate(
     render_annotation_summary(result)
 
 
-
 def resolve_regression_check_policy(
     root: Path,
     *,
@@ -2874,10 +2988,14 @@ def resolve_regression_check_policy(
             fail_on_missing_metrics,
         ]
     )
-    policy_source = "cli" if cli_override else (
-        "config"
-        if effective_config.sources.get("regression") == "config file"
-        else "default"
+    policy_source = (
+        "cli"
+        if cli_override
+        else (
+            "config"
+            if effective_config.sources.get("regression") == "config file"
+            else "default"
+        )
     )
     selected_label = baseline_label
     if selected_label is None and baseline_run is None:
@@ -2891,9 +3009,7 @@ def resolve_regression_check_policy(
             else regression.require_baseline
         ),
         "max_score_drop": (
-            max_score_drop
-            if max_score_drop is not None
-            else regression.max_score_drop
+            max_score_drop if max_score_drop is not None else regression.max_score_drop
         ),
         "max_risk_increase": (
             max_risk_increase
@@ -3178,8 +3294,7 @@ def ci_command(
         typer.Option(
             "--workflow-template-profile",
             help=(
-                "Workflow-template profile: generic, python, node, fullstack, "
-                "or auto."
+                "Workflow-template profile: generic, python, node, fullstack, or auto."
             ),
         ),
     ] = "auto",
@@ -3227,8 +3342,7 @@ def ci_command(
         typer.Option(
             "--fail-on-regression/--no-fail-on-regression",
             help=(
-                "Override whether CI fails when the compare step verdict "
-                "is regressed."
+                "Override whether CI fails when the compare step verdict is regressed."
             ),
         ),
     ] = None,
@@ -3913,8 +4027,7 @@ def validate_release_checklist_output_path(output_path: Path) -> None:
         )
     if not output_path.parent.exists():
         raise ReportError(
-            "Release-checklist output parent does not exist: "
-            f"{output_path.parent}"
+            f"Release-checklist output parent does not exist: {output_path.parent}"
         )
 
 
@@ -4270,8 +4383,6 @@ def render_release_checklist(payload: dict[str, object]) -> None:
     console.print(table)
 
 
-
-
 @app.command()
 def gate(
     project_root: ProjectRootOption = Path("."),
@@ -4479,23 +4590,26 @@ def baseline(
     selected_input = resolve_optional_output_path(root, input_path)
     promotion_requested = promote_latest or promote_run is not None
     selected_label = resolve_baseline_label(root, label, use_config=promotion_requested)
-    pinned_action_requested = any(
-        [
-            set_latest,
-            set_run is not None,
-            promotion_requested,
-            show,
-            clear,
-            list_baselines,
-            verify_baseline,
-            input_path is not None,
-            export_baseline,
-            import_baseline is not None,
-            as_json,
-            json_output,
-            summary_output,
-        ]
-    ) or selected_label != "default"
+    pinned_action_requested = (
+        any(
+            [
+                set_latest,
+                set_run is not None,
+                promotion_requested,
+                show,
+                clear,
+                list_baselines,
+                verify_baseline,
+                input_path is not None,
+                export_baseline,
+                import_baseline is not None,
+                as_json,
+                json_output,
+                summary_output,
+            ]
+        )
+        or selected_label != "default"
+    )
     action_count = sum(
         [
             bool(legacy_set_run is not None),
@@ -4995,9 +5109,7 @@ def render_trend_summary(result: TrendResult) -> None:
     summary_table.add_row(
         "Oldest findings", optional_text(summary.oldest_finding_count)
     )
-    summary_table.add_row(
-        "Finding delta", optional_delta(summary.finding_count_delta)
-    )
+    summary_table.add_row("Finding delta", optional_delta(summary.finding_count_delta))
     summary_table.add_row("Verdict", summary.verdict)
     console.print(summary_table)
     console.print(summary.message)
@@ -5052,9 +5164,7 @@ def render_latest_summary(
     for item in artifacts:
         availability = "available" if item.available else "missing"
         size = (
-            artifact_size_text(item.size_bytes)
-            if item.size_bytes is not None
-            else ""
+            artifact_size_text(item.size_bytes) if item.size_bytes is not None else ""
         )
         table.add_row(item.name, item.display_path.as_posix(), availability, size)
     console.print(table)
@@ -5305,8 +5415,7 @@ def render_proof_summary(payload: dict[str, object]) -> None:
     console.print("\n[bold]VibeBench Proof Packet[/]")
     console.print(str(payload["summary"]))
     console.print(
-        "Codex-first / vibe-coding quality console; local-first and "
-        "evidence-first."
+        "Codex-first / vibe-coding quality console; local-first and evidence-first."
     )
     console.print("\nRecommended next commands:")
     for command in payload["recommended_commands"]:
@@ -5412,9 +5521,7 @@ def render_artifacts_summary(result: ArtifactInventoryResult) -> None:
     for item in result.artifacts:
         availability = "available" if item.available else "missing"
         size = (
-            artifact_size_text(item.size_bytes)
-            if item.size_bytes is not None
-            else ""
+            artifact_size_text(item.size_bytes) if item.size_bytes is not None else ""
         )
         table.add_row(
             item.name,
@@ -5442,8 +5549,7 @@ def render_badge_summary(result: BadgeResult) -> None:
     console.print(f"Run directory: {result.run_dir}")
     console.print(f"Output path: {result.output_path}")
     console.print(
-        "Badge: "
-        f"{result.label} | {result.message} | {result.color} | {result.format}"
+        f"Badge: {result.label} | {result.message} | {result.color} | {result.format}"
     )
 
 
@@ -5545,7 +5651,6 @@ def render_doctor_summary(result: DoctorResult) -> None:
             console.print("[bold]Advice[/]")
             for check in advice_items:
                 console.print(f"- {check.category}: {check.advice}")
-
 
 
 def resolve_optional_output_path(root: Path, output_path: Path | None) -> Path | None:
@@ -5861,8 +5966,6 @@ def resolve_baseline_label(root: Path, label: str | None, *, use_config: bool) -
     return "default"
 
 
-
-
 def render_metrics_check_summary(result: MetricsCheckResult) -> None:
     """Render metrics-check output."""
     style = "green" if result.status == "passed" else "yellow"
@@ -5873,9 +5976,7 @@ def render_metrics_check_summary(result: MetricsCheckResult) -> None:
     console.print(f"Status: [{style}]{result.status}[/]")
     console.print(f"Run dir: {result.run_dir or 'none'}")
     console.print(f"Metrics path: {result.metrics_path or 'none'}")
-    console.print(
-        f"Usable for regression: {str(result.usable_for_regression).lower()}"
-    )
+    console.print(f"Usable for regression: {str(result.usable_for_regression).lower()}")
     console.print(f"Usable as baseline: {str(result.usable_as_baseline).lower()}")
     table = Table(title="Metrics checks")
     table.add_column("Check")
@@ -5975,6 +6076,7 @@ def render_metrics_diff_summary(result: MetricsDiffResult) -> None:
             error_table.add_row(error)
         console.print(error_table)
 
+
 def render_baseline_verification_summary(result: BaselineVerificationResult) -> None:
     """Render baseline verification output."""
     style = "green" if result.status == "passed" else "yellow"
@@ -5988,9 +6090,7 @@ def render_baseline_verification_summary(result: BaselineVerificationResult) -> 
     console.print(f"Baseline path: {result.baseline_path}")
     console.print(f"Live metrics: {str(result.live_metrics_available).lower()}")
     console.print(f"Portable: {str(result.portable).lower()}")
-    console.print(
-        f"Usable for regression: {str(result.usable_for_regression).lower()}"
-    )
+    console.print(f"Usable for regression: {str(result.usable_for_regression).lower()}")
     table = Table(title="Verification checks")
     table.add_column("Check")
     table.add_column("Status")
@@ -6007,6 +6107,7 @@ def render_baseline_verification_summary(result: BaselineVerificationResult) -> 
         for item in result.advice:
             advice_table.add_row(item)
         console.print(advice_table)
+
 
 def render_baseline_promotion_summary(result: BaselinePromotionResult) -> None:
     """Render baseline promotion output."""
@@ -6108,8 +6209,7 @@ def render_clean_summary(result: CleanResult) -> None:
     console.print(f"Preserved count: {result.preserved_count}")
     console.print(f"Cleanup candidates: {len(result.candidates)}")
     console.print(
-        f"Approximate candidate size: "
-        f"{format_bytes(result.total_candidate_size_bytes)}"
+        f"Approximate candidate size: {format_bytes(result.total_candidate_size_bytes)}"
     )
 
     if not result.candidates:
@@ -6130,8 +6230,7 @@ def render_clean_summary(result: CleanResult) -> None:
 
     if result.dry_run:
         console.print(
-            "[yellow]Dry run only. "
-            "Re-run with --yes to delete these runs.[/]"
+            "[yellow]Dry run only. Re-run with --yes to delete these runs.[/]"
         )
     else:
         console.print(f"[green]Deleted {result.deleted_count} run(s).[/]")
@@ -6149,6 +6248,7 @@ def format_bytes(value: int) -> str:
         size /= 1024
     return f"{value} B"
 
+
 def render_history_summary(result: HistoryResult) -> None:
     """Render a concise Rich table for recent run history."""
     console.print()
@@ -6157,8 +6257,7 @@ def render_history_summary(result: HistoryResult) -> None:
 
     if not result.runs:
         console.print(
-            "[yellow]No VibeBench runs found. "
-            "Run 'vibebench check' first.[/]"
+            "[yellow]No VibeBench runs found. Run 'vibebench check' first.[/]"
         )
         return
 
@@ -6185,8 +6284,7 @@ def render_history_summary(result: HistoryResult) -> None:
     for run in result.runs:
         table.add_row(
             run.run_id,
-            f"[{status_style.get(run.overall_status, 'white')}]"
-            f"{run.overall_status}[/]",
+            f"[{status_style.get(run.overall_status, 'white')}]{run.overall_status}[/]",
             str(run.score),
             f"[{risk_style.get(run.risk_level, 'white')}]{run.risk_level}[/]",
             str(run.changed_files),
@@ -6230,9 +6328,7 @@ def render_compare_summary(result: CompareResult) -> None:
     console.print(f"Head run: {result.head_run_id or 'n/a'}")
     console.print(f"Verdict: [{verdict_style}]{result.verdict}[/]")
     if result.regression_guard.enabled:
-        guard_style = (
-            "red" if result.regression_guard.status == "failed" else "green"
-        )
+        guard_style = "red" if result.regression_guard.status == "failed" else "green"
         console.print(
             "Regression guard: "
             f"[{guard_style}]{result.regression_guard.status}[/] - "
