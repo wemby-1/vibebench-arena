@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added optional metrics-diff policy enforcement with `metrics-diff --enforce-policy` and `ci --metrics-diff-policy`, reusing metrics-diff JSON/Markdown artifacts while keeping default CI and `ci --metrics-diff` report-only.
+
 - Added `metrics-diff` for comparing numeric `metrics.json` changes between baseline and candidate runs, with optional `ci --metrics-diff` artifacts and artifact/latest/manifest/bundle/GitHub summary discovery.
 
 - Added optional `ci --metrics-check` and `--skip-metrics-check` integration, writing `metrics-check.json` and `metrics-check.md` run artifacts with artifact, latest, manifest, bundle, and GitHub summary visibility.

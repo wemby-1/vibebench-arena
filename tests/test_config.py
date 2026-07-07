@@ -240,3 +240,85 @@ def test_invalid_regression_baseline_label_fails_clearly(tmp_path: Path) -> None
 
     with pytest.raises(ConfigError, match="regression.baseline_label"):
         load_config(config_path)
+
+
+def write_metrics_diff_config(tmp_path: Path, policy_yaml: str) -> Path:
+    config_dir = tmp_path / ".vibebench"
+    config_dir.mkdir(parents=True)
+    config_path = config_dir / "config.yaml"
+    config_path.write_text(
+        f"""project:
+  name: demo
+checks:
+  test:
+    - pytest -q
+  lint:
+    - ruff check .
+metrics_diff:
+  policy:
+{policy_yaml}
+""",
+        encoding="utf-8",
+    )
+    return config_path
+
+
+def test_config_loader_reads_metrics_diff_policy(tmp_path: Path) -> None:
+    config_path = write_metrics_diff_config(
+        tmp_path,
+        """    enabled: true
+    baseline_label: stable
+    fail_on_added_errors: true
+    fail_on_added_warnings: false
+    fail_on_removed_metrics: true
+    max_score_drop: 1.5
+    max_risk_increase: 1
+    custom_rules:
+      - metric: latency_ms
+        max_increase: 50
+      - metric: pass_rate
+        max_drop: 0.01
+""",
+    )
+
+    config = load_config(config_path)
+
+    policy = config.metrics_diff.policy
+    assert policy.enabled is True
+    assert policy.baseline_label == "stable"
+    assert policy.fail_on_added_errors is True
+    assert policy.fail_on_added_warnings is False
+    assert policy.fail_on_removed_metrics is True
+    assert policy.max_score_drop == 1.5
+    assert policy.max_risk_increase == 1
+    assert policy.rules["latency_ms"].max_increase == 50
+    assert policy.rules["pass_rate"].max_drop == 0.01
+
+
+def test_invalid_metrics_diff_policy_boolean_fails_clearly(tmp_path: Path) -> None:
+    config_path = write_metrics_diff_config(tmp_path, "    enabled: maybe\n")
+
+    with pytest.raises(ConfigError, match="metrics_diff.policy.enabled"):
+        load_config(config_path)
+
+
+def test_invalid_metrics_diff_policy_threshold_fails_clearly(tmp_path: Path) -> None:
+    config_path = write_metrics_diff_config(tmp_path, "    max_score_drop: -1\n")
+
+    with pytest.raises(ConfigError, match="metrics_diff.policy.max_score_drop"):
+        load_config(config_path)
+
+
+def test_invalid_metrics_diff_policy_rule_shape_fails_clearly(tmp_path: Path) -> None:
+    config_path = write_metrics_diff_config(
+        tmp_path,
+        """    custom_rules:
+      - metric: latency_ms
+        unknown: 1
+""",
+    )
+
+    with pytest.raises(
+        ConfigError, match="metrics_diff.policy.custom_rules.0.unknown"
+    ):
+        load_config(config_path)

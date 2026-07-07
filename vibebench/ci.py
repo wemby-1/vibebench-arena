@@ -164,6 +164,8 @@ def plan_ci_pipeline(
     skip_metrics_check: bool = False,
     metrics_diff: bool = False,
     skip_metrics_diff: bool = False,
+    metrics_diff_policy: bool = False,
+    skip_metrics_diff_policy: bool = False,
     regression_check: bool = False,
     require_regression_baseline: bool = False,
     baseline_label: str | None = None,
@@ -196,17 +198,21 @@ def plan_ci_pipeline(
         skip_metrics_check=skip_metrics_check,
         metrics_diff=metrics_diff,
         skip_metrics_diff=skip_metrics_diff,
+        metrics_diff_policy=metrics_diff_policy,
+        skip_metrics_diff_policy=skip_metrics_diff_policy,
     )
+    metrics_diff_enabled = metrics_diff or metrics_diff_policy
     if metrics_check:
         steps.append(
             planned_step("metrics-check", "Would validate metrics.json contract")
         )
     elif skip_metrics_check:
         steps.append(skipped_plan_step("metrics-check", "--skip-metrics-check"))
-    if metrics_diff:
-        steps.append(
-            planned_step("metrics-diff", "Would compare metrics against baseline")
-        )
+    if metrics_diff_enabled:
+        message = "Would compare metrics against baseline"
+        if metrics_diff_policy:
+            message += " with policy enforcement"
+        steps.append(planned_step("metrics-diff", message))
     elif skip_metrics_diff:
         steps.append(skipped_plan_step("metrics-diff", "--skip-metrics-diff"))
     for name, skipped, flag in ci_artifact_step_flags(
@@ -585,6 +591,8 @@ def run_ci_pipeline(
     skip_metrics_check: bool = False,
     metrics_diff: bool = False,
     skip_metrics_diff: bool = False,
+    metrics_diff_policy: bool = False,
+    skip_metrics_diff_policy: bool = False,
     regression_check: bool = False,
     require_regression_baseline: bool = False,
     baseline_label: str | None = None,
@@ -620,7 +628,10 @@ def run_ci_pipeline(
         skip_metrics_check=skip_metrics_check,
         metrics_diff=metrics_diff,
         skip_metrics_diff=skip_metrics_diff,
+        metrics_diff_policy=metrics_diff_policy,
+        skip_metrics_diff_policy=skip_metrics_diff_policy,
     )
+    metrics_diff_enabled = metrics_diff or metrics_diff_policy
     root = project_root.resolve()
     selected_run_dir = run_dir.resolve() if run_dir is not None else None
     steps: list[CiStepResult] = []
@@ -662,7 +673,7 @@ def run_ci_pipeline(
             skip_evidence_room=skip_evidence_room,
             metrics_check=metrics_check,
             skip_metrics_check=skip_metrics_check,
-            metrics_diff=metrics_diff,
+            metrics_diff=metrics_diff_enabled,
             skip_metrics_diff=skip_metrics_diff,
             regression_check=regression_check,
         )
@@ -688,8 +699,14 @@ def run_ci_pipeline(
         steps.append(
             CiStepResult("metrics-check", "skipped", 0, message="skipped by flag")
         )
-    if metrics_diff:
-        steps.append(run_metrics_diff_artifact_step(root, selected_run_dir))
+    if metrics_diff_enabled:
+        steps.append(
+            run_metrics_diff_artifact_step(
+                root,
+                selected_run_dir,
+                enforce_policy=metrics_diff_policy,
+            )
+        )
     elif skip_metrics_diff:
         steps.append(
             CiStepResult("metrics-diff", "skipped", 0, message="skipped by flag")
@@ -1062,6 +1079,8 @@ def validate_metrics_artifact_flags(
     skip_metrics_check: bool,
     metrics_diff: bool,
     skip_metrics_diff: bool,
+    metrics_diff_policy: bool = False,
+    skip_metrics_diff_policy: bool = False,
 ) -> None:
     """Validate optional metrics artifact flags."""
     if metrics_check and skip_metrics_check:
@@ -1071,6 +1090,14 @@ def validate_metrics_artifact_flags(
     if metrics_diff and skip_metrics_diff:
         raise ConfigError(
             "--metrics-diff and --skip-metrics-diff cannot be combined."
+        )
+    if metrics_diff_policy and skip_metrics_diff_policy:
+        raise ConfigError(
+            "--metrics-diff-policy and --skip-metrics-diff-policy cannot be combined."
+        )
+    if metrics_diff_policy and skip_metrics_diff:
+        raise ConfigError(
+            "--metrics-diff-policy cannot be combined with --skip-metrics-diff."
         )
 
 
@@ -1116,13 +1143,19 @@ def run_metrics_check_artifact_step(project_root: Path, run_dir: Path) -> CiStep
 
 
 
-def run_metrics_diff_artifact_step(project_root: Path, run_dir: Path) -> CiStepResult:
+def run_metrics_diff_artifact_step(
+    project_root: Path,
+    run_dir: Path,
+    *,
+    enforce_policy: bool = False,
+) -> CiStepResult:
     """Generate metrics-diff artifacts and return CI step status."""
     started = time.perf_counter()
     try:
         result = run_metrics_diff(
             project_root,
             candidate_run=run_dir,
+            enforce_policy=enforce_policy,
             json_output=run_dir / METRICS_DIFF_JSON,
             summary_output=run_dir / METRICS_DIFF_SUMMARY,
         )

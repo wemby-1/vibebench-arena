@@ -1903,6 +1903,20 @@ def metrics_diff_command(
         int | None,
         typer.Option("--top", help="Limit displayed changed metrics."),
     ] = None,
+    enforce_policy: Annotated[
+        bool,
+        typer.Option(
+            "--enforce-policy",
+            help="Evaluate metrics-diff policy and fail on policy errors.",
+        ),
+    ] = False,
+    allow_policy_failure: Annotated[
+        bool,
+        typer.Option(
+            "--allow-policy-failure",
+            help="Evaluate metrics-diff policy but keep it report-only.",
+        ),
+    ] = False,
 ) -> None:
     """Compare numeric metrics between baseline and candidate runs."""
     root = project_root.resolve()
@@ -1919,6 +1933,8 @@ def metrics_diff_command(
             strict=strict,
             include_unchanged=include_unchanged,
             top=top,
+            enforce_policy=enforce_policy,
+            allow_policy_failure=allow_policy_failure,
             json_output=selected_json_output,
             summary_output=selected_summary_output,
         )
@@ -2605,6 +2621,20 @@ def ci_command(
             help="Skip optional metrics-diff artifact generation.",
         ),
     ] = False,
+    metrics_diff_policy: Annotated[
+        bool,
+        typer.Option(
+            "--metrics-diff-policy",
+            help="Run metrics-diff artifacts with policy enforcement.",
+        ),
+    ] = False,
+    skip_metrics_diff_policy: Annotated[
+        bool,
+        typer.Option(
+            "--skip-metrics-diff-policy",
+            help="Disable metrics-diff policy enforcement for this CI run.",
+        ),
+    ] = False,
     regression_check: Annotated[
         bool,
         typer.Option(
@@ -2784,6 +2814,8 @@ def ci_command(
                 skip_metrics_check=skip_metrics_check,
                 metrics_diff=metrics_diff,
                 skip_metrics_diff=skip_metrics_diff,
+                metrics_diff_policy=metrics_diff_policy,
+                skip_metrics_diff_policy=skip_metrics_diff_policy,
                 regression_check=bool(regression_policy["enabled"]),
                 require_regression_baseline=bool(regression_policy["require_baseline"]),
                 baseline_label=regression_policy["baseline_label"],
@@ -2830,6 +2862,8 @@ def ci_command(
                 skip_metrics_check=skip_metrics_check,
                 metrics_diff=metrics_diff,
                 skip_metrics_diff=skip_metrics_diff,
+                metrics_diff_policy=metrics_diff_policy,
+                skip_metrics_diff_policy=skip_metrics_diff_policy,
                 regression_check=bool(regression_policy["enabled"]),
                 require_regression_baseline=bool(regression_policy["require_baseline"]),
                 baseline_label=regression_policy["baseline_label"],
@@ -5319,6 +5353,31 @@ def render_metrics_diff_summary(result: MetricsDiffResult) -> None:
     if not result.changes:
         table.add_row("none", "", "", "", "")
     console.print(table)
+    if result.policy_status is not None:
+        policy_table = Table(title="Metrics diff policy")
+        policy_table.add_column("Metric")
+        policy_table.add_column("Severity")
+        policy_table.add_column("Rule")
+        policy_table.add_column("Delta")
+        policy_table.add_column("Threshold")
+        policy_table.add_column("Message")
+        if result.policy_findings:
+            for finding in result.policy_findings:
+                policy_table.add_row(
+                    finding.metric,
+                    finding.severity,
+                    finding.rule,
+                    str(finding.delta),
+                    str(finding.threshold),
+                    finding.message,
+                )
+        else:
+            policy_table.add_row("none", "", "", "", "", "")
+        console.print(
+            f"Policy status: {result.policy_status}; "
+            f"enforced={str(result.policy_enforced).lower()}"
+        )
+        console.print(policy_table)
     if result.warnings:
         warning_table = Table(title="Warnings")
         warning_table.add_column("Message")

@@ -68,4 +68,4 @@ VibeBench Arena helps individuals and small teams make AI-assisted coding work r
 - Not a fake leaderboard.
 - Not an auto-publishing tool.
 
-Metrics-check validates one run, metrics-diff explains numeric changes between two runs, and regression-check decides whether the candidate regressed against the selected baseline. Use `latest --artifact metrics-diff-json --path-only` or `latest --artifact metrics-diff-md --path-only` to locate CI diff artifacts.
+Metrics-check validates one run, metrics-diff explains numeric changes between two runs, metrics-diff policy enforces acceptable drift thresholds when explicitly enabled with `metrics-diff --enforce-policy` or `ci --metrics-diff-policy`, and regression-check remains the high-level score/risk gate against the selected baseline. Default CI is unchanged; `ci --metrics-diff` stays report-only. Use `latest --artifact metrics-diff-json --path-only` or `latest --artifact metrics-diff-md --path-only` to locate CI diff artifacts, including policy fields/sections when policy was evaluated.

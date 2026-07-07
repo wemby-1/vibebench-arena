@@ -13,6 +13,7 @@ from pydantic import (
     StrictStr,
     ValidationError,
     field_validator,
+    model_validator,
 )
 
 from vibebench.paths import config_file
@@ -88,6 +89,18 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "max_score_drop": 0.0,
         "max_risk_increase": 0.0,
         "fail_on_missing_metrics": True,
+    },
+    "metrics_diff": {
+        "policy": {
+            "enabled": False,
+            "baseline_label": "stable",
+            "fail_on_added_errors": False,
+            "fail_on_added_warnings": False,
+            "fail_on_removed_metrics": False,
+            "max_score_drop": 0.0,
+            "max_risk_increase": 0.0,
+            "custom_rules": [],
+        },
     },
 }
 
@@ -207,6 +220,113 @@ class RegressionConfig(BaseModel):
         return selected
 
 
+class MetricsDiffPolicyRuleConfig(BaseModel):
+    """Per-metric metrics-diff policy threshold."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    metric: StrictStr
+    max_drop: float | None = Field(default=None, ge=0)
+    max_increase: float | None = Field(default=None, ge=0)
+
+
+class MetricsDiffPolicyConfig(BaseModel):
+    """Metrics-diff policy gate defaults."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: StrictBool = False
+    baseline_label: str | None = "stable"
+    fail_on_added_errors: StrictBool = False
+    fail_on_added_warnings: StrictBool = False
+    fail_on_removed_metrics: StrictBool = False
+    max_score_drop: float = Field(default=0.0, ge=0)
+    max_risk_increase: float = Field(default=0.0, ge=0)
+    custom_rules: list[MetricsDiffPolicyRuleConfig] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_policy_keys(cls, data: object) -> object:
+        """Accept pre-release policy key names without hiding unknown keys."""
+        if not isinstance(data, dict):
+            return data
+        normalized = dict(data)
+        if "fail_on_added_metrics" in normalized:
+            if "fail_on_added_errors" in normalized:
+                raise ValueError(
+                    "metrics_diff.policy cannot set both fail_on_added_metrics "
+                    "and fail_on_added_errors"
+                )
+            normalized["fail_on_added_errors"] = normalized.pop(
+                "fail_on_added_metrics"
+            )
+        if "rules" in normalized:
+            if "custom_rules" in normalized:
+                raise ValueError(
+                    "metrics_diff.policy cannot set both rules and custom_rules"
+                )
+            rules = normalized.pop("rules")
+            if isinstance(rules, dict):
+                normalized["custom_rules"] = [
+                    {"metric": metric, **rule}
+                    if isinstance(rule, dict)
+                    else {"metric": metric, "value": rule}
+                    for metric, rule in rules.items()
+                ]
+            else:
+                normalized["custom_rules"] = rules
+        return normalized
+
+    @field_validator("baseline_label")
+    @classmethod
+    def validate_baseline_label(cls, value: str | None) -> str | None:
+        """Validate a pinned baseline label."""
+        return RegressionConfig.validate_baseline_label(value)
+
+    @field_validator("custom_rules")
+    @classmethod
+    def validate_custom_rules(
+        cls, value: list[MetricsDiffPolicyRuleConfig]
+    ) -> list[MetricsDiffPolicyRuleConfig]:
+        """Validate configured metric rule names and shapes."""
+        seen: set[str] = set()
+        for rule in value:
+            metric = rule.metric
+            if not metric.strip():
+                raise ValueError(
+                    "metrics_diff.policy.custom_rules.metric must not be empty"
+                )
+            if metric in seen:
+                raise ValueError(
+                    f"metrics_diff.policy.custom_rules.{metric} is duplicated"
+                )
+            seen.add(metric)
+            if rule.max_drop is None and rule.max_increase is None:
+                raise ValueError(
+                    f"metrics_diff.policy.custom_rules.{metric} must set "
+                    "max_drop or max_increase"
+                )
+        return value
+
+    @property
+    def fail_on_added_metrics(self) -> bool:
+        """Compatibility alias for the pre-release policy field name."""
+        return self.fail_on_added_errors
+
+    @property
+    def rules(self) -> dict[str, MetricsDiffPolicyRuleConfig]:
+        """Compatibility alias for dict-style pre-release custom rules."""
+        return {rule.metric: rule for rule in self.custom_rules}
+
+
+class MetricsDiffConfig(BaseModel):
+    """Metrics-diff configuration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    policy: MetricsDiffPolicyConfig = Field(default_factory=MetricsDiffPolicyConfig)
+
+
 class VibeBenchConfig(BaseModel):
     """Top-level VibeBench configuration."""
 
@@ -219,6 +339,7 @@ class VibeBenchConfig(BaseModel):
     gate: GateConfig = Field(default_factory=GateConfig)
     compare: CompareConfig = Field(default_factory=CompareConfig)
     regression: RegressionConfig = Field(default_factory=RegressionConfig)
+    metrics_diff: MetricsDiffConfig = Field(default_factory=MetricsDiffConfig)
 
     def effective_risk(self) -> RiskConfig:
         """Return the active Git diff risk policy."""
@@ -257,6 +378,21 @@ def config_example_yaml() -> str:
             "max_score_drop": 0.0,
             "max_risk_increase": 0.0,
             "fail_on_missing_metrics": True,
+        },
+        "metrics_diff": {
+            "policy": {
+                "enabled": False,
+                "baseline_label": "stable",
+                "fail_on_added_errors": False,
+                "fail_on_added_warnings": False,
+                "fail_on_removed_metrics": False,
+                "max_score_drop": 0.0,
+                "max_risk_increase": 0.0,
+                "custom_rules": [
+                    {"metric": "quality.accuracy", "max_drop": 0.01},
+                    {"metric": "latency.p95_ms", "max_increase": 50},
+                ],
+            },
         },
     }
     return yaml.safe_dump(payload, sort_keys=False)
@@ -311,6 +447,7 @@ def load_effective_config(path: Path | None = None) -> EffectiveConfigResult:
                 "risk": "built-in defaults",
                 "compare": "built-in defaults",
                 "regression": "built-in defaults",
+                "metrics_diff": "built-in defaults",
             },
             config_path=config_path,
             config_exists=False,
@@ -329,6 +466,9 @@ def load_effective_config(path: Path | None = None) -> EffectiveConfigResult:
         "regression": (
             "config file" if "regression" in raw_config else "built-in defaults"
         ),
+        "metrics_diff": (
+            "config file" if "metrics_diff" in raw_config else "built-in defaults"
+        ),
     }
     return EffectiveConfigResult(
         config=config,
@@ -346,6 +486,7 @@ def effective_config_payload(result: EffectiveConfigResult) -> dict[str, Any]:
         "gate": result.config.gate.model_dump(),
         "compare": result.config.compare.model_dump(),
         "regression": result.config.regression.model_dump(),
+        "metrics_diff": result.config.metrics_diff.model_dump(),
         "risk": result.config.effective_risk().model_dump(),
     }
     return payload

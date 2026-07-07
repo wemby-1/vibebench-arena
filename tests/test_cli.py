@@ -427,6 +427,7 @@ def test_config_command_json_is_valid(tmp_path: Path) -> None:
         "checks",
         "compare",
         "gate",
+        "metrics_diff",
         "project",
         "regression",
         "risk",
@@ -1280,3 +1281,45 @@ regression:
     assert result.exit_code == 1
     assert result.stdout == ""
     assert "regression.max_risk_increase" in result.stderr
+
+
+def test_config_check_reports_metrics_diff_policy(tmp_path: Path) -> None:
+    runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
+
+    result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--check", "--advice", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    policy = next(
+        check for check in payload["checks"] if check["name"] == "metrics_diff_policy"
+    )
+    assert result.exit_code == 0
+    assert "Metrics-diff policy is internally consistent" in policy["message"]
+    assert "metrics_diff.policy.enabled=true" in policy["advice"]
+
+
+def test_config_check_rejects_invalid_metrics_diff_policy(tmp_path: Path) -> None:
+    config_path(tmp_path).parent.mkdir(parents=True)
+    config_path(tmp_path).write_text(
+        """project:
+  name: demo
+checks:
+  test:
+    - pytest -q
+metrics_diff:
+  policy:
+    custom_rules:
+      - metric: latency_ms
+        max_increase: -1
+""",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--check", "--json"],
+    )
+
+    assert result.exit_code == 1

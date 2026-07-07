@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Literal
 
 from vibebench.baseline import BaselineMetadata, show_pinned_baseline
 from vibebench.compare import find_valid_runs, resolve_run
+from vibebench.config import load_effective_config
 from vibebench.metrics_check import evaluate_metrics_run, risk_value_for_level
+from vibebench.paths import config_file
 from vibebench.report import ReportError, load_metrics
 
 METRICS_DIFF_JSON = "metrics-diff.json"
@@ -25,6 +27,44 @@ MetricClassification = Literal[
     "removed",
     "unknown",
 ]
+PolicySeverity = Literal["error", "warning", "info"]
+PolicyStatus = Literal["passed", "failed", "skipped"]
+
+
+@dataclass(frozen=True)
+class MetricsDiffPolicyRule:
+    """Per-metric policy threshold."""
+
+    max_drop: float | None = None
+    max_increase: float | None = None
+
+
+@dataclass(frozen=True)
+class MetricsDiffPolicy:
+    """Effective metrics-diff policy."""
+
+    enabled: bool = False
+    baseline_label: str | None = None
+    fail_on_added_errors: bool = False
+    fail_on_added_warnings: bool = False
+    fail_on_removed_metrics: bool = False
+    max_score_drop: float = 0.0
+    max_risk_increase: float = 0.0
+    custom_rules: dict[str, MetricsDiffPolicyRule] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class MetricsDiffPolicyFinding:
+    """One metrics-diff policy finding."""
+
+    metric: str
+    severity: PolicySeverity
+    rule: str
+    baseline_value: float | int | None
+    candidate_value: float | int | None
+    delta: float | int | None
+    threshold: float | int | bool | None
+    message: str
 
 
 @dataclass(frozen=True)
@@ -72,6 +112,14 @@ class MetricsDiffResult:
     errors: list[str]
     warnings: list[str]
     message: str
+    policy_source: str | None = None
+    policy_enabled: bool | None = None
+    policy_enforced: bool | None = None
+    effective_policy: dict[str, object] | None = None
+    policy_status: PolicyStatus | None = None
+    policy_findings: list[MetricsDiffPolicyFinding] = field(default_factory=list)
+    policy_error_count: int | None = None
+    policy_warning_count: int | None = None
     baseline_run_dir: Path | None = None
     candidate_run_dir: Path | None = None
     json_path: Path | None = None
@@ -102,6 +150,8 @@ def run_metrics_diff(
     strict: bool = False,
     include_unchanged: bool = False,
     top: int | None = None,
+    enforce_policy: bool = False,
+    allow_policy_failure: bool = False,
     json_output: Path | None = None,
     summary_output: Path | None = None,
 ) -> MetricsDiffResult:
@@ -109,6 +159,14 @@ def run_metrics_diff(
     if top is not None and top < 1:
         raise ReportError("--top must be greater than 0.")
     root = project_root.resolve()
+    evaluate_policy = enforce_policy or allow_policy_failure
+    policy_enforced = enforce_policy and not allow_policy_failure
+    policy_source: str | None = None
+    policy: MetricsDiffPolicy | None = None
+    if evaluate_policy:
+        policy_source, policy = resolve_metrics_diff_policy(root)
+        if baseline_label is None and policy.enabled and policy.baseline_label:
+            baseline_label = policy.baseline_label
     candidate = select_candidate(root, runs_dir, candidate_run)
     if candidate.metrics is None:
         result = MetricsDiffResult(
@@ -128,6 +186,15 @@ def run_metrics_diff(
             message="No candidate metrics are available.",
             candidate_run_dir=candidate.run_dir,
         )
+        if policy is not None:
+            result = attach_metrics_diff_policy(
+                result,
+                policy_source=policy_source or "built-in defaults",
+                policy=policy,
+                enforced=policy_enforced,
+                findings=[],
+                policy_status="skipped",
+            )
         return write_metrics_diff_outputs(result, json_output, summary_output)
 
     baseline = select_baseline(root, runs_dir, candidate, baseline_run, baseline_label)
@@ -156,6 +223,15 @@ def run_metrics_diff(
             baseline_run_dir=baseline.run_dir,
             candidate_run_dir=candidate.run_dir,
         )
+        if policy is not None:
+            result = attach_metrics_diff_policy(
+                result,
+                policy_source=policy_source or "built-in defaults",
+                policy=policy,
+                enforced=policy_enforced,
+                findings=[],
+                policy_status="skipped",
+            )
         return write_metrics_diff_outputs(result, json_output, summary_output)
 
     result = evaluate_metrics_diff(
@@ -164,6 +240,9 @@ def run_metrics_diff(
         baseline_label=baseline_label,
         include_unchanged=include_unchanged,
         top=top,
+        policy_source=policy_source,
+        policy=policy,
+        enforce_policy=policy_enforced,
     )
     return write_metrics_diff_outputs(result, json_output, summary_output)
 
@@ -356,6 +435,9 @@ def evaluate_metrics_diff(
     baseline_label: str | None,
     include_unchanged: bool,
     top: int | None,
+    policy_source: str | None = None,
+    policy: MetricsDiffPolicy | None = None,
+    enforce_policy: bool = False,
 ) -> MetricsDiffResult:
     """Evaluate numeric metric changes between two selections."""
     base_metrics = baseline.metrics or {}
@@ -425,13 +507,11 @@ def evaluate_metrics_diff(
         added_count=count_class(all_changes, "added"),
         removed_count=count_class(all_changes, "removed"),
     )
-    status: MetricsDiffStatus = "failed" if summary.regressed_count else "passed"
-    message = (
-        "Metrics diff found semantic regressions."
-        if status == "failed"
-        else "Metrics diff completed."
-    )
-    return MetricsDiffResult(
+    status: MetricsDiffStatus = "passed"
+    message = "Metrics diff completed."
+    if summary.regressed_count:
+        message = "Metrics diff completed with semantic regressions."
+    result = MetricsDiffResult(
         status=status,
         baseline_source=baseline.source,
         baseline_label=baseline_label,
@@ -449,6 +529,17 @@ def evaluate_metrics_diff(
         baseline_run_dir=baseline.run_dir,
         candidate_run_dir=candidate.run_dir,
     )
+    if policy is not None:
+        findings = evaluate_metrics_diff_policy(all_changes, policy)
+        result = attach_metrics_diff_policy(
+            result,
+            policy_source=policy_source or "built-in defaults",
+            policy=policy,
+            enforced=enforce_policy,
+            findings=findings,
+            policy_status=None,
+        )
+    return result
 
 
 def flatten_numeric_metrics(metrics: dict[str, Any]) -> dict[str, float | int]:
@@ -581,6 +672,244 @@ def count_class(
     return sum(1 for change in changes if change.classification == classification)
 
 
+def resolve_metrics_diff_policy(project_root: Path) -> tuple[str, MetricsDiffPolicy]:
+    """Resolve metrics-diff policy from config or safe built-in defaults."""
+    effective_config = load_effective_config(config_file(project_root))
+    configured = effective_config.config.metrics_diff.policy
+    source = (
+        "config"
+        if effective_config.sources.get("metrics_diff") == "config file"
+        else "built-in defaults"
+    )
+    if not configured.enabled:
+        return source, MetricsDiffPolicy()
+    rules = {
+        metric: MetricsDiffPolicyRule(
+            max_drop=rule.max_drop,
+            max_increase=rule.max_increase,
+        )
+        for metric, rule in configured.rules.items()
+    }
+    return source, MetricsDiffPolicy(
+        enabled=configured.enabled,
+        baseline_label=configured.baseline_label,
+        fail_on_added_errors=configured.fail_on_added_errors,
+        fail_on_added_warnings=configured.fail_on_added_warnings,
+        fail_on_removed_metrics=configured.fail_on_removed_metrics,
+        max_score_drop=configured.max_score_drop,
+        max_risk_increase=configured.max_risk_increase,
+        custom_rules=rules,
+    )
+
+
+def evaluate_metrics_diff_policy(
+    changes: list[MetricsDiffChange],
+    policy: MetricsDiffPolicy,
+) -> list[MetricsDiffPolicyFinding]:
+    """Evaluate policy findings from complete metrics-diff changes."""
+    findings: list[MetricsDiffPolicyFinding] = []
+    for change in changes:
+        if change.classification == "added":
+            severity: PolicySeverity = (
+                "error" if policy.fail_on_added_errors else "warning"
+            )
+            findings.append(
+                MetricsDiffPolicyFinding(
+                    metric=change.metric,
+                    severity=severity,
+                    rule="added_metric",
+                    baseline_value=change.baseline_value,
+                    candidate_value=change.candidate_value,
+                    delta=change.delta,
+                    threshold=policy.fail_on_added_errors,
+                    message="Numeric metric was added.",
+                )
+            )
+            continue
+        if change.classification == "removed":
+            severity = "error" if policy.fail_on_removed_metrics else "warning"
+            findings.append(
+                MetricsDiffPolicyFinding(
+                    metric=change.metric,
+                    severity=severity,
+                    rule="removed_metric",
+                    baseline_value=change.baseline_value,
+                    candidate_value=change.candidate_value,
+                    delta=change.delta,
+                    threshold=policy.fail_on_removed_metrics,
+                    message="Numeric metric was removed.",
+                )
+            )
+            continue
+        if change.delta is None:
+            continue
+        if change.metric == "score" and change.delta < 0:
+            drop = abs(float(change.delta))
+            if drop > policy.max_score_drop:
+                findings.append(
+                    policy_threshold_finding(
+                        change,
+                        rule="score.max_drop",
+                        threshold=policy.max_score_drop,
+                        message=(
+                            "Score dropped by "
+                            f"{drop:g}, exceeding {policy.max_score_drop:g}."
+                        ),
+                    )
+                )
+        if change.metric in {"risk", "risk_value"} and change.delta > 0:
+            increase = float(change.delta)
+            if increase > policy.max_risk_increase:
+                findings.append(
+                    policy_threshold_finding(
+                        change,
+                        rule="risk.max_increase",
+                        threshold=policy.max_risk_increase,
+                        message=(
+                            "Risk increased by "
+                            f"{increase:g}, exceeding {policy.max_risk_increase:g}."
+                        ),
+                    )
+                )
+        rule = policy.custom_rules.get(change.metric)
+        if rule is None:
+            continue
+        if rule.max_drop is not None and change.delta < 0:
+            drop = abs(float(change.delta))
+            if drop > rule.max_drop:
+                findings.append(
+                    policy_threshold_finding(
+                        change,
+                        rule="max_drop",
+                        threshold=rule.max_drop,
+                        message=(
+                            f"{change.metric} dropped by {drop:g}, "
+                            f"exceeding {rule.max_drop:g}."
+                        ),
+                    )
+                )
+        if rule.max_increase is not None and change.delta > 0:
+            increase = float(change.delta)
+            if increase > rule.max_increase:
+                findings.append(
+                    policy_threshold_finding(
+                        change,
+                        rule="max_increase",
+                        threshold=rule.max_increase,
+                        message=(
+                            f"{change.metric} increased by {increase:g}, "
+                            f"exceeding {rule.max_increase:g}."
+                        ),
+                    )
+                )
+    return sorted(
+        findings,
+        key=lambda finding: (
+            {"error": 0, "warning": 1, "info": 2}[finding.severity],
+            finding.metric,
+            finding.rule,
+        ),
+    )
+
+
+def policy_threshold_finding(
+    change: MetricsDiffChange,
+    *,
+    rule: str,
+    threshold: float,
+    message: str,
+) -> MetricsDiffPolicyFinding:
+    """Build a policy threshold finding."""
+    return MetricsDiffPolicyFinding(
+        metric=change.metric,
+        severity="error",
+        rule=rule,
+        baseline_value=change.baseline_value,
+        candidate_value=change.candidate_value,
+        delta=change.delta,
+        threshold=threshold,
+        message=message,
+    )
+
+
+def attach_metrics_diff_policy(
+    result: MetricsDiffResult,
+    *,
+    policy_source: str,
+    policy: MetricsDiffPolicy,
+    enforced: bool,
+    findings: list[MetricsDiffPolicyFinding],
+    policy_status: PolicyStatus | None,
+) -> MetricsDiffResult:
+    """Attach policy fields and enforce failures when requested."""
+    error_count = sum(1 for finding in findings if finding.severity == "error")
+    warning_count = sum(1 for finding in findings if finding.severity == "warning")
+    added_warning_failure = policy.fail_on_added_warnings and any(
+        finding.severity == "warning" and finding.rule == "added_metric"
+        for finding in findings
+    )
+    selected_policy_status: PolicyStatus = policy_status or (
+        "failed" if error_count or added_warning_failure else "passed"
+    )
+    status = result.status
+    message = result.message
+    if enforced and selected_policy_status == "failed":
+        status = "failed"
+        message = "Metrics diff policy failed."
+    return replace(
+        result,
+        status=status,
+        message=message,
+        policy_source=policy_source,
+        policy_enabled=policy.enabled,
+        policy_enforced=enforced,
+        effective_policy=metrics_diff_policy_payload(policy),
+        policy_status=selected_policy_status,
+        policy_findings=findings,
+        policy_error_count=error_count,
+        policy_warning_count=warning_count,
+    )
+
+
+def metrics_diff_policy_payload(policy: MetricsDiffPolicy) -> dict[str, object]:
+    """Return JSON-safe effective policy details."""
+    return {
+        "enabled": policy.enabled,
+        "baseline_label": policy.baseline_label,
+        "fail_on_added_errors": policy.fail_on_added_errors,
+        "fail_on_added_warnings": policy.fail_on_added_warnings,
+        "fail_on_removed_metrics": policy.fail_on_removed_metrics,
+        "max_score_drop": policy.max_score_drop,
+        "max_risk_increase": policy.max_risk_increase,
+        "custom_rules": [
+            {
+                key: value
+                for key, value in {
+                    "metric": metric,
+                    "max_drop": rule.max_drop,
+                    "max_increase": rule.max_increase,
+                }.items()
+                if value is not None
+            }
+            for metric, rule in sorted(policy.custom_rules.items())
+        ],
+    }
+
+
+def policy_finding_payload(finding: MetricsDiffPolicyFinding) -> dict[str, object]:
+    """Return JSON-safe policy finding details."""
+    return {
+        "metric": finding.metric,
+        "severity": finding.severity,
+        "rule": finding.rule,
+        "baseline_value": finding.baseline_value,
+        "candidate_value": finding.candidate_value,
+        "delta": finding.delta,
+        "threshold": finding.threshold,
+        "message": finding.message,
+    }
+
+
 def write_metrics_diff_outputs(
     result: MetricsDiffResult,
     json_output: Path | None,
@@ -597,31 +926,12 @@ def write_metrics_diff_outputs(
         validate_output_path(summary_output)
         summary_output.write_text(metrics_diff_markdown(result), encoding="utf-8")
         summary_path = summary_output.resolve()
-    return MetricsDiffResult(
-        status=result.status,
-        baseline_source=result.baseline_source,
-        baseline_label=result.baseline_label,
-        baseline_run=result.baseline_run,
-        candidate_run=result.candidate_run,
-        baseline_metrics_source=result.baseline_metrics_source,
-        candidate_metrics_source=result.candidate_metrics_source,
-        baseline_metrics_valid=result.baseline_metrics_valid,
-        candidate_metrics_valid=result.candidate_metrics_valid,
-        summary=result.summary,
-        changes=result.changes,
-        errors=result.errors,
-        warnings=result.warnings,
-        message=result.message,
-        baseline_run_dir=result.baseline_run_dir,
-        candidate_run_dir=result.candidate_run_dir,
-        json_path=json_path,
-        summary_path=summary_path,
-    )
+    return replace(result, json_path=json_path, summary_path=summary_path)
 
 
 def metrics_diff_payload(result: MetricsDiffResult) -> dict[str, object]:
     """Return deterministic JSON-compatible metrics-diff payload."""
-    return {
+    payload: dict[str, object] = {
         "status": result.status,
         "baseline_source": result.baseline_source,
         "baseline_label": result.baseline_label,
@@ -645,6 +955,23 @@ def metrics_diff_payload(result: MetricsDiffResult) -> dict[str, object]:
         "warnings": result.warnings,
         "message": result.message,
     }
+    if result.policy_status is not None:
+        payload.update(
+            {
+                "policy_source": result.policy_source,
+                "policy_enabled": result.policy_enabled,
+                "policy_enforced": result.policy_enforced,
+                "effective_policy": result.effective_policy,
+                "policy_status": result.policy_status,
+                "policy_findings": [
+                    policy_finding_payload(finding)
+                    for finding in result.policy_findings
+                ],
+                "policy_error_count": result.policy_error_count,
+                "policy_warning_count": result.policy_warning_count,
+            }
+        )
+    return payload
 
 
 def change_payload(change: MetricsDiffChange) -> dict[str, object]:
@@ -731,6 +1058,34 @@ def metrics_diff_markdown(result: MetricsDiffResult) -> str:
             )
     else:
         lines.append("No removed numeric metrics.")
+    if result.policy_status is not None:
+        lines.extend(
+            [
+                "",
+                "## Policy",
+                "",
+                f"- Policy status: {result.policy_status}",
+                f"- Policy source: {result.policy_source or 'none'}",
+                f"- Policy enabled: {str(result.policy_enabled).lower()}",
+                f"- Policy enforced: {str(result.policy_enforced).lower()}",
+                "- Effective baseline label: "
+                f"{policy_baseline_label(result)}",
+                f"- Policy errors: {result.policy_error_count or 0}",
+                f"- Policy warnings: {result.policy_warning_count or 0}",
+                "",
+                "Score/risk use built-in semantics; custom numeric metrics "
+                "are enforced only by configured metrics_diff.policy.custom_rules.",
+                "",
+                "| Metric | Severity | Rule | Baseline | Candidate | Delta | "
+                "Threshold | Message |",
+                "| --- | --- | --- | ---: | ---: | ---: | ---: | --- |",
+            ]
+        )
+        if result.policy_findings:
+            for finding in result.policy_findings:
+                lines.append(policy_finding_row(finding))
+        else:
+            lines.append("| none |  |  |  |  |  |  |  |")
     lines.extend(
         [
             "",
@@ -767,6 +1122,30 @@ def change_row(change: MetricsDiffChange) -> str:
         f"{markdown_cell(change.direction)} | "
         f"{markdown_cell(change.classification)} | "
         f"{markdown_cell(change.notes)} |"
+    )
+
+
+def policy_baseline_label(result: MetricsDiffResult) -> object:
+    """Return the effective policy baseline label for Markdown."""
+    return (
+        (result.effective_policy or {}).get("baseline_label")
+        or result.baseline_label
+        or "none"
+    )
+
+
+def policy_finding_row(finding: MetricsDiffPolicyFinding) -> str:
+    """Render one Markdown policy finding row."""
+    return (
+        "| "
+        f"{markdown_cell(finding.metric)} | "
+        f"{markdown_cell(finding.severity)} | "
+        f"{markdown_cell(finding.rule)} | "
+        f"{markdown_cell(finding.baseline_value)} | "
+        f"{markdown_cell(finding.candidate_value)} | "
+        f"{markdown_cell(finding.delta)} | "
+        f"{markdown_cell(finding.threshold)} | "
+        f"{markdown_cell(finding.message)} |"
     )
 
 

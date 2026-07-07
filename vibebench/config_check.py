@@ -131,6 +131,34 @@ def config_consistency_checks(
             "and regression.require_baseline=true in .vibebench/config.yaml."
         )
     checks.append(regression_check)
+
+    metrics_diff_policy = config.metrics_diff.policy
+    rules_text = ", ".join(sorted(metrics_diff_policy.rules)) or "none"
+    metrics_diff_check = {
+        "name": "metrics_diff_policy",
+        "status": "passed",
+        "message": (
+            "Metrics-diff policy is internally consistent "
+            f"(enabled={str(metrics_diff_policy.enabled).lower()}, "
+            f"baseline_label={metrics_diff_policy.baseline_label or 'none'}, "
+            f"fail_on_added_errors="
+            f"{str(metrics_diff_policy.fail_on_added_errors).lower()}, "
+            f"fail_on_added_warnings="
+            f"{str(metrics_diff_policy.fail_on_added_warnings).lower()}, "
+            f"fail_on_removed_metrics="
+            f"{str(metrics_diff_policy.fail_on_removed_metrics).lower()}, "
+            f"max_score_drop={metrics_diff_policy.max_score_drop:g}, "
+            f"max_risk_increase={metrics_diff_policy.max_risk_increase:g}, "
+            f"rules={rules_text})"
+        ),
+    }
+    if include_advice and not metrics_diff_policy.enabled:
+        metrics_diff_check["advice"] = (
+            "Set metrics_diff.policy.enabled=true and configure per-metric "
+            "rules such as latency_ms.max_increase or pass_rate.max_drop "
+            "when metrics-diff drift should become an explicit gate."
+        )
+    checks.append(metrics_diff_check)
     return checks
 
 

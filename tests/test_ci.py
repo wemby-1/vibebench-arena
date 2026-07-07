@@ -66,6 +66,19 @@ def write_config(
     write_package_metadata(root)
 
 
+def append_metrics_diff_policy(root: Path, policy_yaml: str) -> None:
+    target = config_path(root)
+    config = target.read_text(encoding="utf-8")
+    if "metrics_diff:" in config:
+        config = config.split("metrics_diff:\n", 1)[0].rstrip() + "\n"
+    target.write_text(
+        config
+        + "metrics_diff:\n  policy:\n"
+        + policy_yaml,
+        encoding="utf-8",
+    )
+
+
 def write_package_metadata(root: Path) -> None:
     docs = root / "docs"
     docs.mkdir(parents=True, exist_ok=True)
@@ -3001,3 +3014,98 @@ def test_ci_regression_check_uses_config_baseline_label(tmp_path: Path) -> None:
     assert report["baseline_source"] == "pinned"
     assert report["baseline_label"] == "stable"
     assert report["policy_source"] == "config"
+
+
+def test_ci_dry_run_metrics_diff_policy_json_includes_enforced_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--metrics-diff-policy",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["metrics-diff"]["status"] == "planned"
+    assert "policy enforcement" in steps["metrics-diff"]["message"]
+    assert not (tmp_path / ".vibebench" / "runs").exists()
+
+
+def test_ci_metrics_diff_policy_writes_artifacts_and_fails(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    append_metrics_diff_policy(tmp_path, "    enabled: false\n")
+    init_git_repo(tmp_path)
+    write_run(tmp_path, "20200101_000000", metrics=sample_metrics(score=101))
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--metrics-diff-policy", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("metrics-diff.json").read_text())
+    assert result.exit_code == 1
+    assert steps["metrics-diff"]["status"] == "failed"
+    assert report["policy_enforced"] is True
+    assert report["policy_status"] == "failed"
+    assert run_dir.joinpath("metrics-diff.md").exists()
+
+
+def test_ci_metrics_diff_policy_writes_artifacts_and_passes(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    append_metrics_diff_policy(tmp_path, "    enabled: false\n")
+    init_git_repo(tmp_path)
+    write_run(tmp_path, "20200101_000000", metrics=sample_metrics(score=90))
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--metrics-diff-policy", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("metrics-diff.json").read_text())
+    assert result.exit_code == 0
+    assert steps["metrics-diff"]["status"] == "passed"
+    assert report["policy_status"] == "passed"
+    assert report["policy_error_count"] == 0
+
+
+def test_ci_metrics_diff_remains_report_only_with_policy_regression(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    append_metrics_diff_policy(tmp_path, "    enabled: false\n")
+    init_git_repo(tmp_path)
+    write_run(tmp_path, "20200101_000000", metrics=sample_metrics(score=101))
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--metrics-diff", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("metrics-diff.json").read_text())
+    assert result.exit_code == 0
+    assert steps["metrics-diff"]["status"] == "passed"
+    assert "policy_status" not in report
+    assert report["summary"]["regressed_count"] >= 1
