@@ -81,6 +81,15 @@ from vibebench.run_index import (
 from vibebench.runner import run_checks
 from vibebench.status_block import generate_status_block
 from vibebench.trend import analyze_trend, write_trend_json, write_trend_summary
+from vibebench.workflow_template import (
+    DEFAULT_WORKFLOW_INSTALL_COMMAND,
+    WORKFLOW_TEMPLATE_JSON,
+    WORKFLOW_TEMPLATE_SUMMARY,
+    WORKFLOW_TEMPLATE_YAML,
+    workflow_template_payload,
+    write_workflow_template_json,
+    write_workflow_template_summary,
+)
 
 StepStatus = Literal["passed", "failed", "skipped", "planned"]
 RegressionGuardSource = Literal["cli", "config", "default"]
@@ -186,6 +195,11 @@ def plan_ci_pipeline(
     skip_metrics_diff: bool = False,
     metrics_diff_policy: bool = False,
     skip_metrics_diff_policy: bool = False,
+    workflow_template: bool = False,
+    skip_workflow_template: bool = False,
+    workflow_template_profile: str = "auto",
+    workflow_template_ci_mode: str = "adoption",
+    workflow_template_install_command: str = DEFAULT_WORKFLOW_INSTALL_COMMAND,
     regression_check: bool = False,
     require_regression_baseline: bool = False,
     baseline_label: str | None = None,
@@ -262,6 +276,22 @@ def plan_ci_pipeline(
         steps.append(planned_step("project-scan", "Would run project-scan report"))
     elif skip_project_scan:
         steps.append(skipped_plan_step("project-scan", "--skip-project-scan"))
+    if workflow_template and not skip_workflow_template:
+        steps.append(
+            planned_step(
+                "workflow-template",
+                "Would write workflow-template artifacts",
+                artifact=Path(WORKFLOW_TEMPLATE_JSON),
+            )
+        )
+    elif skip_workflow_template:
+        steps.append(
+            skipped_plan_step(
+                "workflow-template",
+                "--skip-workflow-template",
+                artifact=Path(WORKFLOW_TEMPLATE_JSON),
+            )
+        )
     for name, skipped, flag in ci_artifact_step_flags(
         skip_report=skip_report,
         skip_pr_comment=skip_pr_comment,
@@ -646,6 +676,11 @@ def run_ci_pipeline(
     skip_metrics_diff: bool = False,
     metrics_diff_policy: bool = False,
     skip_metrics_diff_policy: bool = False,
+    workflow_template: bool = False,
+    skip_workflow_template: bool = False,
+    workflow_template_profile: str = "auto",
+    workflow_template_ci_mode: str = "adoption",
+    workflow_template_install_command: str = DEFAULT_WORKFLOW_INSTALL_COMMAND,
     regression_check: bool = False,
     require_regression_baseline: bool = False,
     baseline_label: str | None = None,
@@ -739,6 +774,8 @@ def run_ci_pipeline(
             skip_metrics_check=skip_metrics_check,
             metrics_diff=metrics_diff_enabled,
             skip_metrics_diff=skip_metrics_diff,
+            workflow_template=workflow_template,
+            skip_workflow_template=skip_workflow_template,
             regression_check=regression_check,
         )
         return CiResult(
@@ -796,6 +833,22 @@ def run_ci_pipeline(
     elif skip_project_scan:
         steps.append(
             CiStepResult("project-scan", "skipped", 0, message="skipped by flag")
+        )
+    if workflow_template and not skip_workflow_template:
+        steps.append(
+            run_workflow_template_artifact_step(
+                root,
+                selected_run_dir,
+                profile=workflow_template_profile,
+                ci_mode=workflow_template_ci_mode,
+                install_command=workflow_template_install_command,
+            )
+        )
+    elif skip_workflow_template:
+        steps.append(
+            CiStepResult(
+                "workflow-template", "skipped", 0, message="skipped by flag"
+            )
         )
 
     artifact_steps: list[tuple[str, bool, object]] = [
@@ -977,6 +1030,8 @@ def append_unavailable_artifact_steps(
     skip_metrics_check: bool = False,
     metrics_diff: bool = False,
     skip_metrics_diff: bool = False,
+    workflow_template: bool = False,
+    skip_workflow_template: bool = False,
     regression_check: bool = False,
 ) -> None:
     """Append artifact steps when no run directory exists."""
@@ -1029,6 +1084,21 @@ def append_unavailable_artifact_steps(
     elif skip_project_scan:
         steps.append(
             CiStepResult("project-scan", "skipped", 0, message="skipped by flag")
+        )
+    if workflow_template and not skip_workflow_template:
+        steps.append(
+            CiStepResult(
+                "workflow-template",
+                "failed",
+                1,
+                message="no run directory available",
+            )
+        )
+    elif skip_workflow_template:
+        steps.append(
+            CiStepResult(
+                "workflow-template", "skipped", 0, message="skipped by flag"
+            )
         )
 
     flags = [
@@ -1228,6 +1298,51 @@ def validate_metrics_artifact_flags(
         raise ConfigError(
             "--metrics-diff-policy cannot be combined with --skip-metrics-diff."
         )
+
+
+def run_workflow_template_artifact_step(
+    project_root: Path,
+    run_dir: Path,
+    *,
+    profile: str = "auto",
+    ci_mode: str = "adoption",
+    install_command: str = DEFAULT_WORKFLOW_INSTALL_COMMAND,
+) -> CiStepResult:
+    """Generate workflow-template artifacts and return CI step status."""
+    started = time.perf_counter()
+    try:
+        yaml_path = run_dir / WORKFLOW_TEMPLATE_YAML
+        payload = workflow_template_payload(
+            project_root,
+            yaml_path,
+            profile=profile,
+            ci_mode=ci_mode,
+            install_command=install_command,
+            write=False,
+            dry_run=False,
+            force=False,
+        )
+        json_path = run_dir / WORKFLOW_TEMPLATE_JSON
+        summary_path = run_dir / WORKFLOW_TEMPLATE_SUMMARY
+        write_workflow_template_json(json_path, payload)
+        write_workflow_template_summary(summary_path, payload)
+        yaml_path.write_text(str(payload["workflow_yaml"]), encoding="utf-8")
+    except Exception as exc:
+        return CiStepResult(
+            "workflow-template",
+            "failed",
+            1,
+            message=str(exc),
+            duration_seconds=elapsed_since(started),
+        )
+    return CiStepResult(
+        "workflow-template",
+        "passed",
+        0,
+        artifact_path=json_path,
+        message=f"profile {payload['resolved_profile']}; ci-mode {payload['ci_mode']}",
+        duration_seconds=elapsed_since(started),
+    )
 
 
 def run_onboard_artifact_step(

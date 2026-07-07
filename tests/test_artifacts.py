@@ -77,6 +77,9 @@ def test_default_latest_run_artifact_listing(tmp_path: Path) -> None:
     assert "project-scan-md" in artifacts
     assert "onboard-json" in artifacts
     assert "onboard-md" in artifacts
+    assert "workflow-template-json" in artifacts
+    assert "workflow-template-md" in artifacts
+    assert "workflow-template-yml" in artifacts
     assert "regression-check-json" in artifacts
     assert "regression-check-md" in artifacts
     assert "evidence-room-security-questionnaire-html" in artifacts

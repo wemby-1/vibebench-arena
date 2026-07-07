@@ -319,6 +319,60 @@ def test_latest_metrics_diff_artifact_path_only(tmp_path: Path) -> None:
     assert "metrics-diff.md" in md_result.output
 
 
+def test_latest_workflow_template_artifact_path_only(tmp_path: Path) -> None:
+    run_dir = write_run(tmp_path, "20260701_111500")
+    run_dir.joinpath("workflow-template.json").write_text(
+        "{}\n", encoding="utf-8"
+    )
+    run_dir.joinpath("workflow-template.md").write_text(
+        "workflow md\n", encoding="utf-8"
+    )
+    run_dir.joinpath("workflow-template.yml").write_text(
+        "name: VibeBench\n", encoding="utf-8"
+    )
+
+    json_result = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "workflow-template-json",
+            "--path-only",
+        ],
+    )
+    md_result = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "workflow-template-md",
+            "--path-only",
+        ],
+    )
+    yml_result = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "workflow-template-yml",
+            "--path-only",
+        ],
+    )
+
+    assert json_result.exit_code == 0
+    assert "workflow-template.json" in json_result.output
+    assert md_result.exit_code == 0
+    assert "workflow-template.md" in md_result.output
+    assert yml_result.exit_code == 0
+    assert "workflow-template.yml" in yml_result.output
+
+
 def test_latest_project_scan_artifact_path_only(tmp_path: Path) -> None:
     run_dir = write_run(tmp_path, "20260701_110000")
     run_dir.joinpath("project-scan.json").write_text("{}\n", encoding="utf-8")

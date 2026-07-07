@@ -1128,6 +1128,58 @@ def test_ci_dry_run_skip_metrics_check_json_includes_skipped_step(
     assert steps["metrics-check"]["message"] == "Skipped by --skip-metrics-check"
 
 
+def test_ci_dry_run_workflow_template_json_includes_planned_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--workflow-template",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["workflow-template"]["status"] == "planned"
+    assert steps["workflow-template"]["artifact"] == "workflow-template.json"
+
+
+def test_ci_dry_run_skip_workflow_template_suppresses_enabled_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--workflow-template",
+            "--skip-workflow-template",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["workflow-template"]["status"] == "skipped"
+    assert (
+        steps["workflow-template"]["message"]
+        == "Skipped by --skip-workflow-template"
+    )
+
+
 def test_ci_dry_run_onboard_json_includes_planned_step(
     tmp_path: Path,
 ) -> None:
@@ -1602,6 +1654,63 @@ def test_ci_project_scan_policy_writes_reports_and_enforces_success(
     assert artifact_map["project-scan-json"]["available"] is True
     assert artifact_map["project-scan-md"]["available"] is True
     assert "project-scan.json" in zip_names(run_dir / "vibebench-bundle.zip")
+
+
+def test_ci_workflow_template_writes_report_only_artifacts(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--workflow-template", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    workflow_json = run_dir / "workflow-template.json"
+    workflow_md = run_dir / "workflow-template.md"
+    workflow_yml = run_dir / "workflow-template.yml"
+    report = json.loads(workflow_json.read_text(encoding="utf-8"))
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    assert steps["workflow-template"]["status"] == "passed"
+    assert steps["workflow-template"]["artifact"].endswith("workflow-template.json")
+    assert workflow_json.exists()
+    assert workflow_md.exists()
+    assert workflow_yml.exists()
+    assert "name: VibeBench" in workflow_yml.read_text(encoding="utf-8")
+    assert report["ci_mode"] == "adoption"
+    assert not (tmp_path / ".github" / "workflows").exists()
+
+
+def test_ci_skip_workflow_template_suppresses_artifacts(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--workflow-template",
+            "--skip-workflow-template",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    assert result.exit_code == 0
+    assert steps["workflow-template"]["status"] == "skipped"
+    assert not run_dir.joinpath("workflow-template.json").exists()
+    assert not (tmp_path / ".github" / "workflows").exists()
 
 
 def test_ci_project_scan_policy_enforces_failure(tmp_path: Path) -> None:
