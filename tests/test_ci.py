@@ -1190,6 +1190,30 @@ def test_ci_dry_run_skip_workflow_check_suppresses_enabled_step(
     assert steps["workflow-check"]["message"] == "Skipped by --skip-workflow-check"
 
 
+def test_ci_dry_run_workflow_check_policy_json_includes_planned_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--workflow-check-policy",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["workflow-check"]["status"] == "planned"
+    assert "policy enforcement" in steps["workflow-check"]["message"]
+
+
 def test_ci_dry_run_workflow_template_json_includes_planned_step(
     tmp_path: Path,
 ) -> None:
@@ -1825,6 +1849,86 @@ def test_ci_skip_workflow_check_suppresses_artifacts(
             "--project-root",
             str(tmp_path),
             "--workflow-check",
+            "--skip-workflow-check",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    assert result.exit_code == 0
+    assert steps["workflow-check"]["status"] == "skipped"
+    assert not run_dir.joinpath("workflow-check.json").exists()
+    assert not run_dir.joinpath("workflow-check.md").exists()
+
+
+def test_ci_workflow_check_policy_enforces_failure(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--workflow-check-policy", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("workflow-check.json").read_text())
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert steps["workflow-check"]["status"] == "failed"
+    assert report["policy_evaluated"] is True
+    assert report["policy_status"] == "failed"
+
+
+def test_ci_workflow_check_policy_passes_with_ready_workflow(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+    workflow = workflow_path(tmp_path)
+    workflow.parent.mkdir(parents=True, exist_ok=True)
+    workflow.write_text(
+        """name: VibeBench
+on:
+  pull_request:
+jobs:
+  vibebench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: python3 -m vibebench ci
+""",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--workflow-check-policy", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("workflow-check.json").read_text())
+    assert result.exit_code == 0
+    assert payload["status"] == "passed"
+    assert steps["workflow-check"]["status"] == "passed"
+    assert report["policy_evaluated"] is True
+    assert report["policy_status"] == "passed"
+
+
+def test_ci_skip_workflow_check_suppresses_policy_mode_too(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--workflow-check-policy",
             "--skip-workflow-check",
             "--json",
         ],

@@ -203,6 +203,7 @@ def plan_ci_pipeline(
     metrics_diff_policy: bool = False,
     skip_metrics_diff_policy: bool = False,
     workflow_check: bool = False,
+    workflow_check_policy: bool = False,
     skip_workflow_check: bool = False,
     workflow_template: bool = False,
     skip_workflow_template: bool = False,
@@ -285,7 +286,15 @@ def plan_ci_pipeline(
         steps.append(planned_step("project-scan", "Would run project-scan report"))
     elif skip_project_scan:
         steps.append(skipped_plan_step("project-scan", "--skip-project-scan"))
-    if workflow_check and not skip_workflow_check:
+    if workflow_check_policy and not skip_workflow_check:
+        steps.append(
+            planned_step(
+                "workflow-check",
+                "Would write workflow-check artifacts with policy enforcement",
+                artifact=Path(WORKFLOW_CHECK_JSON),
+            )
+        )
+    elif workflow_check and not skip_workflow_check:
         steps.append(
             planned_step(
                 "workflow-check",
@@ -702,6 +711,7 @@ def run_ci_pipeline(
     metrics_diff_policy: bool = False,
     skip_metrics_diff_policy: bool = False,
     workflow_check: bool = False,
+    workflow_check_policy: bool = False,
     skip_workflow_check: bool = False,
     workflow_template: bool = False,
     skip_workflow_template: bool = False,
@@ -754,6 +764,7 @@ def run_ci_pipeline(
     metrics_diff_enabled = metrics_diff or metrics_diff_policy
     onboard_enabled = onboard or onboard_policy
     project_scan_enabled = project_scan or project_scan_policy
+    workflow_check_enabled = workflow_check or workflow_check_policy
     root = project_root.resolve()
     selected_run_dir = run_dir.resolve() if run_dir is not None else None
     steps: list[CiStepResult] = []
@@ -801,7 +812,8 @@ def run_ci_pipeline(
             skip_metrics_check=skip_metrics_check,
             metrics_diff=metrics_diff_enabled,
             skip_metrics_diff=skip_metrics_diff,
-            workflow_check=workflow_check,
+            workflow_check=workflow_check_enabled,
+            workflow_check_policy=workflow_check_policy,
             skip_workflow_check=skip_workflow_check,
             workflow_template=workflow_template,
             skip_workflow_template=skip_workflow_template,
@@ -863,8 +875,14 @@ def run_ci_pipeline(
         steps.append(
             CiStepResult("project-scan", "skipped", 0, message="skipped by flag")
         )
-    if workflow_check and not skip_workflow_check:
-        steps.append(run_workflow_check_artifact_step(root, selected_run_dir))
+    if workflow_check_enabled and not skip_workflow_check:
+        steps.append(
+            run_workflow_check_artifact_step(
+                root,
+                selected_run_dir,
+                enforce_policy=workflow_check_policy,
+            )
+        )
     elif skip_workflow_check:
         steps.append(
             CiStepResult("workflow-check", "skipped", 0, message="skipped by flag")
@@ -1066,6 +1084,7 @@ def append_unavailable_artifact_steps(
     metrics_diff: bool = False,
     skip_metrics_diff: bool = False,
     workflow_check: bool = False,
+    workflow_check_policy: bool = False,
     skip_workflow_check: bool = False,
     workflow_template: bool = False,
     skip_workflow_template: bool = False,
@@ -1346,11 +1365,20 @@ def validate_metrics_artifact_flags(
         )
 
 
-def run_workflow_check_artifact_step(project_root: Path, run_dir: Path) -> CiStepResult:
+def run_workflow_check_artifact_step(
+    project_root: Path,
+    run_dir: Path,
+    *,
+    enforce_policy: bool = False,
+) -> CiStepResult:
     """Generate workflow-check artifacts and return CI step status."""
     started = time.perf_counter()
     try:
-        payload = workflow_check_payload(project_root, strict=False)
+        payload = workflow_check_payload(
+            project_root,
+            strict=False,
+            enforce_policy=enforce_policy,
+        )
         json_path = run_dir / WORKFLOW_CHECK_JSON
         summary_path = run_dir / WORKFLOW_CHECK_SUMMARY
         write_workflow_check_json(json_path, payload)
@@ -1363,12 +1391,20 @@ def run_workflow_check_artifact_step(project_root: Path, run_dir: Path) -> CiSte
             message=str(exc),
             duration_seconds=elapsed_since(started),
         )
+    policy_suffix = ""
+    if payload.get("policy_evaluated"):
+        policy_suffix = f"; policy {payload['policy_status']}"
+    status: StepStatus = "passed" if payload["status"] == "passed" else "failed"
+    exit_code = 0 if status == "passed" else 1
     return CiStepResult(
         "workflow-check",
-        "passed",
-        0,
+        status,
+        exit_code,
         artifact_path=json_path,
-        message=f"status {payload['status']}; findings {len(payload['findings'])}",
+        message=(
+            f"status {payload['status']}; findings {len(payload['findings'])}"
+            f"{policy_suffix}"
+        ),
         duration_seconds=elapsed_since(started),
     )
 

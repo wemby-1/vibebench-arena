@@ -6,7 +6,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from vibebench.config import ConfigError
+from vibebench.config import ConfigError, load_effective_config
+from vibebench.paths import config_file
 
 WORKFLOW_CHECK_JSON = "workflow-check.json"
 WORKFLOW_CHECK_SUMMARY = "workflow-check.md"
@@ -62,6 +63,7 @@ def workflow_check_payload(
     path: Path | None = None,
     strict: bool = False,
     check_all: bool = False,
+    enforce_policy: bool = False,
 ) -> dict[str, Any]:
     """Return a deterministic read-only workflow check payload."""
     root = project_root.resolve()
@@ -102,7 +104,7 @@ def workflow_check_payload(
         )
         and not any(check["severity"] == "error" for check in checks)
     )
-    return {
+    payload: dict[str, Any] = {
         "status": status,
         "strict": strict,
         "workflow_path": str(selected_workflow_path)
@@ -116,6 +118,9 @@ def workflow_check_payload(
         "safe_preview_only": True,
         "message": workflow_check_message(status, selected_workflow_path),
     }
+    if enforce_policy:
+        attach_workflow_check_policy(payload, root)
+    return payload
 
 
 def resolve_workflow_paths(
@@ -288,6 +293,22 @@ def analyze_workflow_path(
                 line=find_line(content, pattern),
             )
 
+    for action_ref, line in unpinned_action_uses(content):
+        add_risk_finding(
+            checks,
+            findings,
+            risk_id="unpinned_action",
+            title="Workflow action is not pinned to a full commit SHA",
+            message=f"Workflow uses {action_ref!r} without a full commit SHA pin.",
+            path=workflow_path,
+            line=line,
+            strict=False,
+            advice=(
+                "Pin third-party actions to reviewed commit SHAs, or allow an "
+                "explicit prefix in workflow_check.policy.allowed_action_prefixes."
+            ),
+        )
+
     for risk_id, patterns in RISK_PATTERNS.items():
         line = first_matching_line(content, patterns)
         if line is not None:
@@ -447,6 +468,268 @@ def first_matching_line(content: str, patterns: list[str]) -> int | None:
     return None
 
 
+
+BLOCKING_WORKFLOW_FINDING_IDS = {
+    "workflow_exists",
+    "workflow_is_file",
+    "workflow_readable",
+    "workflow_not_empty",
+    "workflow_has_name",
+    "workflow_has_on",
+    "workflow_has_jobs",
+    "workflow_has_runs_on",
+    "workflow_has_steps",
+}
+
+
+def attach_workflow_check_policy(payload: dict[str, Any], project_root: Path) -> None:
+    """Attach workflow-check policy fields to a payload."""
+    policy_source, effective_policy, config_exists = resolve_workflow_check_policy(
+        project_root
+    )
+    policy_findings = evaluate_workflow_check_policy(
+        payload,
+        effective_policy,
+        config_exists=config_exists,
+    )
+    payload["policy_evaluated"] = True
+    payload["policy_status"] = "failed" if policy_findings else "passed"
+    payload["policy_source"] = policy_source
+    payload["policy_findings"] = policy_findings
+    payload["effective_policy"] = effective_policy
+    if policy_findings:
+        payload["status"] = "failed"
+        payload["message"] = "Workflow check policy found blocking issues."
+
+
+def resolve_workflow_check_policy(
+    project_root: Path,
+) -> tuple[str, dict[str, Any], bool]:
+    """Return the effective workflow-check policy, source, and config presence."""
+    result = load_effective_config(config_file(project_root))
+    policy = result.config.workflow_check.policy.model_dump()
+    raw_source = result.sources.get("workflow_check", "built-in defaults")
+    source = "config" if raw_source == "config file" else raw_source
+    return source, policy, result.config_exists
+
+
+def evaluate_workflow_check_policy(
+    payload: dict[str, Any],
+    policy: dict[str, Any],
+    *,
+    config_exists: bool,
+) -> list[dict[str, str]]:
+    """Evaluate workflow policy against an existing workflow-check payload."""
+    findings: list[dict[str, str]] = []
+    workflow_findings = [
+        finding for finding in payload.get("findings", []) if isinstance(finding, dict)
+    ]
+    allowed_prefixes = [
+        str(prefix) for prefix in policy.get("allowed_action_prefixes", [])
+    ]
+    filtered_findings = [
+        finding
+        for finding in workflow_findings
+        if not workflow_finding_allowed_by_prefix(finding, allowed_prefixes)
+    ]
+
+    if policy.get("require_config") and not config_exists:
+        findings.append(
+            workflow_check_policy_finding(
+                "config_required",
+                "error",
+                "VibeBench config is required",
+                "No .vibebench/config.yaml file exists for this project.",
+                "Run python3 -m vibebench init --profile auto, then config --check.",
+                "require_config",
+            )
+        )
+
+    if policy.get("require_ci_ready") and not payload.get("usable_for_vibebench_ci"):
+        findings.append(
+            workflow_check_policy_finding(
+                "ci_ready_required",
+                "error",
+                "Workflow must be ready for VibeBench CI",
+                "The checked workflow is not currently usable for VibeBench CI.",
+                "Fix workflow blockers or add python3 -m vibebench ci.",
+                "require_ci_ready",
+            )
+        )
+
+    if policy.get("fail_on_blockers"):
+        for finding in filtered_findings:
+            if str(finding.get("id") or "") in BLOCKING_WORKFLOW_FINDING_IDS:
+                findings.append(
+                    workflow_check_policy_finding_from_workflow_finding(
+                        finding,
+                        severity="error",
+                        title="Workflow blockers are not allowed",
+                        recommendation=(
+                            "Fix the workflow structure or relax "
+                            "workflow_check.policy.fail_on_blockers."
+                        ),
+                        rule="fail_on_blockers",
+                    )
+                )
+
+    if policy.get("fail_on_errors"):
+        for finding in filtered_findings:
+            if finding.get("severity") == "error":
+                findings.append(
+                    workflow_check_policy_finding_from_workflow_finding(
+                        finding,
+                        severity="error",
+                        title="Workflow errors are not allowed",
+                        recommendation=(
+                            "Resolve the workflow error or relax "
+                            "workflow_check.policy.fail_on_errors."
+                        ),
+                        rule="fail_on_errors",
+                    )
+                )
+
+    if policy.get("fail_on_warnings"):
+        for finding in filtered_findings:
+            if finding.get("severity") == "warning":
+                findings.append(
+                    workflow_check_policy_finding_from_workflow_finding(
+                        finding,
+                        severity="warning",
+                        title="Workflow warnings are not allowed",
+                        recommendation=(
+                            "Resolve the workflow warning or relax "
+                            "workflow_check.policy.fail_on_warnings."
+                        ),
+                        rule="fail_on_warnings",
+                    )
+                )
+
+    allowed_names = [str(name) for name in policy.get("allowed_workflow_names", [])]
+    if allowed_names:
+        for workflow_path in payload.get("discovered_paths", []):
+            selected_name = workflow_name(Path(str(workflow_path)))
+            if selected_name not in allowed_names:
+                findings.append(
+                    workflow_check_policy_finding(
+                        "workflow_name_not_allowed",
+                        "error",
+                        "Workflow name is not allowed",
+                        (
+                            f"Workflow name {selected_name or '<missing>'!r} "
+                            "is not in the allowed list."
+                        ),
+                        (
+                            "Update workflow_check.policy.allowed_workflow_names "
+                            "if intentional."
+                        ),
+                        "allowed_workflow_names",
+                    )
+                )
+    return findings
+
+
+def workflow_check_policy_finding(
+    finding_id: str,
+    severity: str,
+    title: str,
+    message: str,
+    recommendation: str,
+    rule: str,
+) -> dict[str, str]:
+    """Return a deterministic workflow-check policy finding."""
+    return {
+        "id": finding_id,
+        "severity": severity,
+        "title": title,
+        "message": message,
+        "recommendation": recommendation,
+        "rule": rule,
+    }
+
+
+def workflow_check_policy_finding_from_workflow_finding(
+    finding: dict[str, Any],
+    *,
+    severity: str,
+    title: str,
+    recommendation: str,
+    rule: str,
+) -> dict[str, str]:
+    """Lift a workflow finding into a policy finding."""
+    return workflow_check_policy_finding(
+        str(finding.get("id") or "workflow_finding"),
+        severity,
+        title,
+        str(finding.get("message") or finding.get("title") or "Workflow finding."),
+        recommendation,
+        rule,
+    )
+
+
+def workflow_finding_allowed_by_prefix(
+    finding: dict[str, Any],
+    prefixes: list[str],
+) -> bool:
+    """Return whether an unpinned-action finding is policy-allowed by prefix."""
+    if str(finding.get("id") or "") != "unpinned_action":
+        return False
+    action_ref = extract_action_ref_from_message(str(finding.get("message") or ""))
+    if action_ref is None:
+        return False
+    return any(action_ref.startswith(prefix) for prefix in prefixes)
+
+
+def extract_action_ref_from_message(message: str) -> str | None:
+    """Extract an action reference from the standard unpinned-action message."""
+    marker = "Workflow uses "
+    if not message.startswith(marker):
+        return None
+    try:
+        return message.split("'", 2)[1]
+    except IndexError:
+        return None
+
+
+def unpinned_action_uses(content: str) -> list[tuple[str, int]]:
+    """Return action refs that are not pinned to a full commit SHA."""
+    matches: list[tuple[str, int]] = []
+    for index, line in enumerate(content.splitlines(), start=1):
+        stripped = line.strip()
+        if stripped.startswith("- uses:"):
+            action_ref = stripped.split("- uses:", 1)[1].strip()
+        elif stripped.startswith("uses:"):
+            action_ref = stripped.split("uses:", 1)[1].strip()
+        else:
+            continue
+        action_ref = action_ref.strip("\"'")
+        if action_ref.startswith("./") or action_ref.startswith("../"):
+            continue
+        if "@" not in action_ref:
+            matches.append((action_ref, index))
+            continue
+        revision = action_ref.rsplit("@", 1)[1]
+        if len(revision) == 40 and all(
+            char in "0123456789abcdefABCDEF" for char in revision
+        ):
+            continue
+        matches.append((action_ref, index))
+    return matches
+
+
+def workflow_name(path: Path) -> str | None:
+    """Return a simple top-level workflow name from YAML-like text."""
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    for line in content.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("name:"):
+            return stripped.split("name:", 1)[1].strip().strip("\"'") or None
+    return None
+
+
 def workflow_check_json(payload: dict[str, Any]) -> str:
     """Return pure JSON for workflow-check output."""
     return json.dumps(payload, indent=2, sort_keys=True)
@@ -516,6 +799,53 @@ def workflow_check_markdown(payload: dict[str, Any]) -> str:
             )
     else:
         lines.append("| info | No findings | No action needed. |")
+    if payload.get("policy_evaluated"):
+        effective_policy = payload.get("effective_policy") or {}
+        lines.extend(
+            [
+                "",
+                "## Policy",
+                "",
+                f"- Status: {payload['policy_status']}",
+                f"- Source: {payload['policy_source']}",
+                (
+                    "- fail_on_blockers: "
+                    f"{str(effective_policy.get('fail_on_blockers')).lower()}"
+                ),
+                (
+                    "- fail_on_errors: "
+                    f"{str(effective_policy.get('fail_on_errors')).lower()}"
+                ),
+                (
+                    "- fail_on_warnings: "
+                    f"{str(effective_policy.get('fail_on_warnings')).lower()}"
+                ),
+                (
+                    "- require_config: "
+                    f"{str(effective_policy.get('require_config')).lower()}"
+                ),
+                (
+                    "- require_ci_ready: "
+                    f"{str(effective_policy.get('require_ci_ready')).lower()}"
+                ),
+                "",
+                "| Severity | Finding | Rule | Recommendation |",
+                "| --- | --- | --- | --- |",
+            ]
+        )
+        policy_findings = payload.get("policy_findings") or []
+        if policy_findings:
+            for finding in policy_findings:
+                lines.append(
+                    "| {severity} | {title} | {rule} | {recommendation} |".format(
+                        severity=markdown_cell(finding["severity"]),
+                        title=markdown_cell(finding["title"]),
+                        rule=markdown_cell(finding["rule"]),
+                        recommendation=markdown_cell(finding["recommendation"]),
+                    )
+                )
+        else:
+            lines.append("| info | Policy passed | none | No action needed. |")
     lines.extend(
         [
             "",
@@ -525,6 +855,8 @@ def workflow_check_markdown(payload: dict[str, Any]) -> str:
             "recommended workflow.",
             "- Use `python3 -m vibebench workflow-check --strict` before "
             "relying on CI adoption.",
+            "- Use `python3 -m vibebench workflow-check --enforce-policy` "
+            "to turn workflow findings into an explicit gate.",
             "- The check is read-only and does not call GitHub or modify workflows.",
             "",
         ]

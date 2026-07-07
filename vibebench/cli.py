@@ -920,6 +920,13 @@ def workflow_check_command(
         bool,
         typer.Option("--all", help="Check all likely workflow candidates."),
     ] = False,
+    enforce_policy: Annotated[
+        bool,
+        typer.Option(
+            "--enforce-policy",
+            help="Evaluate workflow_check.policy and fail when it does not pass.",
+        ),
+    ] = False,
 ) -> None:
     """Check existing GitHub Actions workflows for VibeBench readiness."""
     root = project_root.resolve()
@@ -929,6 +936,7 @@ def workflow_check_command(
             path=path,
             strict=strict,
             check_all=check_all,
+            enforce_policy=enforce_policy,
         )
         if json_output is not None:
             write_workflow_check_json(resolve_output_path(root, json_output), payload)
@@ -977,6 +985,10 @@ def render_workflow_check_result(payload: dict[str, object]) -> None:
     console.print(f"Status: {payload['status']}")
     console.print(f"Workflow path: {payload['workflow_path']}")
     console.print(f"Strict: {format_bool(payload['strict'])}")
+    if payload.get("policy_evaluated"):
+        console.print(
+            f"Policy: {payload['policy_status']} ({payload['policy_source']})"
+        )
     summary = payload["summary"]
     if isinstance(summary, dict):
         console.print(
@@ -3282,6 +3294,13 @@ def ci_command(
             help="Run workflow-check and write report-only artifacts.",
         ),
     ] = False,
+    workflow_check_policy: Annotated[
+        bool,
+        typer.Option(
+            "--workflow-check-policy",
+            help="Run workflow-check artifacts with policy enforcement.",
+        ),
+    ] = False,
     skip_workflow_check: Annotated[
         bool,
         typer.Option(
@@ -3513,6 +3532,7 @@ def ci_command(
                 metrics_diff_policy=metrics_diff_policy,
                 skip_metrics_diff_policy=skip_metrics_diff_policy,
                 workflow_check=workflow_check,
+                workflow_check_policy=workflow_check_policy,
                 skip_workflow_check=skip_workflow_check,
                 workflow_template=workflow_template,
                 skip_workflow_template=skip_workflow_template,
@@ -3574,6 +3594,7 @@ def ci_command(
                 metrics_diff_policy=metrics_diff_policy,
                 skip_metrics_diff_policy=skip_metrics_diff_policy,
                 workflow_check=workflow_check,
+                workflow_check_policy=workflow_check_policy,
                 skip_workflow_check=skip_workflow_check,
                 workflow_template=workflow_template,
                 skip_workflow_template=skip_workflow_template,

@@ -211,6 +211,36 @@ def config_consistency_checks(
             "plan should become an explicit gate."
         )
     checks.append(onboard_check)
+
+    workflow_check_policy = config.workflow_check.policy
+    workflow_name_text = (
+        ",".join(workflow_check_policy.allowed_workflow_names) or "none"
+    )
+    action_prefix_text = (
+        ",".join(workflow_check_policy.allowed_action_prefixes) or "none"
+    )
+    workflow_check_check = {
+        "name": "workflow_check_policy",
+        "status": "passed",
+        "message": (
+            "Workflow-check policy is internally consistent "
+            f"(enabled={str(workflow_check_policy.enabled).lower()}, "
+            f"fail_on_blockers={str(workflow_check_policy.fail_on_blockers).lower()}, "
+            f"fail_on_errors={str(workflow_check_policy.fail_on_errors).lower()}, "
+            f"fail_on_warnings={str(workflow_check_policy.fail_on_warnings).lower()}, "
+            f"require_config={str(workflow_check_policy.require_config).lower()}, "
+            f"require_ci_ready={str(workflow_check_policy.require_ci_ready).lower()}, "
+            f"allowed_workflow_names={workflow_name_text}, "
+            f"allowed_action_prefixes={action_prefix_text})"
+        ),
+    }
+    if include_advice and not workflow_check_policy.enabled:
+        workflow_check_check["advice"] = (
+            "Use `python3 -m vibebench workflow-check --enforce-policy` or "
+            "`python3 -m vibebench ci --workflow-check-policy` when workflow "
+            "readiness should become an explicit gate."
+        )
+    checks.append(workflow_check_check)
     return checks
 
 

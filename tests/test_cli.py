@@ -911,6 +911,23 @@ project_scan:
     )
 
 
+def write_workflow_check_policy_config(root: Path, policy_yaml: str) -> None:
+    config_path(root).parent.mkdir(parents=True, exist_ok=True)
+    config_path(root).write_text(
+        """project:
+  name: demo
+checks:
+  test:
+    - python3 -c "print(1)"
+  lint: []
+workflow_check:
+  policy:
+"""
+        + policy_yaml,
+        encoding="utf-8",
+    )
+
+
 def test_project_scan_default_omits_policy_fields(tmp_path: Path) -> None:
     payload = project_scan_payload(tmp_path)
 
@@ -1564,6 +1581,113 @@ def test_workflow_check_existing_template_output_passes(tmp_path: Path) -> None:
     assert payload["usable_for_vibebench_ci"] is True
 
 
+def test_workflow_check_default_omits_policy_fields(tmp_path: Path) -> None:
+    write_workflow(tmp_path, minimal_vibebench_workflow())
+
+    payload = workflow_check_payload_for(tmp_path)
+
+    assert "policy_status" not in payload
+    assert "policy_findings" not in payload
+
+
+def test_workflow_check_enforce_policy_passes_with_config_and_ci_ready(
+    tmp_path: Path,
+) -> None:
+    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--profile", "python"])
+    write_workflow(tmp_path, minimal_vibebench_workflow())
+
+    payload = workflow_check_payload_for(tmp_path, "--enforce-policy")
+
+    assert payload["status"] == "passed"
+    assert payload["policy_evaluated"] is True
+    assert payload["policy_status"] == "passed"
+
+
+def test_workflow_check_enforce_policy_fails_when_config_is_missing(
+    tmp_path: Path,
+) -> None:
+    write_workflow(tmp_path, minimal_vibebench_workflow())
+
+    result = runner.invoke(
+        app,
+        [
+            "workflow-check",
+            "--project-root",
+            str(tmp_path),
+            "--enforce-policy",
+            "--json",
+        ],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert result.output.lstrip().startswith("{")
+    assert payload["status"] == "failed"
+    assert payload["policy_status"] == "failed"
+    assert {finding["rule"] for finding in payload["policy_findings"]} == {
+        "require_config",
+    }
+
+
+def test_workflow_check_enforce_policy_can_fail_on_warning_findings(
+    tmp_path: Path,
+) -> None:
+    write_workflow_check_policy_config(
+        tmp_path,
+        """    fail_on_blockers: false
+    fail_on_errors: false
+    fail_on_warnings: true
+    require_config: true
+    require_ci_ready: false
+    allowed_workflow_names: []
+    allowed_action_prefixes: []
+""",
+    )
+    write_workflow(tmp_path, minimal_vibebench_workflow())
+
+    result = runner.invoke(
+        app,
+        [
+            "workflow-check",
+            "--project-root",
+            str(tmp_path),
+            "--enforce-policy",
+            "--json",
+        ],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert payload["policy_status"] == "failed"
+    assert any(
+        finding["rule"] == "fail_on_warnings"
+        for finding in payload["policy_findings"]
+    )
+
+
+def test_workflow_check_allowed_action_prefixes_can_suppress_unpinned_warnings(
+    tmp_path: Path,
+) -> None:
+    write_workflow_check_policy_config(
+        tmp_path,
+        """    fail_on_blockers: false
+    fail_on_errors: false
+    fail_on_warnings: true
+    require_config: true
+    require_ci_ready: false
+    allowed_workflow_names: []
+    allowed_action_prefixes:
+      - actions/
+""",
+    )
+    write_workflow(tmp_path, minimal_vibebench_workflow())
+
+    payload = workflow_check_payload_for(tmp_path, "--enforce-policy")
+
+    assert payload["status"] == "passed"
+    assert payload["policy_status"] == "passed"
+
+
 def test_config_command_without_file_prints_defaults(tmp_path: Path) -> None:
     result = runner.invoke(app, ["config", "--project-root", str(tmp_path)])
 
@@ -1863,6 +1987,7 @@ def test_config_command_json_is_valid(tmp_path: Path) -> None:
         "project_scan",
         "regression",
         "risk",
+        "workflow_check",
     ]
     assert payload["compare"]["fail_on_regression"] is False
     assert payload["project"]["name"] == "vibebench-project"
@@ -1873,6 +1998,7 @@ def test_config_command_json_is_valid(tmp_path: Path) -> None:
     assert payload["regression"]["fail_on_missing_metrics"] is True
     assert payload["regression"]["enabled"] is False
     assert payload["onboard"]["policy"]["require_config"] is True
+    assert payload["workflow_check"]["policy"]["fail_on_blockers"] is True
 
 
 def test_config_command_validate_succeeds_for_valid_config(tmp_path: Path) -> None:
@@ -2774,6 +2900,23 @@ def test_config_check_reports_onboard_policy(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert "Onboard policy is internally consistent" in policy["message"]
     assert "onboard --enforce-policy" in policy["advice"]
+
+
+def test_config_check_reports_workflow_check_policy(tmp_path: Path) -> None:
+    runner.invoke(app, ["config", "--project-root", str(tmp_path), "--init"])
+
+    result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--check", "--advice", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    policy = next(
+        check for check in payload["checks"] if check["name"] == "workflow_check_policy"
+    )
+    assert result.exit_code == 0
+    assert "Workflow-check policy is internally consistent" in policy["message"]
+    assert "workflow-check --enforce-policy" in policy["advice"]
 
 
 def test_config_check_rejects_invalid_metrics_diff_policy(tmp_path: Path) -> None:

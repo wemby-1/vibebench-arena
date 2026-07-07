@@ -127,6 +127,18 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "require_ci_ready": False,
         },
     },
+    "workflow_check": {
+        "policy": {
+            "enabled": False,
+            "fail_on_blockers": True,
+            "fail_on_errors": True,
+            "fail_on_warnings": False,
+            "require_config": True,
+            "require_ci_ready": False,
+            "allowed_workflow_names": [],
+            "allowed_action_prefixes": [],
+        },
+    },
 }
 
 
@@ -420,6 +432,47 @@ class OnboardConfig(BaseModel):
     policy: OnboardPolicyConfig = Field(default_factory=OnboardPolicyConfig)
 
 
+class WorkflowCheckPolicyConfig(BaseModel):
+    """Workflow-check policy gate defaults."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: StrictBool = False
+    fail_on_blockers: StrictBool = True
+    fail_on_errors: StrictBool = True
+    fail_on_warnings: StrictBool = False
+    require_config: StrictBool = True
+    require_ci_ready: StrictBool = False
+    allowed_workflow_names: list[StrictStr] = Field(default_factory=list)
+    allowed_action_prefixes: list[StrictStr] = Field(default_factory=list)
+
+    @field_validator("allowed_workflow_names", "allowed_action_prefixes")
+    @classmethod
+    def validate_string_allowlist(cls, value: list[str]) -> list[str]:
+        """Validate workflow-check policy allowlists."""
+        seen: set[str] = set()
+        for item in value:
+            selected = item.strip()
+            if not selected:
+                raise ValueError("workflow_check.policy allowlists must not be empty")
+            if selected in seen:
+                raise ValueError(
+                    f"workflow_check.policy allowlist entry {selected!r} is duplicated"
+                )
+            seen.add(selected)
+        return value
+
+
+class WorkflowCheckConfig(BaseModel):
+    """Workflow-check configuration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    policy: WorkflowCheckPolicyConfig = Field(
+        default_factory=WorkflowCheckPolicyConfig
+    )
+
+
 class VibeBenchConfig(BaseModel):
     """Top-level VibeBench configuration."""
 
@@ -435,6 +488,7 @@ class VibeBenchConfig(BaseModel):
     metrics_diff: MetricsDiffConfig = Field(default_factory=MetricsDiffConfig)
     project_scan: ProjectScanConfig = Field(default_factory=ProjectScanConfig)
     onboard: OnboardConfig = Field(default_factory=OnboardConfig)
+    workflow_check: WorkflowCheckConfig = Field(default_factory=WorkflowCheckConfig)
 
     def effective_risk(self) -> RiskConfig:
         """Return the active Git diff risk policy."""
@@ -508,6 +562,18 @@ def config_example_yaml() -> str:
                 "fail_on_warnings": False,
                 "require_config": True,
                 "require_ci_ready": False,
+            },
+        },
+        "workflow_check": {
+            "policy": {
+                "enabled": False,
+                "fail_on_blockers": True,
+                "fail_on_errors": True,
+                "fail_on_warnings": False,
+                "require_config": True,
+                "require_ci_ready": False,
+                "allowed_workflow_names": [],
+                "allowed_action_prefixes": [],
             },
         },
     }
@@ -639,6 +705,18 @@ def init_config_profile_payload(
                 "require_ci_ready": False,
             },
         },
+        "workflow_check": {
+            "policy": {
+                "enabled": False,
+                "fail_on_blockers": True,
+                "fail_on_errors": True,
+                "fail_on_warnings": False,
+                "require_config": True,
+                "require_ci_ready": False,
+                "allowed_workflow_names": [],
+                "allowed_action_prefixes": [],
+            },
+        },
     }
 
 
@@ -740,6 +818,7 @@ def load_effective_config(path: Path | None = None) -> EffectiveConfigResult:
                 "metrics_diff": "built-in defaults",
                 "project_scan": "built-in defaults",
                 "onboard": "built-in defaults",
+                "workflow_check": "built-in defaults",
             },
             config_path=config_path,
             config_exists=False,
@@ -767,6 +846,9 @@ def load_effective_config(path: Path | None = None) -> EffectiveConfigResult:
         "onboard": (
             "config file" if "onboard" in raw_config else "built-in defaults"
         ),
+        "workflow_check": (
+            "config file" if "workflow_check" in raw_config else "built-in defaults"
+        ),
     }
     return EffectiveConfigResult(
         config=config,
@@ -787,6 +869,7 @@ def effective_config_payload(result: EffectiveConfigResult) -> dict[str, Any]:
         "metrics_diff": result.config.metrics_diff.model_dump(),
         "project_scan": result.config.project_scan.model_dump(),
         "onboard": result.config.onboard.model_dump(),
+        "workflow_check": result.config.workflow_check.model_dump(),
         "risk": result.config.effective_risk().model_dump(),
     }
     return payload
