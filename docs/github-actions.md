@@ -15,10 +15,11 @@ Preview the default VibeBench workflow with:
 python -m vibebench workflow-template
 ```
 
-Write `.github/workflows/vibebench.yml` only after review:
+Write `.github/workflows/vibebench.yml` only after review. Use `--ci-mode adoption` for the report-only adoption suite or `--ci-mode adoption-policy` for the policy-gated adoption suite:
 
 ```bash
 python -m vibebench workflow-template --ci-mode adoption --write
+python -m vibebench workflow-template --ci-mode adoption-policy --write
 ```
 
 Use `--output PATH` for a different workflow path and `--force` only when overwriting is intentional. The template also lives at:

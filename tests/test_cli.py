@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 from typer.testing import CliRunner
 
 from vibebench.cli import app
@@ -1458,6 +1459,59 @@ def test_workflow_template_json_stdout_is_pure_json(tmp_path: Path) -> None:
     assert "permissions:\n  contents: read" in payload["workflow_yaml"]
 
 
+@pytest.mark.parametrize(
+    ("mode", "command"),
+    [
+        ("adoption", "python3 -m vibebench ci --adoption"),
+        ("adoption-policy", "python3 -m vibebench ci --adoption-policy"),
+    ],
+)
+def test_workflow_template_adoption_modes_json_stdout_is_pure_json(
+    tmp_path: Path, mode: str, command: str
+) -> None:
+    payload = workflow_template_payload_for(tmp_path, "--ci-mode", mode)
+
+    assert payload["ci_mode"] == mode
+    assert payload["commands"] == [command]
+    assert command in payload["workflow_yaml"]
+    assert payload["workflow_yaml"] == payload["template"]
+    assert not workflow_path(tmp_path).exists()
+    assert not (tmp_path / ".github").exists()
+
+
+@pytest.mark.parametrize(
+    ("mode", "command"),
+    [
+        ("adoption", "python3 -m vibebench ci --adoption"),
+        ("adoption-policy", "python3 -m vibebench ci --adoption-policy"),
+    ],
+)
+def test_workflow_template_adoption_modes_summary_output_includes_command(
+    tmp_path: Path, mode: str, command: str
+) -> None:
+    output = tmp_path / f"workflow-{mode}.md"
+
+    result = runner.invoke(
+        app,
+        [
+            "workflow-template",
+            "--project-root",
+            str(tmp_path),
+            "--ci-mode",
+            mode,
+            "--summary-output",
+            str(output),
+        ],
+    )
+    markdown = output.read_text(encoding="utf-8")
+
+    assert result.exit_code == 0
+    assert f"- CI mode: {mode}" in markdown
+    assert f"- `{command}`" in markdown
+    assert command in markdown
+    assert not workflow_path(tmp_path).exists()
+
+
 def test_workflow_template_json_output_writes_deterministic_json(
     tmp_path: Path,
 ) -> None:
@@ -1644,13 +1698,19 @@ def test_workflow_template_install_command_is_not_executed(tmp_path: Path) -> No
 def test_workflow_template_ci_modes_generate_expected_commands(tmp_path: Path) -> None:
     basic = workflow_template_payload_for(tmp_path, "--ci-mode", "basic")
     adoption = workflow_template_payload_for(tmp_path, "--ci-mode", "adoption")
+    adoption_policy = workflow_template_payload_for(
+        tmp_path, "--ci-mode", "adoption-policy"
+    )
     strict = workflow_template_payload_for(tmp_path, "--ci-mode", "strict")
 
     assert basic["commands"] == [
         "python3 -m vibebench config --check",
         "python3 -m vibebench ci",
     ]
-    assert "python3 -m vibebench ci --project-scan --onboard" in adoption["commands"]
+    assert adoption["commands"] == ["python3 -m vibebench ci --adoption"]
+    assert adoption_policy["commands"] == [
+        "python3 -m vibebench ci --adoption-policy"
+    ]
     assert (
         "python3 -m vibebench ci --project-scan-policy --onboard-policy"
         in strict["commands"]

@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added `workflow-template --ci-mode adoption` and `workflow-template --ci-mode adoption-policy` so generated GitHub Actions templates can run the new report-only or policy-gated adoption CI presets while remaining preview-first unless `--write` is passed.
+
 - Added `vibebench ci --adoption` and `vibebench ci --adoption-policy` presets for the full adoption evidence suite, reusing existing artifact names, keeping workflow-template preview/report-only in policy mode, honoring matching skip flags, and leaving default CI unchanged.
 
 - Added optional `preflight --enforce-policy` and `ci --preflight-policy` gates backed by `preflight.policy`, reusing `preflight.json` and `preflight.md` while keeping default preflight and `ci --preflight` report-only.

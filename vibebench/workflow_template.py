@@ -14,7 +14,7 @@ WORKFLOW_TEMPLATE_JSON = "workflow-template.json"
 WORKFLOW_TEMPLATE_SUMMARY = "workflow-template.md"
 WORKFLOW_TEMPLATE_YAML = "workflow-template.yml"
 WORKFLOW_PROFILES = {"generic", "python", "node", "fullstack", "auto"}
-WORKFLOW_CI_MODES = {"basic", "adoption", "strict"}
+WORKFLOW_CI_MODES = {"basic", "adoption", "adoption-policy", "strict"}
 DEFAULT_WORKFLOW_INSTALL_COMMAND = "python3 -m pip install -e ."
 
 
@@ -151,10 +151,11 @@ def workflow_template_commands(ci_mode: str) -> list[str]:
         ]
     if ci_mode == "adoption":
         return [
-            "python3 -m vibebench config --check",
-            "python3 -m vibebench project-scan --json",
-            "python3 -m vibebench onboard --json",
-            "python3 -m vibebench ci --project-scan --onboard",
+            "python3 -m vibebench ci --adoption",
+        ]
+    if ci_mode == "adoption-policy":
+        return [
+            "python3 -m vibebench ci --adoption-policy",
         ]
     if ci_mode == "strict":
         return [

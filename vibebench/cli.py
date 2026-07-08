@@ -898,7 +898,7 @@ def workflow_template_command(
         str,
         typer.Option(
             "--ci-mode",
-            help="CI command set: basic, adoption, or strict.",
+            help="CI command set: basic, adoption, adoption-policy, or strict.",
         ),
     ] = "basic",
     install_command: Annotated[
