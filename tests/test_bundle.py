@@ -111,6 +111,14 @@ def write_run(
             "# VibeBench Onboarding Plan\n",
             encoding="utf-8",
         )
+        (run_dir / "preflight.json").write_text(
+            '{"status":"ready"}\n',
+            encoding="utf-8",
+        )
+        (run_dir / "preflight.md").write_text(
+            "# VibeBench Preflight\n",
+            encoding="utf-8",
+        )
         (run_dir / "workflow-check.json").write_text(
             '{"status":"passed"}\n',
             encoding="utf-8",
@@ -229,6 +237,8 @@ def test_latest_run_bundle_is_created(tmp_path: Path) -> None:
     assert "project-scan.md" in names
     assert "onboard.json" in names
     assert "onboard.md" in names
+    assert "preflight.json" in names
+    assert "preflight.md" in names
     assert "workflow-check.json" in names
     assert "workflow-check.md" in names
     assert "regression-check.json" in names

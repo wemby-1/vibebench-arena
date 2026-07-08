@@ -139,6 +139,8 @@ def artifacts_section(run_dir: Path) -> str:
         run_dir / "project-scan.md",
         run_dir / "onboard.json",
         run_dir / "onboard.md",
+        run_dir / "preflight.json",
+        run_dir / "preflight.md",
         run_dir / "workflow-template.json",
         run_dir / "workflow-template.md",
         run_dir / "workflow-template.yml",

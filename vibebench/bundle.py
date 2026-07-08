@@ -23,6 +23,8 @@ STANDARD_ARTIFACTS = [
     Path("project-scan.md"),
     Path("onboard.json"),
     Path("onboard.md"),
+    Path("preflight.json"),
+    Path("preflight.md"),
     Path("workflow-template.json"),
     Path("workflow-template.md"),
     Path("workflow-template.yml"),

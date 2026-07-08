@@ -48,6 +48,8 @@ ARTIFACT_NAMES = {
     Path("project-scan.md"): "project-scan-md",
     Path("onboard.json"): "onboard-json",
     Path("onboard.md"): "onboard-md",
+    Path("preflight.json"): "preflight-json",
+    Path("preflight.md"): "preflight-md",
     Path("workflow-template.json"): "workflow-template-json",
     Path("workflow-template.md"): "workflow-template-md",
     Path("workflow-template.yml"): "workflow-template-yml",

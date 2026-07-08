@@ -148,6 +148,14 @@ def write_run(
             "# VibeBench Onboarding Plan\n",
             encoding="utf-8",
         )
+        (run_dir / "preflight.json").write_text(
+            '{"status":"ready"}\n',
+            encoding="utf-8",
+        )
+        (run_dir / "preflight.md").write_text(
+            "# VibeBench Preflight\n",
+            encoding="utf-8",
+        )
         (run_dir / "workflow-template.json").write_text(
             "{}\n",
             encoding="utf-8",
@@ -351,6 +359,8 @@ def test_summary_contains_key_sections_and_artifacts(
     assert "`project-scan.md` (available)" in markdown
     assert "`onboard.json` (available)" in markdown
     assert "`onboard.md` (available)" in markdown
+    assert "`preflight.json` (available)" in markdown
+    assert "`preflight.md` (available)" in markdown
     assert "`workflow-template.json` (available)" in markdown
     assert "`workflow-template.md` (available)" in markdown
     assert "`workflow-template.yml` (available)" in markdown

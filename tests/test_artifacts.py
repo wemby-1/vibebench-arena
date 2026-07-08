@@ -77,6 +77,8 @@ def test_default_latest_run_artifact_listing(tmp_path: Path) -> None:
     assert "project-scan-md" in artifacts
     assert "onboard-json" in artifacts
     assert "onboard-md" in artifacts
+    assert "preflight-json" in artifacts
+    assert "preflight-md" in artifacts
     assert "workflow-template-json" in artifacts
     assert "workflow-template-md" in artifacts
     assert "workflow-template-yml" in artifacts
@@ -235,6 +237,14 @@ def test_available_and_missing_artifacts_are_detected(tmp_path: Path) -> None:
         "# VibeBench Onboarding Plan\n",
         encoding="utf-8",
     )
+    run_dir.joinpath("preflight.json").write_text(
+        '{"status":"ready"}\n',
+        encoding="utf-8",
+    )
+    run_dir.joinpath("preflight.md").write_text(
+        "# VibeBench Preflight\n",
+        encoding="utf-8",
+    )
     run_dir.joinpath("workflow-check.json").write_text(
         '{"status":"passed"}\n',
         encoding="utf-8",
@@ -273,6 +283,8 @@ def test_available_and_missing_artifacts_are_detected(tmp_path: Path) -> None:
     assert artifacts["project-scan-md"]["available"] is True
     assert artifacts["onboard-json"]["available"] is True
     assert artifacts["onboard-md"]["available"] is True
+    assert artifacts["preflight-json"]["available"] is True
+    assert artifacts["preflight-md"]["available"] is True
     assert artifacts["regression-check-json"]["available"] is True
     assert artifacts["regression-check-md"]["available"] is True
 

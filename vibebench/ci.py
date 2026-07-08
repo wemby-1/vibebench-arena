@@ -53,6 +53,13 @@ from vibebench.package_check import (
 )
 from vibebench.paths import config_dir, config_file
 from vibebench.pr_comment import generate_pr_comment
+from vibebench.preflight import (
+    PREFLIGHT_JSON,
+    PREFLIGHT_SUMMARY,
+    preflight_payload,
+    write_preflight_json,
+    write_preflight_summary,
+)
 from vibebench.project_scan import (
     PROJECT_SCAN_JSON,
     PROJECT_SCAN_SUMMARY,
@@ -196,6 +203,8 @@ def plan_ci_pipeline(
     project_scan: bool = False,
     skip_project_scan: bool = False,
     project_scan_policy: bool = False,
+    preflight: bool = False,
+    skip_preflight: bool = False,
     metrics_check: bool = False,
     skip_metrics_check: bool = False,
     metrics_diff: bool = False,
@@ -286,6 +295,22 @@ def plan_ci_pipeline(
         steps.append(planned_step("project-scan", "Would run project-scan report"))
     elif skip_project_scan:
         steps.append(skipped_plan_step("project-scan", "--skip-project-scan"))
+    if preflight and not skip_preflight:
+        steps.append(
+            planned_step(
+                "preflight",
+                "Would write report-only preflight artifacts",
+                artifact=Path(PREFLIGHT_JSON),
+            )
+        )
+    elif skip_preflight:
+        steps.append(
+            skipped_plan_step(
+                "preflight",
+                "--skip-preflight",
+                artifact=Path(PREFLIGHT_JSON),
+            )
+        )
     if workflow_check_policy and not skip_workflow_check:
         steps.append(
             planned_step(
@@ -704,6 +729,8 @@ def run_ci_pipeline(
     project_scan: bool = False,
     skip_project_scan: bool = False,
     project_scan_policy: bool = False,
+    preflight: bool = False,
+    skip_preflight: bool = False,
     metrics_check: bool = False,
     skip_metrics_check: bool = False,
     metrics_diff: bool = False,
@@ -808,6 +835,8 @@ def run_ci_pipeline(
             skip_onboard=skip_onboard,
             project_scan=project_scan_enabled,
             skip_project_scan=skip_project_scan,
+            preflight=preflight,
+            skip_preflight=skip_preflight,
             metrics_check=metrics_check,
             skip_metrics_check=skip_metrics_check,
             metrics_diff=metrics_diff_enabled,
@@ -875,6 +904,10 @@ def run_ci_pipeline(
         steps.append(
             CiStepResult("project-scan", "skipped", 0, message="skipped by flag")
         )
+    if preflight and not skip_preflight:
+        steps.append(run_preflight_artifact_step(root, selected_run_dir))
+    elif skip_preflight:
+        steps.append(CiStepResult("preflight", "skipped", 0, message="skipped by flag"))
     if workflow_check_enabled and not skip_workflow_check:
         steps.append(
             run_workflow_check_artifact_step(
@@ -1079,6 +1112,8 @@ def append_unavailable_artifact_steps(
     onboard_policy: bool = False,
     project_scan: bool = False,
     skip_project_scan: bool = False,
+    preflight: bool = False,
+    skip_preflight: bool = False,
     metrics_check: bool = False,
     skip_metrics_check: bool = False,
     metrics_diff: bool = False,
@@ -1141,6 +1176,17 @@ def append_unavailable_artifact_steps(
         steps.append(
             CiStepResult("project-scan", "skipped", 0, message="skipped by flag")
         )
+    if preflight and not skip_preflight:
+        steps.append(
+            CiStepResult(
+                "preflight",
+                "failed",
+                1,
+                message="no run directory available",
+            )
+        )
+    elif skip_preflight:
+        steps.append(CiStepResult("preflight", "skipped", 0, message="skipped by flag"))
     if workflow_check and not skip_workflow_check:
         steps.append(
             CiStepResult(
@@ -1450,6 +1496,33 @@ def run_workflow_template_artifact_step(
         0,
         artifact_path=json_path,
         message=f"profile {payload['resolved_profile']}; ci-mode {payload['ci_mode']}",
+        duration_seconds=elapsed_since(started),
+    )
+
+
+def run_preflight_artifact_step(project_root: Path, run_dir: Path) -> CiStepResult:
+    """Generate preflight artifacts and return CI step status."""
+    started = time.perf_counter()
+    try:
+        payload = preflight_payload(project_root, strict=False)
+        json_path = run_dir / PREFLIGHT_JSON
+        summary_path = run_dir / PREFLIGHT_SUMMARY
+        write_preflight_json(json_path, payload)
+        write_preflight_summary(summary_path, payload)
+    except Exception as exc:
+        return CiStepResult(
+            "preflight",
+            "failed",
+            1,
+            message=str(exc),
+            duration_seconds=elapsed_since(started),
+        )
+    return CiStepResult(
+        "preflight",
+        "passed",
+        0,
+        artifact_path=json_path,
+        message=f"status {payload['status']}",
         duration_seconds=elapsed_since(started),
     )
 

@@ -167,6 +167,14 @@ def test_manifest_contains_artifact_entries_and_itself(tmp_path: Path) -> None:
         "# VibeBench Onboarding Plan\n",
         encoding="utf-8",
     )
+    run_dir.joinpath("preflight.json").write_text(
+        '{"status":"ready"}\n',
+        encoding="utf-8",
+    )
+    run_dir.joinpath("preflight.md").write_text(
+        "# VibeBench Preflight\n",
+        encoding="utf-8",
+    )
     run_dir.joinpath("workflow-template.json").write_text(
         '{"status":"planned"}\n',
         encoding="utf-8",
@@ -236,6 +244,8 @@ def test_manifest_contains_artifact_entries_and_itself(tmp_path: Path) -> None:
     assert artifact_by_name(payload, "project-scan-md")["available"] is True
     assert artifact_by_name(payload, "onboard-json")["available"] is True
     assert artifact_by_name(payload, "onboard-md")["available"] is True
+    assert artifact_by_name(payload, "preflight-json")["available"] is True
+    assert artifact_by_name(payload, "preflight-md")["available"] is True
     assert artifact_by_name(payload, "workflow-template-json")["available"] is True
     assert artifact_by_name(payload, "workflow-template-md")["available"] is True
     assert artifact_by_name(payload, "workflow-template-yml")["available"] is True

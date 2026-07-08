@@ -3363,6 +3363,20 @@ def ci_command(
             help="Run project-scan artifacts with policy enforcement.",
         ),
     ] = False,
+    preflight: Annotated[
+        bool,
+        typer.Option(
+            "--preflight",
+            help="Write report-only preflight artifacts.",
+        ),
+    ] = False,
+    skip_preflight: Annotated[
+        bool,
+        typer.Option(
+            "--skip-preflight",
+            help="Skip optional preflight artifact generation.",
+        ),
+    ] = False,
     metrics_check: Annotated[
         bool,
         typer.Option(
@@ -3643,6 +3657,8 @@ def ci_command(
                 project_scan=project_scan,
                 skip_project_scan=skip_project_scan,
                 project_scan_policy=project_scan_policy,
+                preflight=preflight,
+                skip_preflight=skip_preflight,
                 metrics_check=metrics_check,
                 skip_metrics_check=skip_metrics_check,
                 metrics_diff=metrics_diff,
@@ -3705,6 +3721,8 @@ def ci_command(
                 project_scan=project_scan,
                 skip_project_scan=skip_project_scan,
                 project_scan_policy=project_scan_policy,
+                preflight=preflight,
+                skip_preflight=skip_preflight,
                 metrics_check=metrics_check,
                 skip_metrics_check=skip_metrics_check,
                 metrics_diff=metrics_diff,

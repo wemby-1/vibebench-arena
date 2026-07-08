@@ -1351,6 +1351,69 @@ def test_ci_dry_run_onboard_policy_json_includes_enforced_step(
     assert "policy enforcement" in steps["onboard"]["message"]
 
 
+def test_ci_dry_run_preflight_json_includes_planned_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--preflight",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["preflight"]["status"] == "planned"
+    assert steps["preflight"]["artifact"] == "preflight.json"
+
+
+def test_ci_dry_run_default_omits_preflight_step(tmp_path: Path) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--dry-run", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    step_names = [step["name"] for step in payload["steps"]]
+    assert result.exit_code == 0
+    assert "preflight" not in step_names
+
+
+def test_ci_dry_run_skip_preflight_suppresses_enabled_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--preflight",
+            "--skip-preflight",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["preflight"]["status"] == "skipped"
+    assert steps["preflight"]["message"] == "Skipped by --skip-preflight"
+
+
 def test_ci_dry_run_project_scan_json_includes_planned_step(
     tmp_path: Path,
 ) -> None:
@@ -1735,6 +1798,124 @@ def test_ci_project_scan_policy_writes_reports_and_enforces_success(
     assert artifact_map["project-scan-json"]["available"] is True
     assert artifact_map["project-scan-md"]["available"] is True
     assert "project-scan.json" in zip_names(run_dir / "vibebench-bundle.zip")
+
+
+def test_ci_preflight_writes_report_only_artifacts(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--preflight", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    preflight_json = run_dir / "preflight.json"
+    preflight_md = run_dir / "preflight.md"
+    report = json.loads(preflight_json.read_text(encoding="utf-8"))
+    markdown = preflight_md.read_text(encoding="utf-8")
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    assert "VibeBench Preflight" not in result.output
+    assert payload["run_id"] == run_dir.name
+    assert steps["preflight"]["status"] == "passed"
+    assert steps["preflight"]["artifact"].endswith("preflight.json")
+    assert report["project_root"] == str(tmp_path.resolve())
+    assert report["strict"] is False
+    assert set(
+        [
+            "status",
+            "config",
+            "project_scan",
+            "onboard",
+            "workflow_template",
+            "workflow_check",
+            "recommendations",
+            "commands",
+        ]
+    ).issubset(report)
+    assert "# VibeBench Preflight" in markdown
+    assert "- Status:" in markdown
+
+    artifacts = runner.invoke(
+        app,
+        ["artifacts", "--project-root", str(tmp_path), "--json"],
+    )
+    artifact_map = {
+        item["name"]: item for item in json.loads(artifacts.output)["artifacts"]
+    }
+    assert artifacts.exit_code == 0
+    assert artifact_map["preflight-json"]["available"] is True
+    assert artifact_map["preflight-md"]["available"] is True
+
+    latest_json = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "preflight-json",
+            "--path-only",
+        ],
+    )
+    latest_md = runner.invoke(
+        app,
+        [
+            "latest",
+            "--project-root",
+            str(tmp_path),
+            "--artifact",
+            "preflight-md",
+            "--path-only",
+        ],
+    )
+    assert latest_json.exit_code == 0
+    assert latest_json.output.strip().endswith("preflight.json")
+    assert latest_md.exit_code == 0
+    assert latest_md.output.strip().endswith("preflight.md")
+
+    manifest_payload = json.loads(run_dir.joinpath("manifest.json").read_text())
+    manifest_artifacts = {item["name"]: item for item in manifest_payload["artifacts"]}
+    assert manifest_artifacts["preflight-json"]["available"] is True
+    assert manifest_artifacts["preflight-md"]["available"] is True
+
+    names = zip_names(run_dir / "vibebench-bundle.zip")
+    assert "preflight.json" in names
+    assert "preflight.md" in names
+
+    summary = run_dir.joinpath("github-step-summary.md").read_text(encoding="utf-8")
+    assert "`preflight.json` (available)" in summary
+    assert "`preflight.md` (available)" in summary
+
+
+def test_ci_skip_preflight_suppresses_artifacts(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--preflight",
+            "--skip-preflight",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    assert result.exit_code == 0
+    assert steps["preflight"]["status"] == "skipped"
+    assert not run_dir.joinpath("preflight.json").exists()
+    assert not run_dir.joinpath("preflight.md").exists()
 
 
 def test_ci_workflow_check_writes_report_only_artifacts(

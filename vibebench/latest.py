@@ -49,6 +49,8 @@ ARTIFACT_ALIASES = {
     "project-scan-md": Path("project-scan.md"),
     "onboard-json": Path("onboard.json"),
     "onboard-md": Path("onboard.md"),
+    "preflight-json": Path("preflight.json"),
+    "preflight-md": Path("preflight.md"),
     "workflow-template-json": Path("workflow-template.json"),
     "workflow-template-md": Path("workflow-template.md"),
     "workflow-template-yml": Path("workflow-template.yml"),
