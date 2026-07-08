@@ -219,6 +219,9 @@ def config_consistency_checks(
     action_prefix_text = (
         ",".join(workflow_check_policy.allowed_action_prefixes) or "none"
     )
+    required_ci_modes_text = (
+        ",".join(workflow_check_policy.required_ci_modes) or "none"
+    )
     workflow_check_check = {
         "name": "workflow_check_policy",
         "status": "passed",
@@ -230,6 +233,7 @@ def config_consistency_checks(
             f"fail_on_warnings={str(workflow_check_policy.fail_on_warnings).lower()}, "
             f"require_config={str(workflow_check_policy.require_config).lower()}, "
             f"require_ci_ready={str(workflow_check_policy.require_ci_ready).lower()}, "
+            f"required_ci_modes={required_ci_modes_text}, "
             f"allowed_workflow_names={workflow_name_text}, "
             f"allowed_action_prefixes={action_prefix_text})"
         ),

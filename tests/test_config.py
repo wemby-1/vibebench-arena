@@ -478,6 +478,9 @@ def test_config_loader_reads_workflow_check_policy(tmp_path: Path) -> None:
     fail_on_warnings: true
     require_config: true
     require_ci_ready: true
+    required_ci_modes:
+      - adoption-policy
+      - default
     allowed_workflow_names:
       - VibeBench
     allowed_action_prefixes:
@@ -494,6 +497,7 @@ def test_config_loader_reads_workflow_check_policy(tmp_path: Path) -> None:
     assert policy.fail_on_warnings is True
     assert policy.require_config is True
     assert policy.require_ci_ready is True
+    assert policy.required_ci_modes == ["default", "adoption-policy"]
     assert policy.allowed_workflow_names == ["VibeBench"]
     assert policy.allowed_action_prefixes == ["actions/"]
 
@@ -511,6 +515,20 @@ def test_invalid_workflow_check_policy_unknown_key_fails_clearly(
     config_path = write_workflow_check_config(tmp_path, "    unknown: true\n")
 
     with pytest.raises(ConfigError, match="workflow_check.policy.unknown"):
+        load_config(config_path)
+
+
+def test_invalid_workflow_check_required_ci_modes_fails_clearly(
+    tmp_path: Path,
+) -> None:
+    config_path = write_workflow_check_config(
+        tmp_path,
+        """    required_ci_modes:
+      - preview
+""",
+    )
+
+    with pytest.raises(ConfigError, match="workflow_check.policy.required_ci_modes"):
         load_config(config_path)
 
 

@@ -55,6 +55,9 @@ DEFAULT_TEST_PATH_PATTERNS = [
 ]
 
 
+WORKFLOW_CHECK_CI_MODE_ORDER = ["default", "adoption", "adoption-policy"]
+WORKFLOW_CHECK_CI_MODE_SET = set(WORKFLOW_CHECK_CI_MODE_ORDER)
+
 DEFAULT_CONFIG: dict[str, Any] = {
     "project": {
         "name": "vibebench-project",
@@ -135,6 +138,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "fail_on_warnings": False,
             "require_config": True,
             "require_ci_ready": False,
+            "required_ci_modes": [],
             "allowed_workflow_names": [],
             "allowed_action_prefixes": [],
         },
@@ -456,6 +460,7 @@ class WorkflowCheckPolicyConfig(BaseModel):
     fail_on_warnings: StrictBool = False
     require_config: StrictBool = True
     require_ci_ready: StrictBool = False
+    required_ci_modes: list[StrictStr] = Field(default_factory=list)
     allowed_workflow_names: list[StrictStr] = Field(default_factory=list)
     allowed_action_prefixes: list[StrictStr] = Field(default_factory=list)
 
@@ -474,6 +479,22 @@ class WorkflowCheckPolicyConfig(BaseModel):
                 )
             seen.add(selected)
         return value
+
+    @field_validator("required_ci_modes")
+    @classmethod
+    def validate_required_ci_modes(cls, value: list[str]) -> list[str]:
+        """Validate workflow-check required CI modes."""
+        seen: set[str] = set()
+        for item in value:
+            selected = item.strip()
+            if selected not in WORKFLOW_CHECK_CI_MODE_SET:
+                allowed = ", ".join(WORKFLOW_CHECK_CI_MODE_ORDER)
+                raise ValueError(
+                    "workflow_check.policy.required_ci_modes entry "
+                    f"{item!r} must be one of: {allowed}"
+                )
+            seen.add(selected)
+        return [mode for mode in WORKFLOW_CHECK_CI_MODE_ORDER if mode in seen]
 
 
 class WorkflowCheckConfig(BaseModel):
@@ -610,6 +631,7 @@ def config_example_yaml() -> str:
                 "fail_on_warnings": False,
                 "require_config": True,
                 "require_ci_ready": False,
+                "required_ci_modes": [],
                 "allowed_workflow_names": [],
                 "allowed_action_prefixes": [],
             },
@@ -764,6 +786,7 @@ def init_config_profile_payload(
                 "fail_on_warnings": False,
                 "require_config": True,
                 "require_ci_ready": False,
+                "required_ci_modes": [],
                 "allowed_workflow_names": [],
                 "allowed_action_prefixes": [],
             },

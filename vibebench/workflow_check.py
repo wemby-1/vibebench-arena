@@ -27,6 +27,7 @@ VIBEBENCH_CI_PATTERNS = [
     "uv run python3 -m vibebench ci",
 ]
 CI_MODE_ORDER = ["default", "adoption", "adoption-policy"]
+CI_MODE_SET = set(CI_MODE_ORDER)
 VIBEBENCH_CI_COMMAND_RE = re.compile(
     r"(?:uv\s+run\s+)?python3?\s+-m\s+vibebench\s+ci\b[^\n;&|]*",
     re.IGNORECASE,
@@ -70,9 +71,14 @@ def workflow_check_payload(
     strict: bool = False,
     check_all: bool = False,
     enforce_policy: bool = False,
+    required_ci_modes: list[str] | None = None,
 ) -> dict[str, Any]:
     """Return a deterministic read-only workflow check payload."""
     root = project_root.resolve()
+    normalized_required_ci_modes = normalize_required_ci_modes(
+        required_ci_modes or [],
+        source="--require-ci-mode",
+    )
     selected_paths = resolve_workflow_paths(root, path=path, check_all=check_all)
     discovered_paths = [str(item) for item in discover_workflows(root)]
     if path is not None and not discovered_paths:
@@ -103,8 +109,20 @@ def workflow_check_payload(
             )
         )
 
-    summary = summarize_checks(checks)
     detected_ci_modes = unique_ci_modes(detected_ci_modes)
+    missing_required_ci_modes = missing_required_ci_modes_for(
+        normalized_required_ci_modes,
+        detected_ci_modes,
+    )
+    if normalized_required_ci_modes:
+        add_required_ci_modes_check(
+            checks,
+            findings,
+            required_ci_modes=normalized_required_ci_modes,
+            missing_required_ci_modes=missing_required_ci_modes,
+            path=selected_workflow_path or (root / DEFAULT_WORKFLOW_CANDIDATES[0]),
+        )
+    summary = summarize_checks(checks)
     status = "failed" if summary["failed"] else "passed"
     usable = bool(
         selected_paths
@@ -129,6 +147,9 @@ def workflow_check_payload(
         "safe_preview_only": True,
         "message": workflow_check_message(status, selected_workflow_path),
     }
+    if normalized_required_ci_modes:
+        payload["required_ci_modes"] = normalized_required_ci_modes
+        payload["missing_required_ci_modes"] = missing_required_ci_modes
     if enforce_policy:
         attach_workflow_check_policy(payload, root)
     return payload
@@ -386,6 +407,56 @@ def unique_ci_modes(modes: list[str]) -> list[str]:
     return [mode for mode in CI_MODE_ORDER if mode in seen]
 
 
+def normalize_required_ci_modes(modes: list[str], *, source: str) -> list[str]:
+    """Validate and normalize required CI mode expectations."""
+    seen: set[str] = set()
+    normalized: list[str] = []
+    for item in modes:
+        selected = item.strip()
+        if selected not in CI_MODE_SET:
+            allowed = ", ".join(CI_MODE_ORDER)
+            raise ConfigError(
+                f"{source} must be one of: {allowed}. Received {item!r}."
+            )
+        if selected not in seen:
+            seen.add(selected)
+            normalized.append(selected)
+    return unique_ci_modes(normalized)
+
+
+def missing_required_ci_modes_for(
+    required_ci_modes: list[str],
+    detected_ci_modes: list[str],
+) -> list[str]:
+    """Return required CI modes that were not detected."""
+    detected = set(detected_ci_modes)
+    return [mode for mode in required_ci_modes if mode not in detected]
+
+
+def add_required_ci_modes_check(
+    checks: list[dict[str, Any]],
+    findings: list[dict[str, Any]],
+    *,
+    required_ci_modes: list[str],
+    missing_required_ci_modes: list[str],
+    path: Path,
+) -> None:
+    """Append an explicit required-CI-modes expectation check."""
+    required_text = ", ".join(required_ci_modes)
+    missing_text = ", ".join(missing_required_ci_modes) or "none"
+    add_check(
+        checks,
+        findings,
+        check_id="required_ci_modes",
+        title="Required CI modes are present",
+        passed=not missing_required_ci_modes,
+        strict=True,
+        message=f"Required CI modes: {required_text}. Missing: {missing_text}.",
+        path=path,
+        advice="Update the workflow to run the expected VibeBench CI mode.",
+    )
+
+
 def add_check(
     checks: list[dict[str, Any]],
     findings: list[dict[str, Any]],
@@ -594,6 +665,34 @@ def evaluate_workflow_check_policy(
             )
         )
 
+    policy_required_ci_modes = normalize_required_ci_modes(
+        [str(mode) for mode in policy.get("required_ci_modes", [])],
+        source="workflow_check.policy.required_ci_modes",
+    )
+    if policy_required_ci_modes:
+        missing_policy_modes = missing_required_ci_modes_for(
+            policy_required_ci_modes,
+            [str(mode) for mode in payload.get("detected_ci_modes", [])],
+        )
+        if missing_policy_modes:
+            findings.append(
+                workflow_check_policy_finding(
+                    "required_ci_modes",
+                    "error",
+                    "Required CI modes are present",
+                    (
+                        "Policy requires CI modes "
+                        f"{', '.join(policy_required_ci_modes)}. Missing: "
+                        f"{', '.join(missing_policy_modes)}."
+                    ),
+                    (
+                        "Update the workflow to include the missing modes or relax "
+                        "workflow_check.policy.required_ci_modes."
+                    ),
+                    "required_ci_modes",
+                )
+            )
+
     if policy.get("fail_on_blockers"):
         for finding in filtered_findings:
             if str(finding.get("id") or "") in BLOCKING_WORKFLOW_FINDING_IDS:
@@ -793,6 +892,8 @@ def workflow_check_markdown(payload: dict[str, Any]) -> str:
     summary = payload["summary"]
     detected_modes = payload.get("detected_ci_modes") or []
     detected_modes_text = ", ".join(str(mode) for mode in detected_modes) or "none"
+    required_modes = payload.get("required_ci_modes") or []
+    missing_required_modes = payload.get("missing_required_ci_modes") or []
     lines = [
         "# VibeBench Workflow Check",
         "",
@@ -803,12 +904,24 @@ def workflow_check_markdown(payload: dict[str, Any]) -> str:
         f"- Passed: {summary['passed']}",
         f"- Warnings: {summary['warning']}",
         f"- Failed: {summary['failed']}",
-        "",
-        "## Checks",
-        "",
-        "| Status | Severity | Check | Message |",
-        "| --- | --- | --- | --- |",
     ]
+    if required_modes:
+        lines.append(
+            "- Required CI modes: "
+            + ", ".join(str(mode) for mode in required_modes)
+            + " (missing: "
+            + (", ".join(str(mode) for mode in missing_required_modes) or "none")
+            + ")"
+        )
+    lines.extend(
+        [
+            "",
+            "## Checks",
+            "",
+            "| Status | Severity | Check | Message |",
+            "| --- | --- | --- | --- |",
+        ]
+    )
     for check in payload["checks"]:
         lines.append(
             "| {status} | {severity} | {title} | {message} |".format(
@@ -867,6 +980,16 @@ def workflow_check_markdown(payload: dict[str, Any]) -> str:
                 (
                     "- require_ci_ready: "
                     f"{str(effective_policy.get('require_ci_ready')).lower()}"
+                ),
+                (
+                    "- required_ci_modes: "
+                    + (
+                        ", ".join(
+                            str(mode)
+                            for mode in effective_policy.get("required_ci_modes", [])
+                        )
+                        or "none"
+                    )
                 ),
                 "",
                 "| Severity | Finding | Rule | Recommendation |",

@@ -110,6 +110,17 @@ def append_onboard_policy(root: Path, policy_yaml: str) -> None:
     )
 
 
+def append_workflow_check_policy(root: Path, policy_yaml: str) -> None:
+    target = config_path(root)
+    config = target.read_text(encoding="utf-8")
+    if "workflow_check:" in config:
+        config = config.split("workflow_check:\n", 1)[0].rstrip() + "\n"
+    target.write_text(
+        config + "workflow_check:\n  policy:\n" + policy_yaml,
+        encoding="utf-8",
+    )
+
+
 def write_minimal_vibebench_workflow(root: Path) -> Path:
     target = workflow_path(root)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -2576,6 +2587,46 @@ jobs:
     assert steps["workflow-check"]["status"] == "passed"
     assert report["policy_evaluated"] is True
     assert report["policy_status"] == "passed"
+
+
+def test_ci_workflow_check_policy_evaluates_required_ci_modes(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    append_workflow_check_policy(
+        tmp_path,
+        """    fail_on_blockers: false
+    fail_on_errors: false
+    fail_on_warnings: false
+    require_config: true
+    require_ci_ready: false
+    required_ci_modes:
+      - adoption-policy
+    allowed_workflow_names: []
+    allowed_action_prefixes: []
+""",
+    )
+    init_git_repo(tmp_path)
+    write_minimal_vibebench_workflow(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--workflow-check-policy", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("workflow-check.json").read_text())
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert steps["workflow-check"]["status"] == "failed"
+    assert report["policy_status"] == "failed"
+    assert report["effective_policy"]["required_ci_modes"] == ["adoption-policy"]
+    assert any(
+        finding["rule"] == "required_ci_modes"
+        for finding in report["policy_findings"]
+    )
 
 
 def test_ci_skip_workflow_check_suppresses_policy_mode_too(tmp_path: Path) -> None:

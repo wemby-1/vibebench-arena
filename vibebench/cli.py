@@ -245,6 +245,7 @@ from vibebench.trend import (
     write_trend_summary,
 )
 from vibebench.workflow_check import (
+    normalize_required_ci_modes,
     workflow_check_json,
     workflow_check_payload,
     write_workflow_check_json,
@@ -1064,16 +1065,31 @@ def workflow_check_command(
             help="Evaluate workflow_check.policy and fail when it does not pass.",
         ),
     ] = False,
+    require_ci_mode: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--require-ci-mode",
+            help=(
+                "Require detected VibeBench CI mode(s): default, adoption, or "
+                "adoption-policy. Repeat the option to require multiple modes."
+            ),
+        ),
+    ] = None,
 ) -> None:
     """Check existing GitHub Actions workflows for VibeBench readiness."""
     root = project_root.resolve()
     try:
+        normalized_required_ci_modes = normalize_required_ci_modes(
+            require_ci_mode or [],
+            source="--require-ci-mode",
+        )
         payload = workflow_check_payload(
             root,
             path=path,
             strict=strict,
             check_all=check_all,
             enforce_policy=enforce_policy,
+            required_ci_modes=normalized_required_ci_modes,
         )
         if json_output is not None:
             write_workflow_check_json(resolve_output_path(root, json_output), payload)
@@ -1128,10 +1144,28 @@ def render_workflow_check_result(payload: dict[str, object]) -> None:
         "Detected CI modes: "
         + (", ".join(str(mode) for mode in detected_modes) or "none")
     )
+    required_modes = payload.get("required_ci_modes") or []
+    missing_required_modes = payload.get("missing_required_ci_modes") or []
+    if required_modes:
+        console.print(
+            "Required CI modes: "
+            + ", ".join(str(mode) for mode in required_modes)
+            + " (missing: "
+            + (", ".join(str(mode) for mode in missing_required_modes) or "none")
+            + ")"
+        )
     if payload.get("policy_evaluated"):
         console.print(
             f"Policy: {payload['policy_status']} ({payload['policy_source']})"
         )
+        effective_policy = payload.get("effective_policy") or {}
+        if effective_policy.get("required_ci_modes"):
+            console.print(
+                "Policy required CI modes: "
+                + ", ".join(
+                    str(mode) for mode in effective_policy["required_ci_modes"]
+                )
+            )
     summary = payload["summary"]
     if isinstance(summary, dict):
         console.print(

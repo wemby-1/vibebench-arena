@@ -1937,6 +1937,7 @@ def test_workflow_check_all_aggregates_detected_modes_deterministically(
 @pytest.mark.parametrize(
     ("mode", "expected_modes"),
     [
+        ("default", ["default"]),
         ("adoption", ["adoption"]),
         ("adoption-policy", ["adoption-policy"]),
     ],
@@ -1962,6 +1963,109 @@ def test_workflow_check_detects_workflow_template_modes(
 
     assert generated.exit_code == 0
     assert payload["detected_ci_modes"] == expected_modes
+
+
+@pytest.mark.parametrize(
+    ("command", "required_mode"),
+    [
+        ("python3 -m vibebench ci", "default"),
+        ("python3 -m vibebench ci --adoption", "adoption"),
+        ("python3 -m vibebench ci --adoption-policy", "adoption-policy"),
+    ],
+)
+def test_workflow_check_require_ci_mode_passes_for_detected_mode(
+    tmp_path: Path,
+    command: str,
+    required_mode: str,
+) -> None:
+    write_workflow(tmp_path, workflow_with_command(command))
+
+    payload = workflow_check_payload_for(
+        tmp_path,
+        "--require-ci-mode",
+        required_mode,
+    )
+
+    required_check = next(
+        check for check in payload["checks"] if check["id"] == "required_ci_modes"
+    )
+    assert payload["required_ci_modes"] == [required_mode]
+    assert payload["missing_required_ci_modes"] == []
+    assert required_check["status"] == "passed"
+
+
+def test_workflow_check_require_ci_mode_missing_fails_clearly(tmp_path: Path) -> None:
+    write_workflow(tmp_path, workflow_with_command("python3 -m vibebench ci"))
+
+    result = runner.invoke(
+        app,
+        [
+            "workflow-check",
+            "--project-root",
+            str(tmp_path),
+            "--require-ci-mode",
+            "adoption",
+            "--json",
+        ],
+    )
+    payload = json.loads(result.output)
+
+    required_check = next(
+        check for check in payload["checks"] if check["id"] == "required_ci_modes"
+    )
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert payload["required_ci_modes"] == ["adoption"]
+    assert payload["missing_required_ci_modes"] == ["adoption"]
+    assert required_check["status"] == "failed"
+    assert "Missing: adoption." in required_check["message"]
+
+
+def test_workflow_check_require_ci_mode_dedupes_in_stable_order(
+    tmp_path: Path,
+) -> None:
+    write_workflow(
+        tmp_path,
+        workflow_with_command("python3 -m vibebench ci --adoption-policy")
+        + "      - run: python3 -m vibebench ci --adoption\n",
+    )
+
+    payload = workflow_check_payload_for(
+        tmp_path,
+        "--require-ci-mode",
+        "adoption-policy",
+        "--require-ci-mode",
+        "adoption",
+        "--require-ci-mode",
+        "adoption-policy",
+    )
+
+    assert payload["required_ci_modes"] == ["adoption", "adoption-policy"]
+    assert payload["missing_required_ci_modes"] == []
+
+
+def test_workflow_check_require_ci_mode_invalid_value_fails_clearly(
+    tmp_path: Path,
+) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "workflow-check",
+            "--project-root",
+            str(tmp_path),
+            "--require-ci-mode",
+            "preview",
+            "--json",
+        ],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert payload["message"] == (
+        "--require-ci-mode must be one of: default, adoption, adoption-policy. "
+        "Received 'preview'."
+    )
 
 
 def test_workflow_check_reports_missing_vibebench_invocation(
@@ -2056,6 +2160,8 @@ def test_workflow_check_json_output_and_summary_output(tmp_path: Path) -> None:
             "--project-root",
             str(tmp_path),
             "--json",
+            "--require-ci-mode",
+            "default",
             "--json-output",
             str(json_output),
             "--summary-output",
@@ -2071,6 +2177,7 @@ def test_workflow_check_json_output_and_summary_output(tmp_path: Path) -> None:
     assert payload == written
     assert markdown.startswith("# VibeBench Workflow Check")
     assert "- Detected CI modes: default" in markdown
+    assert "- Required CI modes: default (missing: none)" in markdown
 
 
 def test_workflow_check_does_not_modify_existing_workflow(tmp_path: Path) -> None:
@@ -2114,6 +2221,8 @@ def test_workflow_check_default_omits_policy_fields(tmp_path: Path) -> None:
 
     assert "policy_status" not in payload
     assert "policy_findings" not in payload
+    assert "required_ci_modes" not in payload
+    assert "missing_required_ci_modes" not in payload
 
 
 def test_workflow_check_enforce_policy_passes_with_config_and_ci_ready(
@@ -2153,6 +2262,45 @@ def test_workflow_check_enforce_policy_fails_when_config_is_missing(
     assert {finding["rule"] for finding in payload["policy_findings"]} == {
         "require_config",
     }
+
+
+def test_workflow_check_enforce_policy_required_ci_modes_fail_when_missing(
+    tmp_path: Path,
+) -> None:
+    write_workflow_check_policy_config(
+        tmp_path,
+        """    fail_on_blockers: false
+    fail_on_errors: false
+    fail_on_warnings: false
+    require_config: true
+    require_ci_ready: false
+    required_ci_modes:
+      - adoption-policy
+    allowed_workflow_names: []
+    allowed_action_prefixes: []
+""",
+    )
+    write_workflow(tmp_path, minimal_vibebench_workflow())
+
+    result = runner.invoke(
+        app,
+        [
+            "workflow-check",
+            "--project-root",
+            str(tmp_path),
+            "--enforce-policy",
+            "--json",
+        ],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert payload["policy_status"] == "failed"
+    assert payload["effective_policy"]["required_ci_modes"] == ["adoption-policy"]
+    assert any(
+        finding["rule"] == "required_ci_modes"
+        for finding in payload["policy_findings"]
+    )
 
 
 def test_workflow_check_enforce_policy_can_fail_on_warning_findings(
@@ -3465,6 +3613,7 @@ def test_config_check_reports_workflow_check_policy(tmp_path: Path) -> None:
     )
     assert result.exit_code == 0
     assert "Workflow-check policy is internally consistent" in policy["message"]
+    assert "required_ci_modes=none" in policy["message"]
     assert "workflow-check --enforce-policy" in policy["advice"]
 
 
