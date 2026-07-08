@@ -1,4 +1,5 @@
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -10,6 +11,7 @@ from vibebench.cli import app
 from vibebench.config import load_config
 
 runner = CliRunner()
+ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 
 def test_cli_help_works() -> None:
@@ -33,6 +35,10 @@ def workflow_path(root: Path) -> Path:
 def write_package_json(root: Path, scripts: dict[str, str] | None = None) -> None:
     payload = {"scripts": scripts or {}}
     root.joinpath("package.json").write_text(json.dumps(payload), encoding="utf-8")
+
+
+def strip_ansi(text: str) -> str:
+    return ANSI_ESCAPE_RE.sub("", text)
 
 
 def test_init_creates_config_yaml(tmp_path: Path) -> None:
@@ -416,11 +422,14 @@ def preflight_payload_for(root: Path, *extra: str) -> dict[str, object]:
 
 def test_preflight_help_works() -> None:
     result = runner.invoke(app, ["preflight", "--help"])
+    output = strip_ansi(result.output)
 
     assert result.exit_code == 0
-    assert "--json" in result.output
-    assert "--summary-output" in result.output
-    assert "--profile" in result.output
+    assert "--json" in output
+    assert "--json-output" in output
+    assert "--summary-output" in output
+    assert "--strict" in output
+    assert "--profile" in output
 
 
 def test_preflight_human_output(tmp_path: Path) -> None:
