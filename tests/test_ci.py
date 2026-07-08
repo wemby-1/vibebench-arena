@@ -110,6 +110,23 @@ def append_onboard_policy(root: Path, policy_yaml: str) -> None:
     )
 
 
+def write_minimal_vibebench_workflow(root: Path) -> Path:
+    target = workflow_path(root)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        """name: VibeBench
+on: [push]
+jobs:
+  vibebench:
+    runs-on: ubuntu-latest
+    steps:
+      - run: python3 -m vibebench ci --json
+""",
+        encoding="utf-8",
+    )
+    return target
+
+
 def write_package_metadata(root: Path) -> None:
     docs = root / "docs"
     docs.mkdir(parents=True, exist_ok=True)
@@ -1225,6 +1242,195 @@ def test_ci_dry_run_workflow_check_policy_json_includes_planned_step(
     assert "policy enforcement" in steps["workflow-check"]["message"]
 
 
+ADOPTION_STEP_NAMES = [
+    "project-scan",
+    "onboard",
+    "preflight",
+    "workflow-check",
+    "workflow-template",
+]
+
+
+def adoption_steps(payload: dict[str, object]) -> dict[str, dict[str, object]]:
+    return {step["name"]: step for step in payload["steps"]}
+
+
+def assert_adoption_report_only_steps(
+    steps: dict[str, dict[str, object]],
+) -> None:
+    assert steps["project-scan"]["status"] == "planned"
+    assert "policy enforcement" not in str(steps["project-scan"]["message"])
+    assert steps["onboard"]["status"] == "planned"
+    assert "policy enforcement" not in str(steps["onboard"]["message"])
+    assert steps["workflow-template"]["status"] == "planned"
+    assert steps["workflow-template"]["artifact"] == "workflow-template.json"
+    assert steps["workflow-check"]["status"] == "planned"
+    assert "policy enforcement" not in str(steps["workflow-check"]["message"])
+    assert steps["preflight"]["status"] == "planned"
+    assert "report-only" in str(steps["preflight"]["message"])
+
+
+def assert_adoption_policy_steps(
+    steps: dict[str, dict[str, object]],
+) -> None:
+    assert steps["project-scan"]["status"] == "planned"
+    assert "policy enforcement" in str(steps["project-scan"]["message"])
+    assert steps["onboard"]["status"] == "planned"
+    assert "policy enforcement" in str(steps["onboard"]["message"])
+    assert steps["workflow-template"]["status"] == "planned"
+    assert "policy enforcement" not in str(steps["workflow-template"]["message"])
+    assert steps["workflow-check"]["status"] == "planned"
+    assert "policy enforcement" in str(steps["workflow-check"]["message"])
+    assert steps["preflight"]["status"] == "planned"
+    assert "policy enforcement" in str(steps["preflight"]["message"])
+
+
+def test_ci_dry_run_adoption_json_includes_report_only_suite(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--dry-run", "--adoption", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    assert_adoption_report_only_steps(adoption_steps(payload))
+
+
+def test_ci_dry_run_adoption_policy_json_includes_enforced_suite(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--adoption-policy",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert_adoption_policy_steps(adoption_steps(payload))
+
+
+def test_ci_dry_run_adoption_and_policy_can_be_combined(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--adoption",
+            "--adoption-policy",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert_adoption_policy_steps(adoption_steps(payload))
+
+
+def test_ci_dry_run_adoption_with_explicit_policy_flag_upgrades_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--adoption",
+            "--workflow-check-policy",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = adoption_steps(payload)
+    assert result.exit_code == 0
+    assert steps["project-scan"]["status"] == "planned"
+    assert "policy enforcement" not in str(steps["project-scan"]["message"])
+    assert steps["onboard"]["status"] == "planned"
+    assert "policy enforcement" not in str(steps["onboard"]["message"])
+    assert steps["workflow-template"]["status"] == "planned"
+    assert "policy enforcement" in str(steps["workflow-check"]["message"])
+    assert steps["preflight"]["status"] == "planned"
+    assert "report-only" in str(steps["preflight"]["message"])
+
+
+def test_ci_dry_run_default_omits_adoption_suite(tmp_path: Path) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--dry-run", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    step_names = [step["name"] for step in payload["steps"]]
+    assert result.exit_code == 0
+    for name in ADOPTION_STEP_NAMES:
+        assert name not in step_names
+
+
+@pytest.mark.parametrize("preset_flag", ["--adoption", "--adoption-policy"])
+@pytest.mark.parametrize(
+    ("skip_flag", "step_name"),
+    [
+        ("--skip-project-scan", "project-scan"),
+        ("--skip-onboard", "onboard"),
+        ("--skip-workflow-template", "workflow-template"),
+        ("--skip-workflow-check", "workflow-check"),
+        ("--skip-preflight", "preflight"),
+    ],
+)
+def test_ci_dry_run_adoption_skip_flags_suppress_preset_parts(
+    tmp_path: Path,
+    preset_flag: str,
+    skip_flag: str,
+    step_name: str,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            preset_flag,
+            skip_flag,
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = adoption_steps(payload)
+    assert result.exit_code == 0
+    assert steps[step_name]["status"] == "skipped"
+    assert str(steps[step_name]["message"]).startswith("Skipped by ")
+
+
 def test_ci_dry_run_workflow_template_json_includes_planned_step(
     tmp_path: Path,
 ) -> None:
@@ -1861,6 +2067,123 @@ def test_ci_project_scan_policy_writes_reports_and_enforces_success(
     assert artifact_map["project-scan-json"]["available"] is True
     assert artifact_map["project-scan-md"]["available"] is True
     assert "project-scan.json" in zip_names(run_dir / "vibebench-bundle.zip")
+
+
+ADOPTION_ARTIFACT_FILES = [
+    "project-scan.json",
+    "project-scan.md",
+    "onboard.json",
+    "onboard.md",
+    "workflow-template.json",
+    "workflow-template.md",
+    "workflow-template.yml",
+    "workflow-check.json",
+    "workflow-check.md",
+    "preflight.json",
+    "preflight.md",
+]
+
+
+def assert_adoption_artifacts_exist(run_dir: Path) -> None:
+    for name in ADOPTION_ARTIFACT_FILES:
+        assert run_dir.joinpath(name).exists(), name
+
+
+def test_ci_adoption_writes_report_only_evidence_pack(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--adoption", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    assert "VibeBench" not in result.output
+    assert_adoption_artifacts_exist(run_dir)
+    assert steps["project-scan"]["status"] == "passed"
+    assert steps["onboard"]["status"] == "passed"
+    assert steps["workflow-template"]["status"] == "passed"
+    assert steps["workflow-check"]["status"] == "passed"
+    assert steps["preflight"]["status"] == "passed"
+    assert "policy_status" not in json.loads(
+        run_dir.joinpath("preflight.json").read_text(encoding="utf-8")
+    )
+    assert not workflow_path(tmp_path).exists()
+    assert not tmp_path.joinpath("node_modules").exists()
+    assert not tmp_path.joinpath("package-lock.json").exists()
+
+
+def test_ci_adoption_policy_writes_same_artifact_names(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    tmp_path.joinpath("tests").mkdir()
+    write_minimal_vibebench_workflow(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--adoption-policy", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    assert_adoption_artifacts_exist(run_dir)
+    assert "policy passed" in steps["project-scan"]["message"]
+    assert "policy passed" in steps["onboard"]["message"]
+    assert "policy passed" in steps["workflow-check"]["message"]
+    assert "policy passed" in steps["preflight"]["message"]
+    for artifact_name in [
+        "project-scan.json",
+        "onboard.json",
+        "workflow-check.json",
+        "preflight.json",
+    ]:
+        report = json.loads(run_dir.joinpath(artifact_name).read_text())
+        assert report["policy_status"] == "passed"
+
+
+def test_ci_adoption_artifacts_are_discoverable(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--adoption", "--json"],
+    )
+    run_dir = latest_run(tmp_path)
+    artifacts = runner.invoke(
+        app, ["artifacts", "--project-root", str(tmp_path), "--json"]
+    )
+    artifact_map = {
+        item["name"]: item for item in json.loads(artifacts.output)["artifacts"]
+    }
+    expected_aliases = [
+        "project-scan-json",
+        "onboard-json",
+        "workflow-template-yml",
+        "workflow-check-json",
+        "preflight-json",
+    ]
+
+    assert result.exit_code == 0
+    assert artifacts.exit_code == 0
+    for alias in expected_aliases:
+        assert artifact_map[alias]["available"] is True
+    assert check_manifest(tmp_path, run_dir).passed is True
+    names = zip_names(run_dir / "vibebench-bundle.zip")
+    for name in ADOPTION_ARTIFACT_FILES:
+        assert name in names
 
 
 def test_ci_preflight_writes_report_only_artifacts(

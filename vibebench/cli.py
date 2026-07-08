@@ -3341,6 +3341,20 @@ def ci_command(
             help="Skip evidence-room artifact generation.",
         ),
     ] = False,
+    adoption: Annotated[
+        bool,
+        typer.Option(
+            "--adoption",
+            help="Write the full report-only adoption evidence suite.",
+        ),
+    ] = False,
+    adoption_policy: Annotated[
+        bool,
+        typer.Option(
+            "--adoption-policy",
+            help="Write adoption artifacts and enforce policy-capable checks.",
+        ),
+    ] = False,
     onboard: Annotated[
         bool,
         typer.Option(
@@ -3645,6 +3659,33 @@ def ci_command(
         console.print("[red]CI plan output options require --dry-run or --plan.[/]")
         raise typer.Exit(code=1)
 
+    adoption_enabled = adoption or adoption_policy
+    effective_onboard_policy = (onboard_policy or adoption_policy) and not skip_onboard
+    effective_project_scan_policy = project_scan_policy or (
+        adoption_policy and not skip_project_scan
+    )
+    effective_workflow_check_policy = (
+        workflow_check_policy or adoption_policy
+    ) and not skip_workflow_check
+    effective_preflight_policy = (
+        preflight_policy or adoption_policy
+    ) and not skip_preflight
+    effective_onboard = (
+        onboard or (adoption_enabled and not adoption_policy)
+    ) and not skip_onboard
+    effective_project_scan = project_scan or (
+        adoption_enabled and not adoption_policy and not skip_project_scan
+    )
+    effective_workflow_check = (
+        workflow_check or (adoption_enabled and not adoption_policy)
+    ) and not skip_workflow_check
+    effective_preflight = (
+        preflight or (adoption_enabled and not adoption_policy)
+    ) and not skip_preflight
+    effective_workflow_template = (
+        workflow_template or adoption_enabled
+    ) and not skip_workflow_template
+
     try:
         plan_artifacts = None
         regression_guard = resolve_ci_regression_guard(
@@ -3678,14 +3719,14 @@ def ci_command(
                 skip_release_check=skip_release_check,
                 skip_package_check=skip_package_check,
                 skip_evidence_room=skip_evidence_room,
-                onboard=onboard,
+                onboard=effective_onboard,
                 skip_onboard=skip_onboard,
-                onboard_policy=onboard_policy,
-                project_scan=project_scan,
+                onboard_policy=effective_onboard_policy,
+                project_scan=effective_project_scan,
                 skip_project_scan=skip_project_scan,
-                project_scan_policy=project_scan_policy,
-                preflight=preflight,
-                preflight_policy=preflight_policy,
+                project_scan_policy=effective_project_scan_policy,
+                preflight=effective_preflight,
+                preflight_policy=effective_preflight_policy,
                 skip_preflight=skip_preflight,
                 metrics_check=metrics_check,
                 skip_metrics_check=skip_metrics_check,
@@ -3693,10 +3734,10 @@ def ci_command(
                 skip_metrics_diff=skip_metrics_diff,
                 metrics_diff_policy=metrics_diff_policy,
                 skip_metrics_diff_policy=skip_metrics_diff_policy,
-                workflow_check=workflow_check,
-                workflow_check_policy=workflow_check_policy,
+                workflow_check=effective_workflow_check,
+                workflow_check_policy=effective_workflow_check_policy,
                 skip_workflow_check=skip_workflow_check,
-                workflow_template=workflow_template,
+                workflow_template=effective_workflow_template,
                 skip_workflow_template=skip_workflow_template,
                 workflow_template_profile=workflow_template_profile,
                 workflow_template_ci_mode=workflow_template_ci_mode,
@@ -3743,14 +3784,14 @@ def ci_command(
                 skip_release_check=skip_release_check,
                 skip_package_check=skip_package_check,
                 skip_evidence_room=skip_evidence_room,
-                onboard=onboard,
+                onboard=effective_onboard,
                 skip_onboard=skip_onboard,
-                onboard_policy=onboard_policy,
-                project_scan=project_scan,
+                onboard_policy=effective_onboard_policy,
+                project_scan=effective_project_scan,
                 skip_project_scan=skip_project_scan,
-                project_scan_policy=project_scan_policy,
-                preflight=preflight,
-                preflight_policy=preflight_policy,
+                project_scan_policy=effective_project_scan_policy,
+                preflight=effective_preflight,
+                preflight_policy=effective_preflight_policy,
                 skip_preflight=skip_preflight,
                 metrics_check=metrics_check,
                 skip_metrics_check=skip_metrics_check,
@@ -3758,10 +3799,10 @@ def ci_command(
                 skip_metrics_diff=skip_metrics_diff,
                 metrics_diff_policy=metrics_diff_policy,
                 skip_metrics_diff_policy=skip_metrics_diff_policy,
-                workflow_check=workflow_check,
-                workflow_check_policy=workflow_check_policy,
+                workflow_check=effective_workflow_check,
+                workflow_check_policy=effective_workflow_check_policy,
                 skip_workflow_check=skip_workflow_check,
-                workflow_template=workflow_template,
+                workflow_template=effective_workflow_template,
                 skip_workflow_template=skip_workflow_template,
                 workflow_template_profile=workflow_template_profile,
                 workflow_template_ci_mode=workflow_template_ci_mode,

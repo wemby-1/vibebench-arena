@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added `vibebench ci --adoption` and `vibebench ci --adoption-policy` presets for the full adoption evidence suite, reusing existing artifact names, keeping workflow-template preview/report-only in policy mode, honoring matching skip flags, and leaving default CI unchanged.
+
 - Added optional `preflight --enforce-policy` and `ci --preflight-policy` gates backed by `preflight.policy`, reusing `preflight.json` and `preflight.md` while keeping default preflight and `ci --preflight` report-only.
 
 - Added read-only `vibebench preflight` as the first safe adoption entry point, reusing project-scan, onboard, workflow-template preview, and workflow-check with JSON/Markdown outputs, strict mode, and no config/run/baseline/workflow writes by default.
