@@ -7,8 +7,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from vibebench.config import ConfigError
+from vibebench.config import ConfigError, default_config_model, load_effective_config
 from vibebench.onboard import onboard_payload
+from vibebench.paths import config_file
 from vibebench.project_scan import run_project_scan
 from vibebench.workflow_check import workflow_check_payload
 from vibebench.workflow_template import (
@@ -27,6 +28,7 @@ def preflight_payload(
     *,
     profile: str = "auto",
     strict: bool = False,
+    enforce_policy: bool = False,
 ) -> dict[str, Any]:
     """Return a deterministic read-only preflight payload."""
     root = project_root.resolve()
@@ -151,6 +153,8 @@ def preflight_payload(
         ]
     if strict_failed:
         payload["strict_message"] = "Preflight is not ready for safe adoption."
+    if enforce_policy:
+        attach_preflight_policy(payload, root, enforced=True)
     return payload
 
 
@@ -327,6 +331,321 @@ def preflight_message(status: str) -> str:
     return "Preflight found a safe path to start VibeBench adoption."
 
 
+
+def attach_preflight_policy(
+    payload: dict[str, Any],
+    project_root: Path,
+    *,
+    enforced: bool,
+) -> None:
+    """Attach preflight policy evaluation fields to an aggregate payload."""
+    policy_source, effective_policy, config_exists = resolve_preflight_policy(
+        project_root
+    )
+    policy_findings = evaluate_preflight_policy(
+        payload,
+        effective_policy,
+        config_exists=config_exists,
+    )
+    payload["policy_enforced"] = enforced
+    payload["policy_status"] = "failed" if policy_findings else "passed"
+    payload["policy_source"] = policy_source
+    payload["effective_policy"] = effective_policy
+    payload["policy"] = effective_policy
+    payload["policy_findings"] = policy_findings
+
+
+def resolve_preflight_policy(project_root: Path) -> tuple[str, dict[str, Any], bool]:
+    """Return the effective preflight policy, source, and config presence."""
+    try:
+        result = load_effective_config(config_file(project_root))
+        policy = result.config.preflight.policy.model_dump()
+        raw_source = result.sources.get("preflight", "built-in defaults")
+        source = "config" if raw_source == "config file" else raw_source
+        return source, policy, result.config_exists
+    except ConfigError:
+        return (
+            "built-in defaults",
+            default_config_model().preflight.policy.model_dump(),
+            False,
+        )
+
+
+def evaluate_preflight_policy(
+    payload: dict[str, Any],
+    policy: dict[str, Any],
+    *,
+    config_exists: bool,
+) -> list[dict[str, str]]:
+    """Evaluate preflight policy against an existing aggregate payload."""
+    findings: list[dict[str, str]] = []
+    severity_findings = preflight_severity_findings(payload)
+
+    if policy.get("require_config") and not config_exists:
+        findings.append(
+            preflight_policy_finding(
+                "config_required",
+                "error",
+                "VibeBench config is required",
+                "No usable .vibebench/config.yaml file exists for this project.",
+                "Run python3 -m vibebench init --profile auto, then config --check.",
+                "require_config",
+            )
+        )
+
+    if policy.get("require_project_scan_ready") and not project_scan_ready(payload):
+        status = nested_status(payload, "project_scan")
+        findings.append(
+            preflight_policy_finding(
+                "project_scan_ready_required",
+                "error",
+                "Project-scan readiness is required",
+                f"project_scan.readiness is {status!r}, not ready.",
+                "Resolve project-scan findings or relax preflight.policy.",
+                "require_project_scan_ready",
+            )
+        )
+
+    if policy.get("require_onboard_ready") and not onboard_ready(payload):
+        status = nested_status(payload, "onboard")
+        findings.append(
+            preflight_policy_finding(
+                "onboard_ready_required",
+                "error",
+                "Onboard readiness is required",
+                f"onboard.status is {status!r}, not ready.",
+                "Resolve onboarding warnings or relax preflight.policy.",
+                "require_onboard_ready",
+            )
+        )
+
+    if policy.get("require_workflow_check_ready") and not workflow_check_ready(payload):
+        workflow = payload.get("workflow_check") or {}
+        status = (
+            str(workflow.get("status") or "") if isinstance(workflow, dict) else ""
+        )
+        usable = (
+            workflow.get("usable_for_vibebench_ci")
+            if isinstance(workflow, dict)
+            else False
+        )
+        findings.append(
+            preflight_policy_finding(
+                "workflow_check_ready_required",
+                "error",
+                "Workflow-check readiness is required",
+                (
+                    "workflow_check.usable_for_vibebench_ci is "
+                    f"{str(bool(usable)).lower()} with status {status!r}."
+                ),
+                "Add or fix a VibeBench CI workflow, or relax preflight.policy.",
+                "require_workflow_check_ready",
+            )
+        )
+
+    if policy.get("require_workflow_template_ready") and not workflow_template_ready(
+        payload
+    ):
+        status = nested_status(payload, "workflow_template")
+        findings.append(
+            preflight_policy_finding(
+                "workflow_template_ready_required",
+                "error",
+                "Workflow-template readiness is required",
+                f"workflow_template.status is {status!r}, not ready.",
+                "Fix workflow-template preview inputs or relax preflight.policy.",
+                "require_workflow_template_ready",
+            )
+        )
+
+    if policy.get("fail_on_blockers"):
+        for finding in severity_findings:
+            if finding["level"] == "blocker":
+                findings.append(severity_policy_finding(finding, "fail_on_blockers"))
+    if policy.get("fail_on_errors"):
+        for finding in severity_findings:
+            if finding["level"] == "error":
+                findings.append(severity_policy_finding(finding, "fail_on_errors"))
+    if policy.get("fail_on_warnings"):
+        for finding in severity_findings:
+            if finding["level"] == "warning":
+                findings.append(severity_policy_finding(finding, "fail_on_warnings"))
+    return dedupe_policy_findings(findings)
+
+
+def preflight_severity_findings(payload: dict[str, Any]) -> list[dict[str, str]]:
+    """Return blocker/error/warning findings from the aggregate payload."""
+    findings: list[dict[str, str]] = []
+    status = str(payload.get("status") or "")
+    if status == "blocked":
+        findings.append(
+            {
+                "id": "preflight_status_blocked",
+                "level": "blocker",
+                "title": "Preflight status is blocked",
+                "message": str(payload.get("message") or "Preflight is blocked."),
+            }
+        )
+    project_scan = payload.get("project_scan") or {}
+    if isinstance(project_scan, dict):
+        readiness = str(
+            project_scan.get("readiness") or project_scan.get("status") or ""
+        )
+        if readiness == "blocked":
+            findings.append(
+                {
+                    "id": "project_scan_blocked",
+                    "level": "blocker",
+                    "title": "Project-scan readiness is blocked",
+                    "message": "project_scan.readiness is blocked.",
+                }
+            )
+        summary = project_scan.get("summary") or {}
+        if isinstance(summary, dict):
+            if int(summary.get("error_count") or 0):
+                findings.append(
+                    {
+                        "id": "project_scan_errors",
+                        "level": "error",
+                        "title": "Project-scan has error findings",
+                        "message": (
+                            "project_scan.summary.error_count="
+                            f"{summary.get('error_count')}"
+                        ),
+                    }
+                )
+            if int(summary.get("warning_count") or 0):
+                findings.append(
+                    {
+                        "id": "project_scan_warnings",
+                        "level": "warning",
+                        "title": "Project-scan has warning findings",
+                        "message": (
+                            "project_scan.summary.warning_count="
+                            f"{summary.get('warning_count')}"
+                        ),
+                    }
+                )
+    workflow_check = payload.get("workflow_check") or {}
+    if isinstance(workflow_check, dict):
+        summary = workflow_check.get("summary") or {}
+        if isinstance(summary, dict):
+            if int(summary.get("failed") or 0):
+                findings.append(
+                    {
+                        "id": "workflow_check_errors",
+                        "level": "error",
+                        "title": "Workflow-check has failed checks",
+                        "message": (
+                            "workflow_check.summary.failed="
+                            f"{summary.get('failed')}"
+                        ),
+                    }
+                )
+            if int(summary.get("warning") or 0):
+                findings.append(
+                    {
+                        "id": "workflow_check_warnings",
+                        "level": "warning",
+                        "title": "Workflow-check has warning checks",
+                        "message": (
+                            "workflow_check.summary.warning="
+                            f"{summary.get('warning')}"
+                        ),
+                    }
+                )
+    return findings
+
+
+def project_scan_ready(payload: dict[str, Any]) -> bool:
+    """Return whether project-scan readiness is acceptable for policy."""
+    status = nested_status(payload, "project_scan", fallback_key="readiness")
+    return status in {"ready", "needs_attention"}
+
+
+def onboard_ready(payload: dict[str, Any]) -> bool:
+    """Return whether onboard readiness is acceptable for policy."""
+    return nested_status(payload, "onboard") == "ready"
+
+
+def workflow_check_ready(payload: dict[str, Any]) -> bool:
+    """Return whether workflow-check readiness is acceptable for policy."""
+    section = payload.get("workflow_check") or {}
+    if not isinstance(section, dict):
+        return False
+    if int(section.get("workflow_count") or 0) == 0:
+        return True
+    return bool(section.get("usable_for_vibebench_ci"))
+
+
+def workflow_template_ready(payload: dict[str, Any]) -> bool:
+    """Return whether workflow-template preview readiness is acceptable."""
+    section = payload.get("workflow_template") or {}
+    return isinstance(section, dict) and bool(section.get("preview_available"))
+
+
+def nested_status(
+    payload: dict[str, Any],
+    key: str,
+    *,
+    fallback_key: str = "status",
+) -> str:
+    """Return a nested status/readiness field from a preflight section."""
+    section = payload.get(key) or {}
+    if not isinstance(section, dict):
+        return ""
+    return str(section.get(fallback_key) or section.get("status") or "")
+
+
+def severity_policy_finding(
+    finding: dict[str, str],
+    rule: str,
+) -> dict[str, str]:
+    """Convert an aggregate severity signal into a policy finding."""
+    level = finding["level"]
+    severity = "warning" if level == "warning" else "error"
+    return preflight_policy_finding(
+        finding["id"],
+        severity,
+        finding["title"],
+        finding["message"],
+        f"Resolve the {level} signal or relax preflight.policy.{rule}.",
+        rule,
+    )
+
+
+def preflight_policy_finding(
+    finding_id: str,
+    severity: str,
+    title: str,
+    message: str,
+    recommendation: str,
+    rule: str,
+) -> dict[str, str]:
+    """Return a deterministic preflight policy finding."""
+    return {
+        "id": finding_id,
+        "severity": severity,
+        "title": title,
+        "message": message,
+        "recommendation": recommendation,
+        "rule": rule,
+    }
+
+
+def dedupe_policy_findings(findings: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Return policy findings without duplicate id/rule pairs."""
+    seen: set[tuple[str, str]] = set()
+    deduped: list[dict[str, str]] = []
+    for finding in findings:
+        key = (finding["id"], finding["rule"])
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(finding)
+    return deduped
+
+
 def preflight_json(payload: dict[str, Any]) -> str:
     """Return pure JSON for preflight output."""
     return json.dumps(payload, indent=2, sort_keys=True)
@@ -384,7 +703,43 @@ def preflight_markdown(payload: dict[str, Any]) -> str:
     lines.extend(["", "## Suggested Command Sequence", ""])
     for command in payload.get("commands", []):
         lines.append(f"- `{command}`")
+    if "policy_status" in payload:
+        lines.extend(
+            [
+                "",
+                "## Policy",
+                "",
+                f"- Status: {payload['policy_status']}",
+                f"- Source: {payload['policy_source']}",
+                f"- Enforced: {str(payload['policy_enforced']).lower()}",
+                (
+                    "- Default preflight remains report-only unless enforcement "
+                    "is requested."
+                ),
+                "",
+                "| Severity | Finding | Rule | Recommendation |",
+                "| --- | --- | --- | --- |",
+            ]
+        )
+        policy_findings = payload.get("policy_findings") or []
+        if policy_findings:
+            for finding in policy_findings:
+                lines.append(
+                    "| {severity} | {title} | {rule} | {recommendation} |".format(
+                        severity=markdown_cell(finding["severity"]),
+                        title=markdown_cell(finding["title"]),
+                        rule=markdown_cell(finding["rule"]),
+                        recommendation=markdown_cell(finding["recommendation"]),
+                    )
+                )
+        else:
+            lines.append("| info | Policy passed | none | No action needed. |")
     return "\n".join(lines) + "\n"
+
+
+def markdown_cell(value: object) -> str:
+    """Escape Markdown table cell text."""
+    return str(value).replace("|", "\\|").replace("\n", " ")
 
 
 def validate_output_path(path: Path, *, label: str) -> None:

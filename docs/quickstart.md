@@ -17,6 +17,7 @@ python -m vibebench package-check
 ```bash
 python3 -m vibebench preflight
 python3 -m vibebench preflight --json
+python3 -m vibebench preflight --enforce-policy
 python3 -m vibebench project-scan
 python3 -m vibebench onboard
 python3 -m vibebench onboard --json
@@ -30,6 +31,7 @@ python3 -m vibebench workflow-template --write
 python3 -m vibebench workflow-check
 python3 -m vibebench ci --dry-run
 python3 -m vibebench ci --preflight
+python3 -m vibebench ci --preflight-policy
 python3 -m vibebench ci --onboard
 python3 -m vibebench ci --onboard-policy
 python3 -m vibebench ci --project-scan
@@ -37,7 +39,7 @@ python3 -m vibebench ci --project-scan-policy
 python3 -m vibebench ci
 ```
 
-`preflight` is the first safe read-only command: it reuses project-scan, onboard, workflow-template preview, and workflow-check without creating config, runs, baselines, dependencies, or workflow files. `project-scan` is read-only inspection: it describes readiness signals, detects stacks, recommends an init profile, inspects config status, and never creates config, runs, baselines, dependencies, or workflow files. `project-scan --enforce-policy` evaluates `project_scan.policy`; `ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `ci --project-scan-policy` writes the same artifacts and enforces the policy. `onboard` is a read-only human adoption plan. `onboard --enforce-policy` evaluates whether that plan is acceptable under `onboard.policy`; `ci --onboard` writes report-only `onboard.json` and `onboard.md`, while `ci --onboard-policy` writes the same artifacts and fails CI only when the onboarding policy fails. `ci --preflight` writes report-only `preflight.json` and `preflight.md` run artifacts, and `--skip-preflight` suppresses that optional step. `workflow-check` is also report-only by default; `workflow-check --enforce-policy` evaluates `workflow_check.policy`, `ci --workflow-check` writes report-only `workflow-check.json` and `workflow-check.md`, and `ci --workflow-check-policy` reuses those artifacts as an explicit gate. `--skip-workflow-check` suppresses both workflow-check modes. Default CI is unchanged unless one of those flags is passed.
+`preflight` is the first safe read-only command and is report-only by default: it reuses project-scan, onboard, workflow-template preview, and workflow-check without creating config, runs, baselines, dependencies, or workflow files. `preflight --enforce-policy` evaluates `preflight.policy` as an explicit gate. `project-scan` is read-only inspection: it describes readiness signals, detects stacks, recommends an init profile, inspects config status, and never creates config, runs, baselines, dependencies, or workflow files. `project-scan --enforce-policy` evaluates `project_scan.policy`; `ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `ci --project-scan-policy` writes the same artifacts and enforces the policy. `onboard` is a read-only human adoption plan. `onboard --enforce-policy` evaluates whether that plan is acceptable under `onboard.policy`; `ci --onboard` writes report-only `onboard.json` and `onboard.md`, while `ci --onboard-policy` writes the same artifacts and fails CI only when the onboarding policy fails. `ci --preflight` writes report-only `preflight.json` and `preflight.md` run artifacts. `ci --preflight-policy` writes the same artifact names and fails CI when `preflight.policy` fails; `--skip-preflight` suppresses both modes. `workflow-check` is also report-only by default; `workflow-check --enforce-policy` evaluates `workflow_check.policy`, `ci --workflow-check` writes report-only `workflow-check.json` and `workflow-check.md`, and `ci --workflow-check-policy` reuses those artifacts as an explicit gate. `--skip-workflow-check` suppresses both workflow-check modes. Default CI is unchanged unless one of those flags is passed.
 
 ```yaml
 project_scan:

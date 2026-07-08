@@ -509,6 +509,112 @@ def test_preflight_json_and_summary_keep_stdout_json(tmp_path: Path) -> None:
     assert summary.exists()
 
 
+
+
+def write_preflight_policy_config(root: Path, policy_yaml: str) -> None:
+    config_path(root).parent.mkdir(parents=True, exist_ok=True)
+    config_path(root).write_text(
+        f"""project:
+  name: demo
+checks:
+  test:
+    - python3 -c 'print(1)'
+  lint: []
+preflight:
+  policy:
+{policy_yaml}
+""",
+        encoding="utf-8",
+    )
+
+
+def test_preflight_default_remains_report_only_without_policy_fields(
+    tmp_path: Path,
+) -> None:
+    write_preflight_policy_config(tmp_path, "    require_config: true\n")
+
+    payload = preflight_payload_for(tmp_path)
+
+    assert "policy_status" not in payload
+    assert "policy_findings" not in payload
+
+
+def test_preflight_enforce_policy_passes_with_safe_policy(
+    tmp_path: Path,
+) -> None:
+    write_preflight_policy_config(
+        tmp_path,
+        """    require_onboard_ready: false
+    require_workflow_check_ready: true
+""",
+    )
+
+    payload = preflight_payload_for(tmp_path, "--enforce-policy")
+
+    assert payload["policy_enforced"] is True
+    assert payload["policy_status"] == "passed"
+    assert payload["policy_source"] == "config"
+    assert payload["policy_findings"] == []
+
+
+def test_preflight_enforce_policy_fails_when_config_required(
+    tmp_path: Path,
+) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "preflight",
+            "--project-root",
+            str(tmp_path),
+            "--enforce-policy",
+            "--json",
+        ],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert result.output.lstrip().startswith("{")
+    assert payload["policy_status"] == "failed"
+    assert "config_required" in {
+        finding["id"] for finding in payload["policy_findings"]
+    }
+
+
+def test_preflight_policy_markdown_only_when_enforced(tmp_path: Path) -> None:
+    report_only = tmp_path / "report-only.md"
+    enforced = tmp_path / "enforced.md"
+    write_preflight_policy_config(tmp_path, "    require_onboard_ready: false\n")
+
+    first = runner.invoke(
+        app,
+        [
+            "preflight",
+            "--project-root",
+            str(tmp_path),
+            "--summary-output",
+            str(report_only),
+        ],
+    )
+    second = runner.invoke(
+        app,
+        [
+            "preflight",
+            "--project-root",
+            str(tmp_path),
+            "--enforce-policy",
+            "--summary-output",
+            str(enforced),
+        ],
+    )
+
+    assert first.exit_code == 0
+    assert second.exit_code == 0
+    assert "## Policy" not in report_only.read_text(encoding="utf-8")
+    enforced_text = enforced.read_text(encoding="utf-8")
+    assert "## Policy" in enforced_text
+    assert "Default preflight remains report-only" in enforced_text
+
+
 def test_preflight_empty_project_behavior(tmp_path: Path) -> None:
     payload = preflight_payload_for(tmp_path)
 
@@ -2218,6 +2324,7 @@ def test_config_command_json_is_valid(tmp_path: Path) -> None:
         "gate",
         "metrics_diff",
         "onboard",
+        "preflight",
         "project",
         "project_scan",
         "regression",
@@ -2324,10 +2431,12 @@ def test_config_show_json_output(tmp_path: Path) -> None:
         "gate",
         "metrics_diff",
         "onboard",
+        "preflight",
         "project",
         "project_scan",
         "regression",
         "risk",
+        "workflow_check",
     ]
     assert payload["config_path"] == str(config_path(tmp_path))
     assert payload["project"]["name"] == "vibebench-project"
@@ -2412,6 +2521,7 @@ def test_config_check_json_output(tmp_path: Path) -> None:
         "risk_policy",
         "regression_policy",
         "onboard_policy",
+        "preflight_policy",
     }
     assert all(
         sorted(check) == ["message", "name", "status"] for check in payload["checks"]
@@ -3135,6 +3245,25 @@ def test_config_check_reports_onboard_policy(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert "Onboard policy is internally consistent" in policy["message"]
     assert "onboard --enforce-policy" in policy["advice"]
+
+
+
+
+def test_config_check_reports_preflight_policy(tmp_path: Path) -> None:
+    runner.invoke(app, ["init", "--project-root", str(tmp_path)])
+
+    result = runner.invoke(
+        app,
+        ["config", "--project-root", str(tmp_path), "--check", "--json"],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 0
+    check = next(
+        check for check in payload["checks"] if check["name"] == "preflight_policy"
+    )
+    assert check["status"] == "passed"
+    assert "require_project_scan_ready=true" in check["message"]
 
 
 def test_config_check_reports_workflow_check_policy(tmp_path: Path) -> None:

@@ -555,6 +555,13 @@ def preflight_command(
             help="Exit non-zero when preflight is not ready for safe adoption.",
         ),
     ] = False,
+    enforce_policy: Annotated[
+        bool,
+        typer.Option(
+            "--enforce-policy",
+            help="Evaluate preflight policy and fail on policy violations.",
+        ),
+    ] = False,
     profile: Annotated[
         str,
         typer.Option(
@@ -566,7 +573,9 @@ def preflight_command(
     """Summarize safe read-only adoption readiness before enabling VibeBench."""
     root = project_root.resolve()
     try:
-        payload = preflight_payload(root, profile=profile, strict=strict)
+        payload = preflight_payload(
+            root, profile=profile, strict=strict, enforce_policy=enforce_policy
+        )
         if json_output is not None:
             write_preflight_json(resolve_output_path(root, json_output), payload)
         if summary_output is not None:
@@ -578,6 +587,7 @@ def preflight_command(
                     {
                         "status": "failed",
                         "strict": strict,
+                        "policy_enforced": enforce_policy,
                         "project_root": str(root),
                         "message": str(exc),
                     },
@@ -593,7 +603,9 @@ def preflight_command(
         print(preflight_json(payload))
     else:
         render_preflight_result(payload)
-    if payload.get("strict_failed"):
+    if payload.get("strict_failed") or (
+        enforce_policy and payload.get("policy_status") == "failed"
+    ):
         raise typer.Exit(code=1)
 
 
@@ -611,6 +623,10 @@ def render_preflight_result(payload: dict[str, object]) -> None:
     console.print(f"Project root: {payload['project_root']}")
     console.print(f"Status: {payload['status']}")
     console.print(f"Strict: {format_bool(payload['strict'])}")
+    if "policy_status" in payload:
+        console.print(
+            f"Policy: {payload['policy_status']} ({payload['policy_source']})"
+        )
     console.print(f"Detected stacks: {stack_text}")
     console.print(
         f"Profile: {payload['requested_profile']} -> {payload['resolved_profile']}"
@@ -1416,6 +1432,8 @@ def config_show_payload(result: EffectiveConfigResult) -> dict[str, object]:
         "metrics_diff": payload["metrics_diff"],
         "project_scan": payload["project_scan"],
         "onboard": payload["onboard"],
+        "workflow_check": payload["workflow_check"],
+        "preflight": payload["preflight"],
     }
 
 
@@ -1438,6 +1456,8 @@ def render_config_summary(
         "metrics_diff",
         "project_scan",
         "onboard",
+        "workflow_check",
+        "preflight",
     ]:
         table = Table(title=section_name)
         table.add_column("Key")
@@ -3370,6 +3390,13 @@ def ci_command(
             help="Write report-only preflight artifacts.",
         ),
     ] = False,
+    preflight_policy: Annotated[
+        bool,
+        typer.Option(
+            "--preflight-policy",
+            help="Write preflight artifacts with policy enforcement.",
+        ),
+    ] = False,
     skip_preflight: Annotated[
         bool,
         typer.Option(
@@ -3658,6 +3685,7 @@ def ci_command(
                 skip_project_scan=skip_project_scan,
                 project_scan_policy=project_scan_policy,
                 preflight=preflight,
+                preflight_policy=preflight_policy,
                 skip_preflight=skip_preflight,
                 metrics_check=metrics_check,
                 skip_metrics_check=skip_metrics_check,
@@ -3722,6 +3750,7 @@ def ci_command(
                 skip_project_scan=skip_project_scan,
                 project_scan_policy=project_scan_policy,
                 preflight=preflight,
+                preflight_policy=preflight_policy,
                 skip_preflight=skip_preflight,
                 metrics_check=metrics_check,
                 skip_metrics_check=skip_metrics_check,

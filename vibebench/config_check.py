@@ -241,6 +241,36 @@ def config_consistency_checks(
             "readiness should become an explicit gate."
         )
     checks.append(workflow_check_check)
+
+    preflight_policy = config.preflight.policy
+    preflight_check = {
+        "name": "preflight_policy",
+        "status": "passed",
+        "message": (
+            "Preflight policy is internally consistent "
+            f"(enabled={str(preflight_policy.enabled).lower()}, "
+            f"fail_on_blockers={str(preflight_policy.fail_on_blockers).lower()}, "
+            f"fail_on_errors={str(preflight_policy.fail_on_errors).lower()}, "
+            f"fail_on_warnings={str(preflight_policy.fail_on_warnings).lower()}, "
+            f"require_config={str(preflight_policy.require_config).lower()}, "
+            "require_project_scan_ready="
+            f"{str(preflight_policy.require_project_scan_ready).lower()}, "
+            "require_onboard_ready="
+            f"{str(preflight_policy.require_onboard_ready).lower()}, "
+            "require_workflow_check_ready="
+            f"{str(preflight_policy.require_workflow_check_ready).lower()}, "
+            "require_workflow_template_ready="
+            f"{str(preflight_policy.require_workflow_template_ready).lower()})"
+        ),
+    }
+    if include_advice and not preflight_policy.enabled:
+        preflight_check["advice"] = (
+            "Use `python3 -m vibebench preflight --enforce-policy` or "
+            "`python3 -m vibebench ci --preflight-policy` when aggregate "
+            "adoption readiness should become an explicit gate."
+        )
+    checks.append(preflight_check)
+
     return checks
 
 

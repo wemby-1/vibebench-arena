@@ -139,6 +139,19 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "allowed_action_prefixes": [],
         },
     },
+    "preflight": {
+        "policy": {
+            "enabled": False,
+            "fail_on_blockers": True,
+            "fail_on_errors": True,
+            "fail_on_warnings": False,
+            "require_config": True,
+            "require_project_scan_ready": True,
+            "require_onboard_ready": True,
+            "require_workflow_check_ready": True,
+            "require_workflow_template_ready": False,
+        },
+    },
 }
 
 
@@ -473,6 +486,30 @@ class WorkflowCheckConfig(BaseModel):
     )
 
 
+class PreflightPolicyConfig(BaseModel):
+    """Preflight aggregate policy gate defaults."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: StrictBool = False
+    fail_on_blockers: StrictBool = True
+    fail_on_errors: StrictBool = True
+    fail_on_warnings: StrictBool = False
+    require_config: StrictBool = True
+    require_project_scan_ready: StrictBool = True
+    require_onboard_ready: StrictBool = True
+    require_workflow_check_ready: StrictBool = True
+    require_workflow_template_ready: StrictBool = False
+
+
+class PreflightConfig(BaseModel):
+    """Preflight aggregate policy configuration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    policy: PreflightPolicyConfig = Field(default_factory=PreflightPolicyConfig)
+
+
 class VibeBenchConfig(BaseModel):
     """Top-level VibeBench configuration."""
 
@@ -489,6 +526,7 @@ class VibeBenchConfig(BaseModel):
     project_scan: ProjectScanConfig = Field(default_factory=ProjectScanConfig)
     onboard: OnboardConfig = Field(default_factory=OnboardConfig)
     workflow_check: WorkflowCheckConfig = Field(default_factory=WorkflowCheckConfig)
+    preflight: PreflightConfig = Field(default_factory=PreflightConfig)
 
     def effective_risk(self) -> RiskConfig:
         """Return the active Git diff risk policy."""
@@ -574,6 +612,19 @@ def config_example_yaml() -> str:
                 "require_ci_ready": False,
                 "allowed_workflow_names": [],
                 "allowed_action_prefixes": [],
+            },
+        },
+        "preflight": {
+            "policy": {
+                "enabled": False,
+                "fail_on_blockers": True,
+                "fail_on_errors": True,
+                "fail_on_warnings": False,
+                "require_config": True,
+                "require_project_scan_ready": True,
+                "require_onboard_ready": True,
+                "require_workflow_check_ready": True,
+                "require_workflow_template_ready": False,
             },
         },
     }
@@ -717,6 +768,19 @@ def init_config_profile_payload(
                 "allowed_action_prefixes": [],
             },
         },
+        "preflight": {
+            "policy": {
+                "enabled": False,
+                "fail_on_blockers": True,
+                "fail_on_errors": True,
+                "fail_on_warnings": False,
+                "require_config": True,
+                "require_project_scan_ready": True,
+                "require_onboard_ready": True,
+                "require_workflow_check_ready": True,
+                "require_workflow_template_ready": False,
+            },
+        },
     }
 
 
@@ -819,6 +883,7 @@ def load_effective_config(path: Path | None = None) -> EffectiveConfigResult:
                 "project_scan": "built-in defaults",
                 "onboard": "built-in defaults",
                 "workflow_check": "built-in defaults",
+                "preflight": "built-in defaults",
             },
             config_path=config_path,
             config_exists=False,
@@ -849,6 +914,9 @@ def load_effective_config(path: Path | None = None) -> EffectiveConfigResult:
         "workflow_check": (
             "config file" if "workflow_check" in raw_config else "built-in defaults"
         ),
+        "preflight": (
+            "config file" if "preflight" in raw_config else "built-in defaults"
+        ),
     }
     return EffectiveConfigResult(
         config=config,
@@ -870,6 +938,7 @@ def effective_config_payload(result: EffectiveConfigResult) -> dict[str, Any]:
         "project_scan": result.config.project_scan.model_dump(),
         "onboard": result.config.onboard.model_dump(),
         "workflow_check": result.config.workflow_check.model_dump(),
+        "preflight": result.config.preflight.model_dump(),
         "risk": result.config.effective_risk().model_dump(),
     }
     return payload

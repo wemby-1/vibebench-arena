@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added optional `preflight --enforce-policy` and `ci --preflight-policy` gates backed by `preflight.policy`, reusing `preflight.json` and `preflight.md` while keeping default preflight and `ci --preflight` report-only.
+
 - Added read-only `vibebench preflight` as the first safe adoption entry point, reusing project-scan, onboard, workflow-template preview, and workflow-check with JSON/Markdown outputs, strict mode, and no config/run/baseline/workflow writes by default.
 
 - Added optional `vibebench ci --preflight` report-only artifacts (`preflight.json` and `preflight.md`) with `--skip-preflight`, artifact/latest/manifest/bundle/GitHub summary discovery, and no CI gating unless artifact generation fails.

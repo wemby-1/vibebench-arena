@@ -168,6 +168,7 @@ Git diff 风险分析会标记：
 python -m pip install -e ".[dev]"
 python3 -m vibebench preflight
 python3 -m vibebench preflight --json
+python3 -m vibebench preflight --enforce-policy
 python3 -m vibebench project-scan
 python3 -m vibebench onboard
 python3 -m vibebench onboard --json
@@ -179,6 +180,7 @@ python3 -m vibebench workflow-template --write
 python3 -m vibebench workflow-check
 python3 -m vibebench ci --dry-run
 python3 -m vibebench ci --preflight
+python3 -m vibebench ci --preflight-policy
 python3 -m vibebench ci --onboard
 python3 -m vibebench ci --onboard-policy
 python3 -m vibebench ci --project-scan
@@ -228,7 +230,7 @@ python -m vibebench gh-summary
 python -m vibebench compare
 ```
 
-`vibebench preflight` 是第一个安全的只读入口：它会复用 project-scan、onboard、workflow-template 预览和 workflow-check，而且不会创建 config、runs、baselines 或 workflow。`vibebench project-scan` 是只读项目检查：它描述 readiness 信号，默认只报告不失败。`vibebench project-scan --enforce-policy` 会执行 `project_scan.policy`；`vibebench ci --project-scan` 只写入 report-only 的 `project-scan.json` 和 `project-scan.md`，`vibebench ci --project-scan-policy` 写入同名 artifacts 并在策略失败时让 CI 失败。`vibebench onboard` 是只读人工接入计划；`vibebench onboard --enforce-policy` 会用 `onboard.policy` 判断该计划是否可接受。`vibebench ci --onboard` 写入 report-only 的 `onboard.json` 和 `onboard.md`，`vibebench ci --onboard-policy` 写入同名 artifacts 并只在 onboarding policy 失败时让 CI 失败。`python3 -m vibebench ci --preflight` 会在 run 目录写入 report-only 的 `preflight.json` 和 `preflight.md` 接入摘要，而 `--skip-preflight` 会跳过这一步。`vibebench init --profile auto` 会安全创建 starter `.vibebench/config.yaml`，不会安装依赖、创建 runs/baselines/workflow 或修改仓库设置。auto 可选择 `generic`、`python`、`node` 或 `fullstack`；`--profile python` 使用 `python3 -m pytest -q` 和 `python3 -m ruff check .`，`--profile node` 复用已有 `package.json` lint/test scripts，`--profile generic` 使用保守的无额外依赖 starter。已有配置默认拒绝覆盖，只有明确传入 `--force` 才会覆盖。使用 `python3 -m vibebench workflow-template` 预览安全的 GitHub Actions workflow；确认后可用 `--write` 写入 `.github/workflows/vibebench.yml`。使用 `python3 -m vibebench workflow-check` 以只读方式检查已有 workflow 是否适合 VibeBench CI，也可用 `python3 -m vibebench workflow-check --enforce-policy` 执行 `workflow_check.policy`。需要在 CI 中留存证据时，可加 `python3 -m vibebench ci --workflow-check` 写入 report-only 的 `workflow-check.json` 和 `workflow-check.md`；需要把同名 artifacts 变成门禁时，使用 `python3 -m vibebench ci --workflow-check-policy`，而 `--skip-workflow-check` 会同时跳过这两种模式。默认 CI 其余行为不变。`python3 -m vibebench ci --workflow-template` 只会在 run 目录写入可审阅的 `workflow-template.json`、`workflow-template.md` 和 `workflow-template.yml` artifacts；除明确的 template `--write` 外，这些命令不会调用 GitHub，也不会创建或修改 `.github/workflows`。随后运行 `python3 -m vibebench config --check`、`python3 -m vibebench ci --dry-run` 和 `python3 -m vibebench ci`。
+`vibebench preflight` 是第一个安全的只读入口，默认只报告不失败：它会复用 project-scan、onboard、workflow-template 预览和 workflow-check，而且不会创建 config、runs、baselines 或 workflow。`vibebench preflight --enforce-policy` 会显式执行 `preflight.policy` 门禁。`vibebench project-scan` 是只读项目检查：它描述 readiness 信号，默认只报告不失败。`vibebench project-scan --enforce-policy` 会执行 `project_scan.policy`；`vibebench ci --project-scan` 只写入 report-only 的 `project-scan.json` 和 `project-scan.md`，`vibebench ci --project-scan-policy` 写入同名 artifacts 并在策略失败时让 CI 失败。`vibebench onboard` 是只读人工接入计划；`vibebench onboard --enforce-policy` 会用 `onboard.policy` 判断该计划是否可接受。`vibebench ci --onboard` 写入 report-only 的 `onboard.json` 和 `onboard.md`，`vibebench ci --onboard-policy` 写入同名 artifacts 并只在 onboarding policy 失败时让 CI 失败。`python3 -m vibebench ci --preflight` 会在 run 目录写入 report-only 的 `preflight.json` 和 `preflight.md` 接入摘要。`python3 -m vibebench ci --preflight-policy` 写入相同 artifact 名称，并在 `preflight.policy` 失败时让 CI 失败；`--skip-preflight` 会跳过两种 preflight 模式。`vibebench init --profile auto` 会安全创建 starter `.vibebench/config.yaml`，不会安装依赖、创建 runs/baselines/workflow 或修改仓库设置。auto 可选择 `generic`、`python`、`node` 或 `fullstack`；`--profile python` 使用 `python3 -m pytest -q` 和 `python3 -m ruff check .`，`--profile node` 复用已有 `package.json` lint/test scripts，`--profile generic` 使用保守的无额外依赖 starter。已有配置默认拒绝覆盖，只有明确传入 `--force` 才会覆盖。使用 `python3 -m vibebench workflow-template` 预览安全的 GitHub Actions workflow；确认后可用 `--write` 写入 `.github/workflows/vibebench.yml`。使用 `python3 -m vibebench workflow-check` 以只读方式检查已有 workflow 是否适合 VibeBench CI，也可用 `python3 -m vibebench workflow-check --enforce-policy` 执行 `workflow_check.policy`。需要在 CI 中留存证据时，可加 `python3 -m vibebench ci --workflow-check` 写入 report-only 的 `workflow-check.json` 和 `workflow-check.md`；需要把同名 artifacts 变成门禁时，使用 `python3 -m vibebench ci --workflow-check-policy`，而 `--skip-workflow-check` 会同时跳过这两种模式。默认 CI 其余行为不变。`python3 -m vibebench ci --workflow-template` 只会在 run 目录写入可审阅的 `workflow-template.json`、`workflow-template.md` 和 `workflow-template.yml` artifacts；除明确的 template `--write` 外，这些命令不会调用 GitHub，也不会创建或修改 `.github/workflows`。随后运行 `python3 -m vibebench config --check`、`python3 -m vibebench ci --dry-run` 和 `python3 -m vibebench ci`。
 
 如果要检查安装与打包准备情况，可以使用 editable install 和本地 metadata 检查：
 
@@ -320,6 +322,18 @@ onboard:
     fail_on_warnings: false
     require_config: true
     require_ci_ready: false
+
+preflight:
+  policy:
+    enabled: false
+    fail_on_blockers: true
+    fail_on_errors: true
+    fail_on_warnings: false
+    require_config: true
+    require_project_scan_ready: true
+    require_onboard_ready: true
+    require_workflow_check_ready: true
+    require_workflow_template_ready: false
 ```
 
 ## 示例流程
@@ -459,7 +473,7 @@ compare:
 
 需要临时关闭配置中的 guard 时，使用 `python -m vibebench ci --no-fail-on-regression`。`--skip-compare` 会完全跳过 compare，因此也会关闭 compare 退化失败。
 
-`vibebench baseline --set latest` 会把某次运行保存为 `.vibebench/baseline.json` 中的旧版 compare/gate baseline。用于 regression-check 时，`vibebench baseline --set-latest --label stable` 会直接写入本地固定 baseline；`vibebench baseline --promote-latest --label stable` 会先检查 candidate run、metrics、已有 manifest，以及相对当前 label 的 regression-check，再写入 `.vibebench/baselines/stable.json`。带 `regression.enabled: true` 的配置化 `vibebench ci --json` 会使用它，再考虑自动上一个 run 推断。`--baseline-label`、`--max-score-drop` 和 `--require-baseline` 等 CLI flag 会覆盖配置。promote 后的 pinned baseline 会包含精简 metrics snapshot；`baseline --verify --label stable` 会检查 pinned baseline 是否可用于回归门禁，`baseline --verify --input PATH` 会在不写入生成状态的情况下检查导出的文件，`--require-portable` 要求 snapshot fallback，`--require-live-metrics` 要求原始 run metrics 仍可用。`baseline --export --label stable --output PATH` 默认不写入本机绝对路径，`baseline --import PATH --label stable` 可让清理后的 workspace 或类 CI checkout 在原 run 目录缺失时继续使用该 baseline。verify 不会提交或发布生成的 baseline 状态。`ci --metrics-check` 会把独立 metrics contract 检查写入普通 run artifact，`ci --metrics-diff` 会写入数值指标前后变化说明。`metrics_diff.policy` 可为 score drop、risk increase、新增/删除指标以及命名数值指标配置漂移阈值；`metrics-diff --enforce-policy` 和 `ci --metrics-diff-policy` 会执行该策略，并复用 `metrics-diff.json` 与 `metrics-diff.md`。这些检查都补充 `baseline --verify` 和 `regression-check`，且不改变默认 CI 行为。
+`vibebench baseline --set latest` 会把某次运行保存为 `.vibebench/baseline.json` 中的旧版 compare/gate baseline。用于 regression-check 时，`vibebench baseline --set-latest --label stable` 会直接写入本地固定 baseline；`vibebench baseline --promote-latest --label stable` 会先检查 candidate run、metrics、已有 manifest，以及相对当前 label 的 regression-check，再写入 `.vibebench/baselines/stable.json`。带 `regression.enabled: true` 的配置化 `vibebench ci --json` 会使用它，再考虑自动上一个 run 推断。`--baseline-label`、`--max-score-drop` 和 `--require-baseline` 等 CLI flag 会覆盖配置。promote 后的 pinned baseline 会包含精简 metrics snapshot；`baseline --verify --label stable` 会检查 pinned baseline 是否可用于回归门禁，`baseline --verify --input PATH` 会在不写入生成状态的情况下检查导出的文件，`--require-portable` 要求 snapshot fallback，`--require-live-metrics` 要求原始 run metrics 仍可用。`baseline --export --label stable --output PATH` 默认不写入本机绝对路径，`baseline --import PATH --label stable` 可让清理后的 workspace 或类 CI checkout 在原 run 目录缺失时继续使用该 baseline。verify 不会提交或发布生成的 baseline 状态。`ci --preflight` 会写入 report-only 的 `preflight.json` 和 `preflight.md`，`ci --preflight-policy` 会写入相同 artifacts 并执行 `preflight.policy`。`ci --metrics-check` 会把独立 metrics contract 检查写入普通 run artifact，`ci --metrics-diff` 会写入数值指标前后变化说明。`metrics_diff.policy` 可为 score drop、risk increase、新增/删除指标以及命名数值指标配置漂移阈值；`metrics-diff --enforce-policy` 和 `ci --metrics-diff-policy` 会执行该策略，并复用 `metrics-diff.json` 与 `metrics-diff.md`。这些检查都补充 `baseline --verify` 和 `regression-check`，且不改变默认 CI 行为。
 
 `vibebench clean` 会安全预览旧运行记录的清理计划。默认只是 dry-run，只有显式传入 `--yes` 才会删除。
 

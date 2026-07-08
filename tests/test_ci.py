@@ -88,6 +88,17 @@ def append_project_scan_policy(root: Path, policy_yaml: str) -> None:
     )
 
 
+def append_preflight_policy(root: Path, policy_yaml: str) -> None:
+    target = config_path(root)
+    config = target.read_text(encoding="utf-8")
+    if "preflight:" in config:
+        config = config.split("preflight:\n", 1)[0].rstrip() + "\n"
+    target.write_text(
+        config + "preflight:\n  policy:\n" + policy_yaml,
+        encoding="utf-8",
+    )
+
+
 def append_onboard_policy(root: Path, policy_yaml: str) -> None:
     target = config_path(root)
     config = target.read_text(encoding="utf-8")
@@ -1414,6 +1425,58 @@ def test_ci_dry_run_skip_preflight_suppresses_enabled_step(
     assert steps["preflight"]["message"] == "Skipped by --skip-preflight"
 
 
+
+
+def test_ci_dry_run_preflight_policy_json_includes_enforced_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--preflight-policy",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["preflight"]["status"] == "planned"
+    assert steps["preflight"]["artifact"] == "preflight.json"
+    assert "policy enforcement" in steps["preflight"]["message"]
+
+
+def test_ci_dry_run_skip_preflight_suppresses_policy_mode(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--preflight-policy",
+            "--skip-preflight",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["preflight"]["status"] == "skipped"
+    assert steps["preflight"]["message"] == "Skipped by --skip-preflight"
+
+
 def test_ci_dry_run_project_scan_json_includes_planned_step(
     tmp_path: Path,
 ) -> None:
@@ -1904,6 +1967,99 @@ def test_ci_skip_preflight_suppresses_artifacts(tmp_path: Path) -> None:
             "--project-root",
             str(tmp_path),
             "--preflight",
+            "--skip-preflight",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    assert result.exit_code == 0
+    assert steps["preflight"]["status"] == "skipped"
+    assert not run_dir.joinpath("preflight.json").exists()
+    assert not run_dir.joinpath("preflight.md").exists()
+
+
+
+
+def test_ci_preflight_policy_writes_reports_and_enforces_success(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    append_preflight_policy(tmp_path, "    require_onboard_ready: false\n")
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--preflight-policy", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("preflight.json").read_text(encoding="utf-8"))
+    markdown = run_dir.joinpath("preflight.md").read_text(encoding="utf-8")
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    assert steps["preflight"]["status"] == "passed"
+    assert "policy passed" in steps["preflight"]["message"]
+    assert report["policy_enforced"] is True
+    assert report["policy_status"] == "passed"
+    assert report["policy_findings"] == []
+    assert "## Policy" in markdown
+
+
+def test_ci_preflight_policy_enforces_failure(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--preflight-policy", "--json"],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("preflight.json").read_text(encoding="utf-8"))
+    assert result.exit_code == 1
+    assert result.output.lstrip().startswith("{")
+    assert steps["preflight"]["status"] == "failed"
+    assert report["policy_status"] == "failed"
+    assert "onboard_ready_required" in {
+        finding["id"] for finding in report["policy_findings"]
+    }
+
+
+def test_ci_preflight_remains_report_only_with_policy_failure(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["ci", "--project-root", str(tmp_path), "--preflight", "--json"],
+    )
+
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("preflight.json").read_text(encoding="utf-8"))
+    assert result.exit_code == 0
+    assert "policy_status" not in report
+
+
+def test_ci_skip_preflight_suppresses_policy_mode_too(tmp_path: Path) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--preflight-policy",
             "--skip-preflight",
             "--json",
         ],
