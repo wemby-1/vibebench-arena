@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added `preflight --require-ci-mode` so preflight can report required detected VibeBench CI modes and make missing modes fail only when `--strict` is also used.
+
 - Added `workflow-check --require-ci-mode` and `workflow_check.policy.required_ci_modes` so teams can explicitly verify expected VibeBench CI modes (`default`, `adoption`, and `adoption-policy`) from CLI checks and policy-gated CI artifacts.
 
 - Added `workflow-template --ci-mode adoption` and `workflow-template --ci-mode adoption-policy` so generated GitHub Actions templates can run the new report-only or policy-gated adoption CI presets while remaining preview-first unless `--write` is passed.

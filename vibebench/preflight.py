@@ -29,6 +29,7 @@ def preflight_payload(
     profile: str = "auto",
     strict: bool = False,
     enforce_policy: bool = False,
+    required_ci_modes: list[str] | None = None,
 ) -> dict[str, Any]:
     """Return a deterministic read-only preflight payload."""
     root = project_root.resolve()
@@ -50,7 +51,12 @@ def preflight_payload(
         dry_run=False,
         force=False,
     )
-    workflow_check = workflow_check_payload(root, strict=False, check_all=True)
+    workflow_check = workflow_check_payload(
+        root,
+        strict=False,
+        check_all=True,
+        required_ci_modes=required_ci_modes,
+    )
     discovered_paths = [
         str(path)
         for path in workflow_check.get("discovered_paths", [])
@@ -60,7 +66,12 @@ def preflight_payload(
     actionable_signal = has_actionable_signal(scan, workflow_count=workflow_count)
     config_required = actionable_signal
     workflow_check_strict = (
-        workflow_check_payload(root, strict=True, check_all=True)
+        workflow_check_payload(
+            root,
+            strict=True,
+            check_all=True,
+            required_ci_modes=required_ci_modes,
+        )
         if strict and workflow_count
         else None
     )
@@ -124,6 +135,16 @@ def preflight_payload(
         "usable_for_vibebench_ci": bool(workflow_check["usable_for_vibebench_ci"]),
         "summary": workflow_check["summary"],
     }
+    if workflow_check.get("required_ci_modes"):
+        workflow_check_section["detected_ci_modes"] = list(
+            workflow_check.get("detected_ci_modes", [])
+        )
+        workflow_check_section["required_ci_modes"] = list(
+            workflow_check.get("required_ci_modes", [])
+        )
+        workflow_check_section["missing_required_ci_modes"] = list(
+            workflow_check.get("missing_required_ci_modes", [])
+        )
     payload: dict[str, Any] = {
         "status": status,
         "strict": strict,
@@ -674,6 +695,8 @@ def preflight_markdown(payload: dict[str, Any]) -> str:
     config = payload["config"]
     workflow_check = payload["workflow_check"]
     workflow_template = payload["workflow_template"]
+    required_modes = workflow_check.get("required_ci_modes") or []
+    missing_required_modes = workflow_check.get("missing_required_ci_modes") or []
     lines = [
         "# VibeBench Preflight",
         "",
@@ -698,6 +721,19 @@ def preflight_markdown(payload: dict[str, Any]) -> str:
         "## Recommendations",
         "",
     ]
+    if required_modes:
+        lines.extend(
+            [
+                "- Required CI modes: "
+                + ", ".join(str(mode) for mode in required_modes),
+                "- Missing required CI modes: "
+                + (
+                    ", ".join(str(mode) for mode in missing_required_modes)
+                    or "none"
+                ),
+            ]
+        )
+        lines.append("")
     for recommendation in payload.get("recommendations", []):
         lines.append(f"- {recommendation}")
     lines.extend(["", "## Suggested Command Sequence", ""])

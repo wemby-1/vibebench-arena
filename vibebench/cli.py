@@ -563,6 +563,16 @@ def preflight_command(
             help="Evaluate preflight policy and fail on policy violations.",
         ),
     ] = False,
+    require_ci_mode: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--require-ci-mode",
+            help=(
+                "Require detected VibeBench CI mode(s): default, adoption, or "
+                "adoption-policy. Repeat the option to require multiple modes."
+            ),
+        ),
+    ] = None,
     profile: Annotated[
         str,
         typer.Option(
@@ -574,8 +584,16 @@ def preflight_command(
     """Summarize safe read-only adoption readiness before enabling VibeBench."""
     root = project_root.resolve()
     try:
+        normalized_required_ci_modes = normalize_required_ci_modes(
+            require_ci_mode or [],
+            source="--require-ci-mode",
+        )
         payload = preflight_payload(
-            root, profile=profile, strict=strict, enforce_policy=enforce_policy
+            root,
+            profile=profile,
+            strict=strict,
+            enforce_policy=enforce_policy,
+            required_ci_modes=normalized_required_ci_modes,
         )
         if json_output is not None:
             write_preflight_json(resolve_output_path(root, json_output), payload)
@@ -638,6 +656,20 @@ def render_preflight_result(payload: dict[str, object]) -> None:
         "Workflow status: "
         f"{workflow_check['status']} ({workflow_check['workflow_count']} discovered)"
     )
+    required_modes = workflow_check.get("required_ci_modes") or []
+    missing_required_modes = workflow_check.get("missing_required_ci_modes") or []
+    if required_modes:
+        console.print(
+            "Required CI modes: "
+            + ", ".join(str(mode) for mode in required_modes)
+        )
+        console.print(
+            "Missing required CI modes: "
+            + (
+                ", ".join(str(mode) for mode in missing_required_modes)
+                or "none"
+            )
+        )
     console.print(
         "Workflow template preview: "
         f"{workflow_template['output_path']} ({workflow_template['ci_mode']})"

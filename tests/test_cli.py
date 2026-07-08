@@ -451,6 +451,8 @@ def test_preflight_json_stdout_is_pure_json(tmp_path: Path) -> None:
     assert payload["detected_stacks"] == []
     assert payload["config"]["exists"] is False
     assert payload["workflow_check"]["workflow_count"] == 0
+    assert "required_ci_modes" not in payload["workflow_check"]
+    assert "missing_required_ci_modes" not in payload["workflow_check"]
     assert payload["commands"][0] == "python3 -m vibebench init --profile auto"
     assert payload["generated_at"].endswith("Z")
 
@@ -720,6 +722,153 @@ def test_preflight_strict_fails_on_existing_workflow_blockers(tmp_path: Path) ->
     assert payload["strict_failed"] is True
     assert payload["workflow_check"]["workflow_count"] == 1
     assert payload["workflow_check"]["strict_status"] == "failed"
+
+
+def test_preflight_require_ci_mode_default_reports_present_mode(
+    tmp_path: Path,
+) -> None:
+    write_workflow(tmp_path, minimal_vibebench_workflow())
+
+    payload = preflight_payload_for(
+        tmp_path,
+        "--require-ci-mode",
+        "default",
+    )
+
+    workflow_check = payload["workflow_check"]
+    assert workflow_check["detected_ci_modes"] == ["default"]
+    assert workflow_check["required_ci_modes"] == ["default"]
+    assert workflow_check["missing_required_ci_modes"] == []
+
+
+def test_preflight_require_ci_mode_adoption_reports_missing_mode(
+    tmp_path: Path,
+) -> None:
+    write_workflow(tmp_path, minimal_vibebench_workflow())
+
+    payload = preflight_payload_for(
+        tmp_path,
+        "--require-ci-mode",
+        "adoption",
+    )
+
+    workflow_check = payload["workflow_check"]
+    assert workflow_check["detected_ci_modes"] == ["default"]
+    assert workflow_check["required_ci_modes"] == ["adoption"]
+    assert workflow_check["missing_required_ci_modes"] == ["adoption"]
+
+
+def test_preflight_require_ci_mode_adoption_strict_exits_nonzero(
+    tmp_path: Path,
+) -> None:
+    write_workflow(tmp_path, minimal_vibebench_workflow())
+
+    result = runner.invoke(
+        app,
+        [
+            "preflight",
+            "--project-root",
+            str(tmp_path),
+            "--require-ci-mode",
+            "adoption",
+            "--strict",
+            "--json",
+        ],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert payload["strict_failed"] is True
+    assert payload["workflow_check"]["missing_required_ci_modes"] == ["adoption"]
+
+
+def test_preflight_require_ci_mode_dedupes_in_stable_order(
+    tmp_path: Path,
+) -> None:
+    write_workflow(
+        tmp_path,
+        workflow_with_command("python3 -m vibebench ci --adoption-policy")
+        + "      - run: python3 -m vibebench ci --adoption\n",
+    )
+
+    payload = preflight_payload_for(
+        tmp_path,
+        "--require-ci-mode",
+        "adoption-policy",
+        "--require-ci-mode",
+        "adoption",
+        "--require-ci-mode",
+        "adoption-policy",
+    )
+
+    workflow_check = payload["workflow_check"]
+    assert workflow_check["required_ci_modes"] == ["adoption", "adoption-policy"]
+    assert workflow_check["missing_required_ci_modes"] == []
+
+
+def test_preflight_require_ci_mode_invalid_value_fails_clearly(
+    tmp_path: Path,
+) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "preflight",
+            "--project-root",
+            str(tmp_path),
+            "--require-ci-mode",
+            "preview",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "--require-ci-mode must be one of" in result.output
+
+
+def test_preflight_require_ci_mode_human_output_reports_required_modes(
+    tmp_path: Path,
+) -> None:
+    write_workflow(tmp_path, minimal_vibebench_workflow())
+
+    result = runner.invoke(
+        app,
+        [
+            "preflight",
+            "--project-root",
+            str(tmp_path),
+            "--require-ci-mode",
+            "default",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Required CI modes: default" in result.output
+    assert "Missing required CI modes: none" in result.output
+
+
+def test_preflight_require_ci_mode_markdown_reports_required_modes(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "preflight.md"
+    write_workflow(tmp_path, minimal_vibebench_workflow())
+
+    result = runner.invoke(
+        app,
+        [
+            "preflight",
+            "--project-root",
+            str(tmp_path),
+            "--require-ci-mode",
+            "adoption",
+            "--summary-output",
+            str(output),
+        ],
+    )
+    markdown = output.read_text(encoding="utf-8")
+
+    assert result.exit_code == 0
+    assert "- Required CI modes: adoption" in markdown
+    assert "- Missing required CI modes: adoption" in markdown
 
 
 def test_preflight_creates_no_runs_baselines_workflows_or_config(

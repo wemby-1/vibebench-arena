@@ -17,6 +17,7 @@ python -m vibebench package-check
 ```bash
 python3 -m vibebench preflight
 python3 -m vibebench preflight --json
+python3 -m vibebench preflight --require-ci-mode default
 python3 -m vibebench preflight --enforce-policy
 python3 -m vibebench project-scan
 python3 -m vibebench onboard
