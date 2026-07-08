@@ -898,7 +898,10 @@ def workflow_template_command(
         str,
         typer.Option(
             "--ci-mode",
-            help="CI command set: basic, adoption, adoption-policy, or strict.",
+            help=(
+                "CI command set: basic, default, adoption, adoption-policy, "
+                "or strict."
+            ),
         ),
     ] = "basic",
     install_command: Annotated[
@@ -1095,6 +1098,7 @@ def workflow_check_command(
                             "warning": 0,
                             "failed": 1,
                         },
+                        "detected_ci_modes": [],
                         "usable_for_vibebench_ci": False,
                         "safe_preview_only": True,
                         "message": str(exc),
@@ -1119,6 +1123,11 @@ def render_workflow_check_result(payload: dict[str, object]) -> None:
     console.print(f"Status: {payload['status']}")
     console.print(f"Workflow path: {payload['workflow_path']}")
     console.print(f"Strict: {format_bool(payload['strict'])}")
+    detected_modes = payload.get("detected_ci_modes") or []
+    console.print(
+        "Detected CI modes: "
+        + (", ".join(str(mode) for mode in detected_modes) or "none")
+    )
     if payload.get("policy_evaluated"):
         console.print(
             f"Policy: {payload['policy_status']} ({payload['policy_source']})"

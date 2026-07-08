@@ -14,7 +14,7 @@ WORKFLOW_TEMPLATE_JSON = "workflow-template.json"
 WORKFLOW_TEMPLATE_SUMMARY = "workflow-template.md"
 WORKFLOW_TEMPLATE_YAML = "workflow-template.yml"
 WORKFLOW_PROFILES = {"generic", "python", "node", "fullstack", "auto"}
-WORKFLOW_CI_MODES = {"basic", "adoption", "adoption-policy", "strict"}
+WORKFLOW_CI_MODES = {"basic", "default", "adoption", "adoption-policy", "strict"}
 DEFAULT_WORKFLOW_INSTALL_COMMAND = "python3 -m pip install -e ."
 
 
@@ -144,7 +144,7 @@ def workflow_template_error_payload(
 
 def workflow_template_commands(ci_mode: str) -> list[str]:
     """Return the VibeBench commands included in a workflow CI mode."""
-    if ci_mode == "basic":
+    if ci_mode in {"basic", "default"}:
         return [
             "python3 -m vibebench config --check",
             "python3 -m vibebench ci",

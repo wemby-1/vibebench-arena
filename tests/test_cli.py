@@ -1697,6 +1697,7 @@ def test_workflow_template_install_command_is_not_executed(tmp_path: Path) -> No
 
 def test_workflow_template_ci_modes_generate_expected_commands(tmp_path: Path) -> None:
     basic = workflow_template_payload_for(tmp_path, "--ci-mode", "basic")
+    default = workflow_template_payload_for(tmp_path, "--ci-mode", "default")
     adoption = workflow_template_payload_for(tmp_path, "--ci-mode", "adoption")
     adoption_policy = workflow_template_payload_for(
         tmp_path, "--ci-mode", "adoption-policy"
@@ -1707,6 +1708,7 @@ def test_workflow_template_ci_modes_generate_expected_commands(tmp_path: Path) -
         "python3 -m vibebench config --check",
         "python3 -m vibebench ci",
     ]
+    assert default["commands"] == basic["commands"]
     assert adoption["commands"] == ["python3 -m vibebench ci --adoption"]
     assert adoption_policy["commands"] == [
         "python3 -m vibebench ci --adoption-policy"
@@ -1806,6 +1808,12 @@ jobs:
 """
 
 
+def workflow_with_command(command: str) -> str:
+    return minimal_vibebench_workflow().replace(
+        "python3 -m vibebench ci", command
+    )
+
+
 def workflow_check_payload_for(root: Path, *extra: str) -> dict[str, object]:
     result = runner.invoke(
         app,
@@ -1838,6 +1846,122 @@ def test_workflow_check_valid_minimal_vibebench_workflow_passes(
     assert payload["workflow_path"] == str(workflow)
     assert payload["usable_for_vibebench_ci"] is True
     assert payload["summary"]["failed"] == 0
+
+
+@pytest.mark.parametrize(
+    ("command", "expected_modes"),
+    [
+        ("python3 -m vibebench ci", ["default"]),
+        ("python -m vibebench ci --json", ["default"]),
+        ("python3 -m vibebench ci --adoption", ["adoption"]),
+        ("python -m vibebench ci --adoption --json", ["adoption"]),
+        ("python3 -m vibebench ci --adoption-policy", ["adoption-policy"]),
+        ("python -m vibebench ci --adoption-policy --json", ["adoption-policy"]),
+        ("uv run python -m vibebench ci", ["default"]),
+        ("uv run python3 -m vibebench ci --adoption", ["adoption"]),
+        (
+            "uv run python -m vibebench ci --adoption-policy --json",
+            ["adoption-policy"],
+        ),
+    ],
+)
+def test_workflow_check_detects_ci_modes(
+    tmp_path: Path, command: str, expected_modes: list[str]
+) -> None:
+    write_workflow(tmp_path, workflow_with_command(command))
+
+    payload = workflow_check_payload_for(tmp_path)
+
+    assert payload["detected_ci_modes"] == expected_modes
+
+
+def test_workflow_check_detects_modes_from_multiline_run_block(
+    tmp_path: Path,
+) -> None:
+    write_workflow(
+        tmp_path,
+        """name: VibeBench
+on:
+  pull_request:
+jobs:
+  vibebench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout
+      - run: |
+          python3 -m vibebench config --check
+          python3 -m vibebench ci --adoption
+""",
+    )
+
+    payload = workflow_check_payload_for(tmp_path)
+
+    assert payload["detected_ci_modes"] == ["adoption"]
+
+
+def test_workflow_check_dedupes_detected_modes_in_stable_order(
+    tmp_path: Path,
+) -> None:
+    write_workflow(
+        tmp_path,
+        minimal_vibebench_workflow()
+        + "      - run: python3 -m vibebench ci --adoption-policy\n"
+        + "      - run: python3 -m vibebench ci --adoption\n"
+        + "      - run: python3 -m vibebench ci --adoption\n",
+    )
+
+    payload = workflow_check_payload_for(tmp_path)
+
+    assert payload["detected_ci_modes"] == [
+        "default",
+        "adoption",
+        "adoption-policy",
+    ]
+
+
+def test_workflow_check_all_aggregates_detected_modes_deterministically(
+    tmp_path: Path,
+) -> None:
+    write_workflow(
+        tmp_path, workflow_with_command("python3 -m vibebench ci --adoption-policy")
+    )
+    write_workflow(
+        tmp_path, workflow_with_command("python3 -m vibebench ci"), name="ci.yml"
+    )
+
+    payload = workflow_check_payload_for(tmp_path, "--all")
+
+    assert payload["detected_ci_modes"] == ["default", "adoption-policy"]
+
+
+@pytest.mark.parametrize(
+    ("mode", "expected_modes"),
+    [
+        ("adoption", ["adoption"]),
+        ("adoption-policy", ["adoption-policy"]),
+    ],
+)
+def test_workflow_check_detects_workflow_template_modes(
+    tmp_path: Path, mode: str, expected_modes: list[str]
+) -> None:
+    generated = runner.invoke(
+        app,
+        [
+            "workflow-template",
+            "--project-root",
+            str(tmp_path),
+            "--ci-mode",
+            mode,
+            "--json",
+        ],
+    )
+    template_payload = json.loads(generated.output)
+    write_workflow(tmp_path, str(template_payload["workflow_yaml"]))
+
+    payload = workflow_check_payload_for(tmp_path)
+
+    assert generated.exit_code == 0
+    assert payload["detected_ci_modes"] == expected_modes
 
 
 def test_workflow_check_reports_missing_vibebench_invocation(
@@ -1946,6 +2070,7 @@ def test_workflow_check_json_output_and_summary_output(tmp_path: Path) -> None:
     assert result.output.lstrip().startswith("{")
     assert payload == written
     assert markdown.startswith("# VibeBench Workflow Check")
+    assert "- Detected CI modes: default" in markdown
 
 
 def test_workflow_check_does_not_modify_existing_workflow(tmp_path: Path) -> None:

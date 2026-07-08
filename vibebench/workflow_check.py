@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,11 @@ VIBEBENCH_CI_PATTERNS = [
     "uv run python -m vibebench ci",
     "uv run python3 -m vibebench ci",
 ]
+CI_MODE_ORDER = ["default", "adoption", "adoption-policy"]
+VIBEBENCH_CI_COMMAND_RE = re.compile(
+    r"(?:uv\s+run\s+)?python3?\s+-m\s+vibebench\s+ci\b[^\n;&|]*",
+    re.IGNORECASE,
+)
 OPTIONAL_VIBEBENCH_PATTERNS = {
     "vibebench_ci_json": "vibebench ci --json",
     "workflow_template_ci": "vibebench ci --workflow-template",
@@ -74,6 +80,7 @@ def workflow_check_payload(
 
     checks: list[dict[str, Any]] = []
     findings: list[dict[str, Any]] = []
+    detected_ci_modes: list[str] = []
     selected_workflow_path = selected_paths[0] if selected_paths else None
 
     if not selected_paths:
@@ -90,11 +97,14 @@ def workflow_check_payload(
             advice="Run python3 -m vibebench workflow-template to preview one.",
         )
     for workflow_path in selected_paths:
-        analyze_workflow_path(
-            workflow_path, strict=strict, checks=checks, findings=findings
+        detected_ci_modes.extend(
+            analyze_workflow_path(
+                workflow_path, strict=strict, checks=checks, findings=findings
+            )
         )
 
     summary = summarize_checks(checks)
+    detected_ci_modes = unique_ci_modes(detected_ci_modes)
     status = "failed" if summary["failed"] else "passed"
     usable = bool(
         selected_paths
@@ -114,6 +124,7 @@ def workflow_check_payload(
         "checks": checks,
         "findings": findings,
         "summary": summary,
+        "detected_ci_modes": detected_ci_modes,
         "usable_for_vibebench_ci": usable,
         "safe_preview_only": True,
         "message": workflow_check_message(status, selected_workflow_path),
@@ -156,7 +167,7 @@ def analyze_workflow_path(
     strict: bool,
     checks: list[dict[str, Any]],
     findings: list[dict[str, Any]],
-) -> None:
+) -> list[str]:
     """Analyze one workflow file with conservative text checks."""
     if not workflow_path.exists():
         add_check(
@@ -170,7 +181,7 @@ def analyze_workflow_path(
             path=workflow_path,
             advice="Run python3 -m vibebench workflow-template to preview one.",
         )
-        return
+        return []
     if not workflow_path.is_file():
         add_check(
             checks,
@@ -183,7 +194,7 @@ def analyze_workflow_path(
             path=workflow_path,
             advice="Pass --path to a workflow YAML file.",
         )
-        return
+        return []
     try:
         content = workflow_path.read_text(encoding="utf-8")
     except OSError as exc:
@@ -198,7 +209,7 @@ def analyze_workflow_path(
             path=workflow_path,
             advice="Check file permissions and rerun workflow-check.",
         )
-        return
+        return []
 
     add_check(
         checks,
@@ -237,9 +248,10 @@ def analyze_workflow_path(
         advice="Add a GitHub Actions workflow YAML body.",
     )
     if not non_empty:
-        return
+        return []
 
     lower = content.lower()
+    detected_ci_modes = detect_vibebench_ci_modes(content)
     basic_requirements = [
         ("workflow_has_name", "Workflow has a name", "name:"),
         ("workflow_has_on", "Workflow has triggers", "on:"),
@@ -347,6 +359,31 @@ def analyze_workflow_path(
                 "writes are explicitly reviewed."
             ),
         )
+
+    return detected_ci_modes
+
+
+def detect_vibebench_ci_modes(content: str) -> list[str]:
+    """Return VibeBench CI modes found in workflow-like text."""
+    modes: list[str] = []
+    scan_content = "\n".join(
+        line for line in content.splitlines() if not line.lstrip().startswith("#")
+    )
+    for match in VIBEBENCH_CI_COMMAND_RE.finditer(scan_content):
+        command = match.group(0).lower()
+        if "--adoption-policy" in command:
+            modes.append("adoption-policy")
+        elif "--adoption" in command:
+            modes.append("adoption")
+        else:
+            modes.append("default")
+    return unique_ci_modes(modes)
+
+
+def unique_ci_modes(modes: list[str]) -> list[str]:
+    """Deduplicate VibeBench CI modes in stable reporting order."""
+    seen = {mode for mode in modes if mode in CI_MODE_ORDER}
+    return [mode for mode in CI_MODE_ORDER if mode in seen]
 
 
 def add_check(
@@ -754,12 +791,15 @@ def write_workflow_check_summary(path: Path, payload: dict[str, Any]) -> Path:
 def workflow_check_markdown(payload: dict[str, Any]) -> str:
     """Render a compact workflow-check Markdown report."""
     summary = payload["summary"]
+    detected_modes = payload.get("detected_ci_modes") or []
+    detected_modes_text = ", ".join(str(mode) for mode in detected_modes) or "none"
     lines = [
         "# VibeBench Workflow Check",
         "",
         f"- Status: {payload['status']}",
         f"- Workflow path: `{payload['workflow_path']}`",
         f"- Strict: {str(payload['strict']).lower()}",
+        f"- Detected CI modes: {detected_modes_text}",
         f"- Passed: {summary['passed']}",
         f"- Warnings: {summary['warning']}",
         f"- Failed: {summary['failed']}",
