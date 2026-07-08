@@ -166,6 +166,8 @@ Git diff 风险分析会标记：
 
 ```bash
 python -m pip install -e ".[dev]"
+python3 -m vibebench preflight
+python3 -m vibebench preflight --json
 python3 -m vibebench project-scan
 python3 -m vibebench onboard
 python3 -m vibebench onboard --json
@@ -173,7 +175,7 @@ python3 -m vibebench onboard --enforce-policy
 python3 -m vibebench init --profile auto
 python3 -m vibebench config --check
 python3 -m vibebench workflow-template
-python3 -m vibebench workflow-template --ci-mode adoption --write
+python3 -m vibebench workflow-template --write
 python3 -m vibebench workflow-check
 python3 -m vibebench ci --dry-run
 python3 -m vibebench ci --onboard
@@ -225,7 +227,7 @@ python -m vibebench gh-summary
 python -m vibebench compare
 ```
 
-`vibebench project-scan` 是只读项目检查：它描述 readiness 信号，默认只报告不失败。`vibebench project-scan --enforce-policy` 会执行 `project_scan.policy`；`vibebench ci --project-scan` 只写入 report-only 的 `project-scan.json` 和 `project-scan.md`，`vibebench ci --project-scan-policy` 写入同名 artifacts 并在策略失败时让 CI 失败。`vibebench onboard` 是只读人工接入计划；`vibebench onboard --enforce-policy` 会用 `onboard.policy` 判断该计划是否可接受。`vibebench ci --onboard` 写入 report-only 的 `onboard.json` 和 `onboard.md`，`vibebench ci --onboard-policy` 写入同名 artifacts 并只在 onboarding policy 失败时让 CI 失败。`vibebench init --profile auto` 会安全创建 starter `.vibebench/config.yaml`，不会安装依赖、创建 runs/baselines/workflow 或修改仓库设置。auto 可选择 `generic`、`python`、`node` 或 `fullstack`；`--profile python` 使用 `python3 -m pytest -q` 和 `python3 -m ruff check .`，`--profile node` 复用已有 `package.json` lint/test scripts，`--profile generic` 使用保守的无额外依赖 starter。已有配置默认拒绝覆盖，只有明确传入 `--force` 才会覆盖。使用 `python3 -m vibebench workflow-template` 预览安全的 GitHub Actions workflow；确认后可用 `--ci-mode adoption --write` 写入 `.github/workflows/vibebench.yml`。使用 `python3 -m vibebench workflow-check` 以只读方式检查已有 workflow 是否适合 VibeBench CI，也可用 `python3 -m vibebench workflow-check --enforce-policy` 执行 `workflow_check.policy`。需要在 CI 中留存证据时，可加 `python3 -m vibebench ci --workflow-check` 写入 report-only 的 `workflow-check.json` 和 `workflow-check.md`；需要把同名 artifacts 变成门禁时，使用 `python3 -m vibebench ci --workflow-check-policy`，而 `--skip-workflow-check` 会同时跳过这两种模式。默认 CI 其余行为不变。`python3 -m vibebench ci --workflow-template` 只会在 run 目录写入可审阅的 `workflow-template.json`、`workflow-template.md` 和 `workflow-template.yml` artifacts；除明确的 template `--write` 外，这些命令不会调用 GitHub，也不会创建或修改 `.github/workflows`。随后运行 `python3 -m vibebench config --check`、`python3 -m vibebench ci --dry-run` 和 `python3 -m vibebench ci`。
+`vibebench preflight` 是第一个安全的只读入口：它会复用 project-scan、onboard、workflow-template 预览和 workflow-check，而且不会创建 config、runs、baselines 或 workflow。`vibebench project-scan` 是只读项目检查：它描述 readiness 信号，默认只报告不失败。`vibebench project-scan --enforce-policy` 会执行 `project_scan.policy`；`vibebench ci --project-scan` 只写入 report-only 的 `project-scan.json` 和 `project-scan.md`，`vibebench ci --project-scan-policy` 写入同名 artifacts 并在策略失败时让 CI 失败。`vibebench onboard` 是只读人工接入计划；`vibebench onboard --enforce-policy` 会用 `onboard.policy` 判断该计划是否可接受。`vibebench ci --onboard` 写入 report-only 的 `onboard.json` 和 `onboard.md`，`vibebench ci --onboard-policy` 写入同名 artifacts 并只在 onboarding policy 失败时让 CI 失败。`vibebench init --profile auto` 会安全创建 starter `.vibebench/config.yaml`，不会安装依赖、创建 runs/baselines/workflow 或修改仓库设置。auto 可选择 `generic`、`python`、`node` 或 `fullstack`；`--profile python` 使用 `python3 -m pytest -q` 和 `python3 -m ruff check .`，`--profile node` 复用已有 `package.json` lint/test scripts，`--profile generic` 使用保守的无额外依赖 starter。已有配置默认拒绝覆盖，只有明确传入 `--force` 才会覆盖。使用 `python3 -m vibebench workflow-template` 预览安全的 GitHub Actions workflow；确认后可用 `--write` 写入 `.github/workflows/vibebench.yml`。使用 `python3 -m vibebench workflow-check` 以只读方式检查已有 workflow 是否适合 VibeBench CI，也可用 `python3 -m vibebench workflow-check --enforce-policy` 执行 `workflow_check.policy`。需要在 CI 中留存证据时，可加 `python3 -m vibebench ci --workflow-check` 写入 report-only 的 `workflow-check.json` 和 `workflow-check.md`；需要把同名 artifacts 变成门禁时，使用 `python3 -m vibebench ci --workflow-check-policy`，而 `--skip-workflow-check` 会同时跳过这两种模式。默认 CI 其余行为不变。`python3 -m vibebench ci --workflow-template` 只会在 run 目录写入可审阅的 `workflow-template.json`、`workflow-template.md` 和 `workflow-template.yml` artifacts；除明确的 template `--write` 外，这些命令不会调用 GitHub，也不会创建或修改 `.github/workflows`。随后运行 `python3 -m vibebench config --check`、`python3 -m vibebench ci --dry-run` 和 `python3 -m vibebench ci`。
 
 如果要检查安装与打包准备情况，可以使用 editable install 和本地 metadata 检查：
 
@@ -322,7 +324,11 @@ onboard:
 ## 示例流程
 
 ```bash
-# 先以只读方式检查项目接入状态
+# 第一个安全的只读入口
+python3 -m vibebench preflight
+python3 -m vibebench preflight --json
+
+# 需要更细的只读信息时再运行这些命令
 python3 -m vibebench project-scan
 python3 -m vibebench onboard
 python3 -m vibebench onboard --json
@@ -335,6 +341,7 @@ python3 -m vibebench init --profile auto
 
 # 查看并验证最终生效的配置
 python3 -m vibebench config --check
+python3 -m vibebench workflow-template --write
 python3 -m vibebench ci --dry-run
 python3 -m vibebench ci
 
@@ -428,7 +435,7 @@ python -m vibebench gh-summary
 python -m vibebench compare
 ```
 
-`vibebench config --show` 会校验并汇总当前 `.vibebench/config.yaml`，包括项目名、配置的命令、gate 策略和 risk 策略。使用 `python3 -m vibebench init --profile auto --dry-run --json` 预览 stack-aware 初始化，然后运行 `python3 -m vibebench init --profile auto`、`python3 -m vibebench config --check`、`python3 -m vibebench workflow-template`、`python3 -m vibebench workflow-template --ci-mode adoption --write`、`python3 -m vibebench workflow-check`、`python3 -m vibebench ci --dry-run` 和 `python3 -m vibebench ci` 完成首次接入。`python -m vibebench config --show --json` 可输出机器可读配置摘要。`python -m vibebench config --check`、`python -m vibebench config --check --advice` 或 `python -m vibebench config --check --json --advice` 可在完整流水线前执行配置一致性诊断并按需显示修复建议。加上 `--write-json PATH` 或 `--write-summary PATH` 可持久化 `config-check.json` 或 `config-check.md` artifact。
+`vibebench config --show` 会校验并汇总当前 `.vibebench/config.yaml`，包括项目名、配置的命令、gate 策略和 risk 策略。使用 `python3 -m vibebench preflight` 作为第一个安全命令，然后运行 `python3 -m vibebench init --profile auto`、`python3 -m vibebench config --check`、`python3 -m vibebench workflow-template --write`、`python3 -m vibebench workflow-check`、`python3 -m vibebench ci --dry-run` 和 `python3 -m vibebench ci` 完成首次接入。`python -m vibebench config --show --json` 可输出机器可读配置摘要。`python -m vibebench config --check`、`python -m vibebench config --check --advice` 或 `python -m vibebench config --check --json --advice` 可在完整流水线前执行配置一致性诊断并按需显示修复建议。加上 `--write-json PATH` 或 `--write-summary PATH` 可持久化 `config-check.json` 或 `config-check.md` artifact。
 
 `vibebench doctor` 是轻量环境检查，会检查 Python、Git、配置有效性、配置命令是否可找到，以及 `.vibebench/runs/` 是否可写。它不会真正运行配置里的 test/lint 命令。`python -m vibebench doctor --strict` 会执行更强的发布/CI 预检，额外要求最近运行具备 manifest、bundle 和 report 等产物。加上 `--advice` 会显示简短修复建议但不会修改文件，例如 `python -m vibebench doctor --strict --advice`。可用 `python -m vibebench doctor --json`、`python -m vibebench doctor --json --strict` 或 `python -m vibebench doctor --json --strict --advice` 输出机器可读诊断结果。`vibebench release-check` 会把配置一致性、package readiness、strict doctor、最新运行、manifest 一致性、artifact inventory、CI plan 生成和 `git diff --check` 汇总成一个只读的发布前检查；`--json` 适合自动化，`--write-json PATH` 和 `--write-summary PATH` 可持久化 `release-check.json` 与 `release-check.md`。`vibebench release-checklist` 会输出指定版本的只读发布 checklist，可用于打 tag 前后检查，并且不会创建 tag、release、发布/上传 package 或 bump version；加上 `--write-json PATH` 或 `--write-summary PATH` 可保存本地 release audit record。`vibebench release-body` 会从 `RELEASE_NOTES_vX.Y.Z.md` 准备可复制到 GitHub Release 的正文；`--check` 会检查残留的 release-candidate 文案。它只在本地运行，绝不会创建 tag、GitHub Release、上传、发布、bump version 或安装依赖。`vibebench release-audit` 会创建本地 audit 文件夹，包含 package-check、publish-check、release-checklist、release-body、汇总 audit artifacts 和 `release-audit-manifest.json` checksum；bundle 会包含 `release-body.md` 和 `release-body.json`，便于本地 release handoff/audit 使用。可按需使用 `--output-dir PATH`、`--version VERSION` 或 `--json`。加上 `python3 -m vibebench release-audit --zip` 可创建本地 `release-audit.zip`，或用 `python3 -m vibebench release-audit --zip-output PATH` 指定 archive 路径。使用 `python3 -m vibebench release-audit --verify PATH` 可只读校验 release audit 文件夹或 zip；如果 manifest 存在，也会校验 checksum。它只在本地运行，不会创建 tag、GitHub Release、调用 GitHub API、发布/上传 package、bump version 或安装依赖。
 

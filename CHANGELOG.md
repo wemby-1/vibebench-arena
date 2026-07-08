@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added read-only `vibebench preflight` as the first safe adoption entry point, reusing project-scan, onboard, workflow-template preview, and workflow-check with JSON/Markdown outputs, strict mode, and no config/run/baseline/workflow writes by default.
+
 - Added optional `vibebench ci --workflow-check` report-only artifacts (`workflow-check.json` and `workflow-check.md`) with artifact, latest, manifest, bundle, and GitHub summary discovery while keeping default CI unchanged.
 
 - Added read-only `vibebench workflow-check` validation for existing GitHub Actions workflows, with JSON/Markdown outputs, strict mode, VibeBench CI readiness checks, and warnings for risky release, publish, deploy, or repository-write automation without calling GitHub or modifying workflow files.

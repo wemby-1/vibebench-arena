@@ -142,6 +142,12 @@ from vibebench.pr_comment import (
     post_pr_comment,
     pr_comment_post_json,
 )
+from vibebench.preflight import (
+    preflight_json,
+    preflight_payload,
+    write_preflight_json,
+    write_preflight_summary,
+)
 from vibebench.project_scan import (
     run_project_scan,
     write_project_scan_json,
@@ -516,6 +522,118 @@ def render_project_init_result(payload: dict[str, object]) -> None:
     console.print("Next steps:")
     for step in payload["next_steps"]:
         console.print(f"  {step}")
+
+
+def config_status_text(config: dict[str, object]) -> str:
+    """Return a concise config status label for human output."""
+    if config.get("valid"):
+        return "valid"
+    if config.get("exists"):
+        return "invalid"
+    return "missing"
+
+
+@app.command("preflight")
+def preflight_command(
+    project_root: ProjectRootOption = Path("."),
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print preflight result as pure JSON."),
+    ] = False,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write preflight JSON to PATH."),
+    ] = None,
+    summary_output: Annotated[
+        Path | None,
+        typer.Option("--summary-output", help="Write preflight Markdown to PATH."),
+    ] = None,
+    strict: Annotated[
+        bool,
+        typer.Option(
+            "--strict",
+            help="Exit non-zero when preflight is not ready for safe adoption.",
+        ),
+    ] = False,
+    profile: Annotated[
+        str,
+        typer.Option(
+            "--profile",
+            help="Init/workflow profile: generic, python, node, fullstack, or auto.",
+        ),
+    ] = "auto",
+) -> None:
+    """Summarize safe read-only adoption readiness before enabling VibeBench."""
+    root = project_root.resolve()
+    try:
+        payload = preflight_payload(root, profile=profile, strict=strict)
+        if json_output is not None:
+            write_preflight_json(resolve_output_path(root, json_output), payload)
+        if summary_output is not None:
+            write_preflight_summary(resolve_output_path(root, summary_output), payload)
+    except ConfigError as exc:
+        if as_json:
+            print(
+                json.dumps(
+                    {
+                        "status": "failed",
+                        "strict": strict,
+                        "project_root": str(root),
+                        "message": str(exc),
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+        else:
+            err_console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if as_json:
+        print(preflight_json(payload))
+    else:
+        render_preflight_result(payload)
+    if payload.get("strict_failed"):
+        raise typer.Exit(code=1)
+
+
+def render_preflight_result(payload: dict[str, object]) -> None:
+    """Render concise preflight output."""
+    stacks = payload.get("detected_stacks") or []
+    stack_text = ", ".join(str(stack) for stack in stacks) if stacks else "none"
+    config = payload["config"]
+    workflow_check = payload["workflow_check"]
+    workflow_template = payload["workflow_template"]
+    assert isinstance(config, dict)
+    assert isinstance(workflow_check, dict)
+    assert isinstance(workflow_template, dict)
+    console.print("VibeBench preflight")
+    console.print(f"Project root: {payload['project_root']}")
+    console.print(f"Status: {payload['status']}")
+    console.print(f"Strict: {format_bool(payload['strict'])}")
+    console.print(f"Detected stacks: {stack_text}")
+    console.print(
+        f"Profile: {payload['requested_profile']} -> {payload['resolved_profile']}"
+    )
+    console.print(f"Config status: {config_status_text(config)}")
+    console.print(f"Config message: {config['message']}")
+    console.print(
+        "Workflow status: "
+        f"{workflow_check['status']} ({workflow_check['workflow_count']} discovered)"
+    )
+    console.print(
+        "Workflow template preview: "
+        f"{workflow_template['output_path']} ({workflow_template['ci_mode']})"
+    )
+    console.print(str(payload["message"]))
+    console.print("Recommendations:")
+    for recommendation in payload.get("recommendations", []):
+        console.print(f"  {recommendation}")
+    console.print("Suggested commands:")
+    for command in payload.get("commands", []):
+        console.print(f"  {command}")
+    if payload.get("strict_failed"):
+        console.print("Strict mode: preflight is not ready for safe adoption.")
 
 
 @app.command("onboard")

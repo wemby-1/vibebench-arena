@@ -15,6 +15,8 @@ python -m vibebench package-check
 ## Initialize VibeBench
 
 ```bash
+python3 -m vibebench preflight
+python3 -m vibebench preflight --json
 python3 -m vibebench project-scan
 python3 -m vibebench onboard
 python3 -m vibebench onboard --json
@@ -24,7 +26,7 @@ python3 -m vibebench project-scan --enforce-policy
 python3 -m vibebench init --profile auto
 python3 -m vibebench config --check
 python3 -m vibebench workflow-template
-python3 -m vibebench workflow-template --ci-mode adoption --write
+python3 -m vibebench workflow-template --write
 python3 -m vibebench workflow-check
 python3 -m vibebench ci --dry-run
 python3 -m vibebench ci --onboard
@@ -34,7 +36,7 @@ python3 -m vibebench ci --project-scan-policy
 python3 -m vibebench ci
 ```
 
-`project-scan` is read-only inspection: it describes readiness signals, detects stacks, recommends an init profile, inspects config status, and never creates config, runs, baselines, dependencies, or workflow files. `project-scan --enforce-policy` evaluates `project_scan.policy`; `ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `ci --project-scan-policy` writes the same artifacts and enforces the policy. `onboard` is a read-only human adoption plan. `onboard --enforce-policy` evaluates whether that plan is acceptable under `onboard.policy`; `ci --onboard` writes report-only `onboard.json` and `onboard.md`, while `ci --onboard-policy` writes the same artifacts and fails CI only when the onboarding policy fails. `workflow-check` is also report-only by default; `workflow-check --enforce-policy` evaluates `workflow_check.policy`, `ci --workflow-check` writes report-only `workflow-check.json` and `workflow-check.md`, and `ci --workflow-check-policy` reuses those artifacts as an explicit gate. `--skip-workflow-check` suppresses both workflow-check modes. Default CI is unchanged unless one of those flags is passed.
+`preflight` is the first safe read-only command: it reuses project-scan, onboard, workflow-template preview, and workflow-check without creating config, runs, baselines, dependencies, or workflow files. `project-scan` is read-only inspection: it describes readiness signals, detects stacks, recommends an init profile, inspects config status, and never creates config, runs, baselines, dependencies, or workflow files. `project-scan --enforce-policy` evaluates `project_scan.policy`; `ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `ci --project-scan-policy` writes the same artifacts and enforces the policy. `onboard` is a read-only human adoption plan. `onboard --enforce-policy` evaluates whether that plan is acceptable under `onboard.policy`; `ci --onboard` writes report-only `onboard.json` and `onboard.md`, while `ci --onboard-policy` writes the same artifacts and fails CI only when the onboarding policy fails. `workflow-check` is also report-only by default; `workflow-check --enforce-policy` evaluates `workflow_check.policy`, `ci --workflow-check` writes report-only `workflow-check.json` and `workflow-check.md`, and `ci --workflow-check-policy` reuses those artifacts as an explicit gate. `--skip-workflow-check` suppresses both workflow-check modes. Default CI is unchanged unless one of those flags is passed.
 
 ```yaml
 project_scan:
@@ -57,7 +59,7 @@ onboard:
     require_ci_ready: false
 ```
 
-`init --profile auto` creates `.vibebench/config.yaml` only. It can select `generic`, `python`, `node`, or `fullstack` from project markers, reusing existing `package.json` lint/test scripts when present. Init never installs dependencies, never overwrites config unless `--force` is provided, and does not create `.vibebench/runs`, `.vibebench/baselines`, workflows, or repository settings. `workflow-template` previews a conservative GitHub Actions workflow by default; use `workflow-template --ci-mode adoption --write` to create `.github/workflows/vibebench.yml` after review. `workflow-check` validates an existing workflow read-only and warns about missing VibeBench CI shape or risky release/publish/deploy commands; `workflow-check --enforce-policy` turns those signals into a gate with `workflow_check.policy`. `ci --workflow-check` records report-only `workflow-check.json` and `workflow-check.md` evidence, while `ci --workflow-check-policy` reuses the same artifacts and fails only when workflow policy fails. `ci --workflow-template` creates `workflow-template.json`, `workflow-template.md`, and `workflow-template.yml` artifacts in the run directory only. These paths do not call GitHub, add credentials, enable Pages, publish packages, create releases, or modify workflows except explicit template `--write`.
+`init --profile auto` creates `.vibebench/config.yaml` only. It can select `generic`, `python`, `node`, or `fullstack` from project markers, reusing existing `package.json` lint/test scripts when present. Init never installs dependencies, never overwrites config unless `--force` is provided, and does not create `.vibebench/runs`, `.vibebench/baselines`, workflows, or repository settings. `workflow-template` previews a conservative GitHub Actions workflow by default; use `workflow-template --write` to create `.github/workflows/vibebench.yml` after review. `workflow-check` validates an existing workflow read-only and warns about missing VibeBench CI shape or risky release/publish/deploy commands; `workflow-check --enforce-policy` turns those signals into a gate with `workflow_check.policy`. `ci --workflow-check` records report-only `workflow-check.json` and `workflow-check.md` evidence, while `ci --workflow-check-policy` reuses the same artifacts and fails only when workflow policy fails. `ci --workflow-template` creates `workflow-template.json`, `workflow-template.md`, and `workflow-template.yml` artifacts in the run directory only. These paths do not call GitHub, add credentials, enable Pages, publish packages, create releases, or modify workflows except explicit template `--write`.
 
 ## Inspect Effective Config
 
@@ -93,7 +95,7 @@ python -m vibebench release-check
 python -m vibebench release-checklist
 ```
 
-`vibebench project-scan` is the read-only onboarding check; use `--strict` when invalid config or malformed `package.json` should fail automation. `vibebench config --show` validates and summarizes the active `.vibebench/config.yaml`. Use `python -m vibebench config --show --json` for machine-readable config inspection. Use `python -m vibebench config --check`, `python -m vibebench config --check --advice`, or `python -m vibebench config --check --json --advice` for focused consistency diagnostics and optional repair guidance. Add `--write-json PATH` or `--write-summary PATH` to persist config check artifacts.
+`vibebench preflight` is the single read-only adoption summary; use `vibebench project-scan`, `onboard`, and `workflow-check` when you want deeper component detail. `vibebench project-scan` is the read-only onboarding check; use `--strict` when invalid config or malformed `package.json` should fail automation. `vibebench config --show` validates and summarizes the active `.vibebench/config.yaml`. Use `python -m vibebench config --show --json` for machine-readable config inspection. Use `python -m vibebench config --check`, `python -m vibebench config --check --advice`, or `python -m vibebench config --check --json --advice` for focused consistency diagnostics and optional repair guidance. Add `--write-json PATH` or `--write-summary PATH` to persist config check artifacts.
 
 `vibebench package-check` validates local package metadata, imports, console script configuration, README/license references, and key docs without network access or PyPI publishing. Add `--write-json PATH` or `--write-summary PATH` to save package-check artifacts.
 

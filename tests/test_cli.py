@@ -19,6 +19,7 @@ def test_cli_help_works() -> None:
     assert "Codex-first quality gate" in result.output
     assert "version" in result.output
     assert "init" in result.output
+    assert "preflight" in result.output
 
 
 def config_path(root: Path) -> Path:
@@ -401,6 +402,231 @@ def onboard_payload_for(root: Path, *extra: str) -> dict[str, object]:
     assert result.output.lstrip().startswith("{")
     assert result.exit_code == 0
     return json.loads(result.output)
+
+
+def preflight_payload_for(root: Path, *extra: str) -> dict[str, object]:
+    result = runner.invoke(
+        app,
+        ["preflight", "--project-root", str(root), "--json", *extra],
+    )
+    assert result.output.lstrip().startswith("{")
+    assert result.exit_code == 0
+    return json.loads(result.output)
+
+
+def test_preflight_help_works() -> None:
+    result = runner.invoke(app, ["preflight", "--help"])
+
+    assert result.exit_code == 0
+    assert "--json" in result.output
+    assert "--summary-output" in result.output
+    assert "--profile" in result.output
+
+
+def test_preflight_human_output(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["preflight", "--project-root", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert "VibeBench preflight" in result.output
+    assert "Detected stacks: none" in result.output
+    assert "Config status: missing" in result.output
+    assert "python3 -m vibebench init --profile auto" in result.output
+
+
+def test_preflight_json_stdout_is_pure_json(tmp_path: Path) -> None:
+    payload = preflight_payload_for(tmp_path)
+
+    assert payload["status"] == "unknown"
+    assert payload["strict"] is False
+    assert payload["detected_stacks"] == []
+    assert payload["config"]["exists"] is False
+    assert payload["workflow_check"]["workflow_count"] == 0
+    assert payload["commands"][0] == "python3 -m vibebench init --profile auto"
+    assert payload["generated_at"].endswith("Z")
+
+
+def test_preflight_json_output_writes_file_with_human_stdout(tmp_path: Path) -> None:
+    output = tmp_path / "preflight" / "result.json"
+
+    result = runner.invoke(
+        app,
+        ["preflight", "--project-root", str(tmp_path), "--json-output", str(output)],
+    )
+    payload = json.loads(output.read_text(encoding="utf-8"))
+
+    assert result.exit_code == 0
+    assert "VibeBench preflight" in result.output
+    assert not result.output.lstrip().startswith("{")
+    assert payload["status"] == "unknown"
+
+
+def test_preflight_summary_output_writes_markdown(tmp_path: Path) -> None:
+    output = tmp_path / "preflight.md"
+
+    result = runner.invoke(
+        app,
+        ["preflight", "--project-root", str(tmp_path), "--summary-output", str(output)],
+    )
+    markdown = output.read_text(encoding="utf-8")
+
+    assert result.exit_code == 0
+    assert markdown.startswith("# VibeBench Preflight")
+    assert "## Recommendations" in markdown
+    assert "python3 -m vibebench init --profile auto" in markdown
+
+
+def test_preflight_json_and_summary_keep_stdout_json(tmp_path: Path) -> None:
+    summary = tmp_path / "preflight.md"
+    json_output = tmp_path / "preflight.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "preflight",
+            "--project-root",
+            str(tmp_path),
+            "--json",
+            "--json-output",
+            str(json_output),
+            "--summary-output",
+            str(summary),
+        ],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    assert payload == json.loads(json_output.read_text(encoding="utf-8"))
+    assert summary.exists()
+
+
+def test_preflight_empty_project_behavior(tmp_path: Path) -> None:
+    payload = preflight_payload_for(tmp_path)
+
+    assert payload["status"] == "unknown"
+    assert payload["actionable_project_signal"] is False
+    assert payload["project_scan"]["status"] == "needs_init"
+    assert payload["workflow_check"]["workflow_count"] == 0
+    assert payload["recommendations"][0].startswith(
+        "Add Python or Node project markers"
+    )
+
+
+def test_preflight_python_project_behavior(tmp_path: Path) -> None:
+    tmp_path.joinpath("tests").mkdir()
+    tmp_path.joinpath("pyproject.toml").write_text("[project]\nname='demo'\n")
+
+    payload = preflight_payload_for(tmp_path)
+
+    assert payload["status"] == "needs_init"
+    assert payload["detected_stacks"] == ["python"]
+    assert payload["resolved_profile"] == "python"
+    assert "python:pyproject.toml" in payload["detection_reasons"]
+
+
+def test_preflight_node_project_behavior(tmp_path: Path) -> None:
+    write_package_json(tmp_path, {"lint": "eslint .", "test": "vitest run"})
+
+    payload = preflight_payload_for(tmp_path)
+
+    assert payload["status"] == "needs_init"
+    assert payload["detected_stacks"] == ["node"]
+    assert payload["resolved_profile"] == "node"
+
+
+def test_preflight_fullstack_project_behavior(tmp_path: Path) -> None:
+    tmp_path.joinpath("tests").mkdir()
+    tmp_path.joinpath("pyproject.toml").write_text("[project]\nname='demo'\n")
+    write_package_json(tmp_path, {"lint": "eslint .", "test": "vitest run"})
+
+    payload = preflight_payload_for(tmp_path)
+
+    assert payload["status"] == "needs_init"
+    assert payload["detected_stacks"] == ["python", "node"]
+    assert payload["resolved_profile"] == "fullstack"
+
+
+def test_preflight_invalid_config_behavior(tmp_path: Path) -> None:
+    config_path(tmp_path).parent.mkdir(parents=True)
+    config_path(tmp_path).write_text("project:\n  name: ''\n", encoding="utf-8")
+
+    payload = preflight_payload_for(tmp_path)
+
+    assert payload["status"] == "blocked"
+    assert payload["config"]["exists"] is True
+    assert payload["config"]["valid"] is False
+    assert "Fix .vibebench/config.yaml" in payload["recommendations"][0]
+
+
+def test_preflight_strict_fails_without_actionable_signal(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        ["preflight", "--project-root", str(tmp_path), "--strict", "--json"],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert payload["strict_failed"] is True
+    assert payload["status"] == "unknown"
+
+
+def test_preflight_strict_fails_on_invalid_config(tmp_path: Path) -> None:
+    config_path(tmp_path).parent.mkdir(parents=True)
+    config_path(tmp_path).write_text("project:\n  name: ''\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["preflight", "--project-root", str(tmp_path), "--strict", "--json"],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert payload["strict_failed"] is True
+    assert payload["status"] == "blocked"
+
+
+def test_preflight_strict_fails_on_existing_workflow_blockers(tmp_path: Path) -> None:
+    runner.invoke(app, ["init", "--project-root", str(tmp_path), "--profile", "python"])
+    write_workflow(
+        tmp_path,
+        minimal_vibebench_workflow().replace(
+            "python3 -m vibebench ci", "python3 -m pytest -q"
+        ),
+    )
+
+    result = runner.invoke(
+        app,
+        ["preflight", "--project-root", str(tmp_path), "--strict", "--json"],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert payload["strict_failed"] is True
+    assert payload["workflow_check"]["workflow_count"] == 1
+    assert payload["workflow_check"]["strict_status"] == "failed"
+
+
+def test_preflight_creates_no_runs_baselines_workflows_or_config(
+    tmp_path: Path,
+) -> None:
+    result = runner.invoke(app, ["preflight", "--project-root", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert not config_path(tmp_path).exists()
+    assert not (tmp_path / ".vibebench" / "runs").exists()
+    assert not (tmp_path / ".vibebench" / "baselines").exists()
+    assert not (tmp_path / ".github").exists()
+
+
+def test_preflight_profile_auto_reuses_shared_detector(tmp_path: Path) -> None:
+    tmp_path.joinpath("tests").mkdir()
+    tmp_path.joinpath("pyproject.toml").write_text("[project]\nname='demo'\n")
+
+    payload = preflight_payload_for(tmp_path, "--profile", "auto")
+
+    assert payload["requested_profile"] == "auto"
+    assert payload["resolved_profile"] == "python"
+    assert payload["workflow_template"]["resolved_profile"] == "python"
 
 
 def test_onboard_human_output(tmp_path: Path) -> None:

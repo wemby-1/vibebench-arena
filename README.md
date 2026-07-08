@@ -169,6 +169,8 @@ These Git diff rules are configurable in `.vibebench/config.yaml` under the `ris
 
 ```bash
 python -m pip install -e ".[dev]"
+python3 -m vibebench preflight
+python3 -m vibebench preflight --json
 python3 -m vibebench project-scan
 python3 -m vibebench onboard
 python3 -m vibebench onboard --json
@@ -176,7 +178,7 @@ python3 -m vibebench onboard --enforce-policy
 python3 -m vibebench init --profile auto
 python3 -m vibebench config --check
 python3 -m vibebench workflow-template
-python3 -m vibebench workflow-template --ci-mode adoption --write
+python3 -m vibebench workflow-template --write
 python3 -m vibebench workflow-check
 python3 -m vibebench ci --dry-run
 python3 -m vibebench ci --onboard
@@ -228,7 +230,7 @@ python -m vibebench gh-summary
 python -m vibebench compare
 ```
 
-`vibebench project-scan` is read-only inspection: it describes project readiness signals and is report-only by default. `vibebench project-scan --enforce-policy` evaluates `project_scan.policy`; `vibebench ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `vibebench ci --project-scan-policy` writes the same artifacts and fails CI when policy fails. `vibebench onboard` is a read-only human adoption plan; `vibebench onboard --enforce-policy` evaluates whether that plan is acceptable under `onboard.policy`. `vibebench ci --onboard` writes report-only `onboard.json` and `onboard.md`, while `vibebench ci --onboard-policy` writes the same artifacts and fails CI only when the onboarding policy fails. `vibebench init --profile auto` creates a safe starter `.vibebench/config.yaml` without installing dependencies, creating runs/baselines/workflows, or changing repository settings. Auto can select `generic`, `python`, `node`, or `fullstack`; use `--profile python` for `python3 -m pytest -q` plus `python3 -m ruff check .`, `--profile node` for existing `package.json` lint/test scripts, or `--profile generic` for a conservative dependency-free starter. Existing config is not overwritten unless `--force` is used. Use `python3 -m vibebench workflow-template` to preview a safe GitHub Actions workflow; add `--ci-mode adoption --write` to create `.github/workflows/vibebench.yml` after review. Use `python3 -m vibebench workflow-check` to validate an existing workflow read-only before CI adoption, or `python3 -m vibebench workflow-check --enforce-policy` to evaluate `workflow_check.policy`. Add `python3 -m vibebench ci --workflow-check` when CI should record report-only `workflow-check.json` and `workflow-check.md` evidence; use `python3 -m vibebench ci --workflow-check-policy` when the same artifacts should become an explicit gate, and `--skip-workflow-check` to suppress both modes. Default CI remains unchanged otherwise. `python3 -m vibebench ci --workflow-template` writes reviewable `workflow-template.json`, `workflow-template.md`, and `workflow-template.yml` run artifacts only; neither command calls GitHub or creates or modifies `.github/workflows` except explicit template `--write`. Then run `python3 -m vibebench config --check`, `python3 -m vibebench ci --dry-run`, and `python3 -m vibebench ci`.
+`vibebench preflight` is the first safe read-only entry point: it reuses project-scan, onboard, workflow-template preview, and workflow-check without creating config, runs, baselines, or workflows. `vibebench project-scan` is read-only inspection: it describes project readiness signals and is report-only by default. `vibebench project-scan --enforce-policy` evaluates `project_scan.policy`; `vibebench ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `vibebench ci --project-scan-policy` writes the same artifacts and fails CI when policy fails. `vibebench onboard` is a read-only human adoption plan; `vibebench onboard --enforce-policy` evaluates whether that plan is acceptable under `onboard.policy`. `vibebench ci --onboard` writes report-only `onboard.json` and `onboard.md`, while `vibebench ci --onboard-policy` writes the same artifacts and fails CI only when the onboarding policy fails. `vibebench init --profile auto` creates a safe starter `.vibebench/config.yaml` without installing dependencies, creating runs/baselines/workflows, or changing repository settings. Auto can select `generic`, `python`, `node`, or `fullstack`; use `--profile python` for `python3 -m pytest -q` plus `python3 -m ruff check .`, `--profile node` for existing `package.json` lint/test scripts, or `--profile generic` for a conservative dependency-free starter. Existing config is not overwritten unless `--force` is used. Use `python3 -m vibebench workflow-template` to preview a safe GitHub Actions workflow; add `--write` to create `.github/workflows/vibebench.yml` after review. Use `python3 -m vibebench workflow-check` to validate an existing workflow read-only before CI adoption, or `python3 -m vibebench workflow-check --enforce-policy` to evaluate `workflow_check.policy`. Add `python3 -m vibebench ci --workflow-check` when CI should record report-only `workflow-check.json` and `workflow-check.md` evidence; use `python3 -m vibebench ci --workflow-check-policy` when the same artifacts should become an explicit gate, and `--skip-workflow-check` to suppress both modes. Default CI remains unchanged otherwise. `python3 -m vibebench ci --workflow-template` writes reviewable `workflow-template.json`, `workflow-template.md`, and `workflow-template.yml` run artifacts only; neither command calls GitHub or creates or modifies `.github/workflows` except explicit template `--write`. Then run `python3 -m vibebench config --check`, `python3 -m vibebench ci --dry-run`, and `python3 -m vibebench ci`.
 
 For packaging readiness, use editable install and local metadata checks:
 
@@ -335,7 +337,11 @@ onboard:
 ## Example Workflow
 
 ```bash
-# Inspect onboarding readiness without writing files
+# First safe read-only entry point
+python3 -m vibebench preflight
+python3 -m vibebench preflight --json
+
+# Optional deeper read-only checks
 python3 -m vibebench project-scan
 python3 -m vibebench onboard
 python3 -m vibebench onboard --json
@@ -348,6 +354,7 @@ python3 -m vibebench init --profile auto
 
 # Inspect and validate the effective configuration
 python3 -m vibebench config --check
+python3 -m vibebench workflow-template --write
 python3 -m vibebench ci --dry-run
 python3 -m vibebench ci
 
@@ -441,7 +448,7 @@ python -m vibebench gh-summary
 python -m vibebench compare
 ```
 
-`vibebench config --show` validates and summarizes the active `.vibebench/config.yaml`, including project name, configured commands, gate policy, and risk policy. Use `python3 -m vibebench init --profile auto --dry-run --json` to preview stack-aware project init, then `python3 -m vibebench init --profile auto`, `python3 -m vibebench config --check`, `python3 -m vibebench workflow-template`, `python3 -m vibebench workflow-template --ci-mode adoption --write`, `python3 -m vibebench workflow-check`, `python3 -m vibebench ci --dry-run`, and `python3 -m vibebench ci` for first-run onboarding. Use `python -m vibebench config --show --json` for machine-readable config inspection. Use `python -m vibebench config --check`, `python -m vibebench config --check --advice`, or `python -m vibebench config --check --json --advice` to run focused consistency diagnostics before the full pipeline. Add `--write-json PATH` or `--write-summary PATH` to persist `config-check.json` or `config-check.md` artifacts.
+`vibebench config --show` validates and summarizes the active `.vibebench/config.yaml`, including project name, configured commands, gate policy, and risk policy. Use `python3 -m vibebench preflight` as the first safe command, then `python3 -m vibebench init --profile auto`, `python3 -m vibebench config --check`, `python3 -m vibebench workflow-template --write`, `python3 -m vibebench workflow-check`, `python3 -m vibebench ci --dry-run`, and `python3 -m vibebench ci` for first-run onboarding. Use `python -m vibebench config --show --json` for machine-readable config inspection. Use `python -m vibebench config --check`, `python -m vibebench config --check --advice`, or `python -m vibebench config --check --json --advice` to run focused consistency diagnostics before the full pipeline. Add `--write-json PATH` or `--write-summary PATH` to persist `config-check.json` or `config-check.md` artifacts.
 
 `vibebench doctor` is a lightweight environment check for Python, Git, config validity, configured command executables, and whether `.vibebench/runs/` is writable. It does not run the configured checks. Use `python -m vibebench doctor --strict` for a stronger release/CI preflight that also expects recent run artifacts such as the manifest, bundle, and report. Add `--advice` to show concise repair suggestions without modifying files, for example `python -m vibebench doctor --strict --advice`. Use `python -m vibebench doctor --json`, `python -m vibebench doctor --json --strict`, or `python -m vibebench doctor --json --strict --advice` for machine-readable diagnostics. `vibebench release-check` combines config consistency, package readiness, strict doctor, latest run, manifest consistency, artifact inventory, CI plan generation, and `git diff --check` into one read-only pre-release readiness check; add `--json` for automation, or `--write-json PATH` and `--write-summary PATH` to persist `release-check.json` and `release-check.md`. `vibebench release-checklist` prints a read-only pre/post-tag checklist for a target version and never creates tags, releases, package publishes/uploads, or version bumps; add `--write-json PATH` or `--write-summary PATH` for local release audit records. `vibebench release-body` prepares a copy/paste GitHub Release body from `RELEASE_NOTES_vX.Y.Z.md`; `--check` catches stale release-candidate wording. It is local-only and never creates tags, GitHub Releases, uploads, publishes, version bumps, or dependency installs. `vibebench release-audit` creates a local audit folder with package-check, publish-check, release-checklist, release-body, aggregate audit artifacts, and `release-audit-manifest.json` checksums; the bundle includes `release-body.md` and `release-body.json` for local release handoff/audit use. Use `--output-dir PATH`, `--version VERSION`, or `--json` as needed. Add `python3 -m vibebench release-audit --zip` to create a local `release-audit.zip`, or `python3 -m vibebench release-audit --zip-output PATH` to choose the archive path. Use `python3 -m vibebench release-audit --verify PATH` to read-only verify a release audit directory or zip, including checksum validation when the manifest is present. It is local-only and does not tag, create GitHub Releases, call the GitHub API, publish/upload packages, bump versions, or install dependencies.
 
