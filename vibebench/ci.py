@@ -215,6 +215,7 @@ def plan_ci_pipeline(
     workflow_check: bool = False,
     workflow_check_policy: bool = False,
     skip_workflow_check: bool = False,
+    workflow_check_required_ci_modes: list[str] | None = None,
     workflow_template: bool = False,
     skip_workflow_template: bool = False,
     workflow_template_profile: str = "auto",
@@ -316,19 +317,28 @@ def plan_ci_pipeline(
                 artifact=Path(PREFLIGHT_JSON),
             )
         )
+    workflow_check_required_text = ", ".join(
+        workflow_check_required_ci_modes or []
+    )
     if workflow_check_policy and not skip_workflow_check:
+        message = "Would write workflow-check artifacts with policy enforcement"
+        if workflow_check_required_text:
+            message += f"; required CI modes: {workflow_check_required_text}"
         steps.append(
             planned_step(
                 "workflow-check",
-                "Would write workflow-check artifacts with policy enforcement",
+                message,
                 artifact=Path(WORKFLOW_CHECK_JSON),
             )
         )
     elif workflow_check and not skip_workflow_check:
+        message = "Would write workflow-check artifacts"
+        if workflow_check_required_text:
+            message += f" requiring CI modes: {workflow_check_required_text}"
         steps.append(
             planned_step(
                 "workflow-check",
-                "Would write workflow-check artifacts",
+                message,
                 artifact=Path(WORKFLOW_CHECK_JSON),
             )
         )
@@ -746,6 +756,7 @@ def run_ci_pipeline(
     workflow_check: bool = False,
     workflow_check_policy: bool = False,
     skip_workflow_check: bool = False,
+    workflow_check_required_ci_modes: list[str] | None = None,
     workflow_template: bool = False,
     skip_workflow_template: bool = False,
     workflow_template_profile: str = "auto",
@@ -798,7 +809,11 @@ def run_ci_pipeline(
     onboard_enabled = onboard or onboard_policy
     project_scan_enabled = project_scan or project_scan_policy
     preflight_enabled = preflight or preflight_policy
-    workflow_check_enabled = workflow_check or workflow_check_policy
+    workflow_check_enabled = (
+        workflow_check
+        or workflow_check_policy
+        or bool(workflow_check_required_ci_modes)
+    )
     root = project_root.resolve()
     selected_run_dir = run_dir.resolve() if run_dir is not None else None
     steps: list[CiStepResult] = []
@@ -851,6 +866,7 @@ def run_ci_pipeline(
             workflow_check=workflow_check_enabled,
             workflow_check_policy=workflow_check_policy,
             skip_workflow_check=skip_workflow_check,
+            workflow_check_required_ci_modes=workflow_check_required_ci_modes,
             workflow_template=workflow_template,
             skip_workflow_template=skip_workflow_template,
             regression_check=regression_check,
@@ -925,6 +941,7 @@ def run_ci_pipeline(
                 root,
                 selected_run_dir,
                 enforce_policy=workflow_check_policy,
+                required_ci_modes=workflow_check_required_ci_modes,
             )
         )
     elif skip_workflow_check:
@@ -1428,6 +1445,7 @@ def run_workflow_check_artifact_step(
     run_dir: Path,
     *,
     enforce_policy: bool = False,
+    required_ci_modes: list[str] | None = None,
 ) -> CiStepResult:
     """Generate workflow-check artifacts and return CI step status."""
     started = time.perf_counter()
@@ -1436,6 +1454,7 @@ def run_workflow_check_artifact_step(
             project_root,
             strict=False,
             enforce_policy=enforce_policy,
+            required_ci_modes=required_ci_modes,
         )
         json_path = run_dir / WORKFLOW_CHECK_JSON
         summary_path = run_dir / WORKFLOW_CHECK_SUMMARY
@@ -1452,6 +1471,19 @@ def run_workflow_check_artifact_step(
     policy_suffix = ""
     if payload.get("policy_evaluated"):
         policy_suffix = f"; policy {payload['policy_status']}"
+    required_suffix = ""
+    if payload.get("required_ci_modes"):
+        required_suffix = (
+            "; required CI modes "
+            + ", ".join(str(mode) for mode in payload["required_ci_modes"])
+            + "; missing "
+            + (
+                ", ".join(
+                    str(mode) for mode in payload.get("missing_required_ci_modes", [])
+                )
+                or "none"
+            )
+        )
     status: StepStatus = "passed" if payload["status"] == "passed" else "failed"
     exit_code = 0 if status == "passed" else 1
     return CiStepResult(
@@ -1461,7 +1493,7 @@ def run_workflow_check_artifact_step(
         artifact_path=json_path,
         message=(
             f"status {payload['status']}; findings {len(payload['findings'])}"
-            f"{policy_suffix}"
+            f"{required_suffix}{policy_suffix}"
         ),
         duration_seconds=elapsed_since(started),
     )

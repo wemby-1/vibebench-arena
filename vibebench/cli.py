@@ -3524,6 +3524,16 @@ def ci_command(
             help="Skip optional workflow-check artifact generation.",
         ),
     ] = False,
+    workflow_check_require_ci_mode: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--workflow-check-require-ci-mode",
+            help=(
+                "Require detected workflow-check CI mode(s): default, adoption, or "
+                "adoption-policy. Repeat the option to require multiple modes."
+            ),
+        ),
+    ] = None,
     workflow_template: Annotated[
         bool,
         typer.Option(
@@ -3702,6 +3712,16 @@ def ci_command(
         console.print("[red]CI plan output options require --dry-run or --plan.[/]")
         raise typer.Exit(code=1)
 
+    normalized_workflow_check_required_ci_modes = normalize_required_ci_modes(
+        workflow_check_require_ci_mode or [],
+        source="--workflow-check-require-ci-mode",
+    )
+    if normalized_workflow_check_required_ci_modes and skip_workflow_check:
+        raise ConfigError(
+            "--workflow-check-require-ci-mode cannot be combined with "
+            "--skip-workflow-check."
+        )
+
     adoption_enabled = adoption or adoption_policy
     effective_onboard_policy = (onboard_policy or adoption_policy) and not skip_onboard
     effective_project_scan_policy = project_scan_policy or (
@@ -3720,7 +3740,9 @@ def ci_command(
         adoption_enabled and not adoption_policy and not skip_project_scan
     )
     effective_workflow_check = (
-        workflow_check or (adoption_enabled and not adoption_policy)
+        workflow_check
+        or bool(normalized_workflow_check_required_ci_modes)
+        or (adoption_enabled and not adoption_policy)
     ) and not skip_workflow_check
     effective_preflight = (
         preflight or (adoption_enabled and not adoption_policy)
@@ -3780,6 +3802,9 @@ def ci_command(
                 workflow_check=effective_workflow_check,
                 workflow_check_policy=effective_workflow_check_policy,
                 skip_workflow_check=skip_workflow_check,
+                workflow_check_required_ci_modes=(
+                    normalized_workflow_check_required_ci_modes
+                ),
                 workflow_template=effective_workflow_template,
                 skip_workflow_template=skip_workflow_template,
                 workflow_template_profile=workflow_template_profile,
@@ -3845,6 +3870,9 @@ def ci_command(
                 workflow_check=effective_workflow_check,
                 workflow_check_policy=effective_workflow_check_policy,
                 skip_workflow_check=skip_workflow_check,
+                workflow_check_required_ci_modes=(
+                    normalized_workflow_check_required_ci_modes
+                ),
                 workflow_template=effective_workflow_template,
                 skip_workflow_template=skip_workflow_template,
                 workflow_template_profile=workflow_template_profile,
