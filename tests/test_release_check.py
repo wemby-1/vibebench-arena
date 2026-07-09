@@ -139,6 +139,25 @@ def create_ready_project(root: Path) -> Path:
     return run_dir
 
 
+def write_vibebench_workflow(root: Path, command: str) -> None:
+    workflow = root / ".github" / "workflows" / "ci.yml"
+    workflow.parent.mkdir(parents=True, exist_ok=True)
+    workflow.write_text(
+        f"""name: CI
+on:
+  pull_request:
+  push:
+jobs:
+  vibebench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout
+      - run: {command}
+""",
+        encoding="utf-8",
+    )
+
+
 def git_status(root: Path) -> str:
     return subprocess.run(
         ["git", "status", "--short"],
@@ -184,6 +203,117 @@ def test_release_check_json_output_is_pure(tmp_path: Path) -> None:
     assert checks["run_index"]["status"] == "passed"
     assert checks["compare"]["status"] == "passed"
     assert "insufficient data" in checks["compare"]["message"]
+
+
+def test_release_check_require_adoption_workflow_passes(
+    tmp_path: Path,
+) -> None:
+    create_ready_project(tmp_path)
+    write_vibebench_workflow(
+        tmp_path,
+        "python3 -m vibebench ci --adoption-policy",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "release-check",
+            "--project-root",
+            str(tmp_path),
+            "--require-adoption-workflow",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    checks = {check["name"]: check for check in payload["checks"]}
+    workflow_check = checks["workflow_ci_modes"]
+    assert result.exit_code == 0
+    assert workflow_check["status"] == "passed"
+    assert workflow_check["detected_ci_modes"] == ["adoption-policy"]
+    assert workflow_check["required_ci_modes"] == ["adoption-policy"]
+    assert workflow_check["missing_required_ci_modes"] == []
+    assert "VibeBench Release Check" not in result.output
+
+
+def test_release_check_require_adoption_workflow_fails_for_default_mode(
+    tmp_path: Path,
+) -> None:
+    create_ready_project(tmp_path)
+    write_vibebench_workflow(tmp_path, "python3 -m vibebench ci")
+
+    result = runner.invoke(
+        app,
+        [
+            "release-check",
+            "--project-root",
+            str(tmp_path),
+            "--require-adoption-workflow",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "workflow_ci_modes" in result.output
+    assert "adoption-policy" in result.output
+
+
+def test_release_check_workflow_ci_modes_dedupe_deterministically(
+    tmp_path: Path,
+) -> None:
+    create_ready_project(tmp_path)
+    write_vibebench_workflow(
+        tmp_path,
+        "python3 -m vibebench ci --adoption-policy",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "release-check",
+            "--project-root",
+            str(tmp_path),
+            "--require-workflow-ci-mode",
+            "adoption-policy",
+            "--require-adoption-workflow",
+            "--require-workflow-ci-mode",
+            "adoption-policy",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    workflow_check = next(
+        check for check in payload["checks"] if check["name"] == "workflow_ci_modes"
+    )
+    assert result.exit_code == 0
+    assert workflow_check["required_ci_modes"] == ["adoption-policy"]
+    assert workflow_check["missing_required_ci_modes"] == []
+
+
+def test_release_check_invalid_workflow_ci_mode_json_is_clean(
+    tmp_path: Path,
+) -> None:
+    create_ready_project(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "release-check",
+            "--project-root",
+            str(tmp_path),
+            "--require-workflow-ci-mode",
+            "preview",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 1
+    assert payload["status"] == "not-ready"
+    assert "--require-workflow-ci-mode must be one of" in payload["checks"][0][
+        "message"
+    ]
+    assert "VibeBench Release Check" not in result.output
 
 
 def test_release_check_missing_config_fails(tmp_path: Path) -> None:

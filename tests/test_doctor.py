@@ -204,6 +204,131 @@ def write_strict_artifacts(path: Path) -> Path:
     return run_dir
 
 
+def write_vibebench_workflow(path: Path, command: str) -> None:
+    workflow = path / ".github" / "workflows" / "ci.yml"
+    workflow.parent.mkdir(parents=True, exist_ok=True)
+    workflow.write_text(
+        f"""name: CI
+on:
+  pull_request:
+  push:
+jobs:
+  vibebench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout
+      - run: {command}
+""",
+        encoding="utf-8",
+    )
+
+
+def test_doctor_require_adoption_workflow_adds_check_row(
+    tmp_path: Path,
+) -> None:
+    init_git_repo(tmp_path)
+    write_config(tmp_path)
+    write_vibebench_workflow(
+        tmp_path,
+        "python3 -m vibebench ci --adoption-policy",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "doctor",
+            "--project-root",
+            str(tmp_path),
+            "--require-adoption-workflow",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "workflow_ci_modes" in result.output
+    assert "adoption-policy" in result.output
+
+
+def test_doctor_require_adoption_workflow_fails_for_default_mode(
+    tmp_path: Path,
+) -> None:
+    init_git_repo(tmp_path)
+    write_config(tmp_path)
+    write_vibebench_workflow(tmp_path, "python3 -m vibebench ci")
+
+    result = runner.invoke(
+        app,
+        [
+            "doctor",
+            "--project-root",
+            str(tmp_path),
+            "--require-adoption-workflow",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "workflow_ci_modes" in result.output
+    assert "adoption-policy" in result.output
+
+
+def test_doctor_json_strict_require_adoption_workflow_includes_mode_fields(
+    tmp_path: Path,
+) -> None:
+    init_git_repo(tmp_path)
+    write_config(tmp_path)
+    write_strict_artifacts(tmp_path)
+    write_vibebench_workflow(
+        tmp_path,
+        "python3 -m vibebench ci --adoption-policy",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "doctor",
+            "--project-root",
+            str(tmp_path),
+            "--json",
+            "--strict",
+            "--require-adoption-workflow",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    workflow_check = next(
+        check for check in payload["checks"] if check["name"] == "workflow_ci_modes"
+    )
+    assert result.exit_code == 0
+    assert payload["strict"] is True
+    assert workflow_check["status"] == "passed"
+    assert workflow_check["detected_ci_modes"] == ["adoption-policy"]
+    assert workflow_check["required_ci_modes"] == ["adoption-policy"]
+    assert workflow_check["missing_required_ci_modes"] == []
+    assert "VibeBench Doctor" not in result.output
+
+
+def test_doctor_invalid_workflow_ci_mode_json_is_clean(tmp_path: Path) -> None:
+    init_git_repo(tmp_path)
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "doctor",
+            "--project-root",
+            str(tmp_path),
+            "--require-workflow-ci-mode",
+            "preview",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 1
+    assert payload["overall_status"] == "failed"
+    assert "--require-workflow-ci-mode must be one of" in payload["message"]
+    assert "VibeBench Doctor" not in result.output
+
+
 def test_doctor_strict_includes_strict_checks(tmp_path: Path) -> None:
     init_git_repo(tmp_path)
     write_config(tmp_path)

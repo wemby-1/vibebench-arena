@@ -15,6 +15,7 @@ from vibebench.explain import find_latest_valid_run
 from vibebench.gitdiff import is_git_repo
 from vibebench.paths import config_dir, config_file
 from vibebench.report import ReportError, load_metrics
+from vibebench.workflow_check import normalize_required_ci_modes, workflow_check_payload
 
 DoctorStatus = Literal["passed", "warning", "failed"]
 
@@ -30,6 +31,9 @@ class DoctorCheck(BaseModel):
     status: DoctorStatus
     message: str
     advice: str | None = None
+    detected_ci_modes: list[str] | None = None
+    required_ci_modes: list[str] | None = None
+    missing_required_ci_modes: list[str] | None = None
 
 
 class DoctorResult(BaseModel):
@@ -49,6 +53,7 @@ def run_doctor(
     *,
     strict: bool = False,
     advice: bool = False,
+    required_workflow_ci_modes: list[str] | None = None,
 ) -> DoctorResult:
     """Run readiness diagnostics without executing configured checks."""
     root = project_root.resolve()
@@ -64,6 +69,13 @@ def run_doctor(
         if config is not None:
             checks.append(check_configured_commands(config))
         checks.append(check_runs_directory(root))
+        if required_workflow_ci_modes:
+            checks.append(
+                check_required_workflow_ci_modes(
+                    root,
+                    required_ci_modes=required_workflow_ci_modes,
+                )
+            )
         if strict:
             checks.extend(strict_checks(root))
 
@@ -109,6 +121,12 @@ def doctor_check_payload(
     }
     if include_advice and check.advice:
         payload["advice"] = check.advice
+    if check.detected_ci_modes is not None:
+        payload["detected_ci_modes"] = check.detected_ci_modes
+    if check.required_ci_modes is not None:
+        payload["required_ci_modes"] = check.required_ci_modes
+    if check.missing_required_ci_modes is not None:
+        payload["missing_required_ci_modes"] = check.missing_required_ci_modes
     return payload
 
 
@@ -137,6 +155,9 @@ def advice_for_check(check: DoctorCheck) -> str | None:
             "in `.vibebench/config.yaml`."
         ),
         "runs_directory": "Ensure `.vibebench/runs/` is writable.",
+        "workflow_ci_modes": (
+            "Update the workflow to run the required VibeBench CI mode."
+        ),
         "strict_ci_workflow": (
             "Run `python -m vibebench init` or add `.github/workflows/ci.yml`."
         ),
@@ -401,4 +422,58 @@ def check_runs_directory(project_root: Path) -> DoctorCheck:
         category="runs_directory",
         status="passed",
         message="writable",
+    )
+
+
+def check_required_workflow_ci_modes(
+    project_root: Path,
+    *,
+    required_ci_modes: list[str],
+) -> DoctorCheck:
+    """Check that the project workflow exposes the required VibeBench CI modes."""
+    normalized_required_ci_modes = normalize_required_ci_modes(
+        required_ci_modes,
+        source="required_workflow_ci_modes",
+    )
+    payload = workflow_check_payload(
+        project_root,
+        required_ci_modes=normalized_required_ci_modes,
+    )
+    detected_ci_modes = [str(mode) for mode in payload.get("detected_ci_modes") or []]
+    missing_required_ci_modes = [
+        str(mode) for mode in payload.get("missing_required_ci_modes") or []
+    ]
+    status: DoctorStatus = "passed" if not missing_required_ci_modes else "failed"
+    return DoctorCheck(
+        category="workflow_ci_modes",
+        status=status,
+        message=required_workflow_ci_modes_message(
+            detected_ci_modes=detected_ci_modes,
+            required_ci_modes=normalized_required_ci_modes,
+            missing_required_ci_modes=missing_required_ci_modes,
+        ),
+        detected_ci_modes=detected_ci_modes,
+        required_ci_modes=normalized_required_ci_modes,
+        missing_required_ci_modes=missing_required_ci_modes,
+    )
+
+
+def required_workflow_ci_modes_message(
+    *,
+    detected_ci_modes: list[str],
+    required_ci_modes: list[str],
+    missing_required_ci_modes: list[str],
+) -> str:
+    """Render a concise workflow CI mode readiness message."""
+    detected_text = ", ".join(detected_ci_modes) or "none"
+    required_text = ", ".join(required_ci_modes) or "none"
+    missing_text = ", ".join(missing_required_ci_modes) or "none"
+    prefix = (
+        "Required workflow CI modes detected."
+        if not missing_required_ci_modes
+        else "Required workflow CI modes missing."
+    )
+    return (
+        f"{prefix} Detected: {detected_text}. "
+        f"Required: {required_text}. Missing: {missing_text}."
     )

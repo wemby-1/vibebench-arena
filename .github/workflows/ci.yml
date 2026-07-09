@@ -35,7 +35,7 @@ jobs:
         run: python -m pytest -q
 
       - name: Run VibeBench CI pipeline
-        run: python -m vibebench ci
+        run: python -m vibebench ci --adoption-policy
 
       - name: Post VibeBench PR comment
         if: github.event_name == 'pull_request'

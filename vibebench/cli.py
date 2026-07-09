@@ -3352,6 +3352,19 @@ def resolve_adoption_workflow_required_ci_modes(
     )
 
 
+def resolve_readiness_required_ci_modes(
+    explicit_modes: list[str],
+    *,
+    require_adoption_workflow: bool,
+    source: str,
+) -> list[str]:
+    """Apply readiness workflow requirements with deterministic dedupe."""
+    modes = [*explicit_modes]
+    if require_adoption_workflow:
+        modes.append("adoption-policy")
+    return normalize_required_ci_modes(modes, source=source)
+
+
 @app.command("ci")
 def ci_command(
     project_root: ProjectRootOption = Path("."),
@@ -4080,9 +4093,58 @@ def doctor(
         bool,
         typer.Option("--advice", help="Show advice for failed or warning checks."),
     ] = False,
+    require_adoption_workflow: Annotated[
+        bool,
+        typer.Option(
+            "--require-adoption-workflow",
+            help="Require an adoption-policy VibeBench CI workflow.",
+        ),
+    ] = False,
+    require_workflow_ci_mode: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--require-workflow-ci-mode",
+            help=(
+                "Require detected VibeBench CI mode(s): default, adoption, or "
+                "adoption-policy. Repeat the option to require multiple modes."
+            ),
+        ),
+    ] = None,
 ) -> None:
     """Diagnose whether this project is ready to run VibeBench."""
-    result = run_doctor(project_root, strict=strict, advice=advice)
+    root = project_root.resolve()
+    try:
+        required_workflow_ci_modes = resolve_readiness_required_ci_modes(
+            require_workflow_ci_mode or [],
+            require_adoption_workflow=require_adoption_workflow,
+            source="--require-workflow-ci-mode",
+        )
+        result = run_doctor(
+            root,
+            strict=strict,
+            advice=advice,
+            required_workflow_ci_modes=required_workflow_ci_modes,
+        )
+    except ConfigError as exc:
+        if as_json:
+            print(
+                json.dumps(
+                    {
+                        "overall_status": "failed",
+                        "strict": strict,
+                        "advice": advice,
+                        "project_root": str(root),
+                        "checks": [],
+                        "message": str(exc),
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+        else:
+            err_console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
     if as_json:
         print(json.dumps(doctor_json_payload(result), indent=2, sort_keys=True))
     else:
@@ -4340,16 +4402,63 @@ def release_check_command(
             help="Write release readiness Markdown to this path.",
         ),
     ] = None,
+    require_adoption_workflow: Annotated[
+        bool,
+        typer.Option(
+            "--require-adoption-workflow",
+            help="Require an adoption-policy VibeBench CI workflow.",
+        ),
+    ] = False,
+    require_workflow_ci_mode: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--require-workflow-ci-mode",
+            help=(
+                "Require detected VibeBench CI mode(s): default, adoption, or "
+                "adoption-policy. Repeat the option to require multiple modes."
+            ),
+        ),
+    ] = None,
 ) -> None:
     """Run pre-release readiness checks."""
-    result = run_release_check(project_root)
+    root = project_root.resolve()
     try:
+        required_workflow_ci_modes = resolve_readiness_required_ci_modes(
+            require_workflow_ci_mode or [],
+            require_adoption_workflow=require_adoption_workflow,
+            source="--require-workflow-ci-mode",
+        )
+        result = run_release_check(
+            root,
+            required_workflow_ci_modes=required_workflow_ci_modes,
+        )
         if write_json is not None:
             write_release_check_json(result, write_json)
         if write_summary is not None:
             write_release_check_summary(result, write_summary)
-    except ReportError as exc:
-        typer.echo(f"Error: {exc}")
+    except (ReportError, ConfigError) as exc:
+        if as_json:
+            print(
+                json.dumps(
+                    {
+                        "status": "not-ready",
+                        "project_root": str(root),
+                        "latest_run_dir": None,
+                        "latest_run_id": None,
+                        "checks": [
+                            {
+                                "name": "workflow_ci_modes",
+                                "status": "failed",
+                                "message": str(exc),
+                            }
+                        ],
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+        else:
+            err_console.print(f"[red]{exc}[/]")
         raise typer.Exit(1) from exc
 
     if as_json:

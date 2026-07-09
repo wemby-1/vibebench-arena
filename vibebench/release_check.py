@@ -12,7 +12,7 @@ from vibebench.artifacts import collect_artifact_inventory
 from vibebench.compare import compare_runs
 from vibebench.config import ConfigError, load_effective_config
 from vibebench.config_check import config_check_payload, config_consistency_checks
-from vibebench.doctor import run_doctor
+from vibebench.doctor import check_required_workflow_ci_modes, run_doctor
 from vibebench.explain import find_latest_valid_run
 from vibebench.manifest import check_manifest
 from vibebench.package_check import run_package_check
@@ -33,6 +33,9 @@ class ReleaseReadinessCheck:
     name: str
     status: ReleaseCheckStatus
     message: str
+    detected_ci_modes: list[str] | None = None
+    required_ci_modes: list[str] | None = None
+    missing_required_ci_modes: list[str] | None = None
 
 
 @dataclass(frozen=True)
@@ -55,7 +58,11 @@ class ReleaseReadinessResult:
         return "ready" if self.ready else "not-ready"
 
 
-def run_release_check(project_root: Path) -> ReleaseReadinessResult:
+def run_release_check(
+    project_root: Path,
+    *,
+    required_workflow_ci_modes: list[str] | None = None,
+) -> ReleaseReadinessResult:
     """Run release readiness checks without modifying project files."""
     root = project_root.resolve()
     latest_run_dir: Path | None = None
@@ -67,6 +74,13 @@ def run_release_check(project_root: Path) -> ReleaseReadinessResult:
         check_package_build_readiness_opt_in(),
         check_doctor_strict(root),
     ]
+    if required_workflow_ci_modes:
+        checks.append(
+            check_release_workflow_ci_modes(
+                root,
+                required_ci_modes=required_workflow_ci_modes,
+            )
+        )
 
     latest_check, latest_run_dir = check_latest_run(root)
     checks.append(latest_check)
@@ -145,6 +159,26 @@ def check_doctor_strict(project_root: Path) -> ReleaseReadinessCheck:
     failed = [check for check in result.checks if check.status == "failed"]
     message = "; ".join(f"{check.category}: {check.message}" for check in failed)
     return ReleaseReadinessCheck("doctor_strict", "failed", message)
+
+
+def check_release_workflow_ci_modes(
+    project_root: Path,
+    *,
+    required_ci_modes: list[str],
+) -> ReleaseReadinessCheck:
+    """Check that release readiness includes the required workflow CI modes."""
+    doctor_check = check_required_workflow_ci_modes(
+        project_root,
+        required_ci_modes=required_ci_modes,
+    )
+    return ReleaseReadinessCheck(
+        "workflow_ci_modes",
+        "passed" if doctor_check.status == "passed" else "failed",
+        doctor_check.message,
+        detected_ci_modes=doctor_check.detected_ci_modes,
+        required_ci_modes=doctor_check.required_ci_modes,
+        missing_required_ci_modes=doctor_check.missing_required_ci_modes,
+    )
 
 
 def check_latest_run(project_root: Path) -> tuple[ReleaseReadinessCheck, Path | None]:
@@ -287,11 +321,7 @@ def release_check_json_payload(result: ReleaseReadinessResult) -> dict[str, obje
         "latest_run_dir": str(result.latest_run_dir) if result.latest_run_dir else None,
         "latest_run_id": result.latest_run_id,
         "checks": [
-            {
-                "name": check.name,
-                "status": check.status,
-                "message": check.message,
-            }
+            release_check_item_payload(check)
             for check in result.checks
         ],
     }
@@ -300,6 +330,22 @@ def release_check_json_payload(result: ReleaseReadinessResult) -> dict[str, obje
 def release_check_json(result: ReleaseReadinessResult) -> str:
     """Return pretty deterministic JSON for release readiness."""
     return json.dumps(release_check_json_payload(result), indent=2, sort_keys=True)
+
+
+def release_check_item_payload(check: ReleaseReadinessCheck) -> dict[str, object]:
+    """Return a JSON-safe release readiness check payload."""
+    payload: dict[str, object] = {
+        "name": check.name,
+        "status": check.status,
+        "message": check.message,
+    }
+    if check.detected_ci_modes is not None:
+        payload["detected_ci_modes"] = check.detected_ci_modes
+    if check.required_ci_modes is not None:
+        payload["required_ci_modes"] = check.required_ci_modes
+    if check.missing_required_ci_modes is not None:
+        payload["missing_required_ci_modes"] = check.missing_required_ci_modes
+    return payload
 
 
 def release_check_markdown(result: ReleaseReadinessResult) -> str:

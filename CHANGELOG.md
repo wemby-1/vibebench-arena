@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added `release-check --require-adoption-workflow`, `release-check --require-workflow-ci-mode MODE`, `doctor --require-adoption-workflow`, and `doctor --require-workflow-ci-mode MODE` for opt-in workflow CI mode readiness checks without changing default behavior.
+
 - Added `vibebench ci --require-adoption-workflow` as a convenience enforcement layer over the existing workflow-check and preflight required CI mode flags, requiring `adoption-policy`, honoring skip flags, and failing fast on conflicting explicit mode requirements.
 
 - Added `preflight --require-ci-mode` so preflight can report required detected VibeBench CI modes and make missing modes fail only when `--strict` is also used.
