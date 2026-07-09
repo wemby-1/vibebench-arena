@@ -1973,6 +1973,205 @@ def workflow_check_payload_for(root: Path, *extra: str) -> dict[str, object]:
     return json.loads(result.output)
 
 
+
+def adoption_ready_payload_for(root: Path, *extra: str) -> dict[str, object]:
+    result = runner.invoke(
+        app,
+        ["adoption-ready", "--project-root", str(root), "--json", *extra],
+    )
+    assert result.output.lstrip().startswith("{")
+    assert result.exit_code == 0
+    return json.loads(result.output)
+
+
+def test_adoption_ready_help_works() -> None:
+    result = runner.invoke(app, ["adoption-ready", "--help"])
+
+    assert result.exit_code == 0
+    assert "adoption-ready" in result.output
+    assert "--require-mode" in result.output
+
+
+def test_adoption_ready_default_requires_adoption_policy(tmp_path: Path) -> None:
+    write_workflow(tmp_path, workflow_with_command("python3 -m vibebench ci"))
+
+    result = runner.invoke(
+        app,
+        ["adoption-ready", "--project-root", str(tmp_path), "--json"],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert payload["required_mode"] == "adoption-policy"
+    assert payload["required_ci_modes"] == ["adoption-policy"]
+    assert payload["missing_required_ci_modes"] == ["adoption-policy"]
+    assert payload["status"] == "failed"
+
+
+def test_adoption_ready_json_stdout_is_pure_json(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        ["adoption-ready", "--project-root", str(tmp_path), "--json"],
+    )
+
+    payload = json.loads(result.output)
+    assert result.output.lstrip().startswith("{")
+    assert payload["status"] == "failed"
+
+
+def test_adoption_ready_json_output_writes_payload_shape(tmp_path: Path) -> None:
+    output = tmp_path / "reports" / "adoption-ready.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "adoption-ready",
+            "--project-root",
+            str(tmp_path),
+            "--json",
+            "--json-output",
+            str(output),
+        ],
+    )
+    stdout_payload = json.loads(result.output)
+    file_payload = json.loads(output.read_text(encoding="utf-8"))
+
+    assert result.exit_code == 1
+    assert file_payload["status"] == stdout_payload["status"]
+    assert file_payload["checks"]
+    assert file_payload["required_ci_modes"] == ["adoption-policy"]
+
+
+def test_adoption_ready_summary_output_writes_markdown(tmp_path: Path) -> None:
+    output = tmp_path / "reports" / "adoption-ready.md"
+
+    result = runner.invoke(
+        app,
+        [
+            "adoption-ready",
+            "--project-root",
+            str(tmp_path),
+            "--summary-output",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 1
+    summary = output.read_text(encoding="utf-8")
+    assert summary.startswith("# VibeBench Adoption Readiness")
+    assert "Missing required modes: adoption-policy" in summary
+    assert "| Check | Status | Message | Advice |" in summary
+
+
+def test_adoption_ready_missing_adoption_policy_fails(tmp_path: Path) -> None:
+    write_workflow(tmp_path, workflow_with_command("python3 -m vibebench ci"))
+
+    result = runner.invoke(
+        app,
+        ["adoption-ready", "--project-root", str(tmp_path), "--json"],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert "adoption-policy" in payload["missing_required_ci_modes"]
+
+
+def test_adoption_ready_workflow_template_adoption_policy_passes(
+    tmp_path: Path,
+) -> None:
+    runner.invoke(app, ["init", "--project-root", str(tmp_path)])
+    template = workflow_template_payload_for(
+        tmp_path,
+        "--ci-mode",
+        "adoption-policy",
+    )
+    write_workflow(tmp_path, str(template["workflow_yaml"]))
+
+    payload = adoption_ready_payload_for(tmp_path)
+
+    assert payload["status"] == "passed"
+    assert payload["detected_ci_modes"] == ["adoption-policy"]
+    assert payload["missing_required_ci_modes"] == []
+
+
+def test_adoption_ready_require_mode_adoption_passes(tmp_path: Path) -> None:
+    runner.invoke(app, ["init", "--project-root", str(tmp_path)])
+    template = workflow_template_payload_for(tmp_path, "--ci-mode", "adoption")
+    write_workflow(tmp_path, str(template["workflow_yaml"]))
+
+    payload = adoption_ready_payload_for(tmp_path, "--require-mode", "adoption")
+
+    assert payload["status"] == "passed"
+    assert payload["required_ci_modes"] == ["adoption"]
+    assert payload["detected_ci_modes"] == ["adoption"]
+
+
+def test_adoption_ready_require_mode_dedupes_deterministically(
+    tmp_path: Path,
+) -> None:
+    runner.invoke(app, ["init", "--project-root", str(tmp_path)])
+    write_workflow(
+        tmp_path,
+        workflow_with_command("python3 -m vibebench ci --adoption-policy")
+        + "      - run: python3 -m vibebench ci --adoption\n",
+    )
+
+    payload = adoption_ready_payload_for(
+        tmp_path,
+        "--require-mode",
+        "adoption-policy",
+        "--require-mode",
+        "adoption",
+        "--require-mode",
+        "adoption-policy",
+    )
+
+    assert payload["required_ci_modes"] == ["adoption", "adoption-policy"]
+    assert payload["missing_required_ci_modes"] == []
+
+
+def test_adoption_ready_invalid_mode_fails_fast(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "adoption-ready",
+            "--project-root",
+            str(tmp_path),
+            "--require-mode",
+            "preview",
+            "--json",
+        ],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert "--require-mode must be one of" in payload["message"]
+
+
+def test_adoption_ready_strict_reports_strict_mode(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        ["adoption-ready", "--project-root", str(tmp_path), "--strict", "--json"],
+    )
+    payload = json.loads(result.output)
+
+    assert result.exit_code == 1
+    assert payload["strict"] is True
+    assert payload["status"] == "failed"
+
+
+def test_adoption_ready_default_creates_no_workflows_or_runs(
+    tmp_path: Path,
+) -> None:
+    result = runner.invoke(app, ["adoption-ready", "--project-root", str(tmp_path)])
+
+    assert result.exit_code == 1
+    assert not (tmp_path / ".github" / "workflows").exists()
+    assert not (tmp_path / ".vibebench" / "runs").exists()
+
+
 def test_workflow_check_missing_default_does_not_create_workflow_dir(
     tmp_path: Path,
 ) -> None:

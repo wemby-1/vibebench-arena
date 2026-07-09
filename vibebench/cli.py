@@ -11,6 +11,12 @@ from rich.console import Console
 from rich.table import Table
 
 from vibebench import __version__
+from vibebench.adoption_ready import (
+    adoption_ready_json,
+    adoption_ready_payload,
+    write_adoption_ready_json,
+    write_adoption_ready_summary,
+)
 from vibebench.annotate import AnnotationResult, generate_annotations
 from vibebench.artifacts import (
     ArtifactInventoryResult,
@@ -626,6 +632,121 @@ def preflight_command(
         enforce_policy and payload.get("policy_status") == "failed"
     ):
         raise typer.Exit(code=1)
+
+
+@app.command("adoption-ready")
+def adoption_ready_command(
+    project_root: ProjectRootOption = Path("."),
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print adoption readiness as pure JSON."),
+    ] = False,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write adoption readiness JSON to PATH."),
+    ] = None,
+    summary_output: Annotated[
+        Path | None,
+        typer.Option(
+            "--summary-output",
+            help="Write adoption readiness Markdown to PATH.",
+        ),
+    ] = None,
+    require_mode: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--require-mode",
+            help=(
+                "Require detected VibeBench CI mode(s): default, adoption, or "
+                "adoption-policy. Defaults to adoption-policy and can be repeated."
+            ),
+        ),
+    ] = None,
+    strict: Annotated[
+        bool,
+        typer.Option(
+            "--strict",
+            help="Also require strict doctor and release-check readiness.",
+        ),
+    ] = False,
+) -> None:
+    """Report whether this repository is ready for adoption workflow use."""
+    root = project_root.resolve()
+    try:
+        payload = adoption_ready_payload(
+            root,
+            strict=strict,
+            required_modes=require_mode,
+        )
+        if json_output is not None:
+            write_adoption_ready_json(resolve_output_path(root, json_output), payload)
+        if summary_output is not None:
+            write_adoption_ready_summary(
+                resolve_output_path(root, summary_output),
+                payload,
+            )
+    except ConfigError as exc:
+        if as_json:
+            print(
+                json.dumps(
+                    {
+                        "status": "failed",
+                        "strict": strict,
+                        "project_root": str(root),
+                        "message": str(exc),
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+        else:
+            err_console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if as_json:
+        print(adoption_ready_json(payload))
+    else:
+        render_adoption_ready_result(payload)
+    if payload.get("status") == "failed":
+        raise typer.Exit(code=1)
+
+
+def render_adoption_ready_result(payload: dict[str, object]) -> None:
+    """Render concise adoption readiness output."""
+    detected_modes = payload.get("detected_ci_modes") or []
+    required_modes = payload.get("required_ci_modes") or []
+    missing_modes = payload.get("missing_required_ci_modes") or []
+    console.print(str(payload["message"]))
+    console.print(f"Status: {payload['status']}")
+    console.print(f"Required mode: {payload.get('required_mode') or required_modes}")
+    console.print(
+        "Detected CI modes: "
+        + (", ".join(str(mode) for mode in detected_modes) or "none")
+    )
+    console.print(
+        "Missing required modes: "
+        + (", ".join(str(mode) for mode in missing_modes) or "none")
+    )
+
+    table = Table(title="Adoption readiness checks")
+    table.add_column("Check")
+    table.add_column("Status")
+    table.add_column("Message")
+    for item in payload.get("checks", []):
+        if not isinstance(item, dict):
+            continue
+        table.add_row(
+            str(item.get("title") or item.get("id") or ""),
+            str(item.get("status") or ""),
+            str(item.get("message") or ""),
+        )
+    console.print(table)
+
+    advice = payload.get("advice") or []
+    if advice:
+        console.print("Advice:")
+        for item in advice:
+            console.print(f"  {item}")
 
 
 def render_preflight_result(payload: dict[str, object]) -> None:
