@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added `vibebench ci --require-adoption-workflow` as a convenience enforcement layer over the existing workflow-check and preflight required CI mode flags, requiring `adoption-policy`, honoring skip flags, and failing fast on conflicting explicit mode requirements.
+
 - Added `preflight --require-ci-mode` so preflight can report required detected VibeBench CI modes and make missing modes fail only when `--strict` is also used.
 
 - Added `workflow-check --require-ci-mode` and `workflow_check.policy.required_ci_modes` so teams can explicitly verify expected VibeBench CI modes (`default`, `adoption`, and `adoption-policy`) from CLI checks and policy-gated CI artifacts.

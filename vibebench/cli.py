@@ -3329,6 +3329,29 @@ def resolve_ci_regression_guard(
     )
 
 
+def resolve_adoption_workflow_required_ci_modes(
+    explicit_modes: list[str],
+    *,
+    require_adoption_workflow: bool,
+    source: str,
+) -> list[str]:
+    """Apply the adoption workflow convenience flag to required CI modes."""
+    if not require_adoption_workflow:
+        return explicit_modes
+    conflicting = [mode for mode in explicit_modes if mode != "adoption-policy"]
+    if conflicting:
+        raise ConfigError(
+            "--require-adoption-workflow requires "
+            f"{source} adoption-policy mode. Remove conflicting mode(s): "
+            + ", ".join(conflicting)
+            + "."
+        )
+    return normalize_required_ci_modes(
+        [*explicit_modes, "adoption-policy"],
+        source=source,
+    )
+
+
 @app.command("ci")
 def ci_command(
     project_root: ProjectRootOption = Path("."),
@@ -3428,6 +3451,16 @@ def ci_command(
         typer.Option(
             "--adoption-policy",
             help="Write adoption artifacts and enforce policy-capable checks.",
+        ),
+    ] = False,
+    require_adoption_workflow: Annotated[
+        bool,
+        typer.Option(
+            "--require-adoption-workflow",
+            help=(
+                "Require adoption-policy CI mode through workflow-check and "
+                "preflight."
+            ),
         ),
     ] = False,
     onboard: Annotated[
@@ -3754,19 +3787,33 @@ def ci_command(
         console.print("[red]CI plan output options require --dry-run or --plan.[/]")
         raise typer.Exit(code=1)
 
-    normalized_workflow_check_required_ci_modes = normalize_required_ci_modes(
+    explicit_workflow_check_required_ci_modes = normalize_required_ci_modes(
         workflow_check_require_ci_mode or [],
         source="--workflow-check-require-ci-mode",
     )
-    normalized_preflight_required_ci_modes = normalize_required_ci_modes(
+    explicit_preflight_required_ci_modes = normalize_required_ci_modes(
         preflight_require_ci_mode or [],
         source="--preflight-require-ci-mode",
     )
-    if normalized_workflow_check_required_ci_modes and skip_workflow_check:
+    if explicit_workflow_check_required_ci_modes and skip_workflow_check:
         raise ConfigError(
             "--workflow-check-require-ci-mode cannot be combined with "
             "--skip-workflow-check."
         )
+    normalized_workflow_check_required_ci_modes = (
+        resolve_adoption_workflow_required_ci_modes(
+            explicit_workflow_check_required_ci_modes,
+            require_adoption_workflow=require_adoption_workflow,
+            source="--workflow-check-require-ci-mode",
+        )
+    )
+    normalized_preflight_required_ci_modes = (
+        resolve_adoption_workflow_required_ci_modes(
+            explicit_preflight_required_ci_modes,
+            require_adoption_workflow=require_adoption_workflow,
+            source="--preflight-require-ci-mode",
+        )
+    )
 
     adoption_enabled = adoption or adoption_policy
     effective_onboard_policy = (onboard_policy or adoption_policy) and not skip_onboard

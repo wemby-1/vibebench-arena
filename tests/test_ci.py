@@ -138,6 +138,23 @@ jobs:
     return target
 
 
+def write_adoption_policy_vibebench_workflow(root: Path) -> Path:
+    target = workflow_path(root)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        """name: VibeBench
+on: [push]
+jobs:
+  vibebench:
+    runs-on: ubuntu-latest
+    steps:
+      - run: python3 -m vibebench ci --adoption-policy --json
+""",
+        encoding="utf-8",
+    )
+    return target
+
+
 def write_package_metadata(root: Path) -> None:
     docs = root / "docs"
     docs.mkdir(parents=True, exist_ok=True)
@@ -1279,6 +1296,35 @@ def test_ci_dry_run_workflow_check_required_mode_json_includes_planned_step(
     assert "requiring CI modes: adoption-policy" in steps["workflow-check"]["message"]
 
 
+def test_ci_dry_run_require_adoption_workflow_implies_required_modes(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--require-adoption-workflow",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    assert steps["workflow-check"]["status"] == "planned"
+    assert "requiring CI modes: adoption-policy" in steps["workflow-check"]["message"]
+    assert steps["preflight"]["status"] == "planned"
+    assert "required CI modes: adoption-policy" in steps["preflight"]["message"]
+    assert "project-scan" not in steps
+    assert "onboard" not in steps
+
+
 ADOPTION_STEP_NAMES = [
     "project-scan",
     "onboard",
@@ -1427,6 +1473,34 @@ def test_ci_dry_run_default_omits_adoption_suite(tmp_path: Path) -> None:
     assert result.exit_code == 0
     for name in ADOPTION_STEP_NAMES:
         assert name not in step_names
+
+
+def test_ci_dry_run_require_adoption_workflow_skip_flags_suppress_implied_steps(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--require-adoption-workflow",
+            "--skip-workflow-check",
+            "--skip-preflight",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["workflow-check"]["status"] == "skipped"
+    assert steps["workflow-check"]["message"] == "Skipped by --skip-workflow-check"
+    assert steps["preflight"]["status"] == "skipped"
+    assert steps["preflight"]["message"] == "Skipped by --skip-preflight"
 
 
 @pytest.mark.parametrize("preset_flag", ["--adoption", "--adoption-policy"])
@@ -2294,6 +2368,80 @@ def test_ci_adoption_policy_writes_same_artifact_names(
         assert report["policy_status"] == "passed"
 
 
+def test_ci_require_adoption_workflow_writes_existing_artifacts(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+    write_adoption_policy_vibebench_workflow(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--require-adoption-workflow",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    workflow_report = json.loads(run_dir.joinpath("workflow-check.json").read_text())
+    preflight_report = json.loads(run_dir.joinpath("preflight.json").read_text())
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    assert payload["status"] == "passed"
+    assert steps["workflow-check"]["status"] == "passed"
+    assert steps["preflight"]["status"] == "passed"
+    assert workflow_report["required_ci_modes"] == ["adoption-policy"]
+    assert workflow_report["missing_required_ci_modes"] == []
+    assert preflight_report["workflow_check"]["required_ci_modes"] == [
+        "adoption-policy"
+    ]
+    assert preflight_report["workflow_check"]["missing_required_ci_modes"] == []
+
+
+def test_ci_adoption_policy_require_adoption_workflow_works(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    tmp_path.joinpath("tests").mkdir()
+    write_adoption_policy_vibebench_workflow(tmp_path)
+    init_git_repo(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--adoption-policy",
+            "--require-adoption-workflow",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    workflow_report = json.loads(run_dir.joinpath("workflow-check.json").read_text())
+    preflight_report = json.loads(run_dir.joinpath("preflight.json").read_text())
+    assert result.exit_code == 0
+    assert result.output.lstrip().startswith("{")
+    assert payload["status"] == "passed"
+    assert "policy passed" in steps["workflow-check"]["message"]
+    assert "policy passed" in steps["preflight"]["message"]
+    assert workflow_report["required_ci_modes"] == ["adoption-policy"]
+    assert workflow_report["missing_required_ci_modes"] == []
+    assert preflight_report["workflow_check"]["required_ci_modes"] == [
+        "adoption-policy"
+    ]
+    assert preflight_report["workflow_check"]["missing_required_ci_modes"] == []
+
+
 def test_ci_adoption_artifacts_are_discoverable(tmp_path: Path) -> None:
     write_config(tmp_path)
     init_git_repo(tmp_path)
@@ -2835,6 +2983,58 @@ def test_ci_workflow_check_require_ci_mode_invalid_value_fails_clearly(
     assert result.exit_code == 1
     assert result.exception is not None
     assert "--workflow-check-require-ci-mode must be one of" in str(result.exception)
+
+
+def test_ci_require_adoption_workflow_conflicting_workflow_mode_fails_clearly(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--require-adoption-workflow",
+            "--workflow-check-require-ci-mode",
+            "default",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert result.exception is not None
+    assert (
+        "--require-adoption-workflow requires "
+        "--workflow-check-require-ci-mode adoption-policy mode"
+    ) in str(result.exception)
+
+
+def test_ci_require_adoption_workflow_conflicting_preflight_mode_fails_clearly(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--require-adoption-workflow",
+            "--preflight-require-ci-mode",
+            "default",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert result.exception is not None
+    assert (
+        "--require-adoption-workflow requires "
+        "--preflight-require-ci-mode adoption-policy mode"
+    ) in str(result.exception)
 
 
 def test_ci_workflow_check_require_ci_mode_skip_conflict_fails_fast(
