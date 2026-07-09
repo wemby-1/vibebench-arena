@@ -1985,11 +1985,17 @@ def adoption_ready_payload_for(root: Path, *extra: str) -> dict[str, object]:
 
 
 def test_adoption_ready_help_works() -> None:
-    result = runner.invoke(app, ["adoption-ready", "--help"])
+    result = runner.invoke(
+        app,
+        ["adoption-ready", "--help"],
+        env={"COLUMNS": "120"},
+    )
+    output = strip_ansi(result.output)
 
     assert result.exit_code == 0
-    assert "adoption-ready" in result.output
-    assert "--require-mode" in result.output
+    assert "adoption-ready" in output
+    assert "--require-mode" in output
+    assert "adoption-policy" in output
 
 
 def test_adoption_ready_default_requires_adoption_policy(tmp_path: Path) -> None:
