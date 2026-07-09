@@ -3493,6 +3493,16 @@ def ci_command(
             help="Skip optional preflight artifact generation.",
         ),
     ] = False,
+    preflight_require_ci_mode: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--preflight-require-ci-mode",
+            help=(
+                "Require detected preflight workflow CI mode(s): default, adoption, "
+                "or adoption-policy. Repeat the option to require multiple modes."
+            ),
+        ),
+    ] = None,
     metrics_check: Annotated[
         bool,
         typer.Option(
@@ -3748,6 +3758,10 @@ def ci_command(
         workflow_check_require_ci_mode or [],
         source="--workflow-check-require-ci-mode",
     )
+    normalized_preflight_required_ci_modes = normalize_required_ci_modes(
+        preflight_require_ci_mode or [],
+        source="--preflight-require-ci-mode",
+    )
     if normalized_workflow_check_required_ci_modes and skip_workflow_check:
         raise ConfigError(
             "--workflow-check-require-ci-mode cannot be combined with "
@@ -3777,7 +3791,9 @@ def ci_command(
         or (adoption_enabled and not adoption_policy)
     ) and not skip_workflow_check
     effective_preflight = (
-        preflight or (adoption_enabled and not adoption_policy)
+        preflight
+        or bool(normalized_preflight_required_ci_modes)
+        or (adoption_enabled and not adoption_policy)
     ) and not skip_preflight
     effective_workflow_template = (
         workflow_template or adoption_enabled
@@ -3825,6 +3841,7 @@ def ci_command(
                 preflight=effective_preflight,
                 preflight_policy=effective_preflight_policy,
                 skip_preflight=skip_preflight,
+                preflight_required_ci_modes=normalized_preflight_required_ci_modes,
                 metrics_check=metrics_check,
                 skip_metrics_check=skip_metrics_check,
                 metrics_diff=metrics_diff,
@@ -3893,6 +3910,7 @@ def ci_command(
                 preflight=effective_preflight,
                 preflight_policy=effective_preflight_policy,
                 skip_preflight=skip_preflight,
+                preflight_required_ci_modes=normalized_preflight_required_ci_modes,
                 metrics_check=metrics_check,
                 skip_metrics_check=skip_metrics_check,
                 metrics_diff=metrics_diff,

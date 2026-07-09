@@ -205,6 +205,7 @@ def plan_ci_pipeline(
     project_scan_policy: bool = False,
     preflight: bool = False,
     preflight_policy: bool = False,
+    preflight_required_ci_modes: list[str] | None = None,
     skip_preflight: bool = False,
     metrics_check: bool = False,
     skip_metrics_check: bool = False,
@@ -297,11 +298,16 @@ def plan_ci_pipeline(
         steps.append(planned_step("project-scan", "Would run project-scan report"))
     elif skip_project_scan:
         steps.append(skipped_plan_step("project-scan", "--skip-project-scan"))
-    preflight_enabled = preflight or preflight_policy
+    preflight_enabled = (
+        preflight or preflight_policy or bool(preflight_required_ci_modes)
+    )
     if preflight_enabled and not skip_preflight:
         message = "Would write report-only preflight artifacts"
         if preflight_policy:
             message = "Would write preflight artifacts with policy enforcement"
+        preflight_required_text = ", ".join(preflight_required_ci_modes or [])
+        if preflight_required_text:
+            message += f"; required CI modes: {preflight_required_text}"
         steps.append(
             planned_step(
                 "preflight",
@@ -746,6 +752,7 @@ def run_ci_pipeline(
     project_scan_policy: bool = False,
     preflight: bool = False,
     preflight_policy: bool = False,
+    preflight_required_ci_modes: list[str] | None = None,
     skip_preflight: bool = False,
     metrics_check: bool = False,
     skip_metrics_check: bool = False,
@@ -808,7 +815,9 @@ def run_ci_pipeline(
     metrics_diff_enabled = metrics_diff or metrics_diff_policy
     onboard_enabled = onboard or onboard_policy
     project_scan_enabled = project_scan or project_scan_policy
-    preflight_enabled = preflight or preflight_policy
+    preflight_enabled = (
+        preflight or preflight_policy or bool(preflight_required_ci_modes)
+    )
     workflow_check_enabled = (
         workflow_check
         or workflow_check_policy
@@ -857,7 +866,8 @@ def run_ci_pipeline(
             skip_onboard=skip_onboard,
             project_scan=project_scan_enabled,
             skip_project_scan=skip_project_scan,
-            preflight=preflight or preflight_policy,
+            preflight=preflight_enabled,
+            preflight_required_ci_modes=preflight_required_ci_modes,
             skip_preflight=skip_preflight,
             metrics_check=metrics_check,
             skip_metrics_check=skip_metrics_check,
@@ -930,7 +940,10 @@ def run_ci_pipeline(
     if preflight_enabled and not skip_preflight:
         steps.append(
             run_preflight_artifact_step(
-                root, selected_run_dir, enforce_policy=preflight_policy
+                root,
+                selected_run_dir,
+                enforce_policy=preflight_policy,
+                required_ci_modes=preflight_required_ci_modes,
             )
         )
     elif skip_preflight:
@@ -1142,6 +1155,7 @@ def append_unavailable_artifact_steps(
     skip_project_scan: bool = False,
     preflight: bool = False,
     preflight_policy: bool = False,
+    preflight_required_ci_modes: list[str] | None = None,
     skip_preflight: bool = False,
     metrics_check: bool = False,
     skip_metrics_check: bool = False,
@@ -1549,12 +1563,16 @@ def run_preflight_artifact_step(
     run_dir: Path,
     *,
     enforce_policy: bool = False,
+    required_ci_modes: list[str] | None = None,
 ) -> CiStepResult:
     """Generate preflight artifacts and return CI step status."""
     started = time.perf_counter()
     try:
         payload = preflight_payload(
-            project_root, strict=False, enforce_policy=enforce_policy
+            project_root,
+            strict=False,
+            enforce_policy=enforce_policy,
+            required_ci_modes=required_ci_modes,
         )
         json_path = run_dir / PREFLIGHT_JSON
         summary_path = run_dir / PREFLIGHT_SUMMARY
@@ -1572,6 +1590,14 @@ def run_preflight_artifact_step(
     message = f"status {payload['status']}"
     if enforce_policy:
         message += f"; policy {payload['policy_status']}"
+    if required_ci_modes:
+        workflow_check = payload.get("workflow_check", {})
+        required_text = ", ".join(workflow_check.get("required_ci_modes", []))
+        missing_text = (
+            ", ".join(workflow_check.get("missing_required_ci_modes", []))
+            or "none"
+        )
+        message += f"; required CI modes {required_text}; missing {missing_text}"
     return CiStepResult(
         "preflight",
         "failed" if policy_failed else "passed",

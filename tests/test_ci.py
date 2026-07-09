@@ -1629,6 +1629,110 @@ def test_ci_dry_run_preflight_json_includes_planned_step(
     assert steps["preflight"]["artifact"] == "preflight.json"
 
 
+def test_ci_dry_run_preflight_required_mode_implies_preflight_step(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--preflight-require-ci-mode",
+            "default",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["preflight"]["status"] == "planned"
+    assert steps["preflight"]["artifact"] == "preflight.json"
+    assert "required CI modes: default" in steps["preflight"]["message"]
+
+
+def test_ci_dry_run_preflight_required_mode_dedupes(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--preflight-require-ci-mode",
+            "adoption-policy",
+            "--preflight-require-ci-mode",
+            "default",
+            "--preflight-require-ci-mode",
+            "adoption-policy",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert "required CI modes: default, adoption-policy" in steps["preflight"][
+        "message"
+    ]
+
+
+def test_ci_preflight_required_mode_invalid_value_fails_clearly(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--preflight-require-ci-mode",
+            "preview",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert result.exception is not None
+    assert "--preflight-require-ci-mode must be one of" in str(result.exception)
+
+
+def test_ci_dry_run_skip_preflight_suppresses_required_mode(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--dry-run",
+            "--skip-preflight",
+            "--preflight-require-ci-mode",
+            "default",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    assert result.exit_code == 0
+    assert steps["preflight"]["status"] == "skipped"
+    assert steps["preflight"]["message"] == "Skipped by --skip-preflight"
+
+
 def test_ci_dry_run_default_omits_preflight_step(tmp_path: Path) -> None:
     write_config(tmp_path)
 
@@ -2341,6 +2445,137 @@ def test_ci_skip_preflight_suppresses_artifacts(tmp_path: Path) -> None:
     assert not run_dir.joinpath("preflight.md").exists()
 
 
+
+
+def test_ci_preflight_required_mode_writes_required_mode_artifacts(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+    write_minimal_vibebench_workflow(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--preflight-require-ci-mode",
+            "default",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("preflight.json").read_text())
+    markdown = run_dir.joinpath("preflight.md").read_text(encoding="utf-8")
+    assert result.exit_code == 0
+    assert payload["status"] == "passed"
+    assert steps["preflight"]["status"] == "passed"
+    assert "required CI modes default; missing none" in steps["preflight"][
+        "message"
+    ]
+    assert report["workflow_check"]["required_ci_modes"] == ["default"]
+    assert report["workflow_check"]["missing_required_ci_modes"] == []
+    assert "- Required CI modes: default" in markdown
+    assert "- Missing required CI modes: none" in markdown
+
+
+def test_ci_preflight_required_mode_report_only_when_missing(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+    write_minimal_vibebench_workflow(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--preflight",
+            "--preflight-require-ci-mode",
+            "adoption",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("preflight.json").read_text())
+    assert result.exit_code == 0
+    assert payload["status"] == "passed"
+    assert steps["preflight"]["status"] == "passed"
+    assert "missing adoption" in steps["preflight"]["message"]
+    assert report["workflow_check"]["required_ci_modes"] == ["adoption"]
+    assert report["workflow_check"]["missing_required_ci_modes"] == ["adoption"]
+
+
+def test_ci_preflight_policy_required_mode_keeps_existing_policy_semantics(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    append_preflight_policy(tmp_path, "    require_onboard_ready: false\n")
+    init_git_repo(tmp_path)
+    write_minimal_vibebench_workflow(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--preflight-policy",
+            "--preflight-require-ci-mode",
+            "adoption",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    report = json.loads(run_dir.joinpath("preflight.json").read_text())
+    assert result.exit_code == 1
+    assert payload["status"] == "failed"
+    assert steps["preflight"]["status"] == "failed"
+    assert "policy failed" in steps["preflight"]["message"]
+    assert "missing adoption" in steps["preflight"]["message"]
+    assert report["policy_status"] == "failed"
+    assert report["workflow_check"]["missing_required_ci_modes"] == ["adoption"]
+
+
+def test_ci_skip_preflight_suppresses_required_mode_artifacts(
+    tmp_path: Path,
+) -> None:
+    write_config(tmp_path)
+    init_git_repo(tmp_path)
+    write_minimal_vibebench_workflow(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "ci",
+            "--project-root",
+            str(tmp_path),
+            "--skip-preflight",
+            "--preflight-require-ci-mode",
+            "default",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    steps = {step["name"]: step for step in payload["steps"]}
+    run_dir = latest_run(tmp_path)
+    assert result.exit_code == 0
+    assert steps["preflight"]["status"] == "skipped"
+    assert not run_dir.joinpath("preflight.json").exists()
+    assert not run_dir.joinpath("preflight.md").exists()
 
 
 def test_ci_preflight_policy_writes_reports_and_enforces_success(
