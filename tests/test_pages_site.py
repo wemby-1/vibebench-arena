@@ -6,6 +6,7 @@ import subprocess
 import sys
 from html.parser import HTMLParser
 from pathlib import Path
+from xml.etree import ElementTree
 
 import yaml
 
@@ -26,6 +27,11 @@ class LinkParser(HTMLParser):
         self.links: list[str] = []
         self.remote_assets: list[str] = []
         self.script_sources: list[str] = []
+        self.headings: list[tuple[int, str]] = []
+        self.ids: list[str] = []
+        self.landmarks: set[str] = set()
+        self._heading_level: int | None = None
+        self._heading_text: list[str] = []
 
     def handle_starttag(
         self,
@@ -35,8 +41,17 @@ class LinkParser(HTMLParser):
         values = dict(attrs)
         href = values.get("href")
         src = values.get("src")
+        if values.get("id"):
+            self.ids.append(str(values["id"]))
+        if tag in {"header", "main", "nav", "footer", "section"}:
+            self.landmarks.add(tag)
         if href:
-            if tag == "link" and href.startswith(("http://", "https://")):
+            rel = set((values.get("rel") or "").lower().split())
+            if (
+                tag == "link"
+                and rel & {"stylesheet", "preload", "modulepreload", "icon", "manifest"}
+                and href.startswith(("http://", "https://"))
+            ):
                 self.remote_assets.append(href)
             self.links.append(href)
         if src:
@@ -44,6 +59,20 @@ class LinkParser(HTMLParser):
                 self.remote_assets.append(src)
             if tag == "script":
                 self.script_sources.append(src)
+        if tag in {"h1", "h2", "h3", "h4", "h5", "h6"}:
+            self._heading_level = int(tag[1])
+            self._heading_text = []
+
+    def handle_data(self, data: str) -> None:
+        if self._heading_level is not None:
+            self._heading_text.append(data)
+
+    def handle_endtag(self, tag: str) -> None:
+        if self._heading_level is not None and tag == f"h{self._heading_level}":
+            text = " ".join("".join(self._heading_text).split())
+            self.headings.append((self._heading_level, text))
+            self._heading_level = None
+            self._heading_text = []
 
 
 def test_pages_site_files_exist() -> None:
@@ -107,9 +136,92 @@ def test_pages_builder_creates_site_index_and_nojekyll(tmp_path: Path) -> None:
 
     assert (output / "index.html").is_file()
     assert (output / ".nojekyll").is_file()
-    assert "Live GitHub Pages Demo" in (output / "index.html").read_text(
+    assert "VibeBench Arena" in (output / "index.html").read_text(
         encoding="utf-8"
     )
+    assert (output / "404.html").is_file()
+    assert (output / "robots.txt").is_file()
+    assert (output / "sitemap.xml").is_file()
+    assert (output / "site.webmanifest").is_file()
+    assert (output / "assets" / "site.css").is_file()
+    assert (output / "assets" / "site.js").is_file()
+    assert (output / "assets" / "icon.svg").is_file()
+
+
+def test_pages_launch_site_has_required_public_sections(tmp_path: Path) -> None:
+    output = build_pages(tmp_path)
+    content = (output / "index.html").read_text(encoding="utf-8")
+
+    for expected in [
+        "Codex-first quality and evidence gate",
+        "Run checks, enforce policy, generate evidence",
+        "Explore the live proof",
+        "Run the 5-minute quickstart",
+        "How VibeBench works",
+        "Evidence-backed summary",
+        "Artifact Explorer",
+        "Five-minute path",
+        "Developers",
+        "Security / compliance evaluators",
+        "Investors / partners",
+        "Technical diligence",
+        "What the site proves, and what it does not",
+    ]:
+        assert expected in content
+
+
+def test_pages_site_metadata_and_project_base_path(tmp_path: Path) -> None:
+    output = build_pages(tmp_path)
+    content = (output / "index.html").read_text(encoding="utf-8")
+    manifest = json.loads((output / "site.webmanifest").read_text(encoding="utf-8"))
+    sitemap = ElementTree.fromstring(
+        (output / "sitemap.xml").read_text(encoding="utf-8")
+    )
+
+    assert (
+        "<title>VibeBench Arena | Codex-first quality and evidence gate</title>"
+        in content
+    )
+    assert 'name="description"' in content
+    assert (
+        'rel="canonical" href="https://wemby-1.github.io/vibebench-arena/"'
+        in content
+    )
+    assert 'property="og:title"' in content
+    assert 'name="twitter:card"' in content
+    assert 'name="theme-color"' in content
+    assert 'application/ld+json' in content
+    assert "<code>/vibebench-arena/</code>" in content
+    assert manifest["id"] == "/vibebench-arena/"
+    assert manifest["start_url"] == "./"
+    assert manifest["icons"][0]["src"] == "assets/icon.svg"
+    locs = [node.text for node in sitemap.iter() if node.tag.endswith("loc")]
+    assert "https://wemby-1.github.io/vibebench-arena/" in locs
+    assert "https://wemby-1.github.io/vibebench-arena/404.html" in locs
+    assert "Sitemap: https://wemby-1.github.io/vibebench-arena/sitemap.xml" in (
+        output / "robots.txt"
+    ).read_text(encoding="utf-8")
+
+
+def test_pages_custom_base_path_is_configurable(tmp_path: Path) -> None:
+    output = tmp_path / "custom"
+    result = run_builder(
+        "--output-dir",
+        str(output),
+        "--base-url",
+        "https://example.invalid/custom-project/",
+        "--base-path",
+        "/custom-project/",
+        "--repository-url",
+        "https://example.invalid/repo",
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    content = (output / "index.html").read_text(encoding="utf-8")
+    manifest = json.loads((output / "site.webmanifest").read_text(encoding="utf-8"))
+    assert "https://example.invalid/custom-project/" in content
+    assert "<code>/custom-project/</code>" in content
+    assert manifest["id"] == "/custom-project/"
 
 
 def test_pages_builder_includes_expected_public_demo_artifacts(
@@ -135,11 +247,14 @@ def test_pages_generated_html_json_and_links_are_valid(tmp_path: Path) -> None:
 
     for path in output.rglob("*.json"):
         json.loads(path.read_text(encoding="utf-8"))
+    json.loads((output / "site.webmanifest").read_text(encoding="utf-8"))
+    ElementTree.fromstring((output / "sitemap.xml").read_text(encoding="utf-8"))
     for path in output.rglob("*.html"):
         parser = LinkParser()
         parser.feed(path.read_text(encoding="utf-8"))
         assert not parser.remote_assets
-        assert not parser.script_sources
+        for script in parser.script_sources:
+            assert script == "assets/site.js"
         for link in parser.links:
             if not link or link.startswith(("#", "http://", "https://")):
                 continue
@@ -147,6 +262,44 @@ def test_pages_generated_html_json_and_links_are_valid(tmp_path: Path) -> None:
             target = (path.parent / link.split("#", 1)[0]).resolve()
             target.relative_to(output.resolve())
             assert target.exists(), f"{path}: {link}"
+
+
+def test_pages_artifact_explorer_links_only_available_artifacts(
+    tmp_path: Path,
+) -> None:
+    output = build_pages(tmp_path)
+    content = (output / "index.html").read_text(encoding="utf-8")
+
+    assert "Decision evidence" in content
+    assert "Workflow evidence" in content
+    assert "Review surfaces" in content
+    assert "Integrity and manifests" in content
+    assert "Trend and comparison" in content
+    assert "Trust and sharing" in content
+    assert "Unavailable optional evidence" in content
+    assert 'href="artifacts/metrics.json"' in content
+    assert 'href="artifacts/report/index.html"' in content
+    assert 'href="artifacts/share-check.json"' not in content
+
+
+def test_pages_accessibility_oriented_structure(tmp_path: Path) -> None:
+    output = build_pages(tmp_path)
+    index = output / "index.html"
+    content = index.read_text(encoding="utf-8")
+    parser = LinkParser()
+    parser.feed(content)
+
+    assert '<html lang="en">' in content
+    assert 'href="#main"' in content
+    assert "header" in parser.landmarks
+    assert "nav" in parser.landmarks
+    assert "main" in parser.landmarks
+    assert "footer" in parser.landmarks
+    assert sum(1 for level, _text in parser.headings if level == 1) == 1
+    assert len(parser.ids) == len(set(parser.ids))
+    assert ":focus-visible" in (output / "assets" / "site.css").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_pages_site_has_no_local_paths_or_secret_like_values(tmp_path: Path) -> None:
@@ -157,6 +310,8 @@ def test_pages_site_has_no_local_paths_or_secret_like_values(tmp_path: Path) -> 
         r"/home/",
         r"/data/code/",
         r"/tmp/(?!vibebench-demo\b)",
+        r"/runner/",
+        r"GITHUB_STEP_SUMMARY",
         r"ghp_[A-Za-z0-9_]{20,}",
         r"github_pat_[A-Za-z0-9_]{20,}",
         r"sk-[A-Za-z0-9_-]{20,}",
@@ -275,6 +430,10 @@ def test_pages_workflow_has_required_pages_structure() -> None:
     assert step_run_contains(
         build_steps,
         "python3 scripts/build_pages_site.py --output-dir _site",
+    )
+    assert step_run_contains(
+        build_steps,
+        "python3 scripts/build_pages_site.py --output-dir _site --check",
     )
     upload_step = next(
         step

@@ -33,7 +33,7 @@ For committed browseable examples generated from real commands, start with the [
 
 `vibebench public-demo --proof-packet examples/showcase-artifacts/public-proof --output-dir /tmp/vibebench-demo` converts that proof packet, or an ordinary run directory, into a deterministic standalone portal with `index.html`, `demo.json`, `README.md`, and curated safe artifact links. The committed reference portal lives at [`examples/showcase-artifacts/public-demo/`](../examples/showcase-artifacts/public-demo/README.md).
 
-`scripts/build_pages_site.py --output-dir /tmp/vibebench-pages-site` packages the committed public demo as the deployable GitHub Pages site. The live site is expected at [`https://wemby-1.github.io/vibebench-arena/`](https://wemby-1.github.io/vibebench-arena/) and remains a static presentation of committed evidence, not a hosted scanning service.
+`scripts/build_pages_site.py --output-dir /tmp/vibebench-pages-site` packages the committed public demo as the deployable GitHub Pages launch site. The live site is expected at [`https://wemby-1.github.io/vibebench-arena/`](https://wemby-1.github.io/vibebench-arena/) and includes evidence cards, grouped artifact exploration, local assets, and deterministic public files. It remains a static presentation of committed evidence, not a hosted scanning service.
 
 ## Run Index, Trend, And Compare
 

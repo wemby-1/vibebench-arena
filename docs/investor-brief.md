@@ -8,7 +8,7 @@ AI coding agents can produce software changes quickly, but review, adoption, and
 
 The current project is an open-source CLI and documentation package, not a claimed commercial product with revenue, customers, or pilots. Its value is best evaluated through the working commands, generated artifacts, test suite, and reviewer-facing demo flow.
 
-For a no-install artifact review, browse the committed [public proof packet](../examples/showcase-artifacts/public-proof/README.md), [public demo portal](../examples/showcase-artifacts/public-demo/README.md), and the [public proof packet tour](public-proof-packet.md). They are demonstration evidence, not traction, certification, or a production-safety guarantee.
+For a no-install artifact review, browse the live GitHub Pages launch site, committed [public proof packet](../examples/showcase-artifacts/public-proof/README.md), [public demo portal](../examples/showcase-artifacts/public-demo/README.md), and the [public proof packet tour](public-proof-packet.md). The launch site presents evidence cards, grouped artifacts, audience paths, and non-claims. They are demonstration evidence, not traction, certification, revenue, funding, or a production-safety guarantee.
 
 ## The Problem
 

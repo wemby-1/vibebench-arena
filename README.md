@@ -48,13 +48,13 @@ If you want a shorter preview before a full run, start with `python3 -m vibebenc
 
 ## Live Demo
 
-The deterministic public demo is published with GitHub Pages at:
+The deterministic public launch site is published with GitHub Pages at:
 
 ```text
 https://wemby-1.github.io/vibebench-arena/
 ```
 
-It is a static presentation of committed, reproducible VibeBench evidence. It is not an independent hosted scanning service, and it does not claim security certification, compliance certification, users, funding, revenue, or product-market fit.
+It is a static product website built from committed, reproducible VibeBench evidence. It includes the live proof summary, artifact explorer, five-minute review path, audience-specific entry points, and trust boundaries. It is not an independent hosted scanning service, and it does not claim security certification, compliance certification, users, funding, revenue, or product-market fit.
 
 Evaluating quickly? Start with the [showcase page](docs/showcase.md), the [showcase demo kit](examples/showcase-artifacts/README.md), the [public proof packet](examples/showcase-artifacts/public-proof/README.md), and the [public demo portal](examples/showcase-artifacts/public-demo/README.md). They give reviewers a 5-minute path through readiness, workflow coverage, CI planning, evidence packets, and trust boundaries without turning this README into a command dump.
 
@@ -75,6 +75,8 @@ python3 scripts/build_public_demo.py --check
 python3 scripts/build_pages_site.py --output-dir /tmp/vibebench-pages-site
 python3 scripts/build_pages_site.py --check
 ```
+
+The generated site uses local CSS/JS assets, project-Pages-safe relative links, `robots.txt`, `sitemap.xml`, `404.html`, `site.webmanifest`, and `.nojekyll`.
 
 For diligence review, use the [investor brief](docs/investor-brief.md), [technical due diligence](docs/technical-due-diligence.md), [proof matrix](docs/proof-matrix.md), [public proof packet tour](docs/public-proof-packet.md), [demo script](docs/demo-script.md), and [Trust Center](docs/trust-center.md).
 

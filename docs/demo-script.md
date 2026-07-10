@@ -6,10 +6,11 @@ The demos show inspectable evidence. They do not claim guaranteed security, corr
 
 When a live run is not convenient, use the committed [public proof packet](../examples/showcase-artifacts/public-proof/README.md), [public demo portal](../examples/showcase-artifacts/public-demo/README.md), and [artifact tour](public-proof-packet.md) as the browsable reference evidence.
 
-For remote audiences that should not install Python, open the live static demo:
+For remote audiences that should not install Python, open the live launch site:
 [`https://wemby-1.github.io/vibebench-arena/`](https://wemby-1.github.io/vibebench-arena/).
 It is a GitHub Pages presentation of the committed reproducible evidence, not a
-hosted scanning service.
+hosted scanning service. Use the hero for the 30-second product frame, then
+move to evidence cards, the artifact explorer, and the five-minute path.
 
 ## Before You Present
 

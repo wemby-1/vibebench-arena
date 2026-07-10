@@ -49,11 +49,13 @@ For investors and technical due diligence, it creates a practical evidence packe
 
 ## Five-Minute Demo Path
 
-The live static demo is published at
+The live public launch site is published at
 [`https://wemby-1.github.io/vibebench-arena/`](https://wemby-1.github.io/vibebench-arena/).
 It is built from the committed public demo and public proof packet, so visitors
-can inspect the current evidence without cloning the repository. It is a static
-presentation of reproducible evidence, not an independent hosted scanner.
+can inspect the current evidence without cloning the repository. It presents a
+home overview, live proof summary, artifact explorer, five-minute path, trust
+boundaries, and diligence links. It is a static presentation of reproducible
+evidence, not an independent hosted scanner.
 
 Run from the repository root:
 

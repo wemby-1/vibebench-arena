@@ -59,13 +59,13 @@ The public demo portal converts a VibeBench run or proof packet into a self-cont
 
 It summarizes supplied evidence only. It does not independently prove security, replace human code review, certify compliance, or prove customers, funding, commercial traction, adoption, or product-market fit.
 
-The separately published GitHub Pages demo is built from the committed public
-demo with `scripts/build_pages_site.py`. Public GitHub-facing docs can point to
-that hosted page, but this Trust Center stays offline-safe because it is copied
-into evidence-room packages. The Pages build adds the static deployment wrapper
-and `.nojekyll`, but it does not run hosted checks, collect analytics, load
-remote runtime assets, or create evidence beyond the committed reproducible
-artifacts.
+The separately published GitHub Pages launch site is built from the committed
+public demo with `scripts/build_pages_site.py`. Public GitHub-facing docs can
+point to that hosted page, but this Trust Center stays offline-safe because it
+is copied into evidence-room packages. The Pages build adds a product overview,
+evidence cards, an artifact explorer, static deployment files, and `.nojekyll`,
+but it does not run hosted checks, collect analytics, load remote runtime
+assets, or create evidence beyond the committed reproducible artifacts.
 
 ## Static site preview
 
