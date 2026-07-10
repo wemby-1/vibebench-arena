@@ -1,5 +1,4 @@
 import json
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -8,11 +7,11 @@ from types import SimpleNamespace
 import pytest
 from typer.testing import CliRunner
 
+from tests.cli_help_utils import strip_ansi
 from vibebench.cli import app
 from vibebench.config import load_config
 
 runner = CliRunner()
-ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 
 def test_cli_help_works() -> None:
@@ -37,10 +36,6 @@ def workflow_path(root: Path) -> Path:
 def write_package_json(root: Path, scripts: dict[str, str] | None = None) -> None:
     payload = {"scripts": scripts or {}}
     root.joinpath("package.json").write_text(json.dumps(payload), encoding="utf-8")
-
-
-def strip_ansi(text: str) -> str:
-    return ANSI_ESCAPE_RE.sub("", text)
 
 
 def test_init_creates_config_yaml(tmp_path: Path) -> None:

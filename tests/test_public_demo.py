@@ -10,6 +10,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
+from tests.cli_help_utils import strip_ansi
 from vibebench.cli import app
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,16 +48,22 @@ class LinkParser(HTMLParser):
 
 
 def test_cli_help_exposes_public_demo_options() -> None:
-    result = runner.invoke(app, ["public-demo", "--help"])
+    result = runner.invoke(
+        app,
+        ["public-demo", "--help"],
+        env={"COLUMNS": "120"},
+    )
+    output = strip_ansi(result.output)
 
     assert result.exit_code == 0
-    assert "--run-dir" in result.output
-    assert "--proof-packet" in result.output
-    assert "--output-dir" in result.output
-    assert "--check" in result.output
-    assert "--json-output" in result.output
-    assert "--summary-output" in result.output
-
+    assert "public-demo" in output
+    assert "--run-dir" in output
+    assert "--proof-packet" in output
+    assert "--output-dir" in output
+    assert "--check" in output
+    assert "--json" in output
+    assert "--json-output" in output
+    assert "--summary-output" in output
 
 def test_public_demo_builds_from_committed_proof_packet(tmp_path: Path) -> None:
     output = tmp_path / "demo"
