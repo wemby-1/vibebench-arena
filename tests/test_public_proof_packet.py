@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 import re
 import subprocess
 import sys
@@ -33,6 +34,7 @@ EXPECTED_PACKET_FILES = [
     "release-check.json",
     "release-check.md",
     "gate-summary.md",
+    "github-step-summary.md",
     "report/index.html",
 ]
 JSON_PACKET_FILES = [
@@ -124,6 +126,52 @@ def test_public_packet_matches_builder_check_and_is_read_only() -> None:
     assert after == before
 
 
+def test_builder_check_ignores_host_github_actions_summary_env(
+    tmp_path: Path,
+) -> None:
+    host_summary = tmp_path / "host-step-summary.md"
+    host_summary.write_text("existing host summary\n", encoding="utf-8")
+    packet_before = snapshot_files(PACKET)
+    root_runs_before = snapshot_optional_tree(ROOT / ".vibebench" / "runs")
+    root_baselines_before = snapshot_optional_tree(ROOT / ".vibebench" / "baselines")
+    env = os.environ.copy()
+    env.update(
+        {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_STEP_SUMMARY": str(host_summary),
+            "GITHUB_OUTPUT": str(tmp_path / "github-output"),
+            "GITHUB_ENV": str(tmp_path / "github-env"),
+            "GITHUB_PATH": str(tmp_path / "github-path"),
+            "GITHUB_WORKSPACE": str(ROOT),
+            "GITHUB_EVENT_PATH": str(tmp_path / "github-event.json"),
+        }
+    )
+
+    completed = subprocess.run(
+        [sys.executable, str(BUILDER), "--check"],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr + completed.stdout
+    assert "current" in completed.stdout
+    assert host_summary.read_text(encoding="utf-8") == "existing host summary\n"
+    assert (PACKET / "github-step-summary.md").is_file()
+    assert json.loads((PACKET / "metrics.json").read_text(encoding="utf-8"))
+    assert "<!doctype html>" in (
+        PACKET / "report" / "index.html"
+    ).read_text(encoding="utf-8").lower()
+    assert snapshot_files(PACKET) == packet_before
+    assert snapshot_optional_tree(ROOT / ".vibebench" / "runs") == root_runs_before
+    assert (
+        snapshot_optional_tree(ROOT / ".vibebench" / "baselines")
+        == root_baselines_before
+    )
+
+
 def test_builder_failure_returns_non_zero_and_useful_output(
     tmp_path: Path,
     monkeypatch,
@@ -159,3 +207,21 @@ def test_internal_public_packet_links_resolve() -> None:
                 continue
             target_path = (markdown.parent / target.split("#", 1)[0]).resolve()
             assert target_path.exists(), f"{markdown}: {target}"
+
+
+def snapshot_files(root: Path) -> dict[str, bytes]:
+    return {
+        path.relative_to(root).as_posix(): path.read_bytes()
+        for path in root.rglob("*")
+        if path.is_file()
+    }
+
+
+def snapshot_optional_tree(root: Path) -> set[str]:
+    if not root.exists():
+        return set()
+    return {
+        path.relative_to(root).as_posix()
+        for path in root.rglob("*")
+        if path.is_file()
+    }

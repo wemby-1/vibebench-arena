@@ -54,6 +54,15 @@ FORBIDDEN_PATTERNS = [
     r"secret\s*[:=]",
     r"-----BEGIN [A-Z ]*PRIVATE KEY-----",
 ]
+HOST_GITHUB_ENV_KEYS = {
+    "GITHUB_ACTIONS",
+    "GITHUB_STEP_SUMMARY",
+    "GITHUB_OUTPUT",
+    "GITHUB_ENV",
+    "GITHUB_PATH",
+    "GITHUB_WORKSPACE",
+    "GITHUB_EVENT_PATH",
+}
 
 
 class BuildError(RuntimeError):
@@ -391,16 +400,10 @@ def run_command(
     *,
     cwd: Path,
 ) -> subprocess.CompletedProcess[str]:
-    env = os.environ.copy()
-    python_path = str(ROOT)
-    if env.get("PYTHONPATH"):
-        python_path = python_path + os.pathsep + env["PYTHONPATH"]
-    env["PYTHONPATH"] = python_path
-    env["PYTHONDONTWRITEBYTECODE"] = "1"
     completed = subprocess.run(
         command,
         cwd=cwd,
-        env=env,
+        env=proof_subprocess_env(),
         text=True,
         capture_output=True,
         check=False,
@@ -411,6 +414,21 @@ def run_command(
             f"command failed ({completed.returncode}): {' '.join(command)}\n{detail}"
         )
     return completed
+
+
+def proof_subprocess_env() -> dict[str, str]:
+    """Return a controlled environment for reproducible proof generation."""
+    env = os.environ.copy()
+    for key in HOST_GITHUB_ENV_KEYS:
+        env.pop(key, None)
+    python_path = str(ROOT)
+    if env.get("PYTHONPATH"):
+        python_path = python_path + os.pathsep + env["PYTHONPATH"]
+    env["PYTHONPATH"] = python_path
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    env.setdefault("NO_COLOR", "1")
+    env.setdefault("COLUMNS", "120")
+    return env
 
 
 if __name__ == "__main__":
