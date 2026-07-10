@@ -56,6 +56,25 @@ python3 -m vibebench latest --all-paths
 
 如果只想先看流程，不想真正执行检查，可以先跑 `python3 -m vibebench ci --dry-run --json`。
 
+## v0.4.0 Release Candidate
+
+Milestone 160 准备的是 v0.4.0 release candidate，不是已经完成的正式发布。包版本已经对齐到 `0.4.0`，但 candidate gate 会报告 `released=false`，并且不会创建 tag、不会创建 GitHub Release、不会发布 Python package、不会发布 GitHub Marketplace。
+
+```bash
+python3 -m vibebench release-check --candidate
+python3 -m vibebench release-check --candidate --json
+python3 -m vibebench release-check --candidate --write-json release-candidate.json --write-summary release-candidate.md
+```
+
+评审入口：
+
+- [GitHub Action contract](docs/github-action.md)
+- [Marketplace readiness](docs/marketplace-readiness.md)
+- [v0.4.0 release candidate notes](RELEASE_NOTES_v0.4.0.md)
+- [v0.4.0 release checklist](docs/release-checklist-v0.4.0.md)
+
+推送之后仍然需要人工确认远端 GitHub Action smoke 的 `minimal`、`strict`、`proof` 都通过。candidate gate 通过只能说明 release readiness 证据齐备，不代表 adoption、融资、客户、stars、收入、benchmark 优势或安全认证。
+
 ## Showcase Demo
 
 ## Live Demo

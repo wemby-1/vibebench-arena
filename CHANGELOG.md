@@ -8,6 +8,10 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added `release-check --candidate` for deterministic v0.4.0 release-candidate readiness across package version alignment, reusable Action metadata, action smoke topology, public proof/demo/Pages checks, reviewer docs, and explicit non-publication state.
+- Added v0.4.0 release-candidate artifacts (`release-candidate.json` and `release-candidate.md`) with pure JSON output, deterministic Markdown, `target_version: "0.4.0"`, and `released=false`.
+- Added v0.4.0 release-candidate notes, release checklist, GitHub Action contract docs, and Marketplace readiness guidance without creating a tag, GitHub Release, package publication, or Marketplace publication.
+
 - Added a repository-root composite GitHub Action for external VibeBench adoption with `minimal`, `strict`, and `proof` presets.
 - Added `python3 -m vibebench github-action` to generate deterministic preview workflows referencing `wemby-1/vibebench-arena@main`.
 - Added an action-consumer fixture, action smoke workflow, and launch-site integration configurator.

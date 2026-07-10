@@ -6,6 +6,8 @@ VibeBench Arena is a local-first quality gate for Codex-first and AI-assisted so
 
 VibeBench now includes a reusable composite GitHub Action and generated workflow snippets for external repositories. This lowers integration friction while preserving the same local-first evidence model. This is a product capability, not evidence of customers, revenue, funding, or market traction.
 
+The v0.4.0 candidate adds a machine-verifiable release-candidate gate, Action contract, Marketplace readiness guide, draft release notes, and release checklist. It reports `released=false`; it does not create a tag, GitHub Release, package publication, or Marketplace publication.
+
 ## Executive Summary
 
 AI coding agents can produce software changes quickly, but review, adoption, and release decisions still need evidence. VibeBench Arena addresses that gap by turning AI-assisted repository work into inspectable local and CI artifacts: checks, risk signals, workflow readiness, adoption reports, release-readiness evidence, manifests, bundles, and trust-center material.

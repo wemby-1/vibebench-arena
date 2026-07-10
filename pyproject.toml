@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vibebench-arena"
-version = "0.3.0"
+version = "0.4.0"
 description = "Codex-first quality gate for vibe coding projects."
 readme = "README.md"
 requires-python = ">=3.11"

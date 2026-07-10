@@ -207,9 +207,14 @@ from vibebench.release_body import (
     release_body_json,
 )
 from vibebench.release_check import (
+    ReleaseCandidateResult,
     ReleaseReadinessResult,
+    release_candidate_json,
     release_check_json,
+    run_release_candidate_check,
     run_release_check,
+    write_release_candidate_json,
+    write_release_candidate_summary,
     write_release_check_json,
     write_release_check_summary,
 )
@@ -4769,10 +4774,15 @@ def release_check_command(
         bool,
         typer.Option("--json", help="Print release readiness as JSON."),
     ] = False,
+    candidate: Annotated[
+        bool,
+        typer.Option("--candidate", help="Run the v0.4.0 release-candidate gate."),
+    ] = False,
     write_json: Annotated[
         Path | None,
         typer.Option(
             "--write-json",
+            "--json-output",
             help="Write release readiness JSON to this path.",
         ),
     ] = None,
@@ -4780,6 +4790,7 @@ def release_check_command(
         Path | None,
         typer.Option(
             "--write-summary",
+            "--summary-output",
             help="Write release readiness Markdown to this path.",
         ),
     ] = None,
@@ -4803,6 +4814,61 @@ def release_check_command(
 ) -> None:
     """Run pre-release readiness checks."""
     root = project_root.resolve()
+    if candidate:
+        try:
+            candidate_result = run_release_candidate_check(root)
+            if write_json is not None:
+                write_release_candidate_json(candidate_result, write_json)
+            if write_summary is not None:
+                write_release_candidate_summary(candidate_result, write_summary)
+        except (ReportError, ConfigError) as exc:
+            if as_json:
+                print(
+                    json.dumps(
+                        {
+                            "schema_version": 1,
+                            "status": "failed",
+                            "candidate": True,
+                            "target_version": "0.4.0",
+                            "released": False,
+                            "checks": [
+                                {
+                                    "id": "candidate.error",
+                                    "name": "Candidate error",
+                                    "status": "failed",
+                                    "severity": "blocker",
+                                    "message": str(exc),
+                                    "remediation": "Fix the reported candidate error.",
+                                }
+                            ],
+                            "summary": {
+                                "total": 1,
+                                "passed": 0,
+                                "failed": 1,
+                                "skipped": 0,
+                                "categories": ["candidate"],
+                            },
+                            "artifacts": {},
+                        },
+                        indent=2,
+                        sort_keys=True,
+                    )
+                )
+            else:
+                err_console.print(f"[red]{exc}[/]")
+            raise typer.Exit(1) from exc
+        if as_json:
+            print(release_candidate_json(candidate_result))
+        else:
+            render_release_candidate_summary(candidate_result)
+            if write_json is not None:
+                console.print(f"Release-candidate JSON: {write_json}")
+            if write_summary is not None:
+                console.print(f"Release-candidate summary: {write_summary}")
+        if candidate_result.status != "passed":
+            raise typer.Exit(code=1)
+        return
+
     try:
         required_workflow_ci_modes = resolve_readiness_required_ci_modes(
             require_workflow_ci_mode or [],
@@ -4848,6 +4914,26 @@ def release_check_command(
         render_release_check_summary(result)
     if not result.ready:
         raise typer.Exit(code=1)
+
+
+def render_release_candidate_summary(result: ReleaseCandidateResult) -> None:
+    """Render a concise v0.4.0 candidate summary."""
+    console.print("[bold]VibeBench Release Candidate[/bold]")
+    console.print(f"Target version: {result.target_version}")
+    console.print(f"Candidate status: {result.status}")
+    console.print("Released: false")
+    failed = [check for check in result.checks if check.status == "failed"]
+    if failed:
+        table = Table("Check", "Status", "Message")
+        for check in sorted(failed, key=lambda item: item.id):
+            table.add_row(check.id, check.status, check.message)
+        console.print(table)
+    else:
+        console.print("All v0.4.0 release-candidate checks passed.")
+    console.print(
+        "No tag, GitHub Release, package publication, or Marketplace publication "
+        "was performed."
+    )
 
 
 @app.command("release-checklist")

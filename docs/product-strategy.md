@@ -6,7 +6,7 @@ AI coding is becoming easier, but engineering trust is becoming harder. Develope
 
 Generated code needs more than a chat transcript. It needs local checks, diff review, risk review, artifact-backed summaries, release readiness, and reproducible audit trails that humans can inspect.
 
-For quick evaluation and safe rollout, see the [Pages site entry](index.html), [showcase](showcase.md), [showcase demo kit](../examples/showcase-artifacts/README.md), [investor brief](investor-brief.md), [technical due diligence](technical-due-diligence.md), [proof matrix](proof-matrix.md), [evaluate in 5 minutes](evaluate.md), [adoption](adoption.md), the [comparison](comparison.md), [FAQ](faq.md), and [case study](case-study.md).
+For quick evaluation and safe rollout, see the [Pages site entry](index.html), [showcase](showcase.md), [showcase demo kit](../examples/showcase-artifacts/README.md), [investor brief](investor-brief.md), [technical due diligence](technical-due-diligence.md), [proof matrix](proof-matrix.md), [evaluate in 5 minutes](evaluate.md), [adoption](adoption.md), [GitHub Action contract](github-action.md), [Marketplace readiness](marketplace-readiness.md), the [v0.4.0 release candidate notes](../RELEASE_NOTES_v0.4.0.md), the [v0.4.0 release checklist](release-checklist-v0.4.0.md), the [comparison](comparison.md), [FAQ](faq.md), and [case study](case-study.md).
 
 ## Product Thesis
 

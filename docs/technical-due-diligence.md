@@ -165,6 +165,8 @@ Policy settings should be reviewed before enforcing them in CI.
 
 VibeBench is local-first and artifact-first. The normal local workflow does not require a hosted service, GitHub API access, package publishing, tag creation, or GitHub Release creation.
 
+For v0.4.0 release-candidate diligence, run `python3 -m vibebench release-check --candidate` and inspect the [GitHub Action contract](github-action.md), [Marketplace readiness guide](marketplace-readiness.md), [release candidate notes](../RELEASE_NOTES_v0.4.0.md), and [release checklist](release-checklist-v0.4.0.md). The candidate state is `released=false` and remote GitHub Action smoke status must be reviewed separately after push.
+
 Trust boundaries are documented in the [Trust Center](trust-center.md). Shareable outputs should be checked with:
 
 ```bash

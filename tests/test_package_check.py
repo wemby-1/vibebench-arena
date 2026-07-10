@@ -14,7 +14,7 @@ runner = CliRunner()
 def write_ready_project(
     root: Path,
     *,
-    version: str = "0.3.0",
+    version: str = "0.4.0",
     readme: str = "README.md",
 ) -> None:
     (root / "docs").mkdir(parents=True)
@@ -103,7 +103,7 @@ def test_package_check_json_output_is_pure_json(tmp_path: Path) -> None:
     payload = json.loads(result.stdout)
     assert payload["status"] == "ready"
     assert payload["package_name"] == "vibebench-arena"
-    assert payload["version"] == "0.3.0"
+    assert payload["version"] == "0.4.0"
     assert isinstance(payload["checks"], list)
     assert "build" not in payload
     assert all(check["name"] != "build_readiness" for check in payload["checks"])
@@ -111,7 +111,7 @@ def test_package_check_json_output_is_pure_json(tmp_path: Path) -> None:
 
 def fake_successful_build(
     monkeypatch,
-    artifact: str = "demo-0.3.0-py3-none-any.whl",
+    artifact: str = "demo-0.4.0-py3-none-any.whl",
 ) -> None:
     def fake_find_spec(name: str):
         return object() if name == "build" else None
@@ -140,7 +140,7 @@ def test_package_check_build_success_can_be_faked(tmp_path: Path, monkeypatch) -
     assert result.build.requested is True
     assert result.build.tool == "python -m build"
     assert result.build.tool_available is True
-    assert result.build.artifacts == ["demo-0.3.0-py3-none-any.whl"]
+    assert result.build.artifacts == ["demo-0.4.0-py3-none-any.whl"]
     assert result.build.output_dir is None
     build_check = next(
         check for check in result.checks if check.name == "build_readiness"
@@ -166,7 +166,7 @@ def test_package_check_build_json_output_is_pure_json(
     assert payload["build"]["requested"] is True
     assert payload["build"]["status"] == "passed"
     assert payload["build"]["tool_available"] is True
-    assert payload["build"]["artifacts"] == ["demo-0.3.0-py3-none-any.whl"]
+    assert payload["build"]["artifacts"] == ["demo-0.4.0-py3-none-any.whl"]
     assert payload["build"]["output_dir"] is None
     checks = {check["name"]: check for check in payload["checks"]}
     assert checks["build_readiness"]["status"] == "passed"

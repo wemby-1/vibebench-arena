@@ -188,6 +188,25 @@ VibeBench has a layered readiness story:
 
 See [quickstart](docs/quickstart.md), [adoption](docs/adoption.md), and the [Trust Center](docs/trust-center.md) for the practical flow.
 
+## v0.4.0 Release Candidate
+
+Milestone 160 prepares v0.4.0 as a release candidate, not as a completed release. The package version is aligned to `0.4.0`, while the candidate gate reports `released=false` and performs no tag creation, GitHub Release creation, package publication, or Marketplace publication.
+
+```bash
+python3 -m vibebench release-check --candidate
+python3 -m vibebench release-check --candidate --json
+python3 -m vibebench release-check --candidate --write-json release-candidate.json --write-summary release-candidate.md
+```
+
+Reviewer navigation:
+
+- [GitHub Action contract](docs/github-action.md)
+- [Marketplace readiness](docs/marketplace-readiness.md)
+- [v0.4.0 release candidate notes](RELEASE_NOTES_v0.4.0.md)
+- [v0.4.0 release checklist](docs/release-checklist-v0.4.0.md)
+
+Remote GitHub Action smoke status for `minimal`, `strict`, and `proof` must be checked separately after push. Passing the candidate gate is readiness evidence, not a claim of adoption, funding, customers, stars, revenue, benchmark dominance, or security certification.
+
 ## Evaluate From GitHub
 
 - [Showcase](docs/showcase.md): the reviewer-friendly product demo narrative.
