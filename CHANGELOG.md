@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added a showcase demo kit for external reviewers and adoption evaluation.
+
 - Added read-only `adoption-ready` readiness reporting with JSON and Markdown outputs for adoption workflow setup checks without installing or creating workflow files.
 
 - Added `release-check --require-adoption-workflow`, `release-check --require-workflow-ci-mode MODE`, `doctor --require-adoption-workflow`, and `doctor --require-workflow-ci-mode MODE` for opt-in workflow CI mode readiness checks without changing default behavior.

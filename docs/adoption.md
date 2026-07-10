@@ -12,6 +12,8 @@ VibeBench Arena helps individuals and teams make AI-assisted coding work reviewa
 
 ## First 30 Minutes
 
+For an external review or team kickoff, the [showcase page](showcase.md) and [showcase demo kit](../examples/showcase-artifacts/README.md) provide a 5-minute path before the fuller adoption rollout below.
+
 ```bash
 python3 -m vibebench ci --dry-run --json
 python3 -m vibebench ci

@@ -44,6 +44,10 @@ python3 -m vibebench latest --all-paths
 
 如果只想先看流程，不想真正执行检查，可以先跑 `python3 -m vibebench ci --dry-run --json`。
 
+## Showcase Demo
+
+如果你想快速评估项目，建议先看 [showcase page](docs/showcase.md) 和 [showcase demo kit](examples/showcase-artifacts/README.md)。它们用 5 分钟路径串起 readiness、workflow coverage、CI plan、evidence packet 和 trust boundary，不把 README 变成大段命令清单。
+
 ## 为什么这个项目存在
 
 AI coding 让“写出来”越来越快，但“如何 review、如何证明、如何复现、如何放心地给别人看”并没有自动变简单。
@@ -135,6 +139,8 @@ VibeBench 的 readiness 不是一个单点，而是一层层叠加的：
 
 ## 从 GitHub 怎么快速评估
 
+- [Showcase](docs/showcase.md)：面向 reviewer 的产品演示叙事。
+- [Showcase demo kit](examples/showcase-artifacts/README.md)：可复制命令和 artifact 解读。
 - [Quickstart](docs/quickstart.md)：从 clone 到本地证据的最短路径。
 - [Adoption guide](docs/adoption.md)：团队如何安全引入这套流程。
 - [Artifact gallery](docs/artifact-gallery.md)：给非核心维护者看的 artifact 说明。

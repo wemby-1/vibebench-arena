@@ -2,6 +2,8 @@
 
 VibeBench Arena is a local-first quality gate for Codex-first and AI-assisted coding projects. This page is the shortest practical path from a repository checkout to reviewable evidence without turning the guide into a command dump.
 
+If you are evaluating the project quickly for a review, adoption discussion, or technical demo, start with the [showcase page](showcase.md) and [showcase demo kit](../examples/showcase-artifacts/README.md), then return here for the practical setup path.
+
 ## 1. Install And Run Once
 
 ```bash

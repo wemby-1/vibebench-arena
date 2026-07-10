@@ -44,6 +44,10 @@ python3 -m vibebench latest --all-paths
 
 If you want a shorter preview before a full run, start with `python3 -m vibebench ci --dry-run --json`.
 
+## Showcase Demo
+
+Evaluating quickly? Start with the [showcase page](docs/showcase.md) and the [showcase demo kit](examples/showcase-artifacts/README.md). They give reviewers a 5-minute path through readiness, workflow coverage, CI planning, evidence packets, and trust boundaries without turning this README into a command dump.
+
 ## Why This Exists
 
 AI coding makes it easy to produce code quickly. It does not automatically make the result easy to review.
@@ -129,6 +133,8 @@ See [quickstart](docs/quickstart.md), [adoption](docs/adoption.md), and the [Tru
 
 ## Evaluate From GitHub
 
+- [Showcase](docs/showcase.md): the reviewer-friendly product demo narrative.
+- [Showcase demo kit](examples/showcase-artifacts/README.md): copy-paste commands and artifact interpretation.
 - [Quickstart](docs/quickstart.md): the shortest path from clone to usable local evidence.
 - [Adoption guide](docs/adoption.md): how teams roll this out safely.
 - [Artifact gallery](docs/artifact-gallery.md): what the outputs mean to a non-core maintainer.
