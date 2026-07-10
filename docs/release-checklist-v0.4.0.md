@@ -28,6 +28,9 @@ Passing this checklist is readiness evidence, not a claim of adoption, funding, 
 - [ ] Run docs/link checks.
 - [ ] Run secret/leak scans and unsupported-claim scans.
 - [ ] Confirm repository status is clean.
+- [ ] Confirm hosted `VibeBench release candidate` is green after push.
+- [ ] Download and inspect `vibebench-v0.4.0-release-candidate`.
+- [ ] Confirm hosted `Action smoke` is green for `minimal`, `strict`, and `proof`.
 
 ## Release
 
@@ -40,6 +43,8 @@ Passing this checklist is readiness evidence, not a claim of adoption, funding, 
 - [ ] Marketplace draft/publication decision made.
 
 M160 leaves every Release item incomplete.
+
+M161 adds the hosted pre-release candidate gate only. It still leaves every Release item incomplete and keeps `released=false`.
 
 ## Post-release
 

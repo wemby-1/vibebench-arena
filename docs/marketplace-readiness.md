@@ -11,6 +11,7 @@ GitHub may show a "Draft a release" banner for repository actions that look publ
 - `action.yml` has a stable name, description, author, valid branding icon and color, documented inputs, and documented outputs.
 - A stable release tag exists, such as `v0.4.0`.
 - The real GitHub Action smoke workflow has passed `minimal`, `strict`, and `proof` after the candidate push.
+- The hosted `VibeBench release candidate` workflow has passed and uploaded `vibebench-v0.4.0-release-candidate`.
 - `python3 -m vibebench release-check --candidate` passes and reports `released=false`.
 - Release notes exist and describe the Action contract honestly.
 - Support and security links resolve: [Security Policy](../SECURITY.md), [Contributing](../CONTRIBUTING.md), and [GitHub Action guide](github-action.md).
@@ -48,6 +49,8 @@ Before a Marketplace decision, verify a separate consumer run for:
 - `proof`
 
 Remote GitHub Actions status must be reviewed separately after push. Local structural checks are necessary, but they are not a substitute for the hosted smoke result.
+
+The release-candidate workflow uploads only the narrow candidate evidence directory with `release-candidate.json`, `release-candidate.md`, and `workflow-verification.json`. It does not publish a release, package, or Marketplace listing.
 
 ## Rollback Process
 

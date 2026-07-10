@@ -12,6 +12,8 @@ This document is the reusable Action contract for the repository-root composite 
 
 The real Action smoke workflow must pass all three presets: `minimal`, `strict`, and `proof`. Remote GitHub Actions status must be reviewed separately after pushing the candidate.
 
+The separate `VibeBench release candidate` workflow validates package, reusable Action, public evidence, docs, and non-publication state. It does not replace `Action smoke`; both workflows should be green before release work continues.
+
 ## Input Contract
 
 | Input | Default | Contract |

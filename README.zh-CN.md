@@ -73,7 +73,7 @@ python3 -m vibebench release-check --candidate --write-json release-candidate.js
 - [v0.4.0 release candidate notes](RELEASE_NOTES_v0.4.0.md)
 - [v0.4.0 release checklist](docs/release-checklist-v0.4.0.md)
 
-推送之后仍然需要人工确认远端 GitHub Action smoke 的 `minimal`、`strict`、`proof` 都通过。candidate gate 通过只能说明 release readiness 证据齐备，不代表 adoption、融资、客户、stars、收入、benchmark 优势或安全认证。
+托管的 `VibeBench release candidate` workflow 会在 GitHub 上验证同一个 candidate gate，并上传 `vibebench-v0.4.0-release-candidate` artifact，其中包含 `release-candidate.json`、`release-candidate.md` 和一个精简 workflow verification manifest。推送之后仍然需要人工检查 GitHub Actions 结果。继续 release 工作前，`VibeBench release candidate` 和 `Action smoke` 里的 `minimal`、`strict`、`proof` 都应该是绿色。candidate gate 通过只能说明 release readiness 证据齐备，不代表 adoption、融资、客户、stars、收入、benchmark 优势或安全认证。
 
 ## Showcase Demo
 

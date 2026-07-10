@@ -1,0 +1,153 @@
+name: VibeBench release candidate
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-candidate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install package
+        run: python -m pip install -e ".[dev]"
+
+      - name: Syntax check
+        run: python3 -m py_compile vibebench/release_check.py vibebench/cli.py
+
+      - name: Lint
+        run: python3 -m ruff check .
+
+      - name: Run release candidate gate
+        env:
+          CANDIDATE_OUTPUT_DIR: ${{ runner.temp }}/vibebench-release-candidate
+          CANDIDATE_STDOUT_JSON: ${{ runner.temp }}/release-candidate-stdout.json
+        run: |
+          mkdir -p "$CANDIDATE_OUTPUT_DIR"
+          python3 -m vibebench release-check \
+            --candidate \
+            --json \
+            --write-json "$CANDIDATE_OUTPUT_DIR/release-candidate.json" \
+            --write-summary "$CANDIDATE_OUTPUT_DIR/release-candidate.md" \
+            | tee "$CANDIDATE_STDOUT_JSON"
+
+      - name: Verify release candidate JSON
+        env:
+          CANDIDATE_OUTPUT_DIR: ${{ runner.temp }}/vibebench-release-candidate
+          CANDIDATE_STDOUT_JSON: ${{ runner.temp }}/release-candidate-stdout.json
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          output_dir = Path(os.environ["CANDIDATE_OUTPUT_DIR"])
+          stdout_json = Path(os.environ["CANDIDATE_STDOUT_JSON"])
+          payload = json.loads((output_dir / "release-candidate.json").read_text())
+          stdout_payload = json.loads(stdout_json.read_text())
+          if payload != stdout_payload:
+              raise SystemExit("release-candidate stdout JSON differs from file JSON")
+          if payload.get("candidate") is not True:
+              raise SystemExit("candidate must be true")
+          if payload.get("target_version") != "0.4.0":
+              raise SystemExit("target_version must be 0.4.0")
+          if payload.get("released") is not False:
+              raise SystemExit("released must be false")
+          if payload.get("status") != "passed":
+              raise SystemExit("candidate status must be passed")
+          unpassed = [
+              check for check in payload.get("checks", [])
+              if check.get("status") != "passed"
+          ]
+          if unpassed:
+              names = ", ".join(check.get("id", "unknown") for check in unpassed)
+              raise SystemExit(f"candidate checks did not pass: {names}")
+          manifest = {
+              "artifact_name": "vibebench-v0.4.0-release-candidate",
+              "candidate": payload["candidate"],
+              "target_version": payload["target_version"],
+              "released": payload["released"],
+              "status": payload["status"],
+              "total_checks": payload["summary"]["total"],
+              "passed_checks": payload["summary"]["passed"],
+              "failed_checks": payload["summary"]["failed"],
+              "files": [
+                  "release-candidate.json",
+                  "release-candidate.md",
+                  "workflow-verification.json",
+              ],
+          }
+          (output_dir / "workflow-verification.json").write_text(
+              json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Verify deterministic public evidence
+        run: |
+          python3 scripts/build_public_proof_packet.py --check
+          python3 scripts/build_public_demo.py --check
+          python3 scripts/build_pages_site.py --check
+
+      - name: Run focused release candidate tests
+        run: python3 -m pytest tests/test_release_candidate.py -q
+
+      - name: Write release candidate summary
+        env:
+          CANDIDATE_OUTPUT_DIR: ${{ runner.temp }}/vibebench-release-candidate
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          output_dir = Path(os.environ["CANDIDATE_OUTPUT_DIR"])
+          payload = json.loads((output_dir / "release-candidate.json").read_text())
+          summary = payload["summary"]
+          lines = [
+              "## VibeBench release candidate",
+              "",
+              f"- Candidate status: `{payload['status']}`",
+              f"- Target version: `{payload['target_version']}`",
+              "- Released: `false`",
+              f"- Checks passed: `{summary['passed']}`",
+              f"- Checks failed: `{summary['failed']}`",
+              "- Candidate artifacts: `release-candidate.json`, "
+              "`release-candidate.md`, `workflow-verification.json`",
+              "- Deterministic public evidence: proof packet, public demo, "
+              "and Pages builder checks passed.",
+              "",
+              "This workflow does not create a tag, create a GitHub Release, "
+              "upload a package, or publish to GitHub Marketplace.",
+          ]
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary_path:
+              Path(summary_path).write_text("\n".join(lines) + "\n", encoding="utf-8")
+          PY
+
+      - name: Upload release candidate evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: vibebench-v0.4.0-release-candidate
+          path: ${{ runner.temp }}/vibebench-release-candidate
+          if-no-files-found: error

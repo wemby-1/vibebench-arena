@@ -205,7 +205,7 @@ Reviewer navigation:
 - [v0.4.0 release candidate notes](RELEASE_NOTES_v0.4.0.md)
 - [v0.4.0 release checklist](docs/release-checklist-v0.4.0.md)
 
-Remote GitHub Action smoke status for `minimal`, `strict`, and `proof` must be checked separately after push. Passing the candidate gate is readiness evidence, not a claim of adoption, funding, customers, stars, revenue, benchmark dominance, or security certification.
+The hosted `VibeBench release candidate` workflow validates the same candidate gate on GitHub and uploads `vibebench-v0.4.0-release-candidate` with `release-candidate.json`, `release-candidate.md`, and a compact workflow verification manifest. Remote GitHub Actions status must be checked separately after push. Both `VibeBench release candidate` and `Action smoke` with `minimal`, `strict`, and `proof` should be green before continuing release work. Passing the candidate gate is readiness evidence, not a claim of adoption, funding, customers, stars, revenue, benchmark dominance, or security certification.
 
 ## Evaluate From GitHub
 

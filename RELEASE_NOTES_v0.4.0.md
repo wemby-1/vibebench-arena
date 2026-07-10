@@ -27,6 +27,7 @@ Passing the candidate gate is evidence of readiness. It is not a promise of adop
 - Local-first evidence room, share-check, Trust Center, and security questionnaire flow.
 - Adoption/workflow/release readiness checks with machine-readable JSON and Markdown artifacts.
 - Candidate release gate for v0.4.0 that joins package, Action, public evidence, documentation, and non-publication state.
+- Hosted `VibeBench release candidate` workflow that validates the candidate gate on push, pull request, and manual dispatch with read-only repository permissions.
 
 ## Reusable GitHub Action
 
@@ -50,13 +51,14 @@ The release-candidate gate can produce:
 - `release-candidate.json`
 - `release-candidate.md`
 
-Both are deterministic. JSON stdout for `--json` is pure JSON.
+Both are deterministic. JSON stdout for `--json` is pure JSON. The hosted candidate workflow uploads the stable artifact `vibebench-v0.4.0-release-candidate`, containing `release-candidate.json`, `release-candidate.md`, and `workflow-verification.json`.
 
 ## Security and Privacy Boundaries
 
 - Core commands run from the local checkout.
 - The candidate gate does not call the GitHub API.
 - The candidate gate does not create a tag, GitHub Release, package upload, or Marketplace listing.
+- The hosted candidate workflow uses `contents: read` and does not request package, release, deployment, or OIDC publishing permissions.
 - Public static surfaces are checked for deterministic builders and offline-safe Trust Center boundaries.
 - Action paths are checked for caller workspace and action source separation.
 
@@ -97,8 +99,9 @@ python3 -m pytest -q
 ## Post-candidate Release Steps
 
 1. Confirm the real hosted Action smoke run passed `minimal`, `strict`, and `proof`.
-2. Rerun the full local verification chain from a clean checkout.
-3. Create the annotated `v0.4.0` tag only after approval.
-4. Draft and publish the GitHub Release only after approval.
-5. Publish a package only if separately approved.
-6. Decide whether to draft or publish the GitHub Marketplace listing after a stable ref exists.
+2. Confirm the hosted `VibeBench release candidate` workflow passed and inspect its uploaded candidate artifact.
+3. Rerun the full local verification chain from a clean checkout.
+4. Create the annotated `v0.4.0` tag only after approval.
+5. Draft and publish the GitHub Release only after approval.
+6. Publish a package only if separately approved.
+7. Decide whether to draft or publish the GitHub Marketplace listing after a stable ref exists.
