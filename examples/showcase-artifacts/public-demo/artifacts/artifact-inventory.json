@@ -1,0 +1,222 @@
+{
+  "artifacts": [
+    {
+      "available": true,
+      "name": "metrics.json",
+      "path": ".vibebench/runs/public-proof-run/metrics.json",
+      "size_bytes": 1725
+    },
+    {
+      "available": false,
+      "name": "check.log",
+      "path": ".vibebench/runs/public-proof-run/check.log",
+      "size_bytes": null
+    },
+    {
+      "available": false,
+      "name": "project-scan-json",
+      "path": ".vibebench/runs/public-proof-run/project-scan.json",
+      "size_bytes": null
+    },
+    {
+      "available": false,
+      "name": "project-scan-md",
+      "path": ".vibebench/runs/public-proof-run/project-scan.md",
+      "size_bytes": null
+    },
+    {
+      "available": false,
+      "name": "onboard-json",
+      "path": ".vibebench/runs/public-proof-run/onboard.json",
+      "size_bytes": null
+    },
+    {
+      "available": false,
+      "name": "onboard-md",
+      "path": ".vibebench/runs/public-proof-run/onboard.md",
+      "size_bytes": null
+    },
+    {
+      "available": true,
+      "name": "preflight-json",
+      "path": ".vibebench/runs/public-proof-run/preflight.json",
+      "size_bytes": 3363
+    },
+    {
+      "available": true,
+      "name": "preflight-md",
+      "path": ".vibebench/runs/public-proof-run/preflight.md",
+      "size_bytes": 1020
+    },
+    {
+      "available": false,
+      "name": "workflow-template-json",
+      "path": ".vibebench/runs/public-proof-run/workflow-template.json",
+      "size_bytes": null
+    },
+    {
+      "available": false,
+      "name": "workflow-template-md",
+      "path": ".vibebench/runs/public-proof-run/workflow-template.md",
+      "size_bytes": null
+    },
+    {
+      "available": false,
+      "name": "workflow-template-yml",
+      "path": ".vibebench/runs/public-proof-run/workflow-template.yml",
+      "size_bytes": null
+    },
+    {
+      "available": true,
+      "name": "workflow-check-json",
+      "path": ".vibebench/runs/public-proof-run/workflow-check.json",
+      "size_bytes": 6364
+    },
+    {
+      "available": true,
+      "name": "workflow-check-md",
+      "path": ".vibebench/runs/public-proof-run/workflow-check.md",
+      "size_bytes": 2532
+    },
+    {
+      "available": true,
+      "name": "manifest.json",
+      "path": ".vibebench/runs/public-proof-run/manifest.json",
+      "size_bytes": 10911
+    },
+    {
+      "available": true,
+      "name": "config-check.json",
+      "path": ".vibebench/runs/public-proof-run/config-check.json",
+      "size_bytes": 3442
+    },
+    {
+      "available": true,
+      "name": "config-check.md",
+      "path": ".vibebench/runs/public-proof-run/config-check.md",
+      "size_bytes": 2740
+    },
+    {
+      "available": false,
+      "name": "package-check.json",
+      "path": ".vibebench/runs/public-proof-run/package-check.json",
+      "size_bytes": null
+    },
+    {
+      "available": false,
+      "name": "package-check.md",
+      "path": ".vibebench/runs/public-proof-run/package-check.md",
+      "size_bytes": null
+    },
+    {
+      "available": true,
+      "name": "release-check.json",
+      "path": ".vibebench/runs/public-proof-run/release-check.json",
+      "size_bytes": 1680
+    },
+    {
+      "available": true,
+      "name": "release-check.md",
+      "path": ".vibebench/runs/public-proof-run/release-check.md",
+      "size_bytes": 988
+    },
+    {
+      "available": true,
+      "name": "report/index.html",
+      "path": ".vibebench/runs/report/index.html",
+      "size_bytes": 8570
+    },
+    {
+      "available": false,
+      "name": "pr-comment.md",
+      "path": ".vibebench/runs/public-proof-run/pr-comment.md",
+      "size_bytes": null
+    },
+    {
+      "available": true,
+      "name": "github-step-summary.md",
+      "path": ".vibebench/runs/public-proof-run/github-step-summary.md",
+      "size_bytes": 2940
+    },
+    {
+      "available": true,
+      "name": "gate-summary.md",
+      "path": ".vibebench/runs/public-proof-run/gate-summary.md",
+      "size_bytes": 347
+    },
+    {
+      "available": true,
+      "name": "explain.md",
+      "path": ".vibebench/runs/public-proof-run/explain.md",
+      "size_bytes": 1033
+    },
+    {
+      "available": false,
+      "name": "export.json",
+      "path": ".vibebench/runs/public-proof-run/export.json",
+      "size_bytes": null
+    },
+    {
+      "available": false,
+      "name": "badge.json",
+      "path": ".vibebench/runs/public-proof-run/badge.json",
+      "size_bytes": null
+    },
+    {
+      "available": false,
+      "name": "badge.md",
+      "path": ".vibebench/runs/public-proof-run/badge.md",
+      "size_bytes": null
+    },
+    {
+      "available": false,
+      "name": "status-block.md",
+      "path": ".vibebench/runs/public-proof-run/status-block.md",
+      "size_bytes": null
+    },
+    {
+      "available": false,
+      "name": "trend.md",
+      "path": ".vibebench/runs/public-proof-run/trend.md",
+      "size_bytes": null
+    },
+    {
+      "available": false,
+      "name": "trend.json",
+      "path": ".vibebench/runs/public-proof-run/trend.json",
+      "size_bytes": null
+    },
+    {
+      "available": false,
+      "name": "run-index.json",
+      "path": ".vibebench/runs/public-proof-run/run-index.json",
+      "size_bytes": null
+    },
+    {
+      "available": false,
+      "name": "run-index.md",
+      "path": ".vibebench/runs/public-proof-run/run-index.md",
+      "size_bytes": null
+    },
+    {
+      "available": false,
+      "name": "compare.json",
+      "path": ".vibebench/runs/public-proof-run/compare.json",
+      "size_bytes": null
+    },
+    {
+      "available": false,
+      "name": "compare.md",
+      "path": ".vibebench/runs/public-proof-run/compare.md",
+      "size_bytes": null
+    },
+    {
+      "available": false,
+      "name": "vibebench-bundle.zip",
+      "path": ".vibebench/runs/public-proof-run/vibebench-bundle.zip",
+      "size_bytes": null
+    }
+  ],
+  "run_dir": "<reference-project>/.vibebench/runs/public-proof-run",
+  "run_id": "public-proof-run"
+}

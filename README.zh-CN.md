@@ -46,7 +46,17 @@ python3 -m vibebench latest --all-paths
 
 ## Showcase Demo
 
-如果你想快速评估项目，建议先看 [showcase page](docs/showcase.md)、[showcase demo kit](examples/showcase-artifacts/README.md) 和 [public proof packet](examples/showcase-artifacts/public-proof/README.md)。它们用 5 分钟路径串起 readiness、workflow coverage、CI plan、evidence packet 和 trust boundary，不把 README 变成大段命令清单。
+如果你想快速评估项目，建议先看 [showcase page](docs/showcase.md)、[showcase demo kit](examples/showcase-artifacts/README.md)、[public proof packet](examples/showcase-artifacts/public-proof/README.md) 和 [public demo portal](examples/showcase-artifacts/public-demo/README.md)。它们用 5 分钟路径串起 readiness、workflow coverage、CI plan、evidence packet 和 trust boundary，不把 README 变成大段命令清单。
+
+也可以直接生成一个独立可打开的 demo portal：
+
+```bash
+python3 -m vibebench public-demo \
+  --proof-packet examples/showcase-artifacts/public-proof \
+  --output-dir /tmp/vibebench-demo
+```
+
+然后在浏览器里打开 `/tmp/vibebench-demo/index.html`。这个输出是自包含的，不需要服务器或网络。
 
 如果是投资人、技术尽调或评审场景，可以继续看 [investor brief](docs/investor-brief.md)、[technical due diligence](docs/technical-due-diligence.md)、[proof matrix](docs/proof-matrix.md)、[public proof packet tour](docs/public-proof-packet.md)、[demo script](docs/demo-script.md) 和 [Trust Center](docs/trust-center.md)。
 
@@ -110,10 +120,11 @@ VibeBench 的核心不是一句状态，而是一组可审阅证据。常规 run
 - `workflow-check.json` / `workflow-check.md`：启用 workflow-check 时留下的 workflow readiness 证据。
 - `release-check.json` / `release-check.md`：本地 release readiness 证据。
 - `evidence-room/`：当可用时，包含 `index.html`、trust notes、questionnaire、scorecard、share-check 等对外审阅材料。
+- `public-demo` 输出：把 run 或 proof packet 转成包含 `index.html`、`demo.json` 和 `README.md` 的独立 public demo portal。
 
 这些 artifacts 的目标很具体：回答跑了什么、改了什么、留下了什么，以及 reviewer 下一步该看什么。
 
-如果想直接浏览一个已提交、可复现的例子，可以看 [public proof packet](examples/showcase-artifacts/public-proof/README.md) 和它的 [artifact tour](docs/public-proof-packet.md)。
+如果想直接浏览一个已提交、可复现的例子，可以看 [public proof packet](examples/showcase-artifacts/public-proof/README.md)、[public demo portal](examples/showcase-artifacts/public-demo/README.md) 和它的 [artifact tour](docs/public-proof-packet.md)。
 
 ## 它和普通 CI 有什么不同
 

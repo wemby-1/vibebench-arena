@@ -86,11 +86,11 @@ A normal run writes local artifacts under:
 .vibebench/runs/<timestamp>/
 ```
 
-Common artifacts include `metrics.json`, `check.log`, `report/index.html`, `pr-comment.md`, `explain.md`, `manifest.json`, `github-step-summary.md`, `release-check.json`, `release-check.md`, `compare.json`, `compare.md`, and `vibebench-bundle.zip`.
+Common artifacts include `metrics.json`, `check.log`, `report/index.html`, `pr-comment.md`, `explain.md`, `manifest.json`, `github-step-summary.md`, `release-check.json`, `release-check.md`, `compare.json`, `compare.md`, and `vibebench-bundle.zip`. `public-demo` can convert a run or curated proof packet into a deterministic standalone portal with `index.html`, `demo.json`, `README.md`, and only allowlisted copied artifacts.
 
 Generated run artifacts are local outputs. They should not be committed unless a specific sample artifact is intentionally curated.
 
-The intentionally curated exception is the [public proof packet](../examples/showcase-artifacts/public-proof/README.md), regenerated from the deterministic [reference project](../examples/reference-project/). The [artifact tour](public-proof-packet.md) explains provenance, normalization, and `--check` freshness verification.
+The intentionally curated exceptions are the [public proof packet](../examples/showcase-artifacts/public-proof/README.md) and [public demo portal](../examples/showcase-artifacts/public-demo/README.md), regenerated from the deterministic [reference project](../examples/reference-project/). The [artifact tour](public-proof-packet.md) explains provenance, normalization, and `--check` freshness verification.
 
 ## Reproducibility Model
 
@@ -102,6 +102,7 @@ Reproducibility comes from:
 - CI dry-run plans before execution
 - manifests that inventory outputs
 - bundle and evidence-room packages for handoff
+- public-demo portals for no-server evidence review
 - strict doctor and release-check commands for environment/artifact readiness
 
 This model supports repeatable review. It does not make the underlying project deterministic if configured commands, dependencies, or external services are nondeterministic.

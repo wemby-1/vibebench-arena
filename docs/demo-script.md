@@ -4,7 +4,7 @@ This document provides two practical demo flows for VibeBench Arena. Use the fiv
 
 The demos show inspectable evidence. They do not claim guaranteed security, correctness, compliance, funding, or production readiness.
 
-When a live run is not convenient, use the committed [public proof packet](../examples/showcase-artifacts/public-proof/README.md) and [artifact tour](public-proof-packet.md) as the browsable reference evidence.
+When a live run is not convenient, use the committed [public proof packet](../examples/showcase-artifacts/public-proof/README.md), [public demo portal](../examples/showcase-artifacts/public-demo/README.md), and [artifact tour](public-proof-packet.md) as the browsable reference evidence.
 
 ## Before You Present
 
@@ -80,6 +80,16 @@ Point out:
 Narrative: "The important product idea is not the terminal output. It is the evidence packet left behind for a reviewer."
 
 Fallback: open the [public proof packet index](../examples/showcase-artifacts/public-proof/proof-packet-index.md) to show the same artifact categories from a reproducible reference project.
+
+To show the polished standalone portal:
+
+```bash
+python3 -m vibebench public-demo \
+  --proof-packet examples/showcase-artifacts/public-proof \
+  --output-dir /tmp/vibebench-demo
+```
+
+Then open `/tmp/vibebench-demo/index.html`. Point out that it summarizes supplied VibeBench evidence, labels missing optional artifacts, and states non-claims explicitly.
 
 ### 4. Bundle The Evidence
 

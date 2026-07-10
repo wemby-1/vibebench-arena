@@ -20,9 +20,12 @@ python3 -m vibebench ci
 python3 -m vibebench latest --all-paths
 python3 -m vibebench adoption-ready --json
 python3 -m vibebench release-check --json
+python3 -m vibebench public-demo --run-dir .vibebench/runs/<run-id> --output-dir /tmp/vibebench-demo
 ```
 
 This gives a new team enough to see the local gate, inspect the produced evidence, and understand whether the repository is moving toward broader adoption or release readiness.
+
+Use `public-demo` when the team needs a self-contained portal for reviewers who should inspect the evidence before learning the full CLI. Open `/tmp/vibebench-demo/index.html` directly and review the non-claims before sharing it.
 
 ## How A Project Adopts VibeBench
 
@@ -120,6 +123,7 @@ This split is deliberate. Teams can collect evidence first, discuss what it mean
 
 - Local commands pass.
 - Generated artifacts are understandable to reviewers.
+- Public-demo portals have been reviewed for safe links, missing optional evidence, and non-claims before external sharing.
 - The team knows where to find `metrics.json`, `manifest.json`, summaries, and bundles.
 - Workflow mode expectations are explicit.
 - No credentials or sensitive local paths are committed.

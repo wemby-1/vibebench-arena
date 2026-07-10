@@ -10,6 +10,11 @@ The committed packet lives at
 It is demonstration evidence, not a security audit, certification, compliance
 report, or formal proof of production safety.
 
+The committed public demo portal built from this packet lives at
+[`examples/showcase-artifacts/public-demo/`](../examples/showcase-artifacts/public-demo/).
+It gives reviewers a polished `index.html` entry point, `demo.json`, and curated
+safe artifact links without requiring a server or network access.
+
 ## How It Is Generated
 
 The repository-native builder copies the reference project into a temporary
@@ -27,6 +32,20 @@ Detect staleness without modifying committed files:
 
 ```bash
 python3 scripts/build_public_proof_packet.py --check
+```
+
+Generate the standalone portal from the committed packet:
+
+```bash
+python3 -m vibebench public-demo \
+  --proof-packet examples/showcase-artifacts/public-proof \
+  --output-dir /tmp/vibebench-demo
+```
+
+Check the committed reference portal:
+
+```bash
+python3 scripts/build_public_demo.py --check
 ```
 
 Normalized fields include temporary paths, run identifiers, generated
@@ -60,6 +79,8 @@ meaning are preserved.
    explains the quality gate result.
 10. [`report/index.html`](../examples/showcase-artifacts/public-proof/report/index.html)
     is the static HTML report.
+11. [`public-demo/index.html`](../examples/showcase-artifacts/public-demo/index.html)
+    is the product-level portal generated from the packet.
 
 ## What It Supports
 

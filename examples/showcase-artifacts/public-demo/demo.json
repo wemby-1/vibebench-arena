@@ -1,0 +1,709 @@
+{
+  "artifact_count": 42,
+  "artifacts": [
+    {
+      "available": true,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "md",
+      "link": "artifacts/README.md",
+      "name": "README.md",
+      "path": "README.md",
+      "size_bytes": 886,
+      "source_available": true
+    },
+    {
+      "available": true,
+      "description": "Compact adoption-readiness verdict.",
+      "file_type": "json",
+      "link": "artifacts/adoption-ready.json",
+      "name": "adoption ready.json",
+      "path": "adoption-ready.json",
+      "size_bytes": 2791,
+      "source_available": true
+    },
+    {
+      "available": true,
+      "description": "Reviewer-readable adoption-readiness verdict.",
+      "file_type": "md",
+      "link": "artifacts/adoption-ready.md",
+      "name": "adoption ready.md",
+      "path": "adoption-ready.md",
+      "size_bytes": 1293,
+      "source_available": true
+    },
+    {
+      "available": true,
+      "description": "Availability map for known evidence files.",
+      "file_type": "json",
+      "link": "artifacts/artifact-inventory.json",
+      "name": "artifact inventory.json",
+      "path": "artifact-inventory.json",
+      "size_bytes": 5921,
+      "source_available": true
+    },
+    {
+      "available": true,
+      "description": "Machine-readable configuration consistency checks.",
+      "file_type": "json",
+      "link": "artifacts/config-check.json",
+      "name": "config check.json",
+      "path": "config-check.json",
+      "size_bytes": 3442,
+      "source_available": true
+    },
+    {
+      "available": true,
+      "description": "Reviewer-readable configuration consistency summary.",
+      "file_type": "md",
+      "link": "artifacts/config-check.md",
+      "name": "config check.md",
+      "path": "config-check.md",
+      "size_bytes": 2740,
+      "source_available": true
+    },
+    {
+      "available": true,
+      "description": "Short explanation of the run result and review signals.",
+      "file_type": "md",
+      "link": "artifacts/explain.md",
+      "name": "explain.md",
+      "path": "explain.md",
+      "size_bytes": 1033,
+      "source_available": true
+    },
+    {
+      "available": true,
+      "description": "Quality gate result summary.",
+      "file_type": "md",
+      "link": "artifacts/gate-summary.md",
+      "name": "gate summary.md",
+      "path": "gate-summary.md",
+      "size_bytes": 347,
+      "source_available": true
+    },
+    {
+      "available": true,
+      "description": "GitHub Actions summary text captured for review.",
+      "file_type": "md",
+      "link": "artifacts/github-step-summary.md",
+      "name": "github step summary.md",
+      "path": "github-step-summary.md",
+      "size_bytes": 2940,
+      "source_available": true
+    },
+    {
+      "available": true,
+      "description": "Inventory and checksums for known run artifacts.",
+      "file_type": "json",
+      "link": "artifacts/manifest.json",
+      "name": "manifest.json",
+      "path": "manifest.json",
+      "size_bytes": 10911,
+      "source_available": true
+    },
+    {
+      "available": true,
+      "description": "Core status, score, command result, diff, and risk signals.",
+      "file_type": "json",
+      "link": "artifacts/metrics.json",
+      "name": "metrics.json",
+      "path": "metrics.json",
+      "size_bytes": 1725,
+      "source_available": true
+    },
+    {
+      "available": true,
+      "description": "Read-only adoption preflight result.",
+      "file_type": "json",
+      "link": "artifacts/preflight.json",
+      "name": "preflight json",
+      "path": "preflight.json",
+      "size_bytes": 3363,
+      "source_available": true
+    },
+    {
+      "available": true,
+      "description": "Reviewer-readable adoption preflight summary.",
+      "file_type": "md",
+      "link": "artifacts/preflight.md",
+      "name": "preflight md",
+      "path": "preflight.md",
+      "size_bytes": 1020,
+      "source_available": true
+    },
+    {
+      "available": true,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "md",
+      "link": "artifacts/proof-packet-index.md",
+      "name": "proof packet index.md",
+      "path": "proof-packet-index.md",
+      "size_bytes": 965,
+      "source_available": true
+    },
+    {
+      "available": true,
+      "description": "Local release-readiness evidence.",
+      "file_type": "json",
+      "link": "artifacts/release-check.json",
+      "name": "release check.json",
+      "path": "release-check.json",
+      "size_bytes": 1680,
+      "source_available": true
+    },
+    {
+      "available": true,
+      "description": "Reviewer-readable release-readiness summary.",
+      "file_type": "md",
+      "link": "artifacts/release-check.md",
+      "name": "release check.md",
+      "path": "release-check.md",
+      "size_bytes": 988,
+      "source_available": true
+    },
+    {
+      "available": true,
+      "description": "Self-contained HTML report for the run.",
+      "file_type": "html",
+      "link": "artifacts/report/index.html",
+      "name": "report  /  index.html",
+      "path": "report/index.html",
+      "size_bytes": 8570,
+      "source_available": true
+    },
+    {
+      "available": true,
+      "description": "Workflow readiness and policy checks.",
+      "file_type": "json",
+      "link": "artifacts/workflow-check.json",
+      "name": "workflow check json",
+      "path": "workflow-check.json",
+      "size_bytes": 6364,
+      "source_available": true
+    },
+    {
+      "available": true,
+      "description": "Reviewer-readable workflow readiness summary.",
+      "file_type": "md",
+      "link": "artifacts/workflow-check.md",
+      "name": "workflow check md",
+      "path": "workflow-check.md",
+      "size_bytes": 2532,
+      "source_available": true
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "json",
+      "link": null,
+      "name": "badge.json",
+      "path": "badge.json",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "md",
+      "link": null,
+      "name": "badge.md",
+      "path": "badge.md",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "log",
+      "link": null,
+      "name": "check.log",
+      "path": "check.log",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "json",
+      "link": null,
+      "name": "compare.json",
+      "path": "compare.json",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "md",
+      "link": null,
+      "name": "compare.md",
+      "path": "compare.md",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "json",
+      "link": null,
+      "name": "export.json",
+      "path": "export.json",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "html",
+      "link": null,
+      "name": "report / index.html",
+      "path": "index.html",
+      "size_bytes": null,
+      "source_available": true
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "json",
+      "link": null,
+      "name": "onboard json",
+      "path": "onboard.json",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "md",
+      "link": null,
+      "name": "onboard md",
+      "path": "onboard.md",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "json",
+      "link": null,
+      "name": "package check.json",
+      "path": "package-check.json",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "md",
+      "link": null,
+      "name": "package check.md",
+      "path": "package-check.md",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "md",
+      "link": null,
+      "name": "pr comment.md",
+      "path": "pr-comment.md",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "json",
+      "link": null,
+      "name": "project scan json",
+      "path": "project-scan.json",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "md",
+      "link": null,
+      "name": "project scan md",
+      "path": "project-scan.md",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "json",
+      "link": null,
+      "name": "run index.json",
+      "path": "run-index.json",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "md",
+      "link": null,
+      "name": "run index.md",
+      "path": "run-index.md",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "md",
+      "link": null,
+      "name": "status block.md",
+      "path": "status-block.md",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "json",
+      "link": null,
+      "name": "trend.json",
+      "path": "trend.json",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "md",
+      "link": null,
+      "name": "trend.md",
+      "path": "trend.md",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Portable run artifact bundle metadata when present.",
+      "file_type": "zip",
+      "link": null,
+      "name": "vibebench bundle.zip",
+      "path": "vibebench-bundle.zip",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "json",
+      "link": null,
+      "name": "workflow template json",
+      "path": "workflow-template.json",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "md",
+      "link": null,
+      "name": "workflow template md",
+      "path": "workflow-template.md",
+      "size_bytes": null,
+      "source_available": false
+    },
+    {
+      "available": false,
+      "description": "Known VibeBench artifact; inspect when available in the source evidence.",
+      "file_type": "yml",
+      "link": null,
+      "name": "workflow template yml",
+      "path": "workflow-template.yml",
+      "size_bytes": null,
+      "source_available": false
+    }
+  ],
+  "audiences": [
+    {
+      "audience": "Maintainer",
+      "framing": "Use the portal to decide what changed, what passed, and which review artifacts deserve attention before merge or release."
+    },
+    {
+      "audience": "Engineering reviewer",
+      "framing": "Start with command results, findings, workflow checks, and the report; treat the score as a pointer into evidence, not as a substitute for review."
+    },
+    {
+      "audience": "Adopter",
+      "framing": "Use readiness, preflight, release-check, and trust-boundary evidence to decide whether the workflow matches your evaluation needs."
+    },
+    {
+      "audience": "Security/procurement reviewer",
+      "framing": "Inspect the questionnaire and trust-center evidence when present; this portal is not a security certification or compliance audit."
+    },
+    {
+      "audience": "Investor or diligence reviewer",
+      "framing": "Use the artifact trail to evaluate product discipline and reproducibility without treating it as proof of traction, revenue, customers, or funding."
+    }
+  ],
+  "available_artifact_count": 19,
+  "check": false,
+  "commands": [
+    {
+      "command": "python3 -m unittest discover -s tests -p 'test_*.py'",
+      "exit_code": 0,
+      "group": "test",
+      "status": "passed"
+    },
+    {
+      "command": "python3 tools/check_syntax.py",
+      "exit_code": 0,
+      "group": "lint",
+      "status": "passed"
+    }
+  ],
+  "differences": [],
+  "evidence": [
+    {
+      "available": true,
+      "id": "report",
+      "link": "artifacts/report/index.html",
+      "status": "available",
+      "title": "Main report"
+    },
+    {
+      "available": true,
+      "id": "manifest",
+      "link": "artifacts/manifest.json",
+      "status": "available",
+      "title": "Manifest"
+    },
+    {
+      "available": false,
+      "id": "bundle",
+      "link": null,
+      "status": "unavailable optional evidence",
+      "title": "Bundle metadata"
+    },
+    {
+      "available": true,
+      "id": "workflow_check",
+      "link": "artifacts/workflow-check.json",
+      "status": "available",
+      "title": "Workflow check"
+    },
+    {
+      "available": true,
+      "id": "preflight",
+      "link": "artifacts/preflight.json",
+      "status": "available",
+      "title": "Preflight"
+    },
+    {
+      "available": true,
+      "id": "adoption_ready",
+      "link": "artifacts/adoption-ready.json",
+      "status": "available",
+      "title": "Adoption readiness"
+    },
+    {
+      "available": true,
+      "id": "release_check",
+      "link": "artifacts/release-check.json",
+      "status": "available",
+      "title": "Release check"
+    },
+    {
+      "available": true,
+      "id": "doctor_readiness",
+      "link": "artifacts/adoption-ready.json",
+      "status": "available",
+      "title": "Doctor/readiness result"
+    },
+    {
+      "available": false,
+      "id": "evidence_room",
+      "link": null,
+      "status": "unavailable optional evidence",
+      "title": "Evidence room"
+    },
+    {
+      "available": false,
+      "id": "review_hub",
+      "link": null,
+      "status": "unavailable optional evidence",
+      "title": "Review hub"
+    },
+    {
+      "available": false,
+      "id": "trust_center",
+      "link": null,
+      "status": "unavailable optional evidence",
+      "title": "Trust center"
+    },
+    {
+      "available": false,
+      "id": "security_questionnaire",
+      "link": null,
+      "status": "unavailable optional evidence",
+      "title": "Security questionnaire"
+    },
+    {
+      "available": false,
+      "id": "scorecard",
+      "link": null,
+      "status": "unavailable optional evidence",
+      "title": "Scorecard"
+    },
+    {
+      "available": true,
+      "id": "github_summary",
+      "link": "artifacts/github-step-summary.md",
+      "status": "available",
+      "title": "GitHub step summary"
+    },
+    {
+      "available": true,
+      "id": "config_check",
+      "link": "artifacts/config-check.json",
+      "status": "available",
+      "title": "Config check"
+    },
+    {
+      "available": true,
+      "id": "gate_summary",
+      "link": "artifacts/gate-summary.md",
+      "status": "available",
+      "title": "Gate summary"
+    }
+  ],
+  "files": [
+    {
+      "path": "README.md",
+      "size_bytes": 1087
+    },
+    {
+      "path": "artifacts/README.md",
+      "size_bytes": 886
+    },
+    {
+      "path": "artifacts/adoption-ready.json",
+      "size_bytes": 2791
+    },
+    {
+      "path": "artifacts/adoption-ready.md",
+      "size_bytes": 1293
+    },
+    {
+      "path": "artifacts/artifact-inventory.json",
+      "size_bytes": 5921
+    },
+    {
+      "path": "artifacts/config-check.json",
+      "size_bytes": 3442
+    },
+    {
+      "path": "artifacts/config-check.md",
+      "size_bytes": 2740
+    },
+    {
+      "path": "artifacts/explain.md",
+      "size_bytes": 1033
+    },
+    {
+      "path": "artifacts/gate-summary.md",
+      "size_bytes": 347
+    },
+    {
+      "path": "artifacts/github-step-summary.md",
+      "size_bytes": 2940
+    },
+    {
+      "path": "artifacts/manifest.json",
+      "size_bytes": 10911
+    },
+    {
+      "path": "artifacts/metrics.json",
+      "size_bytes": 1725
+    },
+    {
+      "path": "artifacts/preflight.json",
+      "size_bytes": 3363
+    },
+    {
+      "path": "artifacts/preflight.md",
+      "size_bytes": 1020
+    },
+    {
+      "path": "artifacts/proof-packet-index.md",
+      "size_bytes": 965
+    },
+    {
+      "path": "artifacts/release-check.json",
+      "size_bytes": 1680
+    },
+    {
+      "path": "artifacts/release-check.md",
+      "size_bytes": 988
+    },
+    {
+      "path": "artifacts/report/index.html",
+      "size_bytes": 8570
+    },
+    {
+      "path": "artifacts/workflow-check.json",
+      "size_bytes": 6364
+    },
+    {
+      "path": "artifacts/workflow-check.md",
+      "size_bytes": 2532
+    },
+    {
+      "path": "demo.json",
+      "size_bytes": 20469
+    },
+    {
+      "path": "index.html",
+      "size_bytes": 17629
+    }
+  ],
+  "findings": [],
+  "gate_result": "available",
+  "output_dir": ".",
+  "overall_status": "passed",
+  "project": "vibebench-reference-project",
+  "quality_verdict": "ready for evidence review",
+  "reproduction": [
+    "python3 scripts/build_public_proof_packet.py --check",
+    "python3 -m vibebench public-demo --proof-packet examples/showcase-artifacts/public-proof --output-dir /tmp/vibebench-demo",
+    "python3 -m vibebench public-demo --proof-packet examples/showcase-artifacts/public-proof --output-dir /tmp/vibebench-demo --check"
+  ],
+  "review_path": [
+    "Verify the overall result, score, and risk level.",
+    "Inspect workflow and adoption readiness evidence.",
+    "Inspect findings and command results.",
+    "Open the main report when it is available and safe to include.",
+    "Review trust boundaries and non-claims.",
+    "Reproduce the committed proof packet before relying on it externally."
+  ],
+  "risk_level": "low",
+  "schema_version": "vibebench.public-demo.v1",
+  "score": 100,
+  "source": "examples/showcase-artifacts/public-proof",
+  "source_time": "2026-07-10T00:00:00Z",
+  "source_type": "proof-packet",
+  "status": "passed",
+  "summary": {
+    "failed_commands": 0,
+    "passed_commands": 2,
+    "total_commands": 2,
+    "total_findings": 0
+  },
+  "trust_boundaries": [
+    "The portal summarizes the supplied VibeBench evidence.",
+    "It does not independently prove security.",
+    "It does not replace human code review.",
+    "It does not certify regulatory compliance.",
+    "It does not prove product-market fit, revenue, customer adoption, or funding.",
+    "It should not fabricate users, customers, benchmarks, or commercial traction."
+  ],
+  "warnings": []
+}

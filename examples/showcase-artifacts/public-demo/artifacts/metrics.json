@@ -1,0 +1,61 @@
+{
+  "command_results": [
+    {
+      "command": "python3 -m unittest discover -s tests -p 'test_*.py'",
+      "duration_seconds": 0.0,
+      "exit_code": 0,
+      "group": "test",
+      "status": "passed",
+      "stderr": "..\n----------------------------------------------------------------------\nRan 2 tests in 0.000s\n\nOK\n",
+      "stdout": ""
+    },
+    {
+      "command": "python3 tools/check_syntax.py",
+      "duration_seconds": 0.0,
+      "exit_code": 0,
+      "group": "lint",
+      "status": "passed",
+      "stderr": "",
+      "stdout": ""
+    }
+  ],
+  "created_at": "2026-07-10T00:00:00Z",
+  "diff_analysis": {
+    "added_files": [],
+    "changed_file_count": 0,
+    "changed_files": [],
+    "deleted_files": [],
+    "file_changes": [],
+    "forbidden_paths_touched": [],
+    "git_available": true,
+    "lockfiles_changed": [],
+    "modified_files": [],
+    "renamed_files": [],
+    "secret_like_files_touched": [],
+    "test_files_changed": [],
+    "tests_deleted": [],
+    "total_added_lines": 0,
+    "total_deleted_lines": 0,
+    "total_patch_lines": 0,
+    "warnings": []
+  },
+  "log_path": "<reference-project>/.vibebench/runs/public-proof-run/check.log",
+  "metrics_path": "<reference-project>/.vibebench/runs/public-proof-run/metrics.json",
+  "overall_status": "passed",
+  "project_name": "vibebench-reference-project",
+  "risk_findings": [],
+  "risk_level": "low",
+  "run_dir": "<reference-project>/.vibebench/runs/public-proof-run",
+  "schema_version": "1.0",
+  "score": 100,
+  "summary": {
+    "critical_findings": 0,
+    "failed_commands": 0,
+    "high_findings": 0,
+    "info_findings": 0,
+    "passed_commands": 2,
+    "total_commands": 2,
+    "total_findings": 0,
+    "warning_findings": 0
+  }
+}

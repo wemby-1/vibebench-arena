@@ -167,6 +167,14 @@ from vibebench.proof import (
     verify_proof_packet,
     write_proof_packet,
 )
+from vibebench.public_demo import (
+    PublicDemoError,
+    PublicDemoResult,
+    generate_public_demo,
+    public_demo_json,
+    write_public_demo_json,
+    write_public_demo_summary,
+)
 from vibebench.publish_check import (
     PublishReadinessResult,
     publish_check_json,
@@ -3215,6 +3223,161 @@ def artifacts_command(
         return
 
     render_artifacts_summary(result)
+
+
+@app.command("public-demo")
+def public_demo_command(
+    project_root: ProjectRootOption = Path("."),
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            help="Generate from a specific .vibebench/runs/<run-id> directory.",
+        ),
+    ] = None,
+    proof_packet: Annotated[
+        Path | None,
+        typer.Option(
+            "--proof-packet",
+            help="Generate from a curated public proof packet directory.",
+        ),
+    ] = None,
+    output_dir: Annotated[
+        Path,
+        typer.Option(
+            "--output-dir",
+            help="Write the self-contained public demo portal to this directory.",
+        ),
+    ] = Path(".vibebench/public-demo"),
+    check: Annotated[
+        bool,
+        typer.Option(
+            "--check",
+            help="Build in a temporary directory and compare with --output-dir.",
+        ),
+    ] = False,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print public-demo result as pure JSON."),
+    ] = False,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write public-demo JSON to PATH."),
+    ] = None,
+    summary_output: Annotated[
+        Path | None,
+        typer.Option(
+            "--summary-output",
+            help="Write a concise public-demo Markdown summary to PATH.",
+        ),
+    ] = None,
+) -> None:
+    """Generate a deterministic standalone public evidence portal."""
+    root = project_root.resolve()
+    selected_output = resolve_output_path(root, output_dir)
+    selected_json_output = resolve_optional_output_path(root, json_output)
+    selected_summary_output = resolve_optional_output_path(root, summary_output)
+    try:
+        result = generate_public_demo(
+            project_root=root,
+            run_dir=run_dir,
+            proof_packet=proof_packet,
+            output_dir=selected_output,
+            check=check,
+        )
+        if selected_json_output is not None:
+            write_public_demo_json(result, selected_json_output)
+        if selected_summary_output is not None:
+            write_public_demo_summary(result, selected_summary_output)
+    except PublicDemoError as exc:
+        payload = public_demo_error_payload(
+            root,
+            run_dir=run_dir,
+            proof_packet=proof_packet,
+            output_dir=selected_output,
+            check=check,
+            message=str(exc),
+        )
+        if selected_json_output is not None:
+            selected_json_output.parent.mkdir(parents=True, exist_ok=True)
+            selected_json_output.write_text(
+                json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+        if as_json:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            err_console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if as_json:
+        print(public_demo_json(result))
+    else:
+        render_public_demo_summary(result)
+    if result.status != "passed":
+        raise typer.Exit(code=1)
+
+
+def public_demo_error_payload(
+    project_root: Path,
+    *,
+    run_dir: Path | None,
+    proof_packet: Path | None,
+    output_dir: Path,
+    check: bool,
+    message: str,
+) -> dict[str, object]:
+    """Return a pure JSON public-demo error payload."""
+    source_type = "run" if run_dir is not None else "proof-packet"
+    source = run_dir if run_dir is not None else proof_packet
+    return {
+        "status": "failed",
+        "source_type": source_type if source is not None else "",
+        "source": str(source) if source is not None else "",
+        "output_dir": public_demo_cli_path(project_root, output_dir),
+        "check": check,
+        "message": message,
+        "warnings": [],
+        "files": [],
+        "differences": [],
+    }
+
+
+def public_demo_cli_path(project_root: Path, path: Path) -> str:
+    """Return a CLI-facing path label without leaking temp build roots."""
+    try:
+        return path.resolve().relative_to(project_root.resolve()).as_posix()
+    except ValueError:
+        if path.is_absolute():
+            return path.name
+        return path.as_posix()
+
+
+def render_public_demo_summary(result: PublicDemoResult) -> None:
+    """Render a concise human public-demo summary."""
+    status_style = "green" if result.status == "passed" else "red"
+    console.print()
+    console.print("[bold]VibeBench public demo[/]")
+    console.print(f"Status: [{status_style}]{result.status}[/]")
+    console.print(f"Source: {result.source_type} {result.source_label}")
+    console.print(f"Output: {result.output_label}")
+    console.print(f"Project: {result.project}")
+    console.print(
+        f"Result: {result.overall_status}, score {result.score}, "
+        f"risk {result.risk_level}"
+    )
+    console.print(
+        "Artifacts: "
+        f"{result.available_artifact_count}/{result.artifact_count} available"
+    )
+    if result.differences:
+        console.print("Differences:")
+        for item in result.differences:
+            console.print(f"  {item}")
+    if result.warnings:
+        console.print("Warnings:")
+        for item in result.warnings:
+            console.print(f"  {item}")
 
 
 @app.command("export")

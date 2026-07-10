@@ -64,6 +64,16 @@ python3 -m vibebench evidence-room --verify /tmp/vibebench-evidence-room
 
 Open `index.html` first, then inspect `share-check.md` if you are preparing to share the package outside your local machine.
 
+For a polished public demo portal from a run or the committed proof packet:
+
+```bash
+python3 -m vibebench public-demo \
+  --proof-packet examples/showcase-artifacts/public-proof \
+  --output-dir /tmp/vibebench-demo
+```
+
+Open `/tmp/vibebench-demo/index.html` directly. The portal is deterministic, self-contained, and designed for reviewers who should not need to learn the whole CLI before inspecting the evidence.
+
 ## 4. Check Adoption Readiness
 
 ```bash
@@ -142,6 +152,6 @@ python3 -m vibebench share-check PATH
 python3 -m vibebench share-check PATH --json
 ```
 
-Use `share-check` before sharing an evidence room, proof packet, static preview, bundle, directory, or zip. It is a local pre-sharing aid, not a security certification, third-party audit, or guarantee. Manually review artifacts before publishing them.
+Use `share-check` before sharing an evidence room, public demo, proof packet, static preview, bundle, directory, or zip. It is a local pre-sharing aid, not a security certification, third-party audit, or guarantee. Manually review artifacts before publishing them.
 
 For broader rollout guidance, see [adoption](adoption.md). For artifact explanations, see [artifact gallery](artifact-gallery.md). For project-maintained boundaries, see the [Trust Center](trust-center.md).

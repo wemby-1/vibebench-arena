@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>vibebench-reference-project - VibeBench Public Demo</title>
+  <style>
+
+:root {
+  color-scheme: light;
+  --bg: #f7f8fa;
+  --ink: #1d2733;
+  --muted: #5d6878;
+  --panel: #fff;
+  --line: #d9dfe8;
+  --accent: #12665a;
+  --warn: #9a5b00;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+main {
+  width: min(1180px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 28px 0;
+}
+.hero, .panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.hero { padding: 32px; background: #173b35; color: white; }
+.eyebrow {
+  margin: 0 0 8px;
+  color: #b8d8d2;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+h1 {
+  margin: 0;
+  font-size: clamp(30px, 5vw, 56px);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+h2 { margin: 0 0 16px; font-size: 24px; letter-spacing: 0; }
+h3 { margin: 18px 0 8px; font-size: 17px; letter-spacing: 0; }
+.lede { max-width: 760px; color: #e6f2ef; font-size: 18px; }
+.scorebar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 24px 0;
+}
+.scorebar div {
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 8px;
+  padding: 16px;
+}
+span { display: block; color: var(--muted); font-size: 13px; font-weight: 650; }
+.scorebar span { color: #cfe6e1; }
+strong { display: block; font-size: 24px; }
+.claims { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.claims p {
+  margin: 0;
+  padding: 14px;
+  border-radius: 8px;
+  background: rgba(255,255,255,.08);
+}
+.panel { margin-top: 18px; padding: 24px; overflow-x: auto; }
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.grid p { margin: 0; padding: 14px; border: 1px solid var(--line); border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td {
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+th {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+a { color: var(--accent); font-weight: 650; }
+code {
+  background: #eef2f6;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 1px 5px;
+  color: #263545;
+}
+.audiences {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+article { border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+article h3 { margin-top: 0; }
+@media (max-width: 860px) {
+  .scorebar, .claims, .grid, .audiences { grid-template-columns: 1fr; }
+  main { width: min(100% - 24px, 1180px); }
+  .hero, .panel { padding: 18px; }
+}
+
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <p class="eyebrow">VibeBench Public Demo</p>
+      <h1>vibebench-reference-project</h1>
+      <p class="lede">A deterministic, local-first evidence portal for reviewing VibeBench quality signals.</p>
+      <div class="scorebar">
+        <div><span>Overall status</span><strong>passed</strong></div>
+        <div><span>Score</span><strong>100</strong></div>
+        <div><span>Risk level</span><strong>low</strong></div>
+      </div>
+      <div class="claims">
+        <p><strong>What this evidence proves:</strong> the supplied VibeBench run or proof packet contains reproducible quality, readiness, artifact, and review signals summarized here.</p>
+        <p><strong>What this does not prove:</strong> it does not independently prove security, replace human review, certify compliance, or claim adoption, revenue, funding, customers, or product-market fit.</p>
+      </div>
+    </section>
+
+    <section class="panel" id="reviewer-summary">
+      <h2>Reviewer Summary</h2>
+      <div class="grid">
+        <p><span>Source</span><strong>proof-packet: examples/showcase-artifacts/public-proof</strong></p>
+        <p><span>Source time</span><strong>2026-07-10T00:00:00Z</strong></p>
+        <p><span>Quality verdict</span><strong>ready for evidence review</strong></p>
+        <p><span>Gate result</span><strong>available</strong></p>
+      </div>
+      <p>Commands: 2 passed, 0 failed, 2 total.</p>
+      <h3>Command/check summary</h3>
+      <ul><li><code>test</code> passed: python3 -m unittest discover -s tests -p &#x27;test_*.py&#x27;</li><li><code>lint</code> passed: python3 tools/check_syntax.py</li></ul>
+      <h3>Key findings</h3>
+      <ul><li>No risk findings were reported in the supplied evidence.</li></ul>
+    </section>
+
+
+    <section class="panel" id="evidence-overview">
+      <h2>Evidence Overview</h2>
+      <table>
+        <thead><tr><th>Evidence</th><th>Status</th><th>Link</th></tr></thead>
+        <tbody><tr><td>Main report</td><td>available</td><td><a href="artifacts/report/index.html">open</a></td></tr><tr><td>Manifest</td><td>available</td><td><a href="artifacts/manifest.json">open</a></td></tr><tr><td>Bundle metadata</td><td>unavailable optional evidence</td><td>unavailable</td></tr><tr><td>Workflow check</td><td>available</td><td><a href="artifacts/workflow-check.json">open</a></td></tr><tr><td>Preflight</td><td>available</td><td><a href="artifacts/preflight.json">open</a></td></tr><tr><td>Adoption readiness</td><td>available</td><td><a href="artifacts/adoption-ready.json">open</a></td></tr><tr><td>Release check</td><td>available</td><td><a href="artifacts/release-check.json">open</a></td></tr><tr><td>Doctor/readiness result</td><td>available</td><td><a href="artifacts/adoption-ready.json">open</a></td></tr><tr><td>Evidence room</td><td>unavailable optional evidence</td><td>unavailable</td></tr><tr><td>Review hub</td><td>unavailable optional evidence</td><td>unavailable</td></tr><tr><td>Trust center</td><td>unavailable optional evidence</td><td>unavailable</td></tr><tr><td>Security questionnaire</td><td>unavailable optional evidence</td><td>unavailable</td></tr><tr><td>Scorecard</td><td>unavailable optional evidence</td><td>unavailable</td></tr><tr><td>GitHub step summary</td><td>available</td><td><a href="artifacts/github-step-summary.md">open</a></td></tr><tr><td>Config check</td><td>available</td><td><a href="artifacts/config-check.json">open</a></td></tr><tr><td>Gate summary</td><td>available</td><td><a href="artifacts/gate-summary.md">open</a></td></tr></tbody>
+      </table>
+    </section>
+
+
+    <section class="panel" id="artifact-explorer">
+      <h2>Artifact Explorer</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th><th>Availability</th><th>Type</th>
+            <th>Size</th><th>Path</th><th>Demonstrates</th>
+          </tr>
+        </thead>
+        <tbody><tr><td>README.md</td><td>available</td><td>md</td><td>886 bytes</td><td><a href="artifacts/README.md">README.md</a></td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>adoption ready.json</td><td>available</td><td>json</td><td>2791 bytes</td><td><a href="artifacts/adoption-ready.json">adoption-ready.json</a></td><td>Compact adoption-readiness verdict.</td></tr><tr><td>adoption ready.md</td><td>available</td><td>md</td><td>1293 bytes</td><td><a href="artifacts/adoption-ready.md">adoption-ready.md</a></td><td>Reviewer-readable adoption-readiness verdict.</td></tr><tr><td>artifact inventory.json</td><td>available</td><td>json</td><td>5921 bytes</td><td><a href="artifacts/artifact-inventory.json">artifact-inventory.json</a></td><td>Availability map for known evidence files.</td></tr><tr><td>config check.json</td><td>available</td><td>json</td><td>3442 bytes</td><td><a href="artifacts/config-check.json">config-check.json</a></td><td>Machine-readable configuration consistency checks.</td></tr><tr><td>config check.md</td><td>available</td><td>md</td><td>2740 bytes</td><td><a href="artifacts/config-check.md">config-check.md</a></td><td>Reviewer-readable configuration consistency summary.</td></tr><tr><td>explain.md</td><td>available</td><td>md</td><td>1033 bytes</td><td><a href="artifacts/explain.md">explain.md</a></td><td>Short explanation of the run result and review signals.</td></tr><tr><td>gate summary.md</td><td>available</td><td>md</td><td>347 bytes</td><td><a href="artifacts/gate-summary.md">gate-summary.md</a></td><td>Quality gate result summary.</td></tr><tr><td>github step summary.md</td><td>available</td><td>md</td><td>2940 bytes</td><td><a href="artifacts/github-step-summary.md">github-step-summary.md</a></td><td>GitHub Actions summary text captured for review.</td></tr><tr><td>manifest.json</td><td>available</td><td>json</td><td>10911 bytes</td><td><a href="artifacts/manifest.json">manifest.json</a></td><td>Inventory and checksums for known run artifacts.</td></tr><tr><td>metrics.json</td><td>available</td><td>json</td><td>1725 bytes</td><td><a href="artifacts/metrics.json">metrics.json</a></td><td>Core status, score, command result, diff, and risk signals.</td></tr><tr><td>preflight json</td><td>available</td><td>json</td><td>3363 bytes</td><td><a href="artifacts/preflight.json">preflight.json</a></td><td>Read-only adoption preflight result.</td></tr><tr><td>preflight md</td><td>available</td><td>md</td><td>1020 bytes</td><td><a href="artifacts/preflight.md">preflight.md</a></td><td>Reviewer-readable adoption preflight summary.</td></tr><tr><td>proof packet index.md</td><td>available</td><td>md</td><td>965 bytes</td><td><a href="artifacts/proof-packet-index.md">proof-packet-index.md</a></td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>release check.json</td><td>available</td><td>json</td><td>1680 bytes</td><td><a href="artifacts/release-check.json">release-check.json</a></td><td>Local release-readiness evidence.</td></tr><tr><td>release check.md</td><td>available</td><td>md</td><td>988 bytes</td><td><a href="artifacts/release-check.md">release-check.md</a></td><td>Reviewer-readable release-readiness summary.</td></tr><tr><td>report  /  index.html</td><td>available</td><td>html</td><td>8570 bytes</td><td><a href="artifacts/report/index.html">report/index.html</a></td><td>Self-contained HTML report for the run.</td></tr><tr><td>workflow check json</td><td>available</td><td>json</td><td>6364 bytes</td><td><a href="artifacts/workflow-check.json">workflow-check.json</a></td><td>Workflow readiness and policy checks.</td></tr><tr><td>workflow check md</td><td>available</td><td>md</td><td>2532 bytes</td><td><a href="artifacts/workflow-check.md">workflow-check.md</a></td><td>Reviewer-readable workflow readiness summary.</td></tr><tr><td>badge.json</td><td>unavailable</td><td>json</td><td>n/a</td><td>badge.json</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>badge.md</td><td>unavailable</td><td>md</td><td>n/a</td><td>badge.md</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>check.log</td><td>unavailable</td><td>log</td><td>n/a</td><td>check.log</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>compare.json</td><td>unavailable</td><td>json</td><td>n/a</td><td>compare.json</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>compare.md</td><td>unavailable</td><td>md</td><td>n/a</td><td>compare.md</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>export.json</td><td>unavailable</td><td>json</td><td>n/a</td><td>export.json</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>report / index.html</td><td>unavailable</td><td>html</td><td>n/a</td><td>index.html</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>onboard json</td><td>unavailable</td><td>json</td><td>n/a</td><td>onboard.json</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>onboard md</td><td>unavailable</td><td>md</td><td>n/a</td><td>onboard.md</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>package check.json</td><td>unavailable</td><td>json</td><td>n/a</td><td>package-check.json</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>package check.md</td><td>unavailable</td><td>md</td><td>n/a</td><td>package-check.md</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>pr comment.md</td><td>unavailable</td><td>md</td><td>n/a</td><td>pr-comment.md</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>project scan json</td><td>unavailable</td><td>json</td><td>n/a</td><td>project-scan.json</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>project scan md</td><td>unavailable</td><td>md</td><td>n/a</td><td>project-scan.md</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>run index.json</td><td>unavailable</td><td>json</td><td>n/a</td><td>run-index.json</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>run index.md</td><td>unavailable</td><td>md</td><td>n/a</td><td>run-index.md</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>status block.md</td><td>unavailable</td><td>md</td><td>n/a</td><td>status-block.md</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>trend.json</td><td>unavailable</td><td>json</td><td>n/a</td><td>trend.json</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>trend.md</td><td>unavailable</td><td>md</td><td>n/a</td><td>trend.md</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>vibebench bundle.zip</td><td>unavailable</td><td>zip</td><td>n/a</td><td>vibebench-bundle.zip</td><td>Portable run artifact bundle metadata when present.</td></tr><tr><td>workflow template json</td><td>unavailable</td><td>json</td><td>n/a</td><td>workflow-template.json</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>workflow template md</td><td>unavailable</td><td>md</td><td>n/a</td><td>workflow-template.md</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr><tr><td>workflow template yml</td><td>unavailable</td><td>yml</td><td>n/a</td><td>workflow-template.yml</td><td>Known VibeBench artifact; inspect when available in the source evidence.</td></tr></tbody>
+      </table>
+    </section>
+
+
+    <section class="panel" id="five-minute-review-path">
+      <h2>Five-Minute Review Path</h2>
+      <ol><li>Verify the overall result, score, and risk level.</li><li>Inspect workflow and adoption readiness evidence.</li><li>Inspect findings and command results.</li><li>Open the main report when it is available and safe to include.</li><li>Review trust boundaries and non-claims.</li><li>Reproduce the committed proof packet before relying on it externally.</li></ol>
+    </section>
+
+
+    <section class="panel" id="audience-views">
+      <h2>Audience Views</h2>
+      <div class="audiences"><article><h3>Maintainer</h3><p>Use the portal to decide what changed, what passed, and which review artifacts deserve attention before merge or release.</p></article><article><h3>Engineering reviewer</h3><p>Start with command results, findings, workflow checks, and the report; treat the score as a pointer into evidence, not as a substitute for review.</p></article><article><h3>Adopter</h3><p>Use readiness, preflight, release-check, and trust-boundary evidence to decide whether the workflow matches your evaluation needs.</p></article><article><h3>Security/procurement reviewer</h3><p>Inspect the questionnaire and trust-center evidence when present; this portal is not a security certification or compliance audit.</p></article><article><h3>Investor or diligence reviewer</h3><p>Use the artifact trail to evaluate product discipline and reproducibility without treating it as proof of traction, revenue, customers, or funding.</p></article></div>
+    </section>
+
+
+    <section class="panel" id="reproduction">
+      <h2>Reproduction</h2>
+      <p>
+        Run these from the repository root when using the committed reference
+        proof packet.
+      </p>
+      <ul><li><code>python3 scripts/build_public_proof_packet.py --check</code></li><li><code>python3 -m vibebench public-demo --proof-packet examples/showcase-artifacts/public-proof --output-dir /tmp/vibebench-demo</code></li><li><code>python3 -m vibebench public-demo --proof-packet examples/showcase-artifacts/public-proof --output-dir /tmp/vibebench-demo --check</code></li></ul>
+    </section>
+
+
+    <section class="panel" id="non-claims-and-trust-boundaries">
+      <h2>Non-Claims and Trust Boundaries</h2>
+      <ul><li>The portal summarizes the supplied VibeBench evidence.</li><li>It does not independently prove security.</li><li>It does not replace human code review.</li><li>It does not certify regulatory compliance.</li><li>It does not prove product-market fit, revenue, customer adoption, or funding.</li><li>It should not fabricate users, customers, benchmarks, or commercial traction.</li></ul>
+
+    </section>
+
+  </main>
+</body>
+</html>

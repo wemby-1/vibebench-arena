@@ -39,6 +39,7 @@ The project is designed to leave an evidence packet behind, not just a status li
 - `workflow-check.json` / `workflow-check.md`: workflow readiness evidence when enabled.
 - `release-check.json` / `release-check.md`: local release-readiness evidence.
 - `evidence-room/`: a self-contained reviewer package when generated.
+- `public-demo/`: a deterministic standalone portal with `index.html`, `demo.json`, `README.md`, and curated safe links when generated from a run or proof packet.
 
 JSON commands are expected to write parseable JSON to stdout when `--json` is used, which makes the output usable by scripts without scraping human tables.
 
@@ -51,6 +52,12 @@ Start with `index.html` when it is present. Open `share-check.md` before sharing
 ## Proof packet
 
 The proof packet is focused on proof evidence. It is intended to give reviewers a self-contained HTML report, structured JSON, readable Markdown, a manifest, and optional archive output.
+
+## Public demo portal
+
+The public demo portal converts a VibeBench run or proof packet into a self-contained `index.html` review surface. It copies only explicitly allowlisted artifacts, omits unsafe symlinks or escaping paths, labels unavailable optional evidence, and runs the same conservative sharing scan before writing the final portal.
+
+It summarizes supplied evidence only. It does not independently prove security, replace human code review, certify compliance, or prove customers, funding, commercial traction, adoption, or product-market fit.
 
 ## Static site preview
 
@@ -88,7 +95,7 @@ Adoption readiness is not one hidden calculation. It is a set of reproducible ch
 
 ## Security and privacy Boundaries
 
-Before sharing an evidence room, bundle, proof packet, static preview, directory, or zip externally, run:
+Before sharing an evidence room, public demo, bundle, proof packet, static preview, directory, or zip externally, run:
 
 ```bash
 python3 -m vibebench share-check PATH

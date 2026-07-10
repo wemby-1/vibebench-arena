@@ -46,7 +46,17 @@ If you want a shorter preview before a full run, start with `python3 -m vibebenc
 
 ## Showcase Demo
 
-Evaluating quickly? Start with the [showcase page](docs/showcase.md), the [showcase demo kit](examples/showcase-artifacts/README.md), and the [public proof packet](examples/showcase-artifacts/public-proof/README.md). They give reviewers a 5-minute path through readiness, workflow coverage, CI planning, evidence packets, and trust boundaries without turning this README into a command dump.
+Evaluating quickly? Start with the [showcase page](docs/showcase.md), the [showcase demo kit](examples/showcase-artifacts/README.md), the [public proof packet](examples/showcase-artifacts/public-proof/README.md), and the [public demo portal](examples/showcase-artifacts/public-demo/README.md). They give reviewers a 5-minute path through readiness, workflow coverage, CI planning, evidence packets, and trust boundaries without turning this README into a command dump.
+
+To generate the standalone portal yourself:
+
+```bash
+python3 -m vibebench public-demo \
+  --proof-packet examples/showcase-artifacts/public-proof \
+  --output-dir /tmp/vibebench-demo
+```
+
+Then open `/tmp/vibebench-demo/index.html` directly in a browser. The portal is self-contained and does not require a server or network access.
 
 For diligence review, use the [investor brief](docs/investor-brief.md), [technical due diligence](docs/technical-due-diligence.md), [proof matrix](docs/proof-matrix.md), [public proof packet tour](docs/public-proof-packet.md), [demo script](docs/demo-script.md), and [Trust Center](docs/trust-center.md).
 
@@ -104,10 +114,11 @@ The core artifact story is an evidence packet, not just a pass/fail line. A norm
 - `workflow-check.json` / `workflow-check.md`: report-only workflow readiness evidence when workflow checks are enabled.
 - `release-check.json` / `release-check.md`: local release-readiness evidence.
 - `evidence-room/` outputs when available: a self-contained review package with `index.html`, trust notes, questionnaire files, scorecards, and share-check artifacts.
+- `public-demo` output: a deterministic standalone portal with `index.html`, `demo.json`, and `README.md` for sharing a run or proof packet without teaching the full CLI first.
 
 These files are meant to answer practical questions: what ran, what changed, what evidence exists, and what a reviewer should inspect next.
 
-For a checked-in, reproducible example, browse the [public proof packet](examples/showcase-artifacts/public-proof/README.md) and its [artifact tour](docs/public-proof-packet.md).
+For a checked-in, reproducible example, browse the [public proof packet](examples/showcase-artifacts/public-proof/README.md), the [public demo portal](examples/showcase-artifacts/public-demo/README.md), and the [artifact tour](docs/public-proof-packet.md).
 
 ## Why It Is Different From Ordinary CI
 
@@ -163,6 +174,7 @@ python3 -m vibebench preflight --json
 python3 -m vibebench workflow-check
 python3 -m vibebench release-check --json
 python3 -m vibebench evidence-room --output-dir /tmp/vibebench-evidence-room --zip
+python3 -m vibebench public-demo --proof-packet examples/showcase-artifacts/public-proof --output-dir /tmp/vibebench-demo
 python3 -m vibebench latest --artifact evidence-room-index-html --path-only
 ```
 
@@ -171,6 +183,7 @@ python3 -m vibebench latest --artifact evidence-room-index-html --path-only
 - `workflow-check` inspects an existing GitHub Actions workflow read-only.
 - `release-check --json` records local release-readiness status.
 - `evidence-room --zip` creates a self-contained review package for external inspection.
+- `public-demo` creates a deterministic standalone portal that can be opened from `index.html` without a server.
 - `latest --artifact ... --path-only` helps scripts or reviewers jump to the exact artifact they need.
 
 ## Project Boundaries

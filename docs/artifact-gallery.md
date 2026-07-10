@@ -31,6 +31,8 @@ VibeBench artifacts make the workflow inspectable before commit, in GitHub Actio
 
 For committed browseable examples generated from real commands, start with the [public proof packet](../examples/showcase-artifacts/public-proof/README.md) and the [public proof packet tour](public-proof-packet.md).
 
+`vibebench public-demo --proof-packet examples/showcase-artifacts/public-proof --output-dir /tmp/vibebench-demo` converts that proof packet, or an ordinary run directory, into a deterministic standalone portal with `index.html`, `demo.json`, `README.md`, and curated safe artifact links. The committed reference portal lives at [`examples/showcase-artifacts/public-demo/`](../examples/showcase-artifacts/public-demo/README.md).
+
 ## Run Index, Trend, And Compare
 
 VibeBench also produces artifacts that explain movement across runs:
@@ -81,6 +83,7 @@ python3 -m vibebench bundle
 python3 -m vibebench adoption-ready --json
 python3 -m vibebench release-check --json
 python3 -m vibebench evidence-room --output-dir /tmp/vibebench-evidence-room --zip
+python3 -m vibebench public-demo --proof-packet examples/showcase-artifacts/public-proof --output-dir /tmp/vibebench-demo
 ```
 
 ## Evidence Packet Story
@@ -103,6 +106,7 @@ That is why VibeBench produces inventories, summaries, readiness files, comparis
 - [Quickstart](quickstart.md)
 - [Showcase artifacts](../examples/showcase-artifacts/README.md)
 - [Public proof packet](../examples/showcase-artifacts/public-proof/README.md)
+- [Public demo portal](../examples/showcase-artifacts/public-demo/README.md)
 - [Public proof packet tour](public-proof-packet.md)
 - [Sample artifact pack](../examples/showcase-artifacts/sample/README.md)
 - [Case-study artifacts](../examples/showcase-artifacts/case-study/README.md)

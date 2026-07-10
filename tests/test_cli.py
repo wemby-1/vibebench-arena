@@ -23,6 +23,7 @@ def test_cli_help_works() -> None:
     assert "version" in result.output
     assert "init" in result.output
     assert "preflight" in result.output
+    assert "public-demo" in result.output
 
 
 def config_path(root: Path) -> Path:
