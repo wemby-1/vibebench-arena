@@ -178,7 +178,7 @@
       "link": "artifacts/workflow-check.json",
       "name": "workflow check json",
       "path": "workflow-check.json",
-      "size_bytes": 6364,
+      "size_bytes": 6381,
       "source_available": true
     },
     {
@@ -650,7 +650,7 @@
     },
     {
       "path": "artifacts/workflow-check.json",
-      "size_bytes": 6364
+      "size_bytes": 6381
     },
     {
       "path": "artifacts/workflow-check.md",

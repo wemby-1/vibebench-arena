@@ -19,6 +19,8 @@ from pathlib import Path
 from urllib.parse import urljoin
 from xml.etree import ElementTree
 
+from vibebench.github_action import ACTION_PREVIEW_WARNING, action_workflow_payload
+
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_DEMO = ROOT / "examples" / "showcase-artifacts" / "public-demo"
 PUBLIC_DEMO_BUILDER = ROOT / "scripts" / "build_public_demo.py"
@@ -356,6 +358,10 @@ def write_launch_pages(root: Path, data: EvidenceData, config: SiteConfig) -> No
 def write_supporting_files(root: Path, config: SiteConfig) -> None:
     """Write deterministic public files required by Pages and crawlers."""
     (root / ".nojekyll").write_text("", encoding="utf-8")
+    for doc_name in ["adoption.md", "github-actions.md"]:
+        text = (ROOT / "docs" / doc_name).read_text(encoding="utf-8")
+        text = text.replace("GITHUB_STEP_SUMMARY", "the GitHub step summary file")
+        (root / doc_name).write_text(text, encoding="utf-8")
     (root / "robots.txt").write_text(render_robots(config), encoding="utf-8")
     (root / "sitemap.xml").write_text(render_sitemap(config), encoding="utf-8")
     (root / "site.webmanifest").write_text(
@@ -374,6 +380,7 @@ def render_index(data: EvidenceData, config: SiteConfig) -> str:
     cards = evidence_cards(data)
     categories = artifact_categories(data.artifacts)
     artifacts = sorted(data.artifacts, key=artifact_sort_key)
+    action_payload = action_workflow_payload(preset="minimal")
     social_image = urljoin(config.canonical_index, "assets/social-preview.svg")
     category_options = "".join(
         f'<option value="{escape(slug(name))}">{escape(name)}</option>'
@@ -401,6 +408,7 @@ def render_index(data: EvidenceData, config: SiteConfig) -> str:
         ]
     )
     source = escape(str(data.demo.get("source", "Not included")))
+    action_configurator = render_action_configurator(action_payload)
     security_url = f"{config.repository_url}/blob/main/SECURITY.md"
     trust_url = f"{config.repository_url}/blob/main/docs/trust-center.md"
     return clean_text(
@@ -620,6 +628,8 @@ def render_index(data: EvidenceData, config: SiteConfig) -> str:
       <p class="copy-feedback" data-copy-feedback aria-live="polite"></p>
     </section>
 
+    {action_configurator}
+
     <section class="section alt" id="review-path" aria-labelledby="review-path-title">
       <div class="section-heading">
         <p class="eyebrow">Five-minute path</p>
@@ -814,6 +824,85 @@ def render_card(item: dict[str, str]) -> str:
   <p>{escape(item["detail"])}</p>
   {action}
 </article>"""
+
+
+def render_action_configurator(payload: dict[str, object]) -> str:
+    """Render the reusable action configurator with a no-JS default snippet."""
+    workflow = escape(str(payload["workflow"]))
+    presets = payload.get("presets") if isinstance(payload.get("presets"), list) else []
+    preset_options = "".join(
+        f'<option value="{escape(str(item.get("name", "")))}">'
+        f'{escape(str(item.get("name", "")).title())}</option>'
+        for item in presets
+        if isinstance(item, dict)
+    )
+    preset_data = escape(json.dumps(presets, sort_keys=True), quote=False)
+    return clean_text(
+        f"""
+    <section class="section alt" id="integrate" aria-labelledby="integrate-title">
+      <div class="section-heading">
+        <p class="eyebrow">Integrate VibeBench</p>
+        <h2 id="integrate-title">Generate a preview GitHub Actions workflow</h2>
+        <p>
+          Choose a preset and copy a small workflow that consumes the reusable
+          composite action. The <code>@main</code> reference is preview/development
+          only; production consumers should pin a future stable tag or reviewed
+          commit SHA.
+        </p>
+      </div>
+      <form class="action-configurator" data-action-configurator>
+        <div class="control-field">
+          <label for="action-preset">Preset</label>
+          <select id="action-preset" name="preset" data-action-preset>
+            {preset_options}
+          </select>
+        </div>
+        <div class="control-field">
+          <label for="action-config">Config path</label>
+          <input
+            id="action-config"
+            name="config"
+            type="text"
+            value=""
+            placeholder=".vibebench/config.yaml"
+            data-action-config
+          >
+        </div>
+        <div class="control-field">
+          <label for="action-mode">Required mode</label>
+          <input
+            id="action-mode"
+            name="required-mode"
+            type="text"
+            value="adoption"
+            placeholder="adoption-policy"
+            data-action-mode
+          >
+        </div>
+        <label class="toggle-field" for="action-upload">
+          <input id="action-upload" name="upload" type="checkbox" data-action-upload>
+          <span>Upload evidence artifact</span>
+        </label>
+      </form>
+      <p class="preview-warning">{escape(ACTION_PREVIEW_WARNING)}</p>
+      <div class="command-card workflow-snippet">
+        <pre id="action-workflow-snippet"><code>{workflow}</code></pre>
+        <button
+          class="button ghost copy-button"
+          type="button"
+          data-copy-target="action-workflow-snippet"
+        >
+          Copy workflow
+        </button>
+      </div>
+      <p>
+        Detailed adoption notes live in <a href="adoption.md">adoption.md</a>
+        and <a href="github-actions.md">github-actions.md</a>.
+      </p>
+      <script type="application/json" id="action-preset-data">{preset_data}</script>
+    </section>
+"""
+    )
 
 
 def artifact_categories(

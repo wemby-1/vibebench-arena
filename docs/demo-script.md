@@ -4,6 +4,16 @@ This document provides two practical demo flows for VibeBench Arena. Use the fiv
 
 The demos show inspectable evidence. They do not claim guaranteed security, correctness, compliance, funding, or production readiness.
 
+## Action Integration Beat
+
+Show the launch-site "Integrate VibeBench" section, choose `minimal`, then switch to `strict` or `proof`. Call out that `@main` is preview/development and that production consumers should pin a future stable tag or reviewed commit SHA. Then run:
+
+```bash
+python3 -m vibebench github-action --preset proof --json
+```
+
+Describe the output as generated reference workflow evidence, not customer adoption or traction.
+
 When a live run is not convenient, use the committed [public proof packet](../examples/showcase-artifacts/public-proof/README.md), [public demo portal](../examples/showcase-artifacts/public-demo/README.md), and [artifact tour](public-proof-packet.md) as the browsable reference evidence.
 
 For remote audiences that should not install Python, open the live launch site:

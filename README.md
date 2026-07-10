@@ -44,6 +44,28 @@ python3 -m vibebench latest --all-paths
 
 If you want a shorter preview before a full run, start with `python3 -m vibebench ci --dry-run --json`.
 
+## One-Step GitHub Action Preview
+
+External repositories can try VibeBench with the repository-root composite action:
+
+```yaml
+- uses: wemby-1/vibebench-arena@main
+  with:
+    preset: minimal
+```
+
+`@main` is a preview/development reference, not a stable action release. Production consumers should pin a future stable tag or a reviewed commit SHA. The action installs VibeBench from the action checkout, evaluates the caller repository, writes GitHub Step Summary output, exposes machine-readable outputs such as `status`, `score`, `risk`, `run-dir`, `manifest-path`, and `bundle-path`, and can optionally upload only intended VibeBench evidence.
+
+Generate reviewable workflows with:
+
+```bash
+python3 -m vibebench github-action --preset minimal
+python3 -m vibebench github-action --preset strict --upload-artifacts
+python3 -m vibebench github-action --preset proof --json
+```
+
+See [GitHub Actions](docs/github-actions.md) and the [action consumer fixture](examples/action-consumer/README.md).
+
 ## Showcase Demo
 
 ## Live Demo

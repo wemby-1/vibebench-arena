@@ -2,6 +2,41 @@
 
 VibeBench can run inside GitHub Actions with a local-first CI flow and optional GitHub-native review output. The `annotate` command emits GitHub Actions annotations for command failures and risk findings, `gh-summary` writes a Markdown summary to the GitHub Actions step summary when `GITHUB_STEP_SUMMARY` is available, and the workflow posts or updates VibeBench PR comments on `pull_request` events using the built-in `GITHUB_TOKEN`.
 
+## Reusable Composite Action Preview
+
+External repositories can consume the repository-root composite action:
+
+```yaml
+- name: Run VibeBench
+  uses: wemby-1/vibebench-arena@main
+  with:
+    preset: minimal
+```
+
+`@main` is preview/development only. It is not a Marketplace publication and it is not a stable release tag. Production consumers should pin a future stable tag or a reviewed commit SHA.
+
+Inputs: `preset`, `config`, `working-directory`, `fail-on`, `required-mode`, `upload-artifacts`, `artifact-name`, `retention-days`, and `python-command`.
+
+Outputs: `status`, `score`, `risk`, `run-id`, `run-dir`, `summary-path`, `manifest-path`, `bundle-path`, `proof-path`, and `artifact-count`.
+
+Presets:
+
+- `minimal`: first-adoption core CI with a smaller artifact footprint.
+- `strict`: adoption-policy evidence with configured readiness policies enforced.
+- `proof`: strict checks plus standard manifest, bundle, and review evidence.
+
+When `upload-artifacts` is `true`, the action uses GitHub's official `actions/upload-artifact` action and uploads only intended VibeBench evidence paths from the generated run directory. It does not upload the whole caller repository, `.git`, caches, virtual environments, or source files outside the evidence allowlist.
+
+Generate deterministic snippets with:
+
+```bash
+python3 -m vibebench github-action --preset minimal
+python3 -m vibebench github-action --preset strict --upload-artifacts
+python3 -m vibebench github-action --preset proof --json
+```
+
+The fixture in `examples/action-consumer/` demonstrates a small repository consuming the action. It is reference material, not usage or adoption evidence.
+
 
 ## VibeBench Dogfoods Itself
 

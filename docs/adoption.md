@@ -39,6 +39,34 @@ Use `public-demo` when the team needs a self-contained portal for reviewers who 
 
 `init` writes config only. It does not install dependencies, overwrite config without `--force`, create run/baseline outputs, call GitHub, publish packages, or create releases.
 
+## Zero-Friction GitHub Action Path
+
+For a small external-repository integration, start with the reusable composite action:
+
+```yaml
+- uses: wemby-1/vibebench-arena@main
+  with:
+    preset: minimal
+```
+
+`@main` is preview/development only. It is honest for early review, but production consumers should pin a future stable tag or a reviewed commit SHA. The action installs VibeBench from the action checkout and evaluates `github.workspace`, or the configured `working-directory` inside that workspace. It does not upload source code unless `upload-artifacts: true` is set, and even then uploads only the generated VibeBench evidence allowlist.
+
+Presets:
+
+- `minimal`: first-adoption core CI with a smaller artifact footprint.
+- `strict`: adoption-policy evidence with configured readiness policies enforced.
+- `proof`: strict checks plus standard manifest, bundle, and review evidence.
+
+Generate snippets without writing files:
+
+```bash
+python3 -m vibebench github-action --preset minimal
+python3 -m vibebench github-action --preset strict --upload-artifacts
+python3 -m vibebench github-action --preset proof --json
+```
+
+Use `--output .github/workflows/vibebench.yml` to write only when explicitly requested. Use `--force` only for intentional overwrites.
+
 ## What Adoption-Ready Means
 
 `adoption-ready` is a compact read-only adoption workflow readiness report. It is intended to answer whether a repository has enough visible setup, workflow, environment, and release-readiness evidence for a team to start relying on VibeBench.
@@ -74,6 +102,8 @@ VibeBench workflow checks can detect generated CI modes:
 - `default`: the normal VibeBench CI gate.
 - `adoption`: report-only adoption evidence in addition to the normal run.
 - `adoption-policy`: adoption evidence with policy-capable checks enforced.
+
+The reusable action is also recognized by `workflow-check` when a workflow uses the action and declares `preset` or `required-mode`.
 
 Useful commands:
 

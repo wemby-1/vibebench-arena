@@ -100,6 +100,12 @@ from vibebench.explain import ExplainResult, generate_explanation
 from vibebench.export import ExportResult, export_run
 from vibebench.gate import GateResult, run_gate
 from vibebench.gh_summary import generate_github_summary
+from vibebench.github_action import (
+    ACTION_PREVIEW_WARNING,
+    ACTION_WORKFLOW_PATH,
+    action_workflow_json,
+    action_workflow_payload,
+)
 from vibebench.history import HistoryResult, HistoryRun, get_history
 from vibebench.latest import (
     LatestRunResult,
@@ -1190,6 +1196,97 @@ def render_workflow_template_result(payload: dict[str, object]) -> None:
         console.print(f"  {command}")
     console.print("Workflow YAML preview:")
     console.print(str(payload["workflow_yaml"]))
+
+
+@app.command("github-action")
+def github_action_command(
+    preset: Annotated[
+        str,
+        typer.Option(
+            "--preset",
+            help="Reusable action preset: minimal, strict, or proof.",
+        ),
+    ] = "minimal",
+    config: Annotated[
+        str,
+        typer.Option("--config", help="Optional VibeBench config path."),
+    ] = "",
+    required_mode: Annotated[
+        str,
+        typer.Option(
+            "--required-mode",
+            help="Optional comma-separated CI adoption modes required by checks.",
+        ),
+    ] = "",
+    upload_artifacts: Annotated[
+        bool,
+        typer.Option(
+            "--upload-artifacts/--no-upload-artifacts",
+            help="Whether the generated workflow uploads intended evidence.",
+        ),
+    ] = False,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print the generated workflow payload as JSON."),
+    ] = False,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Optional workflow output path."),
+    ] = None,
+    force: Annotated[
+        bool,
+        typer.Option("--force", help="Overwrite output when it already exists."),
+    ] = False,
+) -> None:
+    """Generate an external-consumer workflow using the reusable action."""
+    try:
+        payload = action_workflow_payload(
+            preset=preset,
+            config=config,
+            required_mode=required_mode,
+            upload_artifacts=upload_artifacts,
+        )
+        if output is not None:
+            target = output.resolve()
+            if target.exists() and not force:
+                raise ConfigError(
+                    f"Output already exists: {target}. Use --force to overwrite."
+                )
+            if target.exists() and target.is_dir():
+                raise ConfigError(f"Output path is a directory: {target}")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(str(payload["workflow"]), encoding="utf-8")
+            payload["output_path"] = str(target)
+            payload["workflow_written"] = True
+        else:
+            payload["output_path"] = str(ACTION_WORKFLOW_PATH)
+            payload["workflow_written"] = False
+    except ConfigError as exc:
+        if as_json:
+            print(
+                action_workflow_json(
+                    {
+                        "status": "failed",
+                        "preset": preset,
+                        "message": str(exc),
+                    }
+                )
+            )
+        else:
+            err_console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    if as_json:
+        print(action_workflow_json(payload))
+        return
+
+    console.print("VibeBench reusable GitHub Action workflow")
+    console.print(f"Preset: {payload['preset']}")
+    console.print(f"Target path: {payload['output_path']}")
+    console.print(f"Workflow written: {format_bool(payload['workflow_written'])}")
+    console.print(ACTION_PREVIEW_WARNING)
+    console.print("Workflow YAML preview:")
+    console.print(str(payload["workflow"]))
 
 
 @app.command("workflow-check")

@@ -1,0 +1,117 @@
+name: VibeBench Adoption Action
+description: Run VibeBench presets in a caller repository and expose reviewable evidence outputs.
+author: VibeBench Arena Contributors
+branding:
+  icon: check-circle
+  color: green
+
+inputs:
+  preset:
+    description: Preset to run. Supported values are minimal, strict, and proof.
+    required: false
+    default: minimal
+  config:
+    description: Optional VibeBench config path inside the caller repository.
+    required: false
+    default: ""
+  working-directory:
+    description: Directory inside the caller repository to evaluate.
+    required: false
+    default: "."
+  fail-on:
+    description: Comma-separated failure policy. Use quality, regression, quality,regression, or none.
+    required: false
+    default: quality
+  required-mode:
+    description: Optional comma-separated VibeBench CI adoption modes required by workflow/preflight checks.
+    required: false
+    default: ""
+  upload-artifacts:
+    description: Whether to upload intended VibeBench evidence with actions/upload-artifact.
+    required: false
+    default: "false"
+  artifact-name:
+    description: Artifact name used when upload-artifacts is true.
+    required: false
+    default: vibebench-evidence
+  retention-days:
+    description: Artifact retention days, bounded by the runner from 1 to 90.
+    required: false
+    default: "14"
+  python-command:
+    description: Python command used to install and run VibeBench, parsed without a shell.
+    required: false
+    default: python3
+
+outputs:
+  status:
+    description: VibeBench run status, or infrastructure-failed when the action runner fails.
+    value: ${{ steps.run.outputs.status }}
+  score:
+    description: VibeScore from metrics.json when available.
+    value: ${{ steps.run.outputs.score }}
+  risk:
+    description: Risk level from metrics.json when available.
+    value: ${{ steps.run.outputs.risk }}
+  run-id:
+    description: VibeBench run directory name when a run was created.
+    value: ${{ steps.run.outputs.run-id }}
+  run-dir:
+    description: Workspace-relative run directory path when available.
+    value: ${{ steps.run.outputs.run-dir }}
+  summary-path:
+    description: GitHub step summary path or generated summary artifact path when available.
+    value: ${{ steps.run.outputs.summary-path }}
+  manifest-path:
+    description: Workspace-relative manifest.json path when available.
+    value: ${{ steps.run.outputs.manifest-path }}
+  bundle-path:
+    description: Workspace-relative vibebench-bundle.zip path when available.
+    value: ${{ steps.run.outputs.bundle-path }}
+  proof-path:
+    description: Workspace-relative proof artifact path when generated; empty otherwise.
+    value: ${{ steps.run.outputs.proof-path }}
+  artifact-count:
+    description: Number of intended evidence files eligible for optional upload.
+    value: ${{ steps.run.outputs.artifact-count }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install VibeBench from action checkout
+      shell: bash
+      env:
+        INPUT_PRESET: ${{ inputs.preset }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_REQUIRED_MODE: ${{ inputs.required-mode }}
+        INPUT_UPLOAD_ARTIFACTS: ${{ inputs.upload-artifacts }}
+        INPUT_ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        INPUT_RETENTION_DAYS: ${{ inputs.retention-days }}
+        INPUT_PYTHON_COMMAND: ${{ inputs.python-command }}
+      run: python3 "$GITHUB_ACTION_PATH/scripts/run_github_action.py" --install-only
+
+    - name: Run VibeBench preset
+      id: run
+      shell: bash
+      env:
+        INPUT_PRESET: ${{ inputs.preset }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_REQUIRED_MODE: ${{ inputs.required-mode }}
+        INPUT_UPLOAD_ARTIFACTS: ${{ inputs.upload-artifacts }}
+        INPUT_ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        INPUT_RETENTION_DAYS: ${{ inputs.retention-days }}
+        INPUT_PYTHON_COMMAND: ${{ inputs.python-command }}
+      run: python3 "$GITHUB_ACTION_PATH/scripts/run_github_action.py"
+
+    - name: Upload VibeBench evidence
+      if: ${{ inputs.upload-artifacts == 'true' && steps.run.outputs.artifact-count != '0' }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ steps.run.outputs.artifact-paths }}
+        retention-days: ${{ inputs.retention-days }}
+        if-no-files-found: error

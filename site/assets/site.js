@@ -75,6 +75,86 @@ if (filterForm && searchInput && categorySelect && availabilitySelect) {
 
 const copyFeedback = document.querySelector("[data-copy-feedback]");
 
+const actionPresetData = document.querySelector("#action-preset-data");
+const actionPreset = document.querySelector("[data-action-preset]");
+const actionConfig = document.querySelector("[data-action-config]");
+const actionMode = document.querySelector("[data-action-mode]");
+const actionUpload = document.querySelector("[data-action-upload]");
+const actionSnippet = document.querySelector("#action-workflow-snippet code");
+
+const actionPresets = (() => {
+  if (!actionPresetData?.textContent) return [];
+  try {
+    return JSON.parse(actionPresetData.textContent);
+  } catch {
+    return [];
+  }
+})();
+
+const renderActionWorkflow = () => {
+  if (!actionPreset || !actionConfig || !actionMode || !actionUpload || !actionSnippet) {
+    return;
+  }
+  const presetName = actionPreset.value || "minimal";
+  const preset = actionPresets.find((item) => item.name === presetName);
+  const defaultMode = preset?.required_mode || "adoption";
+  const configPath = actionConfig.value.trim();
+  const requiredMode = actionMode.value.trim() || defaultMode;
+  const upload = actionUpload.checked;
+  const lines = [
+    "name: VibeBench",
+    "",
+    "on:",
+    "  pull_request:",
+    "  push:",
+    "    branches:",
+    "      - main",
+    "",
+    "permissions:",
+    "  contents: read",
+    "",
+    "jobs:",
+    "  vibebench:",
+    "    runs-on: ubuntu-latest",
+    "",
+    "    steps:",
+    "      - name: Check out repository",
+    "        uses: actions/checkout@v5",
+    "",
+    "      - name: Set up Python",
+    "        uses: actions/setup-python@v6",
+    "        with:",
+    '          python-version: "3.11"',
+    "",
+    "      - name: Run VibeBench",
+    "        uses: wemby-1/vibebench-arena@main",
+    "        with:",
+    `          preset: ${presetName}`,
+  ];
+  if (configPath) {
+    lines.push(`          config: ${configPath}`);
+  }
+  if (requiredMode) {
+    lines.push(`          required-mode: ${requiredMode}`);
+  }
+  lines.push(`          upload-artifacts: ${String(upload)}`);
+  lines.push("          artifact-name: vibebench-evidence");
+  actionSnippet.textContent = `${lines.join("\n")}\n`;
+};
+
+if (actionPreset && actionConfig && actionMode && actionUpload) {
+  actionPreset.addEventListener("change", () => {
+    const preset = actionPresets.find((item) => item.name === actionPreset.value);
+    actionMode.value = preset?.required_mode || actionMode.value;
+    actionUpload.checked = Boolean(preset?.uploads_by_default);
+    renderActionWorkflow();
+  });
+  actionConfig.addEventListener("input", renderActionWorkflow);
+  actionMode.addEventListener("input", renderActionWorkflow);
+  actionUpload.addEventListener("change", renderActionWorkflow);
+  renderActionWorkflow();
+}
+
 document.querySelectorAll("[data-copy-target]").forEach((button) => {
   button.addEventListener("click", async () => {
     const targetId = button.getAttribute("data-copy-target");
@@ -84,13 +164,15 @@ document.querySelectorAll("[data-copy-target]").forEach((button) => {
 
     try {
       await navigator.clipboard.writeText(text);
+      const originalText = button.dataset.copyLabel || button.textContent || "Copy";
+      button.dataset.copyLabel = originalText;
       button.textContent = "Copied";
       button.dataset.copied = "true";
       if (copyFeedback) {
-        copyFeedback.textContent = "Command copied. The command remains visible and selectable.";
+        copyFeedback.textContent = "Content copied. The text remains visible and selectable.";
       }
       window.setTimeout(() => {
-        button.textContent = "Copy command";
+        button.textContent = button.dataset.copyLabel || "Copy";
         button.dataset.copied = "false";
       }, 2200);
     } catch {

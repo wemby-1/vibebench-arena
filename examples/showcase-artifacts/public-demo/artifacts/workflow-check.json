@@ -81,7 +81,7 @@
       "title": "Workflow has steps"
     },
     {
-      "advice": "Add python3 -m vibebench ci to the workflow.",
+      "advice": "Add python3 -m vibebench ci or the reusable VibeBench action.",
       "id": "vibebench_ci_invocation",
       "line": 16,
       "message": "Workflow includes a VibeBench CI invocation.",

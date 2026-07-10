@@ -1,0 +1,47 @@
+name: Action smoke
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  action-smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [minimal, strict, proof]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Run local VibeBench action
+        id: vibebench
+        uses: ./
+        with:
+          preset: ${{ matrix.preset }}
+          working-directory: examples/action-consumer
+          required-mode: adoption-policy
+          upload-artifacts: false
+
+      - name: Verify action outputs and hygiene
+        shell: bash
+        run: |
+          test -n "${{ steps.vibebench.outputs.status }}"
+          test -n "${{ steps.vibebench.outputs.run-id }}"
+          test -n "${{ steps.vibebench.outputs.run-dir }}"
+          test -n "${{ steps.vibebench.outputs.manifest-path }}"
+          test -f "${{ steps.vibebench.outputs.manifest-path }}"
+          test -f "${{ steps.vibebench.outputs.bundle-path }}"
+          test ! -d .vibebench/runs
+          git diff --exit-code -- ':!examples/action-consumer/.vibebench/runs'

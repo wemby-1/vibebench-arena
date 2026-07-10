@@ -2,6 +2,10 @@
 
 VibeBench Arena is a Codex-first quality gate for AI-assisted projects. This showcase is for reviewers, maintainers, community adopters, and technical due-diligence readers who want to understand the product quickly without confusing a CLI transcript for the whole story.
 
+## GitHub Adoption Path
+
+The launch site includes an "Integrate VibeBench" configurator that renders a deterministic GitHub Actions snippet for the reusable composite action. It supports `minimal`, `strict`, and `proof` presets, optional artifact upload, optional config path, and required CI adoption mode. The snippet is visible without JavaScript and is labeled as `@main` preview/development guidance.
+
 ## The Problem
 
 Vibe-coded and AI-generated projects can look impressive in a demo. They may have polished UI, a large diff, or a confident assistant transcript. What they often lack is verifiable quality evidence:

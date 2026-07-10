@@ -8,6 +8,11 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added a repository-root composite GitHub Action for external VibeBench adoption with `minimal`, `strict`, and `proof` presets.
+- Added `python3 -m vibebench github-action` to generate deterministic preview workflows referencing `wemby-1/vibebench-arena@main`.
+- Added an action-consumer fixture, action smoke workflow, and launch-site integration configurator.
+- Documented preview `@main` limitations, safe artifact upload boundaries, and machine-readable action outputs.
+
 - Added an interactive GitHub Pages launch-site explorer with audience paths, evidence-derived proof cards, searchable artifact filtering, copyable local commands, a local social preview asset, deterministic performance/privacy budgets, and expanded structural tests.
 
 - Expanded the deterministic GitHub Pages output into an investor-ready and reviewer-ready public launch site with local assets, evidence-backed summary cards, grouped artifact exploration, audience paths, public metadata, sitemap, robots file, 404 page, manifest, project Pages base-path validation, and accessibility-oriented tests.

@@ -387,6 +387,40 @@ dd {
   margin-bottom: 1rem;
 }
 
+.action-configurator {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.8fr) minmax(13rem, 1fr) minmax(12rem, 1fr) auto;
+  gap: 1rem;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+
+.toggle-field {
+  min-height: 2.75rem;
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.toggle-field input {
+  min-height: auto;
+  width: auto;
+}
+
+.preview-warning {
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
+.workflow-snippet pre {
+  max-height: 28rem;
+  overflow: auto;
+}
+
 .control-field {
   display: grid;
   gap: 0.35rem;
@@ -651,6 +685,10 @@ select {
   .artifact-item,
   .timeline li,
   .explorer-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .action-configurator {
     grid-template-columns: 1fr;
   }
 

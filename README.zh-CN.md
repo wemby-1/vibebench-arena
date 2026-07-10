@@ -1,5 +1,17 @@
 # VibeBench Arena
 
+## GitHub Action 预览
+
+外部仓库可以用仓库根目录的 composite action 试用 VibeBench：
+
+```yaml
+- uses: wemby-1/vibebench-arena@main
+  with:
+    preset: minimal
+```
+
+`@main` 只是预览/开发引用，不是稳定发布标签。生产使用应固定到未来的稳定 tag 或经过审查的 commit SHA。action 会从 action checkout 安装 VibeBench，评估调用方仓库，写入 GitHub Step Summary，并输出 `status`、`score`、`risk`、`run-dir`、`manifest-path`、`bundle-path` 等机器可读字段。
+
 **面向 vibe coding 项目的 Codex-first 质量门禁：在本地运行检查、生成可审阅证据，并说明一个 AI 辅助仓库是否已经具备 adoption 或 release 准备度。**
 
 > Codex 负责写代码，VibeBench 负责说明到底发生了什么。

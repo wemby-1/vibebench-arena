@@ -4,6 +4,10 @@ This document is for technical investors, engineering leaders, security reviewer
 
 VibeBench is not formally audited or certified. Tests demonstrate expected behavior; they do not prove absence of defects. Artifact generation improves inspectability; it does not establish formal correctness.
 
+## Reusable Action Review Surface
+
+The repository-root `action.yml` is a composite action. It installs VibeBench from `github.action_path`, runs against the caller workspace, validates inputs through a Python standard-library runner, derives outputs from generated JSON artifacts, and optionally uploads only an allowlist of evidence files with GitHub's official upload action. The action is preview/development on `@main`; stable production pinning should use a future tag or reviewed commit SHA.
+
 ## System Purpose
 
 VibeBench Arena is a local-first quality gate for AI-assisted repositories. It runs configured checks, records risk and readiness signals, generates reviewer-friendly artifacts, and supports adoption and release-readiness review.

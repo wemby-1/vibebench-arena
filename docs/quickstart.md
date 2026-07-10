@@ -1,5 +1,23 @@
 # Quickstart
 
+## GitHub Action Preview
+
+For a caller repository, add a reviewed workflow step:
+
+```yaml
+- uses: wemby-1/vibebench-arena@main
+  with:
+    preset: minimal
+```
+
+This `@main` reference is preview/development only. Pin a future stable tag or reviewed commit SHA for production. Use `preset: strict` for adoption-policy checks and `preset: proof` when reviewers need the larger evidence set.
+
+Generate the workflow locally with:
+
+```bash
+python3 -m vibebench github-action --preset minimal
+```
+
 VibeBench Arena is a local-first quality gate for Codex-first and AI-assisted coding projects. This page is the shortest practical path from a repository checkout to reviewable evidence without turning the guide into a command dump.
 
 If you are evaluating the project quickly for a review, adoption discussion, or technical demo, start with the [showcase page](showcase.md) and [showcase demo kit](../examples/showcase-artifacts/README.md), then return here for the practical setup path.

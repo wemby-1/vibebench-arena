@@ -32,6 +32,18 @@ VIBEBENCH_CI_COMMAND_RE = re.compile(
     r"(?:uv\s+run\s+)?python3?\s+-m\s+vibebench\s+ci\b[^\n;&|]*",
     re.IGNORECASE,
 )
+VIBEBENCH_ACTION_USES_RE = re.compile(
+    r"^\s*uses:\s*(?:wemby-1/vibebench-arena@[A-Za-z0-9._/-]+|\./)\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+VIBEBENCH_ACTION_PRESET_RE = re.compile(
+    r"^\s*preset:\s*(minimal|strict|proof)\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+VIBEBENCH_ACTION_REQUIRED_MODE_RE = re.compile(
+    r"^\s*required-mode:\s*([A-Za-z0-9_, -]+)\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
 OPTIONAL_VIBEBENCH_PATTERNS = {
     "vibebench_ci_json": "vibebench ci --json",
     "workflow_template_ci": "vibebench ci --workflow-template",
@@ -298,7 +310,9 @@ def analyze_workflow_path(
             line=find_line(content, token),
         )
 
-    has_vibebench_ci = any(pattern in lower for pattern in VIBEBENCH_CI_PATTERNS)
+    has_vibebench_ci = any(
+        pattern in lower for pattern in VIBEBENCH_CI_PATTERNS
+    ) or bool(VIBEBENCH_ACTION_USES_RE.search(content))
     add_check(
         checks,
         findings,
@@ -309,11 +323,15 @@ def analyze_workflow_path(
         message=(
             "Workflow includes a VibeBench CI invocation."
             if has_vibebench_ci
-            else "Workflow does not run python3 -m vibebench ci."
+            else (
+                "Workflow does not run python3 -m vibebench ci or the "
+                "VibeBench action."
+            )
         ),
         path=workflow_path,
-        advice="Add python3 -m vibebench ci to the workflow.",
-        line=first_matching_line(content, VIBEBENCH_CI_PATTERNS),
+        advice="Add python3 -m vibebench ci or the reusable VibeBench action.",
+        line=first_matching_line(content, VIBEBENCH_CI_PATTERNS)
+        or first_matching_line(content, ["uses: wemby-1/vibebench-arena", "uses: ./"]),
     )
     for check_id, pattern in OPTIONAL_VIBEBENCH_PATTERNS.items():
         if pattern in lower:
@@ -398,6 +416,18 @@ def detect_vibebench_ci_modes(content: str) -> list[str]:
             modes.append("adoption")
         else:
             modes.append("default")
+    if VIBEBENCH_ACTION_USES_RE.search(scan_content):
+        for match in VIBEBENCH_ACTION_PRESET_RE.finditer(scan_content):
+            preset = match.group(1).lower()
+            if preset == "minimal":
+                modes.append("adoption")
+            elif preset in {"strict", "proof"}:
+                modes.append("adoption-policy")
+        for match in VIBEBENCH_ACTION_REQUIRED_MODE_RE.finditer(scan_content):
+            for item in match.group(1).replace("\n", ",").split(","):
+                mode = item.strip()
+                if mode in CI_MODE_SET:
+                    modes.append(mode)
     return unique_ci_modes(modes)
 
 

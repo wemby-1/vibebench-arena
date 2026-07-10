@@ -1,0 +1,52 @@
+project:
+  name: vibebench-action-consumer
+checks:
+  test:
+    - python3 -m unittest discover -s tests -p 'test_*.py'
+  lint:
+    - python3 tools/check_syntax.py
+workflow_check:
+  policy:
+    enabled: true
+    fail_on_blockers: true
+    fail_on_errors: true
+    fail_on_warnings: false
+    require_config: true
+    require_ci_ready: true
+    required_ci_modes:
+      - adoption-policy
+preflight:
+  policy:
+    enabled: true
+    fail_on_blockers: true
+    fail_on_errors: true
+    fail_on_warnings: false
+    require_config: true
+    require_project_scan_ready: true
+    require_onboard_ready: true
+    require_workflow_check_ready: true
+    require_workflow_template_ready: false
+onboard:
+  policy:
+    enabled: true
+    fail_on_blockers: true
+    fail_on_errors: true
+    fail_on_warnings: false
+    require_config: true
+    require_ci_ready: true
+project_scan:
+  policy:
+    enabled: true
+    require_config_valid: true
+    require_supported_stack: true
+    allowed_profiles:
+      - python
+      - generic
+    fail_on_error_findings: true
+    fail_on_warning_findings: false
+    require_recommended_profile: false
+gate:
+  min_score: 90
+  max_risk: low
+  allow_findings: 0
+  require_status_passed: true

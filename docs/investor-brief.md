@@ -2,6 +2,10 @@
 
 VibeBench Arena is a local-first quality gate for Codex-first and AI-assisted software work. This brief is for investors, judges, technical advisors, and community evaluators who need to understand the product opportunity without invented traction or unsupported claims.
 
+## Product Update: GitHub Adoption Kit
+
+VibeBench now includes a reusable composite GitHub Action and generated workflow snippets for external repositories. This lowers integration friction while preserving the same local-first evidence model. This is a product capability, not evidence of customers, revenue, funding, or market traction.
+
 ## Executive Summary
 
 AI coding agents can produce software changes quickly, but review, adoption, and release decisions still need evidence. VibeBench Arena addresses that gap by turning AI-assisted repository work into inspectable local and CI artifacts: checks, risk signals, workflow readiness, adoption reports, release-readiness evidence, manifests, bundles, and trust-center material.

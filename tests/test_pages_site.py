@@ -175,6 +175,9 @@ def test_pages_launch_site_has_required_public_sections(tmp_path: Path) -> None:
         "Investor / product reviewer",
         "Community evaluator",
         "Interactive evidence explorer",
+        "Integrate VibeBench",
+        "Generate a preview GitHub Actions workflow",
+        "Copy workflow",
         "Filter the committed artifact map",
         "Copy command",
         "Technical diligence",
@@ -240,6 +243,25 @@ def test_pages_proof_cards_are_evidence_derived(tmp_path: Path) -> None:
     assert "19/42 available" in content
     assert 'href="artifacts/adoption-ready.json"' in content
     assert 'href="artifacts/release-check.json"' in content
+
+
+def test_pages_action_configurator_is_local_accessible_and_honest(
+    tmp_path: Path,
+) -> None:
+    output = build_pages(tmp_path)
+    content = (output / "index.html").read_text(encoding="utf-8")
+    script = (output / "assets" / "site.js").read_text(encoding="utf-8")
+
+    assert 'id="action-workflow-snippet"' in content
+    assert "uses: wemby-1/vibebench-arena@main" in content
+    assert "@main</code> reference is preview/development" in content
+    assert "future stable tag or reviewed" in content
+    assert 'data-action-preset' in content
+    assert 'data-action-upload' in content
+    assert 'data-copy-target="action-workflow-snippet"' in content
+    assert "action-preset-data" in content
+    assert "fetch(" not in script
+    assert "wemby-1/vibebench-arena@main" in script
 
 
 def test_pages_custom_base_path_is_configurable(tmp_path: Path) -> None:
