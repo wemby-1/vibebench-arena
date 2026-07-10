@@ -155,6 +155,7 @@ def test_pages_builder_creates_site_index_and_nojekyll(tmp_path: Path) -> None:
     assert (output / "assets" / "site.css").is_file()
     assert (output / "assets" / "site.js").is_file()
     assert (output / "assets" / "icon.svg").is_file()
+    assert (output / "assets" / "social-preview.svg").is_file()
 
 
 def test_pages_launch_site_has_required_public_sections(tmp_path: Path) -> None:
@@ -162,17 +163,20 @@ def test_pages_launch_site_has_required_public_sections(tmp_path: Path) -> None:
     content = (output / "index.html").read_text(encoding="utf-8")
 
     for expected in [
-        "Codex-first quality and evidence gate",
-        "Run checks, enforce policy, generate evidence",
-        "Explore the live proof",
-        "Run the 5-minute quickstart",
-        "How VibeBench works",
-        "Evidence-backed summary",
-        "Artifact Explorer",
-        "Five-minute path",
-        "Developers",
-        "Security / compliance evaluators",
-        "Investors / partners",
+        "Local-first evidence for AI-assisted engineering",
+        "Turn a repository changed by AI into checks",
+        "Explore the evidence",
+        "Try it locally",
+        "Reference evidence snapshot",
+        "Evidence between AI-generated code and human trust",
+        "Reference run signals, traced to files",
+        "Developer",
+        "Technical reviewer",
+        "Investor / product reviewer",
+        "Community evaluator",
+        "Interactive evidence explorer",
+        "Filter the committed artifact map",
+        "Copy command",
         "Technical diligence",
         "What the site proves, and what it does not",
     ]:
@@ -188,7 +192,7 @@ def test_pages_site_metadata_and_project_base_path(tmp_path: Path) -> None:
     )
 
     assert (
-        "<title>VibeBench Arena | Codex-first quality and evidence gate</title>"
+        "<title>VibeBench Arena | Evidence explorer for AI-assisted code</title>"
         in content
     )
     assert 'name="description"' in content
@@ -198,18 +202,44 @@ def test_pages_site_metadata_and_project_base_path(tmp_path: Path) -> None:
     )
     assert 'property="og:title"' in content
     assert 'name="twitter:card"' in content
+    assert 'content="summary_large_image"' in content
+    assert 'property="og:image"' in content
+    assert "assets/social-preview.svg" in content
     assert 'name="theme-color"' in content
     assert 'application/ld+json' in content
     assert "<code>/vibebench-arena/</code>" in content
     assert manifest["id"] == "/vibebench-arena/"
     assert manifest["start_url"] == "./"
     assert manifest["icons"][0]["src"] == "assets/icon.svg"
+    assert (output / "assets" / "social-preview.svg").read_text(
+        encoding="utf-8"
+    ).startswith("<svg")
     locs = [node.text for node in sitemap.iter() if node.tag.endswith("loc")]
     assert "https://wemby-1.github.io/vibebench-arena/" in locs
     assert "https://wemby-1.github.io/vibebench-arena/404.html" in locs
     assert "Sitemap: https://wemby-1.github.io/vibebench-arena/sitemap.xml" in (
         output / "robots.txt"
     ).read_text(encoding="utf-8")
+    json_ld = re.search(
+        r'<script type="application/ld\+json">(.*?)</script>',
+        content,
+    )
+    assert json_ld
+    payload = json.loads(json_ld.group(1))
+    assert payload["url"] == "https://wemby-1.github.io/vibebench-arena/"
+    assert payload["codeRepository"] == "https://github.com/wemby-1/vibebench-arena"
+
+
+def test_pages_proof_cards_are_evidence_derived(tmp_path: Path) -> None:
+    output = build_pages(tmp_path)
+    content = (output / "index.html").read_text(encoding="utf-8")
+
+    assert "passed (9 checks)" in content
+    assert "not-ready (10/11 checks passed)" in content
+    assert "adoption-policy" in content
+    assert "19/42 available" in content
+    assert 'href="artifacts/adoption-ready.json"' in content
+    assert 'href="artifacts/release-check.json"' in content
 
 
 def test_pages_custom_base_path_is_configurable(tmp_path: Path) -> None:
@@ -353,16 +383,56 @@ def test_pages_artifact_explorer_links_only_available_artifacts(
     output = build_pages(tmp_path)
     content = (output / "index.html").read_text(encoding="utf-8")
 
-    assert "Decision evidence" in content
-    assert "Workflow evidence" in content
-    assert "Review surfaces" in content
-    assert "Integrity and manifests" in content
+    assert 'data-artifact-filters' in content
+    assert 'data-filter-search' in content
+    assert 'data-filter-category' in content
+    assert 'data-filter-availability' in content
+    assert "Summary" in content
+    assert "Checks" in content
+    assert "Scoring" in content
+    assert "Manifest and inventory" in content
+    assert "Adoption and workflow readiness" in content
+    assert "Release readiness" in content
+    assert "Bundles and proof material" in content
     assert "Trend and comparison" in content
-    assert "Trust and sharing" in content
     assert "Unavailable optional evidence" in content
+    assert 'data-availability="available"' in content
+    assert 'data-availability="missing"' in content
     assert 'href="artifacts/metrics.json"' in content
     assert 'href="artifacts/report/index.html"' in content
     assert 'href="artifacts/share-check.json"' not in content
+
+
+def test_pages_audience_paths_and_copy_controls_are_structural(
+    tmp_path: Path,
+) -> None:
+    output = build_pages(tmp_path)
+    content = (output / "index.html").read_text(encoding="utf-8")
+
+    for expected in [
+        "Open quickstart",
+        "Open proof packet",
+        "Read investor brief",
+        "Security policy",
+        "python3 -m vibebench ci --dry-run --json",
+        "python3 -m vibebench adoption-ready --json",
+        "data-copy-target",
+        'aria-live="polite"',
+    ]:
+        assert expected in content
+
+
+def test_pages_no_javascript_core_content_remains_present(tmp_path: Path) -> None:
+    output = build_pages(tmp_path)
+    content = (output / "index.html").read_text(encoding="utf-8")
+
+    assert "Browse grouped categories without JavaScript" in content
+    assert "Open artifact" in content
+    assert "Unavailable optional evidence" in content
+    assert (
+        "python3 scripts/build_pages_site.py --output-dir review-output/pages-site"
+        in content
+    )
 
 
 def test_pages_accessibility_oriented_structure(tmp_path: Path) -> None:
@@ -381,6 +451,9 @@ def test_pages_accessibility_oriented_structure(tmp_path: Path) -> None:
     assert sum(1 for level, _text in parser.headings if level == 1) == 1
     assert len(parser.ids) == len(set(parser.ids))
     assert ":focus-visible" in (output / "assets" / "site.css").read_text(
+        encoding="utf-8"
+    )
+    assert "prefers-reduced-motion" in (output / "assets" / "site.css").read_text(
         encoding="utf-8"
     )
 
@@ -420,8 +493,34 @@ def test_pages_site_does_not_make_unsupported_claims(tmp_path: Path) -> None:
         "millions of users",
         "funding guaranteed",
         "unicorn",
+        "market leader",
+        "best in the world",
     ]:
         assert marker not in lowered
+
+
+def test_pages_site_has_no_analytics_or_tracker_patterns(tmp_path: Path) -> None:
+    output = build_pages(tmp_path)
+    lowered = combined_text(output).lower()
+
+    for marker in [
+        "google-analytics",
+        "googletagmanager",
+        "gtag(",
+        "plausible.io",
+        "segment.com",
+        "mixpanel",
+        "sourceMappingURL=",
+    ]:
+        assert marker.lower() not in lowered
+
+
+def test_pages_site_file_size_budgets(tmp_path: Path) -> None:
+    output = build_pages(tmp_path)
+
+    assert (output / "index.html").stat().st_size <= 150 * 1024
+    assert (output / "assets" / "site.js").stat().st_size <= 40 * 1024
+    assert (output / "assets" / "site.css").stat().st_size <= 80 * 1024
 
 
 def test_pages_repeated_build_is_deterministic(tmp_path: Path) -> None:
@@ -616,7 +715,20 @@ def combined_text(root: Path) -> str:
         path.read_text(encoding="utf-8", errors="replace")
         for path in sorted(root.rglob("*"))
         if path.is_file()
-        and path.suffix.lower() in {".html", ".json", ".md", ".txt", ".yml", ".yaml"}
+        and path.suffix.lower()
+        in {
+            ".html",
+            ".json",
+            ".md",
+            ".txt",
+            ".xml",
+            ".webmanifest",
+            ".yml",
+            ".yaml",
+            ".css",
+            ".js",
+            ".svg",
+        }
     )
 
 

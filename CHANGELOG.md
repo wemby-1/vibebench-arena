@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added an interactive GitHub Pages launch-site explorer with audience paths, evidence-derived proof cards, searchable artifact filtering, copyable local commands, a local social preview asset, deterministic performance/privacy budgets, and expanded structural tests.
+
 - Expanded the deterministic GitHub Pages output into an investor-ready and reviewer-ready public launch site with local assets, evidence-backed summary cards, grouped artifact exploration, audience paths, public metadata, sitemap, robots file, 404 page, manifest, project Pages base-path validation, and accessibility-oriented tests.
 
 - Added a deterministic GitHub Pages public demo builder and deployment workflow, publishing the committed public demo as a static Pages site with `.nojekyll`, local `--check` validation, link/leak checks, simulated Actions isolation tests, and concise docs.

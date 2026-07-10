@@ -63,9 +63,11 @@ The separately published GitHub Pages launch site is built from the committed
 public demo with `scripts/build_pages_site.py`. Public GitHub-facing docs can
 point to that hosted page, but this Trust Center stays offline-safe because it
 is copied into evidence-room packages. The Pages build adds a product overview,
-evidence cards, an artifact explorer, static deployment files, and `.nojekyll`,
-but it does not run hosted checks, collect analytics, load remote runtime
-assets, or create evidence beyond the committed reproducible artifacts.
+audience paths, evidence-derived proof cards, a searchable artifact explorer,
+copyable local commands, local social preview assets, static deployment files,
+and `.nojekyll`, but it does not run hosted checks, collect analytics, use
+cookies or trackers, load remote runtime assets, or create evidence beyond the
+committed reproducible artifacts.
 
 ## Static site preview
 

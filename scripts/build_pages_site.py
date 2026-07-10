@@ -52,6 +52,8 @@ FORBIDDEN_PATTERNS = [
         r"\bAKIA[0-9A-Z]{16}\b",
         r"\b(?:authorization|api[_-]?key|token|secret|password)\s*[:=]",
         r"-----BEGIN [A-Z ]*PRIVATE KEY-----",
+        r"\b(?:google-analytics|googletagmanager|gtag\(|plausible|segment\.com|mixpanel)\b",
+        r"sourceMappingURL=",
     ]
 ]
 
@@ -80,7 +82,10 @@ class EvidenceData:
     demo: dict[str, object]
     metrics: dict[str, object]
     workflow_check: dict[str, object]
+    adoption_ready: dict[str, object]
+    release_check: dict[str, object]
     manifest: dict[str, object]
+    inventory: dict[str, object]
     artifacts: list[dict[str, object]]
 
 
@@ -313,7 +318,10 @@ def load_evidence(root: Path) -> EvidenceData:
     demo = read_json(root / "demo.json")
     metrics = read_json(root / "artifacts" / "metrics.json")
     workflow = read_json(root / "artifacts" / "workflow-check.json")
+    adoption = read_json(root / "artifacts" / "adoption-ready.json")
+    release = read_json(root / "artifacts" / "release-check.json")
     manifest = read_json(root / "artifacts" / "manifest.json")
+    inventory = read_json(root / "artifacts" / "artifact-inventory.json")
     raw_artifacts = demo.get("artifacts")
     if not isinstance(raw_artifacts, list):
         raise PagesBuildError("demo.json does not contain an artifact list")
@@ -322,7 +330,10 @@ def load_evidence(root: Path) -> EvidenceData:
         demo=demo,
         metrics=metrics,
         workflow_check=workflow,
+        adoption_ready=adoption,
+        release_check=release,
         manifest=manifest,
+        inventory=inventory,
         artifacts=artifacts,
     )
 
@@ -355,13 +366,43 @@ def write_supporting_files(root: Path, config: SiteConfig) -> None:
 
 def render_index(data: EvidenceData, config: SiteConfig) -> str:
     """Render the public launch site index."""
-    title = "VibeBench Arena | Codex-first quality and evidence gate"
+    title = "VibeBench Arena | Evidence explorer for AI-assisted code"
     description = (
-        "VibeBench Arena runs checks, enforces policy, generates evidence, "
-        "and publishes reviewer-ready proof for vibe-coded projects."
+        "VibeBench Arena turns AI-assisted repository work into local checks, "
+        "risk signals, readiness reports, and reviewable evidence packets."
     )
     cards = evidence_cards(data)
-    categories = categorize_artifacts(data.artifacts)
+    categories = artifact_categories(data.artifacts)
+    artifacts = sorted(data.artifacts, key=artifact_sort_key)
+    social_image = urljoin(config.canonical_index, "assets/social-preview.svg")
+    category_options = "".join(
+        f'<option value="{escape(slug(name))}">{escape(name)}</option>'
+        for name, _items in categories
+    )
+    command_cards = "".join(
+        [
+            command_panel(
+                "First local check",
+                "python3 -m vibebench ci --dry-run --json",
+            ),
+            command_panel(
+                "Adoption readiness",
+                "python3 -m vibebench adoption-ready --json",
+            ),
+            command_panel(
+                "Rebuild this launch site",
+                "python3 scripts/build_pages_site.py "
+                "--output-dir review-output/pages-site",
+            ),
+            command_panel(
+                "Verify deterministic demo",
+                "python3 scripts/build_public_demo.py --check",
+            ),
+        ]
+    )
+    source = escape(str(data.demo.get("source", "Not included")))
+    security_url = f"{config.repository_url}/blob/main/SECURITY.md"
+    trust_url = f"{config.repository_url}/blob/main/docs/trust-center.md"
     return clean_text(
         f"""<!doctype html>
 <html lang="en">
@@ -376,9 +417,12 @@ def render_index(data: EvidenceData, config: SiteConfig) -> str:
   <meta property="og:title" content="{escape(title)}">
   <meta property="og:description" content="{escape(description)}">
   <meta property="og:url" content="{escape(config.canonical_index)}">
-  <meta name="twitter:card" content="summary">
+  <meta property="og:image" content="{escape(social_image)}">
+  <meta property="og:image:alt" content="VibeBench Arena evidence explorer preview">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{escape(title)}">
   <meta name="twitter:description" content="{escape(description)}">
+  <meta name="twitter:image" content="{escape(social_image)}">
   <meta name="theme-color" content="#15302f">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
@@ -403,10 +447,10 @@ def render_index(data: EvidenceData, config: SiteConfig) -> str:
         Menu
       </button>
       <div class="nav-links" id="nav-links">
-        <a href="#live-demo">Live Demo</a>
+        <a href="#overview">Overview</a>
         <a href="#evidence">Evidence</a>
+        <a href="#paths">Paths</a>
         <a href="#artifacts">Artifacts</a>
-        <a href="#adoption">Adoption</a>
         <a href="#trust">Trust</a>
         <a href="#diligence">Diligence</a>
         <a href="{escape(config.repository_url)}">GitHub</a>
@@ -416,41 +460,50 @@ def render_index(data: EvidenceData, config: SiteConfig) -> str:
   <main id="main">
     <section class="hero" id="home" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <p class="eyebrow">Codex-first quality and evidence gate</p>
+        <p class="eyebrow">Local-first evidence for AI-assisted engineering</p>
         <h1 id="hero-title">VibeBench Arena</h1>
         <p class="hero-lede">
-          Run checks, enforce policy, generate evidence, and publish
-          reviewer-ready proof for vibe-coded projects.
+          Turn a repository changed by AI into checks, risk signals, adoption
+          readiness, release notes, manifests, and proof that reviewers can inspect.
+        </p>
+        <p class="hero-note">
+          Built from a reproducible reference-project run. This page summarizes
+          committed demonstration evidence; it is not a hosted scanner and does
+          not claim customers, revenue, funding, certification, or product-market fit.
         </p>
         <div class="hero-actions" aria-label="Primary actions">
-          <a class="button primary" href="#evidence">Explore the live proof</a>
-          <a class="button secondary" href="#adoption">Run the 5-minute quickstart</a>
-          <a class="button ghost" href="{escape(config.repository_url)}">
-            View GitHub repository
-          </a>
+          <a class="button primary" href="#evidence">Explore the evidence</a>
+          <a class="button secondary" href="#try">Try it locally</a>
         </div>
+        <ul class="audience-strip" aria-label="Who VibeBench is for">
+          <li>Developers</li>
+          <li>Technical reviewers</li>
+          <li>Investors</li>
+          <li>Community evaluators</li>
+        </ul>
       </div>
       <aside class="proof-panel" aria-label="Current public proof summary">
-        <span class="panel-kicker">Verified from committed evidence</span>
+        <span class="panel-kicker">Reference evidence snapshot</span>
         <strong>{escape(status_text(data.demo))}</strong>
         <dl>
-          {definition("Project", str(data.demo.get("project", "Not included")))}
+          {definition("Run", "reference project")}
           {definition("Score", score_text(data.demo.get("score")))}
           {definition("Risk", str(data.demo.get("risk_level", "Not included")))}
           {definition("Artifacts", artifact_count_text(data.demo))}
         </dl>
+        <a href="demo.json">Open source demo JSON</a>
       </aside>
     </section>
 
-    <section class="section" id="live-demo" aria-labelledby="live-demo-title">
+    <section class="section" id="overview" aria-labelledby="overview-title">
       <div class="section-heading">
-        <p class="eyebrow">Public launch site</p>
-        <h2 id="live-demo-title">Understand the project in 30 seconds</h2>
+        <p class="eyebrow">30-second product frame</p>
+        <h2 id="overview-title">Evidence between AI-generated code and human trust</h2>
         <p>
-          This site presents the committed VibeBench public demo and proof
-          packet as a static, reproducible launch page. It separates product
-          positioning from evidence-backed artifacts and does not run as a
-          hosted scanning service.
+          VibeBench runs local checks, records score and risk signals, verifies
+          workflow and adoption readiness, and leaves behind JSON, Markdown,
+          HTML, manifests, and proof packets. The goal is not to replace review;
+          it is to make review concrete.
         </p>
       </div>
       <div class="how-grid" aria-label="How VibeBench works">
@@ -460,12 +513,12 @@ def render_index(data: EvidenceData, config: SiteConfig) -> str:
 
     <section class="section alt" id="evidence" aria-labelledby="evidence-title">
       <div class="section-heading">
-        <p class="eyebrow">Evidence-backed summary</p>
-        <h2 id="evidence-title">Concrete proof within 3 minutes</h2>
+        <p class="eyebrow">Evidence-backed proof cards</p>
+        <h2 id="evidence-title">Reference run signals, traced to files</h2>
         <p>
-          These cards are derived from committed JSON artifacts. When evidence
-          is unavailable, the site labels it as unavailable instead of
-          inventing a metric.
+          Every value below is derived from committed machine-readable evidence.
+          The run is a deterministic reference demonstration, not production
+          customer usage.
         </p>
       </div>
       <div class="card-grid evidence-grid">
@@ -473,46 +526,108 @@ def render_index(data: EvidenceData, config: SiteConfig) -> str:
       </div>
     </section>
 
-    <section class="section" id="artifacts" aria-labelledby="artifacts-title">
+    <section class="section" id="paths" aria-labelledby="paths-title">
       <div class="section-heading">
-        <p class="eyebrow">Artifact Explorer</p>
-        <h2 id="artifacts-title">Inspect the reference demo evidence</h2>
+        <p class="eyebrow">Audience paths</p>
+        <h2 id="paths-title">Choose the route that matches the review job</h2>
         <p>
-          Artifacts are grouped by reviewer task. Available files link to
-          committed safe copies; unavailable optional artifacts are visible but
-          are not linked as if present.
+          The same reference evidence supports different questions. Start with
+          the path closest to your role, then drill into artifacts.
         </p>
       </div>
-      <div class="artifact-groups">
-        {"".join(render_artifact_group(name, items) for name, items in categories)}
+      <div class="card-grid path-grid">
+        {audience_paths(config)}
       </div>
     </section>
 
-    <section class="section alt" id="adoption" aria-labelledby="adoption-title">
+    <section class="section alt" id="artifacts" aria-labelledby="artifacts-title">
+      <div class="section-heading">
+        <p class="eyebrow">Interactive evidence explorer</p>
+        <h2 id="artifacts-title">Filter the committed artifact map</h2>
+        <p>
+          Search by artifact name, explanation, category, type, or status. All
+          available links are relative safe copies inside this static site.
+          Optional missing artifacts remain visible without broken links.
+        </p>
+      </div>
+      <form
+        class="explorer-controls"
+        data-artifact-filters
+        aria-describedby="artifact-filter-status"
+      >
+        <div class="control-field">
+          <label for="artifact-search">Search artifacts</label>
+          <input
+            id="artifact-search"
+            name="q"
+            type="search"
+            placeholder="Try metrics, release, manifest, proof"
+            autocomplete="off"
+            data-filter-search
+          >
+        </div>
+        <div class="control-field">
+          <label for="artifact-category">Category</label>
+          <select id="artifact-category" name="category" data-filter-category>
+            <option value="all">All categories</option>
+            {category_options}
+          </select>
+        </div>
+        <div class="control-field">
+          <label for="artifact-availability">Availability</label>
+          <select
+            id="artifact-availability"
+            name="availability"
+            data-filter-availability
+          >
+            <option value="all">All statuses</option>
+            <option value="available">Available evidence</option>
+            <option value="missing">Unavailable optional evidence</option>
+          </select>
+        </div>
+        <button class="button secondary" type="reset" data-filter-reset>Reset</button>
+      </form>
+      <p class="filter-status" id="artifact-filter-status" aria-live="polite">
+        Showing all {len(artifacts)} known reference artifacts.
+      </p>
+      <div class="artifact-results" data-artifact-results>
+        {"".join(render_explorer_artifact(item) for item in artifacts)}
+      </div>
+      <p class="empty-state" data-empty-state hidden>
+        No artifacts match these filters. Reset the explorer or try a broader search.
+      </p>
+      <details class="category-summary">
+        <summary>Browse grouped categories without JavaScript</summary>
+        <div class="artifact-groups">
+          {"".join(render_artifact_group(name, items) for name, items in categories)}
+        </div>
+      </details>
+    </section>
+
+    <section class="section" id="try" aria-labelledby="try-title">
+      <div class="section-heading">
+        <p class="eyebrow">Try locally</p>
+        <h2 id="try-title">Reproduce the reference site or run the CLI</h2>
+        <p>
+          The launch site is static, deterministic, and works without analytics
+          or network runtime dependencies. These commands are visible and
+          selectable even when JavaScript is disabled.
+        </p>
+      </div>
+      <div class="command-grid">
+        {command_cards}
+      </div>
+      <p class="copy-feedback" data-copy-feedback aria-live="polite"></p>
+    </section>
+
+    <section class="section alt" id="review-path" aria-labelledby="review-path-title">
       <div class="section-heading">
         <p class="eyebrow">Five-minute path</p>
-        <h2 id="adoption-title">Reproduce or adopt it in 5 minutes</h2>
+        <h2 id="review-path-title">A fast, evidence-first walkthrough</h2>
       </div>
       <ol class="timeline">
         {review_path()}
       </ol>
-      <div class="command-panel">
-        <p>Local verification commands:</p>
-        <pre><code>python3 scripts/build_public_demo.py --check
-python3 scripts/build_public_proof_packet.py --check
-python3 scripts/build_pages_site.py --output-dir review-output/pages-site
-python3 scripts/build_pages_site.py --check</code></pre>
-      </div>
-    </section>
-
-    <section class="section" id="audiences" aria-labelledby="audiences-title">
-      <div class="section-heading">
-        <p class="eyebrow">Entry points</p>
-        <h2 id="audiences-title">Choose the review path that matches your role</h2>
-      </div>
-      <div class="card-grid audience-grid">
-        {audience_cards(config)}
-      </div>
     </section>
 
     <section class="section alt" id="trust" aria-labelledby="trust-title">
@@ -547,13 +662,22 @@ python3 scripts/build_pages_site.py --check</code></pre>
     </section>
   </main>
   <footer class="site-footer">
+    <div>
+      <strong>Built from committed reference evidence.</strong>
+      <p>
+        Evidence source: <code>{source}</code>.
+        Base path: <code>{escape(config.base_path)}</code>.
+      </p>
+    </div>
+    <nav aria-label="Footer links">
+      <a href="{escape(config.repository_url)}">Source repository</a>
+      <a href="{escape(security_url)}">Security policy</a>
+      <a href="{escape(trust_url)}">Trust Center</a>
+      <a href="demo.json">Demo JSON</a>
+    </nav>
     <p>
-      Built from the committed public demo. Evidence source:
-      <code>{escape(str(data.demo.get("source", "Not included")))}</code>.
-    </p>
-    <p>
-      Base path: <code>{escape(config.base_path)}</code>.
-      Runtime assets are local and the core content works without JavaScript.
+      Runtime CSS, JavaScript, icons, and preview assets are local. No analytics,
+      cookies, trackers, remote fonts, or CDN runtime assets are used.
     </p>
   </footer>
 </body>
@@ -597,13 +721,16 @@ def render_404(config: SiteConfig) -> str:
 def evidence_cards(data: EvidenceData) -> list[dict[str, str]]:
     """Return evidence summary cards derived from committed JSON."""
     demo = data.demo
+    metrics_summary = data.metrics.get("summary")
     workflow_summary = data.workflow_check.get("summary")
+    adoption_summary = data.adoption_ready.get("summary")
+    release_checks = data.release_check.get("checks")
     manifest_artifacts = data.manifest.get("artifacts")
     return [
         card(
-            "Current status",
+            "Overall status",
             status_text(demo),
-            "Overall public proof result from demo.json.",
+            "Reference proof result from the public demo manifest.",
             "demo.json",
         ),
         card(
@@ -619,6 +746,12 @@ def evidence_cards(data: EvidenceData) -> list[dict[str, str]]:
             "artifacts/metrics.json",
         ),
         card(
+            "Checks passed",
+            summary_text(metrics_summary, "passed_commands"),
+            "Configured reference-project commands captured in metrics.json.",
+            "artifacts/metrics.json",
+        ),
+        card(
             "Artifacts",
             artifact_count_text(demo),
             "Available evidence files in the public demo.",
@@ -626,21 +759,27 @@ def evidence_cards(data: EvidenceData) -> list[dict[str, str]]:
         ),
         card(
             "Workflow readiness",
-            summary_text(workflow_summary, "passed"),
+            workflow_mode_text(data.workflow_check, workflow_summary),
             "Workflow-check results for the deterministic reference project.",
             "artifacts/workflow-check.json",
+        ),
+        card(
+            "Adoption readiness",
+            readiness_text(data.adoption_ready, adoption_summary),
+            "Read-only adoption readiness from committed reference evidence.",
+            "artifacts/adoption-ready.json",
+        ),
+        card(
+            "Release readiness",
+            release_text(data.release_check, release_checks),
+            "Local release-check evidence; it does not publish or create a release.",
+            "artifacts/release-check.json",
         ),
         card(
             "Manifest consistency",
             manifest_text(manifest_artifacts),
             "Manifest and inventory files are included for integrity review.",
             "artifacts/manifest.json",
-        ),
-        card(
-            "Share-check status",
-            evidence_status(demo, "share_check"),
-            "Shows whether share-check evidence was included in this demo.",
-            evidence_link(demo, "share_check"),
         ),
         card(
             "Reproducibility",
@@ -677,33 +816,61 @@ def render_card(item: dict[str, str]) -> str:
 </article>"""
 
 
-def categorize_artifacts(
+def artifact_categories(
     artifacts: list[dict[str, object]],
 ) -> list[tuple[str, list[dict[str, object]]]]:
     """Group artifacts into reviewer-oriented categories."""
-    buckets: list[tuple[str, tuple[str, ...]]] = [
-        ("Decision evidence", ("metrics", "gate", "explain", "config")),
-        ("Workflow evidence", ("workflow", "preflight", "adoption", "release")),
-        ("Review surfaces", ("report", "github-step-summary", "README")),
-        ("Integrity and manifests", ("manifest", "inventory", "proof-packet")),
-        ("Trend and comparison", ("trend", "compare", "run-index", "metrics-diff")),
-        ("Trust and sharing", ("share", "security", "trust", "scorecard", "bundle")),
+    grouped: dict[str, list[dict[str, object]]] = {}
+    for item in artifacts:
+        grouped.setdefault(artifact_category(item), []).append(item)
+    return [
+        (name, sorted(grouped.get(name, []), key=artifact_sort_key))
+        for name in artifact_category_order()
+        if grouped.get(name)
     ]
-    remaining = list(artifacts)
-    grouped: list[tuple[str, list[dict[str, object]]]] = []
-    for title, keys in buckets:
-        selected = [
-            item
-            for item in remaining
-            if any(key in str(item.get("path", item.get("name", ""))) for key in keys)
-        ]
-        remaining = [item for item in remaining if item not in selected]
-        grouped.append((title, sorted(selected, key=artifact_sort_key)))
-    if remaining:
-        grouped.append(
-            ("Other known artifacts", sorted(remaining, key=artifact_sort_key))
-        )
-    return grouped
+
+
+def artifact_category_order() -> tuple[str, ...]:
+    """Return deterministic artifact category order."""
+    return (
+        "Summary",
+        "Checks",
+        "Scoring",
+        "Risk",
+        "Reports",
+        "Manifest and inventory",
+        "Adoption and workflow readiness",
+        "Release readiness",
+        "Bundles and proof material",
+        "Trend and comparison",
+        "Other evidence",
+    )
+
+
+def artifact_category(item: dict[str, object]) -> str:
+    """Return a reviewer-facing artifact category."""
+    value = str(item.get("path") or item.get("name") or "").lower()
+    if "readme" in value or "github-step-summary" in value or "explain" in value:
+        return "Summary"
+    if "config" in value or "check.log" in value or "gate" in value:
+        return "Checks"
+    if "metrics" in value:
+        return "Scoring"
+    if "risk" in value:
+        return "Risk"
+    if "report" in value:
+        return "Reports"
+    if "manifest" in value or "inventory" in value:
+        return "Manifest and inventory"
+    if any(key in value for key in ("workflow", "preflight", "adoption", "onboard")):
+        return "Adoption and workflow readiness"
+    if "release" in value or "package" in value or "ci-plan" in value:
+        return "Release readiness"
+    if any(key in value for key in ("proof", "bundle", "share", "security")):
+        return "Bundles and proof material"
+    if any(key in value for key in ("trend", "compare", "run-index")):
+        return "Trend and comparison"
+    return "Other evidence"
 
 
 def render_artifact_group(title: str, items: list[dict[str, object]]) -> str:
@@ -742,6 +909,46 @@ def render_artifact(item: dict[str, object]) -> str:
     {definition("Type", file_type)}
     {definition("Size", size_text)}
   </dl>
+</article>"""
+
+
+def render_explorer_artifact(item: dict[str, object]) -> str:
+    """Render one filterable explorer artifact row."""
+    name = str(item.get("name") or item.get("path") or "Unnamed artifact")
+    path = str(item.get("path") or name)
+    description = str(item.get("description") or artifact_description(name))
+    file_type = str(item.get("file_type") or Path(name).suffix.lstrip(".") or "file")
+    size = item.get("size_bytes")
+    available = bool(item.get("available"))
+    link = str(item.get("link")) if available and item.get("link") else ""
+    category = artifact_category(item)
+    availability = "available" if available else "missing"
+    status = "Available" if available else "Unavailable optional evidence"
+    size_text = f"{size} bytes" if isinstance(size, int) else "Not included"
+    search = " ".join([name, path, description, file_type, category, availability])
+    action = (
+        f'<a class="artifact-action" href="{escape(link)}">Open artifact</a>'
+        if link
+        else '<span class="artifact-action muted">Unavailable optional evidence</span>'
+    )
+    return f"""<article
+  class="artifact-result {availability}"
+  data-artifact-card
+  data-category="{escape(slug(category))}"
+  data-availability="{availability}"
+  data-search="{escape(search.lower())}"
+>
+  <div>
+    <p class="artifact-meta">{escape(category)} · {escape(file_type)}</p>
+    <h3>{escape(human_name(name))}</h3>
+    <p>{escape(description)}</p>
+  </div>
+  <dl>
+    {definition("Status", status)}
+    {definition("Path", path)}
+    {definition("Size", size_text)}
+  </dl>
+  {action}
 </article>"""
 
 
@@ -883,6 +1090,96 @@ def audience_cards(config: SiteConfig) -> str:
     )
 
 
+def audience_paths(config: SiteConfig) -> str:
+    """Render audience-specific launch-site paths."""
+    quickstart_url = f"{config.repository_url}/blob/main/docs/quickstart.md"
+    proof_matrix_url = f"{config.repository_url}/blob/main/docs/proof-matrix.md"
+    investor_url = f"{config.repository_url}/blob/main/docs/investor-brief.md"
+    diligence_url = (
+        f"{config.repository_url}/blob/main/docs/technical-due-diligence.md"
+    )
+    security_url = f"{config.repository_url}/blob/main/SECURITY.md"
+    paths = [
+        (
+            "Developer",
+            (
+                "Install, run the first local gate, inspect adoption readiness, "
+                "and wire CI when ready."
+            ),
+            [
+                ("Copy first-run command", "#try"),
+                ("Review adoption readiness", "artifacts/adoption-ready.md"),
+                ("Open quickstart", quickstart_url),
+            ],
+        ),
+        (
+            "Technical reviewer",
+            (
+                "Inspect score, status, risk, checks, proof packet, inventory, "
+                "and non-claims."
+            ),
+            [
+                ("Open proof packet", "artifacts/proof-packet-index.md"),
+                ("Inspect metrics", "artifacts/metrics.json"),
+                ("Read proof matrix", proof_matrix_url),
+            ],
+        ),
+        (
+            "Investor / product reviewer",
+            (
+                "Understand the wedge, product direction, and technical "
+                "defensibility without treating hypotheses as traction."
+            ),
+            [
+                ("Read investor brief", investor_url),
+                ("Review diligence", diligence_url),
+                ("Inspect evidence", "#evidence"),
+            ],
+        ),
+        (
+            "Community evaluator",
+            (
+                "Reproduce the reference project, browse representative "
+                "artifacts, and find contribution and security context."
+            ),
+            [
+                ("Browse artifacts", "#artifacts"),
+                ("View source", config.repository_url),
+                ("Security policy", security_url),
+            ],
+        ),
+    ]
+    rendered = []
+    for title, detail, links in paths:
+        rendered_links = "".join(
+            f'<a href="{escape(href)}">{escape(label)}</a>' for label, href in links
+        )
+        rendered.append(
+            f"""<article class="path-card">
+  <h3>{escape(title)}</h3>
+  <p>{escape(detail)}</p>
+  <div class="path-actions">{rendered_links}</div>
+</article>"""
+        )
+    return "".join(rendered)
+
+
+def command_panel(title: str, command: str) -> str:
+    """Render one copyable command panel."""
+    element_id = slug(title)
+    return f"""<article class="command-card">
+  <h3>{escape(title)}</h3>
+  <pre><code id="{element_id}-command">{escape(command)}</code></pre>
+  <button
+    class="button ghost copy-button"
+    type="button"
+    data-copy-target="{element_id}-command"
+  >
+    Copy command
+  </button>
+</article>"""
+
+
 def supporting_links(config: SiteConfig) -> str:
     """Render supporting diligence links."""
     links = [
@@ -959,7 +1256,10 @@ def json_ld(config: SiteConfig) -> str:
         "@context": "https://schema.org",
         "@type": "SoftwareSourceCode",
         "name": "VibeBench Arena",
-        "description": "Codex-first quality and evidence gate for vibe-coded projects.",
+        "description": (
+            "Evidence explorer and local-first quality gate for AI-assisted "
+            "repositories."
+        ),
         "codeRepository": config.repository_url,
         "url": config.canonical_index,
         "programmingLanguage": "Python",
@@ -985,6 +1285,7 @@ def validate_site(root: Path, config: SiteConfig) -> None:
         root / "assets" / "site.css",
         root / "assets" / "site.js",
         root / "assets" / "icon.svg",
+        root / "assets" / "social-preview.svg",
     ]
     for path in required:
         if not path.is_file():
@@ -1015,6 +1316,7 @@ def validate_site(root: Path, config: SiteConfig) -> None:
         scan_text(path, root)
 
     validate_base_path(root, config)
+    validate_performance_budgets(root)
 
 
 def validate_html_accessibility(
@@ -1089,6 +1391,22 @@ def validate_base_path(root: Path, config: SiteConfig) -> None:
     manifest = json.loads((root / "site.webmanifest").read_text(encoding="utf-8"))
     if manifest.get("id") != config.base_path:
         raise PagesBuildError("site.webmanifest does not use the configured base path")
+
+
+def validate_performance_budgets(root: Path) -> None:
+    """Validate deterministic uncompressed launch-site budgets."""
+    budgets = [
+        ("index.html", root / "index.html", 150 * 1024),
+        ("local JavaScript", root / "assets" / "site.js", 40 * 1024),
+        ("local CSS", root / "assets" / "site.css", 80 * 1024),
+    ]
+    for label, path, maximum in budgets:
+        size = path.stat().st_size
+        if size > maximum:
+            raise PagesBuildError(
+                f"{label} exceeds size budget: {size} bytes > {maximum} bytes; "
+                "reduce inline content or local asset size"
+            )
 
 
 def scan_text(path: Path, root: Path) -> None:
@@ -1346,8 +1664,38 @@ def artifact_count_text(data: dict[str, object]) -> str:
 def summary_text(summary: object, key: str) -> str:
     """Return a summary count from a JSON summary object."""
     if isinstance(summary, dict) and isinstance(summary.get(key), int):
-        return f"{summary[key]} {key}"
+        label = key.replace("_commands", "").replace("_", " ")
+        return f"{summary[key]} {label}"
     return "Not included"
+
+
+def workflow_mode_text(data: dict[str, object], summary: object) -> str:
+    """Return detected workflow mode text."""
+    modes = data.get("detected_ci_modes")
+    if isinstance(modes, list) and modes:
+        return ", ".join(str(mode) for mode in modes)
+    return summary_text(summary, "passed")
+
+
+def readiness_text(data: dict[str, object], summary: object) -> str:
+    """Return adoption readiness text."""
+    status = str(data.get("status", "Not included"))
+    if isinstance(summary, dict) and isinstance(summary.get("passed"), int):
+        return f"{status} ({summary['passed']} checks)"
+    return status
+
+
+def release_text(data: dict[str, object], checks: object) -> str:
+    """Return release readiness text without hiding non-ready evidence."""
+    status = str(data.get("status", "Not included"))
+    if isinstance(checks, list):
+        passed = sum(
+            1
+            for item in checks
+            if isinstance(item, dict) and item.get("status") == "passed"
+        )
+        return f"{status} ({passed}/{len(checks)} checks passed)"
+    return status
 
 
 def manifest_text(artifacts: object) -> str:

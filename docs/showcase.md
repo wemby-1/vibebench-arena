@@ -53,9 +53,10 @@ The live public launch site is published at
 [`https://wemby-1.github.io/vibebench-arena/`](https://wemby-1.github.io/vibebench-arena/).
 It is built from the committed public demo and public proof packet, so visitors
 can inspect the current evidence without cloning the repository. It presents a
-home overview, live proof summary, artifact explorer, five-minute path, trust
+30-second product frame, audience-specific routes, evidence-derived proof cards,
+a searchable/filterable artifact explorer, copyable local commands, trust
 boundaries, and diligence links. It is a static presentation of reproducible
-evidence, not an independent hosted scanner.
+reference evidence, not an independent hosted scanner.
 
 Run from the repository root:
 
@@ -92,6 +93,9 @@ python3 scripts/build_public_demo.py --check
 python3 scripts/build_pages_site.py --output-dir /tmp/vibebench-pages-site
 python3 scripts/build_pages_site.py --check
 ```
+
+The Pages build remains deterministic and local-asset-only: no analytics,
+cookies, trackers, remote fonts, CDNs, or remote runtime dependencies.
 
 For deeper evaluation, use the [investor brief](investor-brief.md), [technical due diligence](technical-due-diligence.md), [proof matrix](proof-matrix.md), and [demo script](demo-script.md).
 

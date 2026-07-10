@@ -10,7 +10,10 @@ For remote audiences that should not install Python, open the live launch site:
 [`https://wemby-1.github.io/vibebench-arena/`](https://wemby-1.github.io/vibebench-arena/).
 It is a GitHub Pages presentation of the committed reproducible evidence, not a
 hosted scanning service. Use the hero for the 30-second product frame, then
-move to evidence cards, the artifact explorer, and the five-minute path.
+move to audience paths, evidence-derived proof cards, the searchable artifact
+explorer, copyable local commands, and the five-minute path. The launch site
+uses local runtime assets only and does not add analytics, cookies, trackers,
+remote fonts, or CDN dependencies.
 
 ## Before You Present
 

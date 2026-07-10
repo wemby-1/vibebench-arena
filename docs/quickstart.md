@@ -84,10 +84,12 @@ python3 scripts/build_pages_site.py --output-dir /tmp/vibebench-pages-site
 python3 scripts/build_pages_site.py --check
 ```
 
-The Pages site includes a product overview, evidence cards, artifact explorer,
-five-minute path, audience entry points, `robots.txt`, `sitemap.xml`, `404.html`,
-and local assets. It is not a hosted scanning service and does not add new
-claims beyond the artifacts it publishes.
+The Pages site includes a product overview, audience paths, evidence-derived
+proof cards, searchable artifact explorer, copyable local commands, five-minute
+path, `robots.txt`, `sitemap.xml`, `404.html`, and local assets. It is not a
+hosted scanning service and does not add new claims beyond the artifacts it
+publishes. It uses no analytics, cookies, trackers, remote fonts, CDNs, or
+remote runtime dependencies.
 
 ## 4. Check Adoption Readiness
 

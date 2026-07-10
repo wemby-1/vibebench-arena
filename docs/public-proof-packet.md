@@ -17,10 +17,11 @@ safe artifact links without requiring a server or network access.
 
 The GitHub Pages site at
 [`https://wemby-1.github.io/vibebench-arena/`](https://wemby-1.github.io/vibebench-arena/)
-publishes that committed demo as a static launch site with evidence cards,
-artifact exploration, local assets, and project-Pages-safe metadata. It is a
-presentation of the reproducible evidence, not a separate hosted scanning
-service.
+publishes that committed demo as a static launch site with audience paths,
+evidence-derived proof cards, searchable artifact exploration, copyable local
+commands, local preview assets, and project-Pages-safe metadata. It is a
+presentation of reproducible reference evidence, not a separate hosted scanning
+service, and it does not add analytics or remote runtime dependencies.
 
 ## How It Is Generated
 

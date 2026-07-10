@@ -54,7 +54,7 @@ GitHub Pages 上的 deterministic public launch site 地址是：
 https://wemby-1.github.io/vibebench-arena/
 ```
 
-这是一个由仓库中已提交、可复现 VibeBench 证据生成的静态产品网站，包含 live proof summary、artifact explorer、5 分钟 review path、不同 audience 的入口和 trust boundaries。它不是托管扫描服务，也不宣称安全认证、合规认证、用户、收入、融资或 product-market fit。
+这是一个由仓库中已提交、可复现 VibeBench 证据生成的静态产品网站，包含 30 秒产品说明、面向 developer/reviewer/investor/community evaluator 的路径、由 JSON 证据驱动的 proof cards、可搜索 artifact explorer、可复制本地命令和 trust boundaries。它不是托管扫描服务，也不宣称安全认证、合规认证、用户、收入、融资或 product-market fit。
 
 如果你想快速评估项目，建议先看 [showcase page](docs/showcase.md)、[showcase demo kit](examples/showcase-artifacts/README.md)、[public proof packet](examples/showcase-artifacts/public-proof/README.md) 和 [public demo portal](examples/showcase-artifacts/public-demo/README.md)。它们用 5 分钟路径串起 readiness、workflow coverage、CI plan、evidence packet 和 trust boundary，不把 README 变成大段命令清单。
 
@@ -76,7 +76,7 @@ python3 scripts/build_pages_site.py --output-dir /tmp/vibebench-pages-site
 python3 scripts/build_pages_site.py --check
 ```
 
-生成结果包含本地 CSS/JS、适配 GitHub project Pages 子路径的相对链接、`robots.txt`、`sitemap.xml`、`404.html`、`site.webmanifest` 和 `.nojekyll`。
+生成结果包含本地 CSS/JS/SVG、适配 GitHub project Pages 子路径的相对链接、`robots.txt`、`sitemap.xml`、`404.html`、`site.webmanifest` 和 `.nojekyll`。它不使用 analytics、cookies、trackers、remote fonts、CDN 或 remote runtime dependencies；JavaScript 只增强筛选、复制和移动端导航。
 
 如果是投资人、技术尽调或评审场景，可以继续看 [investor brief](docs/investor-brief.md)、[technical due diligence](docs/technical-due-diligence.md)、[proof matrix](docs/proof-matrix.md)、[public proof packet tour](docs/public-proof-packet.md)、[demo script](docs/demo-script.md) 和 [Trust Center](docs/trust-center.md)。
 
