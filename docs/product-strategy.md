@@ -6,7 +6,7 @@ AI coding is becoming easier, but engineering trust is becoming harder. Develope
 
 Generated code needs more than a chat transcript. It needs local checks, diff review, risk review, artifact-backed summaries, release readiness, and reproducible audit trails that humans can inspect.
 
-For quick evaluation and safe rollout, see the [Pages site entry](index.html), [product showcase](showcase.html), [evaluate in 5 minutes](evaluate.md), [adoption](adoption.md), the [comparison](comparison.md), [FAQ](faq.md), and [case study](case-study.md).
+For quick evaluation and safe rollout, see the [Pages site entry](index.html), [showcase](showcase.md), [showcase demo kit](../examples/showcase-artifacts/README.md), [investor brief](investor-brief.md), [technical due diligence](technical-due-diligence.md), [proof matrix](proof-matrix.md), [evaluate in 5 minutes](evaluate.md), [adoption](adoption.md), the [comparison](comparison.md), [FAQ](faq.md), and [case study](case-study.md).
 
 ## Product Thesis
 
@@ -78,8 +78,8 @@ The project does not claim fake adoption, fake revenue, fake customers, fake inv
 Start with:
 
 1. Run `python3 -m vibebench demo`.
-2. Open the [artifact gallery](artifact-gallery.md).
-3. Read the [comparison](comparison.md), [FAQ](faq.md), and [case study](case-study.md).
+2. Open the [showcase](showcase.md), [demo script](demo-script.md), and [artifact gallery](artifact-gallery.md).
+3. Read the [investor brief](investor-brief.md), [technical due diligence](technical-due-diligence.md), [proof matrix](proof-matrix.md), [comparison](comparison.md), [FAQ](faq.md), and [case study](case-study.md).
 4. Inspect the [sample artifact pack](../examples/showcase-artifacts/sample/README.md).
 5. Read the [public roadmap](roadmap-public.md) and [commercial potential](commercial-potential.md).
 6. Share real workflow feedback through the GitHub issue templates.

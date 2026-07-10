@@ -99,6 +99,15 @@ This is a local pre-sharing aid, not a security certification or guarantee. Arti
 
 Generated static HTML artifacts are expected to avoid JavaScript, remote URLs, external assets, absolute local paths, fake trust claims, and unsupported commercial claims. That expectation is part of the project's artifact posture, not an external audit result.
 
+## Due Diligence Navigation
+
+For structured evaluation, pair this Trust Center with:
+
+- [Technical due diligence](technical-due-diligence.md)
+- [Proof matrix](proof-matrix.md)
+- [Investor brief](investor-brief.md)
+- [Demo script](demo-script.md)
+
 ## What The Project Does Not Claim
 
 - No third-party security certification.

@@ -69,6 +69,8 @@ What this shows:
 
 For the copy-paste demo script and artifact interpretation, see the [showcase artifacts README](../examples/showcase-artifacts/README.md).
 
+For deeper evaluation, use the [investor brief](investor-brief.md), [technical due diligence](technical-due-diligence.md), [proof matrix](proof-matrix.md), and [demo script](demo-script.md).
+
 ## What This Does Not Claim
 
 VibeBench does not guarantee security, correctness, funding, adoption, or code quality. It does not replace human review. It does not publish packages, create tags, create releases, or call the GitHub API in the normal local demo path.
@@ -78,6 +80,10 @@ It makes the evidence around AI-assisted work easier to inspect.
 ## Next Links
 
 - [Showcase demo kit](../examples/showcase-artifacts/README.md)
+- [Investor brief](investor-brief.md)
+- [Technical due diligence](technical-due-diligence.md)
+- [Proof matrix](proof-matrix.md)
+- [Demo script](demo-script.md)
 - [Quickstart](quickstart.md)
 - [Adoption guide](adoption.md)
 - [Artifact gallery](artifact-gallery.md)

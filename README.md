@@ -48,6 +48,8 @@ If you want a shorter preview before a full run, start with `python3 -m vibebenc
 
 Evaluating quickly? Start with the [showcase page](docs/showcase.md) and the [showcase demo kit](examples/showcase-artifacts/README.md). They give reviewers a 5-minute path through readiness, workflow coverage, CI planning, evidence packets, and trust boundaries without turning this README into a command dump.
 
+For diligence review, use the [investor brief](docs/investor-brief.md), [technical due diligence](docs/technical-due-diligence.md), [proof matrix](docs/proof-matrix.md), [demo script](docs/demo-script.md), and [Trust Center](docs/trust-center.md).
+
 ## Why This Exists
 
 AI coding makes it easy to produce code quickly. It does not automatically make the result easy to review.
@@ -135,6 +137,10 @@ See [quickstart](docs/quickstart.md), [adoption](docs/adoption.md), and the [Tru
 
 - [Showcase](docs/showcase.md): the reviewer-friendly product demo narrative.
 - [Showcase demo kit](examples/showcase-artifacts/README.md): copy-paste commands and artifact interpretation.
+- [Investor brief](docs/investor-brief.md): product value, market hypotheses, maturity, risks, and non-claims.
+- [Technical due diligence](docs/technical-due-diligence.md): architecture, evidence lifecycle, tests, risks, and evaluator checklist.
+- [Proof matrix](docs/proof-matrix.md): claim-to-command-to-artifact mapping.
+- [Demo script](docs/demo-script.md): five-minute and fifteen-minute presenter flows.
 - [Quickstart](docs/quickstart.md): the shortest path from clone to usable local evidence.
 - [Adoption guide](docs/adoption.md): how teams roll this out safely.
 - [Artifact gallery](docs/artifact-gallery.md): what the outputs mean to a non-core maintainer.

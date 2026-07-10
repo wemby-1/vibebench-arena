@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added an investor brief, technical due-diligence pack, proof matrix, and demo scripts for external evaluation.
+
 - Added a showcase demo kit for external reviewers and adoption evaluation.
 
 - Added read-only `adoption-ready` readiness reporting with JSON and Markdown outputs for adoption workflow setup checks without installing or creating workflow files.
