@@ -1,7 +1,9 @@
 import hashlib
+import importlib.util
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from html.parser import HTMLParser
@@ -17,6 +19,13 @@ BUILDER = ROOT / "scripts" / "build_pages_site.py"
 PUBLIC_DEMO = ROOT / "examples" / "showcase-artifacts" / "public-demo"
 PAGES_WORKFLOW = ROOT / ".github" / "workflows" / "pages.yml"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
+
+_SPEC = importlib.util.spec_from_file_location("build_pages_site", BUILDER)
+assert _SPEC is not None
+pages_builder = importlib.util.module_from_spec(_SPEC)
+assert _SPEC.loader is not None
+sys.modules[_SPEC.name] = pages_builder
+_SPEC.loader.exec_module(pages_builder)
 
 
 class LinkParser(HTMLParser):
@@ -264,6 +273,80 @@ def test_pages_generated_html_json_and_links_are_valid(tmp_path: Path) -> None:
             assert target.exists(), f"{path}: {link}"
 
 
+def test_pages_runtime_dependency_classification_allows_public_metadata() -> None:
+    html = """
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <link rel="canonical" href="https://example.invalid/project/">
+        <meta property="og:url" content="https://example.invalid/project/">
+        <script type="application/ld+json">
+          {"@context":"https://schema.org","url":"https://example.invalid/project/"}
+        </script>
+      </head>
+      <body>
+        <a href="https://github.com/example/project">Repository</a>
+        <a href="https://example.invalid/docs">Documentation</a>
+      </body>
+    </html>
+    """
+    parser = pages_builder.LinkParser()
+
+    parser.feed(html)
+
+    assert parser.remote_runtime_assets == []
+
+
+def test_pages_runtime_dependency_classification_rejects_remote_html_assets() -> None:
+    html = """
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <link rel="stylesheet" href="https://cdn.example.invalid/site.css">
+        <script src="https://cdn.example.invalid/site.js"></script>
+      </head>
+      <body>
+        <img src="https://cdn.example.invalid/hero.png" alt="">
+        <iframe src="https://cdn.example.invalid/frame.html"></iframe>
+      </body>
+    </html>
+    """
+    parser = pages_builder.LinkParser()
+
+    parser.feed(html)
+    details = {item.describe() for item in parser.remote_runtime_assets}
+
+    assert any("tag=link attribute=href" in item for item in details)
+    assert any("tag=script attribute=src" in item for item in details)
+    assert any("tag=img attribute=src" in item for item in details)
+    assert any("tag=iframe attribute=src" in item for item in details)
+
+
+def test_pages_runtime_dependency_classification_rejects_remote_css_and_js() -> None:
+    css_dependencies = pages_builder.remote_text_runtime_dependencies(
+        Path("site.css"),
+        "body { background-image: url('https://cdn.example.invalid/bg.png'); }",
+    )
+    js_dependencies = pages_builder.remote_text_runtime_dependencies(
+        Path("site.js"),
+        "fetch('https://api.example.invalid/data.json');"
+        "import('https://cdn.example.invalid/module.js');",
+    )
+
+    assert css_dependencies[0].describe() == (
+        "type=css-url tag=css attribute=url "
+        "value=https://cdn.example.invalid/bg.png"
+    )
+    assert any(
+        item.value == "https://api.example.invalid/data.json"
+        for item in js_dependencies
+    )
+    assert any(
+        item.value == "https://cdn.example.invalid/module.js"
+        for item in js_dependencies
+    )
+
+
 def test_pages_artifact_explorer_links_only_available_artifacts(
     tmp_path: Path,
 ) -> None:
@@ -443,6 +526,42 @@ def test_pages_workflow_has_required_pages_structure() -> None:
     assert upload_step["with"]["path"] == "_site"
 
 
+def test_pages_workflow_verification_script_accepts_generated_site() -> None:
+    site = ROOT / "_site"
+    if site.exists():
+        shutil.rmtree(site)
+    try:
+        build = run_builder("--output-dir", str(site))
+        assert build.returncode == 0, build.stderr + build.stdout
+        assert (site / "index.html").is_file()
+        assert (site / ".nojekyll").is_file()
+
+        current = run_builder("--output-dir", str(site), "--check")
+        assert current.returncode == 0, current.stderr + current.stdout
+
+        demo = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "build_public_demo.py"), "--check"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        assert demo.returncode == 0, demo.stderr + demo.stdout
+
+        script = workflow_verify_python()
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr + result.stdout
+    finally:
+        if site.exists():
+            shutil.rmtree(site)
+
+
 def test_existing_ci_workflow_does_not_publish_pages() -> None:
     content = CI_WORKFLOW.read_text(encoding="utf-8")
 
@@ -507,3 +626,14 @@ def step_uses(steps: list[dict[str, object]], value: str) -> bool:
 
 def step_run_contains(steps: list[dict[str, object]], value: str) -> bool:
     return any(value in str(step.get("run", "")) for step in steps)
+
+
+def workflow_verify_python() -> str:
+    workflow = yaml.safe_load(PAGES_WORKFLOW.read_text(encoding="utf-8"))
+    verify_step = next(
+        step
+        for step in workflow["jobs"]["build"]["steps"]
+        if step.get("name") == "Verify public demo site"
+    )
+    run = str(verify_step["run"])
+    return run.split("python3 - <<'PY'\n", 1)[1].rsplit("\nPY", 1)[0]

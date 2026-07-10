@@ -84,19 +84,38 @@ class EvidenceData:
     artifacts: list[dict[str, object]]
 
 
+@dataclass(frozen=True)
+class RuntimeDependency:
+    """A remote value that would be loaded at runtime by the browser."""
+
+    dependency_type: str
+    tag: str
+    attribute: str
+    value: str
+
+    def describe(self) -> str:
+        """Return a diagnostic string for workflow logs."""
+        return (
+            f"type={self.dependency_type} tag={self.tag} "
+            f"attribute={self.attribute} value={self.value}"
+        )
+
+
 class LinkParser(HTMLParser):
     """Collect links, asset references, headings, landmarks, and IDs."""
 
     def __init__(self) -> None:
         super().__init__()
         self.links: list[str] = []
-        self.remote_runtime_assets: list[str] = []
+        self.remote_runtime_assets: list[RuntimeDependency] = []
         self.image_sources: list[tuple[str, str | None]] = []
         self.script_sources: list[str] = []
         self.headings: list[tuple[int, str]] = []
         self.landmarks: set[str] = set()
         self.ids: list[str] = []
         self.empty_links: list[str] = []
+        self._current_script_type: str | None = None
+        self._script_text: list[str] = []
         self._current_heading: int | None = None
         self._heading_text: list[str] = []
         self._current_link: str | None = None
@@ -110,6 +129,10 @@ class LinkParser(HTMLParser):
         values = dict(attrs)
         href = values.get("href")
         src = values.get("src")
+        srcset = values.get("srcset")
+        data = values.get("data")
+        poster = values.get("poster")
+        style = values.get("style")
         element_id = values.get("id")
         if element_id:
             self.ids.append(element_id)
@@ -117,24 +140,52 @@ class LinkParser(HTMLParser):
             self.landmarks.add(tag)
         if href:
             rel = set((values.get("rel") or "").lower().split())
-            if is_runtime_link_tag(tag, rel) and href.startswith(("http://", "https://")):
-                self.remote_runtime_assets.append(href)
+            if is_runtime_link_tag(tag, rel) and is_remote_url(href):
+                self.remote_runtime_assets.append(
+                    RuntimeDependency("link", tag, "href", href)
+                )
             self.links.append(href)
             if tag == "a":
                 self._current_link = href
                 self._link_text = []
         if src:
-            if src.startswith(("http://", "https://")):
-                self.remote_runtime_assets.append(src)
+            if is_runtime_src_tag(tag) and is_remote_url(src):
+                self.remote_runtime_assets.append(
+                    RuntimeDependency("source", tag, "src", src)
+                )
             if tag == "script":
                 self.script_sources.append(src)
             if tag == "img":
                 self.image_sources.append((src, values.get("alt")))
+        if srcset:
+            for candidate in parse_srcset_urls(srcset):
+                if is_runtime_srcset_tag(tag) and is_remote_url(candidate):
+                    self.remote_runtime_assets.append(
+                        RuntimeDependency("srcset", tag, "srcset", candidate)
+                    )
+        if data and tag == "object" and is_remote_url(data):
+            self.remote_runtime_assets.append(
+                RuntimeDependency("object", tag, "data", data)
+            )
+        if poster and tag == "video" and is_remote_url(poster):
+            self.remote_runtime_assets.append(
+                RuntimeDependency("poster", tag, "poster", poster)
+            )
+        if style:
+            for url in remote_css_urls(style):
+                self.remote_runtime_assets.append(
+                    RuntimeDependency("css-url", tag, "style", url)
+                )
+        if tag == "script":
+            self._current_script_type = values.get("type", "").lower()
+            self._script_text = []
         if tag in {"h1", "h2", "h3", "h4", "h5", "h6"}:
             self._current_heading = int(tag[1])
             self._heading_text = []
 
     def handle_data(self, data: str) -> None:
+        if self._current_script_type is not None:
+            self._script_text.append(data)
         if self._current_heading is not None:
             self._heading_text.append(data)
         if self._current_link is not None:
@@ -152,6 +203,16 @@ class LinkParser(HTMLParser):
                 self.empty_links.append(self._current_link)
             self._current_link = None
             self._link_text = []
+        if tag == "script" and self._current_script_type is not None:
+            if is_javascript_type(self._current_script_type):
+                for url in remote_javascript_runtime_urls(
+                    "".join(self._script_text),
+                ):
+                    self.remote_runtime_assets.append(
+                        RuntimeDependency("javascript-runtime", tag, "text", url)
+                    )
+            self._current_script_type = None
+            self._script_text = []
 
 
 def main() -> int:
@@ -940,8 +1001,9 @@ def validate_site(root: Path, config: SiteConfig) -> None:
         if path.name in {"index.html", "404.html"} and path.parent == root:
             validate_html_accessibility(path, root, parser)
         if parser.remote_runtime_assets:
+            detail = parser.remote_runtime_assets[0].describe()
             raise PagesBuildError(
-                f"{path.relative_to(root)} loads remote runtime assets"
+                f"{path.relative_to(root)} loads remote runtime asset: {detail}"
             )
         validate_links(root, path, parser.links + parser.script_sources)
 
@@ -1032,6 +1094,11 @@ def validate_base_path(root: Path, config: SiteConfig) -> None:
 def scan_text(path: Path, root: Path) -> None:
     """Scan one generated text file for obvious unsafe content."""
     text = path.read_text(encoding="utf-8", errors="replace")
+    for dependency in remote_text_runtime_dependencies(path, text):
+        raise PagesBuildError(
+            f"{path.relative_to(root)} loads remote runtime asset: "
+            f"{dependency.describe()}"
+        )
     for pattern in FORBIDDEN_PATTERNS:
         if pattern.search(text):
             raise PagesBuildError(
@@ -1165,6 +1232,91 @@ def is_runtime_link_tag(tag: str, rel: set[str]) -> bool:
     return tag == "link" and bool(
         rel & {"stylesheet", "preload", "modulepreload", "icon", "manifest"}
     )
+
+
+def is_runtime_src_tag(tag: str) -> bool:
+    """Return whether a src attribute loads a runtime asset."""
+    return tag in {
+        "audio",
+        "embed",
+        "iframe",
+        "img",
+        "input",
+        "script",
+        "source",
+        "track",
+        "video",
+    }
+
+
+def is_runtime_srcset_tag(tag: str) -> bool:
+    """Return whether a srcset attribute loads runtime image media."""
+    return tag in {"img", "source"}
+
+
+def is_remote_url(value: str) -> bool:
+    """Return whether a URL is remote."""
+    return value.strip().lower().startswith(("http://", "https://"))
+
+
+def parse_srcset_urls(value: str) -> list[str]:
+    """Extract URL candidates from a srcset attribute."""
+    return [
+        candidate.strip().split()[0]
+        for candidate in value.split(",")
+        if candidate.strip()
+    ]
+
+
+def remote_css_urls(text: str) -> list[str]:
+    """Return remote URLs loaded through CSS url(...)."""
+    urls: list[str] = []
+    for match in re.finditer(r"url\(\s*(['\"]?)(.*?)\1\s*\)", text, re.IGNORECASE):
+        url = match.group(2).strip()
+        if is_remote_url(url):
+            urls.append(url)
+    return urls
+
+
+def remote_javascript_runtime_urls(text: str) -> list[str]:
+    """Return remote URLs loaded by common JavaScript runtime APIs."""
+    urls: list[str] = []
+    pattern = re.compile(
+        r"""
+        (?:
+          \bfetch\s*\(\s*
+          |\bimportScripts\s*\(\s*
+          |\bnew\s+WebSocket\s*\(\s*
+          |\bimport\s*\(\s*
+        )
+        (?P<quote>['"])(?P<url>https?://[^'"]+)(?P=quote)
+        """,
+        re.IGNORECASE | re.VERBOSE,
+    )
+    for match in pattern.finditer(text):
+        urls.append(match.group("url"))
+    return urls
+
+
+def is_javascript_type(value: str) -> bool:
+    """Return whether an inline script type should be scanned as JavaScript."""
+    return value in {"", "module", "text/javascript", "application/javascript"}
+
+
+def remote_text_runtime_dependencies(path: Path, text: str) -> list[RuntimeDependency]:
+    """Return remote runtime dependencies from CSS or JavaScript text files."""
+    suffix = path.suffix.lower()
+    if suffix == ".css":
+        return [
+            RuntimeDependency("css-url", "css", "url", url)
+            for url in remote_css_urls(text)
+        ]
+    if suffix == ".js":
+        return [
+            RuntimeDependency("javascript-runtime", "javascript", "text", url)
+            for url in remote_javascript_runtime_urls(text)
+        ]
+    return []
 
 
 def definition(term: str, value: str) -> str:

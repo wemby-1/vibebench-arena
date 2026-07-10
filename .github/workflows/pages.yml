@@ -50,8 +50,67 @@ jobs:
           import json
           import re
           from pathlib import Path
+          from xml.etree import ElementTree
 
           root = Path("_site")
+
+          def is_remote_url(value):
+              return value.strip().lower().startswith(("http://", "https://"))
+
+          def runtime_link(tag, attrs):
+              rel = set((attrs.get("rel") or "").lower().split())
+              return tag == "link" and bool(
+                  rel & {"stylesheet", "preload", "modulepreload", "icon", "manifest"}
+              )
+
+          def runtime_src(tag):
+              return tag in {
+                  "audio",
+                  "embed",
+                  "iframe",
+                  "img",
+                  "input",
+                  "script",
+                  "source",
+                  "track",
+                  "video",
+              }
+
+          def srcset_urls(value):
+              return [
+                  candidate.strip().split()[0]
+                  for candidate in value.split(",")
+                  if candidate.strip()
+              ]
+
+          def remote_css_urls(text):
+              for match in re.finditer(
+                  r"url\(\s*(['\"]?)(.*?)\1\s*\)",
+                  text,
+                  flags=re.IGNORECASE,
+              ):
+                  url = match.group(2).strip()
+                  if is_remote_url(url):
+                      yield url
+
+          def remote_javascript_runtime_urls(text):
+              pattern = re.compile(
+                  r"""
+                  (?:
+                    \bfetch\s*\(\s*
+                    |\bimportScripts\s*\(\s*
+                    |\bnew\s+WebSocket\s*\(\s*
+                    |\bimport\s*\(\s*
+                  )
+                  (?P<quote>['"])(?P<url>https?://[^'"]+)(?P=quote)
+                  """,
+                  flags=re.IGNORECASE | re.VERBOSE,
+              )
+              for match in pattern.finditer(text):
+                  yield match.group("url")
+
+          def javascript_type(value):
+              return value in {"", "module", "text/javascript", "application/javascript"}
 
           class Parser(HTMLParser):
               def __init__(self):
@@ -59,32 +118,87 @@ jobs:
                   self.links = []
                   self.remote_assets = []
                   self.script_sources = []
+                  self._script_type = None
+                  self._script_text = []
 
               def handle_starttag(self, tag, attrs):
                   values = dict(attrs)
                   href = values.get("href")
                   src = values.get("src")
+                  srcset = values.get("srcset")
+                  data = values.get("data")
+                  poster = values.get("poster")
+                  style = values.get("style")
                   if href:
-                      if tag == "link" and href.startswith(("http://", "https://")):
-                          self.remote_assets.append(href)
+                      if runtime_link(tag, values) and is_remote_url(href):
+                          self.remote_assets.append(("link", tag, "href", href))
                       self.links.append(href)
                   if src:
-                      if src.startswith(("http://", "https://")):
-                          self.remote_assets.append(src)
+                      if runtime_src(tag) and is_remote_url(src):
+                          self.remote_assets.append(("source", tag, "src", src))
                       if tag == "script":
                           self.script_sources.append(src)
+                  if srcset and tag in {"img", "source"}:
+                      for url in srcset_urls(srcset):
+                          if is_remote_url(url):
+                              self.remote_assets.append(("srcset", tag, "srcset", url))
+                  if data and tag == "object" and is_remote_url(data):
+                      self.remote_assets.append(("object", tag, "data", data))
+                  if poster and tag == "video" and is_remote_url(poster):
+                      self.remote_assets.append(("poster", tag, "poster", poster))
+                  if style:
+                      for url in remote_css_urls(style):
+                          self.remote_assets.append(("css-url", tag, "style", url))
+                  if tag == "script":
+                      self._script_type = values.get("type", "").lower()
+                      self._script_text = []
+
+              def handle_data(self, data):
+                  if self._script_type is not None:
+                      self._script_text.append(data)
+
+              def handle_endtag(self, tag):
+                  if tag == "script" and self._script_type is not None:
+                      if javascript_type(self._script_type):
+                          for url in remote_javascript_runtime_urls(
+                              "".join(self._script_text)
+                          ):
+                              self.remote_assets.append(
+                                  ("javascript-runtime", tag, "text", url)
+                              )
+                      self._script_type = None
+                      self._script_text = []
 
           text_files = []
           for path in sorted(root.rglob("*")):
               if path.suffix == ".json":
                   json.loads(path.read_text(encoding="utf-8"))
-              if path.suffix in {".html", ".json", ".md", ".txt", ".yml", ".yaml"}:
+              if path.name == "site.webmanifest":
+                  json.loads(path.read_text(encoding="utf-8"))
+              if path.suffix == ".xml":
+                  ElementTree.fromstring(path.read_text(encoding="utf-8"))
+              if path.suffix in {
+                  ".html",
+                  ".json",
+                  ".md",
+                  ".txt",
+                  ".yml",
+                  ".yaml",
+                  ".css",
+                  ".js",
+                  ".svg",
+                  ".xml",
+              } or path.name == "site.webmanifest":
                   text_files.append(path)
               if path.suffix == ".html":
                   parser = Parser()
                   parser.feed(path.read_text(encoding="utf-8"))
                   if parser.remote_assets:
-                      raise SystemExit(f"remote runtime dependency in {path}")
+                      kind, tag, attr, url = parser.remote_assets[0]
+                      raise SystemExit(
+                          "remote runtime dependency in "
+                          f"{path}: type={kind} tag={tag} attribute={attr} value={url}"
+                      )
                   for script in parser.script_sources:
                       if script != "assets/site.js":
                           raise SystemExit(f"unexpected script source in {path}: {script}")
@@ -97,6 +211,21 @@ jobs:
                       target.relative_to(root.resolve())
                       if not target.exists():
                           raise SystemExit(f"missing link in {path}: {link}")
+              if path.suffix == ".css":
+                  for url in remote_css_urls(path.read_text(encoding="utf-8")):
+                      raise SystemExit(
+                          "remote runtime dependency in "
+                          f"{path}: type=css-url tag=css attribute=url value={url}"
+                      )
+              if path.suffix == ".js":
+                  for url in remote_javascript_runtime_urls(
+                      path.read_text(encoding="utf-8")
+                  ):
+                      raise SystemExit(
+                          "remote runtime dependency in "
+                          f"{path}: type=javascript-runtime tag=javascript "
+                          f"attribute=text value={url}"
+                      )
 
           combined = "\n".join(
               path.read_text(encoding="utf-8", errors="replace")
