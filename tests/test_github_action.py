@@ -6,6 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 from typer.testing import CliRunner
 
@@ -225,6 +226,7 @@ def test_action_smoke_workflow_structure() -> None:
         "strict",
         "proof",
     ]
+    assert "continue-on-error" not in text
 
 
 def test_action_consumer_fixture_has_no_generated_runs() -> None:
@@ -295,6 +297,116 @@ def test_runner_local_minimal_preset_outputs(tmp_path: Path) -> None:
     assert snapshot_tree(ROOT / ".vibebench" / "runs") == root_runs_before
 
 
+def test_action_topology_strict_and_proof_use_consumer_project_root(
+    tmp_path: Path,
+) -> None:
+    for preset in ["minimal", "strict", "proof"]:
+        topology = prepare_action_topology(tmp_path / preset)
+        source_before = snapshot_tree(topology["action_source"])
+        result, output, summary = run_action_topology(topology, preset=preset)
+        output_text = output.read_text(encoding="utf-8")
+
+        assert result.returncode == 0, result.stderr + result.stdout
+        assert "status=passed" in output_text
+        assert "score=" in output_text
+        assert "risk=low" in output_text
+        assert "run-dir=consumer/.vibebench/runs/" in output_text
+        assert "manifest-path=consumer/.vibebench/runs/" in output_text
+        assert "bundle-path=consumer/.vibebench/runs/" in output_text
+        assert summary.is_file()
+        assert "VibeBench Action" in summary.read_text(encoding="utf-8")
+        assert not list(
+            (topology["consumer"] / ".vibebench" / "runs").glob("*/evidence-room")
+        )
+        if preset == "proof":
+            assert (
+                "proof-path=consumer/.vibebench/proof-packet/proof.zip"
+                in output_text
+            )
+            assert (
+                topology["consumer"] / ".vibebench" / "proof-packet" / "proof.zip"
+            ).is_file()
+
+        assert snapshot_tree(topology["action_source"]) == source_before
+        assert not (topology["action_source"] / ".vibebench" / "runs").exists()
+
+
+def test_action_topology_static_site_requirement_fails_as_quality(
+    tmp_path: Path,
+) -> None:
+    topology = prepare_action_topology(tmp_path)
+
+    result, output, _summary = run_action_topology(
+        topology,
+        preset="strict",
+        required_mode="static-site",
+    )
+
+    assert result.returncode == 1
+    assert "evidence-room" in result.stdout
+    assert "Static site" in result.stdout
+    assert "status=failed" in output.read_text(encoding="utf-8")
+    assert "infrastructure-failed" not in output.read_text(encoding="utf-8")
+
+
+def test_action_topology_consumer_static_site_remains_authoritative(
+    tmp_path: Path,
+) -> None:
+    topology = prepare_action_topology(tmp_path)
+    docs = topology["consumer"] / "docs"
+    docs.mkdir(exist_ok=True)
+    docs.joinpath("index.html").write_text("<h1>Incomplete</h1>\n", encoding="utf-8")
+    docs.joinpath("showcase.html").write_text("<h1>Showcase</h1>\n", encoding="utf-8")
+    docs.joinpath("pages.md").write_text("# Pages\n", encoding="utf-8")
+
+    result, _output, _summary = run_action_topology(topology, preset="strict")
+
+    assert result.returncode == 1
+    assert "evidence-room" in result.stdout
+    assert "Static site" in result.stdout
+
+
+def test_proof_infrastructure_failure_exits_nonzero(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    run_dir = workspace / ".vibebench" / "runs" / "run-1"
+    run_dir.mkdir(parents=True)
+    run_dir.joinpath("metrics.json").write_text(
+        json.dumps({"overall_status": "passed", "score": 100, "risk_level": "low"}),
+        encoding="utf-8",
+    )
+    inputs = action_runner.ActionInputs(
+        preset="proof",
+        config=None,
+        workspace=workspace,
+        working_directory=workspace,
+        fail_on=frozenset({"quality"}),
+        required_modes=(),
+        upload_artifacts=False,
+        artifact_name="vibebench-evidence",
+        retention_days=14,
+        python_command=(sys.executable,),
+        action_path=ROOT,
+    )
+
+    def fake_run_command(command, *, cwd, check=True, env=None):
+        if "proof" in command:
+            return subprocess.CompletedProcess(command, 1, "", "proof failed")
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(action_runner, "run_command", fake_run_command)
+
+    result = action_runner.run_action(inputs)
+
+    assert result.exit_code == 2
+    assert result.infrastructure_failed is True
+    assert result.outputs["status"] == "infrastructure-failed"
+    assert result.diagnostic == "proof failed"
+
+
 def test_ci_workflow_left_unchanged_snapshot() -> None:
     assert CI_WORKFLOW.read_text(encoding="utf-8").startswith("name: CI\n")
 
@@ -303,3 +415,86 @@ def snapshot_tree(path: Path) -> list[str]:
     if not path.exists():
         return []
     return sorted(item.relative_to(path).as_posix() for item in path.rglob("*"))
+
+
+def prepare_action_topology(tmp_path: Path) -> dict[str, Path]:
+    workspace = tmp_path / "workspace"
+    action_source = workspace / "action-source"
+    consumer = workspace / "consumer"
+    workspace.mkdir(parents=True)
+    shutil.copytree(
+        ROOT,
+        action_source,
+        ignore=shutil.ignore_patterns(
+            ".git",
+            ".vibebench",
+            "_site",
+            "__pycache__",
+            ".pytest_cache",
+            ".ruff_cache",
+        ),
+    )
+    shutil.copytree(ROOT / "examples" / "action-consumer", consumer)
+    subprocess.run(["git", "init", "-b", "main"], cwd=consumer, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "fixture@example.invalid"],
+        cwd=consumer,
+        check=True,
+    )
+    subprocess.run(["git", "config", "user.name", "Fixture"], cwd=consumer, check=True)
+    subprocess.run(["git", "add", "."], cwd=consumer, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "fixture"],
+        cwd=consumer,
+        check=True,
+        capture_output=True,
+    )
+    assert (action_source / ".github" / "workflows" / "pages.yml").is_file()
+    assert (action_source / "site" / "assets" / "site.js").is_file()
+    return {
+        "workspace": workspace,
+        "action_source": action_source,
+        "consumer": consumer,
+    }
+
+
+def run_action_topology(
+    topology: dict[str, Path],
+    *,
+    preset: str,
+    required_mode: str = "adoption-policy",
+) -> tuple[subprocess.CompletedProcess[str], Path, Path]:
+    output = topology["workspace"] / f"output-{preset}-{required_mode}.txt"
+    summary = topology["workspace"] / f"summary-{preset}-{required_mode}.md"
+    env = os.environ.copy()
+    env.update(
+        {
+            "GITHUB_ACTIONS": "true",
+            "CI": "true",
+            "PYTHONPATH": str(topology["action_source"]),
+            "GITHUB_WORKSPACE": str(topology["workspace"]),
+            "GITHUB_ACTION_PATH": str(topology["action_source"]),
+            "GITHUB_OUTPUT": str(output),
+            "GITHUB_STEP_SUMMARY": str(summary),
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "INPUT_PRESET": preset,
+            "INPUT_WORKING_DIRECTORY": "consumer",
+            "INPUT_FAIL_ON": "quality",
+            "INPUT_REQUIRED_MODE": required_mode,
+            "INPUT_UPLOAD_ARTIFACTS": "false",
+            "INPUT_RETENTION_DAYS": "14",
+            "INPUT_PYTHON_COMMAND": sys.executable,
+        }
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(topology["action_source"] / "scripts/run_github_action.py"),
+        ],
+        cwd=topology["workspace"],
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    return result, output, summary

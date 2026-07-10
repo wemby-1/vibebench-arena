@@ -23,7 +23,7 @@ inputs:
     required: false
     default: quality
   required-mode:
-    description: Optional comma-separated VibeBench CI adoption modes required by workflow/preflight checks.
+    description: Optional comma-separated VibeBench CI adoption modes; static-site keeps evidence-room readiness authoritative.
     required: false
     default: ""
   upload-artifacts:
@@ -90,6 +90,7 @@ runs:
         INPUT_ARTIFACT_NAME: ${{ inputs.artifact-name }}
         INPUT_RETENTION_DAYS: ${{ inputs.retention-days }}
         INPUT_PYTHON_COMMAND: ${{ inputs.python-command }}
+        PYTHONDONTWRITEBYTECODE: "1"
       run: python3 "$GITHUB_ACTION_PATH/scripts/run_github_action.py" --install-only
 
     - name: Run VibeBench preset
@@ -105,6 +106,7 @@ runs:
         INPUT_ARTIFACT_NAME: ${{ inputs.artifact-name }}
         INPUT_RETENTION_DAYS: ${{ inputs.retention-days }}
         INPUT_PYTHON_COMMAND: ${{ inputs.python-command }}
+        PYTHONDONTWRITEBYTECODE: "1"
       run: python3 "$GITHUB_ACTION_PATH/scripts/run_github_action.py"
 
     - name: Upload VibeBench evidence

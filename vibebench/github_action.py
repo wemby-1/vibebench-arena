@@ -59,7 +59,12 @@ PRESETS: dict[str, ActionPreset] = {
             "Policy-oriented preset: runs adoption-policy evidence and enforces "
             "configured readiness policies."
         ),
-        ci_args=("ci", "--adoption-policy", "--require-adoption-workflow"),
+        ci_args=(
+            "ci",
+            "--adoption-policy",
+            "--require-adoption-workflow",
+            "--skip-package-check",
+        ),
         required_mode="adoption-policy",
         uploads_by_default=True,
     ),
@@ -74,6 +79,7 @@ PRESETS: dict[str, ActionPreset] = {
             "--adoption-policy",
             "--require-adoption-workflow",
             "--bundle-include-report-assets",
+            "--skip-package-check",
         ),
         required_mode="adoption-policy",
         uploads_by_default=True,

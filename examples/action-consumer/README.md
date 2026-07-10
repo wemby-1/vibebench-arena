@@ -12,4 +12,7 @@ Expected behavior:
 - `preset: proof` follows the same strict path while keeping standard evidence
   artifacts available for review.
 
+The fixture is a normal non-static-site consumer. Static-site readiness is not
+expected unless a workflow explicitly passes `required-mode: static-site`.
+
 No generated `.vibebench/runs` outputs are committed.

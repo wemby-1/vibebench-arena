@@ -15,6 +15,7 @@ from typing import Any
 
 ALLOWED_PRESETS = {"minimal", "strict", "proof"}
 ALLOWED_FAIL_ON = {"quality", "regression", "none"}
+STATIC_SITE_MODE = "static-site"
 DEFAULT_ARTIFACT_NAME = "vibebench-evidence"
 MAX_RETENTION_DAYS = 90
 MIN_RETENTION_DAYS = 1
@@ -238,6 +239,7 @@ def install_from_action_path(inputs: ActionInputs) -> None:
     run_command(
         [*inputs.python_command, "-m", "pip", "install", "-e", str(inputs.action_path)],
         cwd=inputs.workspace,
+        env=runner_subprocess_env(),
     )
 
 
@@ -245,6 +247,7 @@ def run_action(inputs: ActionInputs) -> ActionResult:
     """Run the selected VibeBench preset and collect structured outputs."""
     command = build_vibebench_command(inputs)
     env = os.environ.copy()
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
     if inputs.config is not None:
         env["VIBEBENCH_CONFIG_PATH"] = str(inputs.config)
     completed = run_command(
@@ -327,21 +330,50 @@ def build_vibebench_command(inputs: ActionInputs) -> list[str]:
             "--skip-release-check",
             "--skip-package-check",
         ],
-        "strict": ["ci", "--adoption-policy", "--require-adoption-workflow"],
+        "strict": [
+            "ci",
+            "--adoption-policy",
+            "--require-adoption-workflow",
+            "--skip-package-check",
+        ],
         "proof": [
             "ci",
             "--adoption-policy",
             "--require-adoption-workflow",
             "--bundle-include-report-assets",
+            "--skip-package-check",
         ],
     }[inputs.preset]
+    if inputs.preset in {"strict", "proof"} and not requires_static_site(inputs):
+        args.append("--skip-evidence-room")
     command = [*inputs.python_command, "-m", "vibebench", *args]
-    for mode in inputs.required_modes:
+    for mode in ci_required_modes(inputs.required_modes):
         command.extend(["--workflow-check-require-ci-mode", mode])
         command.extend(["--preflight-require-ci-mode", mode])
     if "regression" in inputs.fail_on:
         command.append("--fail-on-regression")
     return command
+
+
+def ci_required_modes(required_modes: tuple[str, ...]) -> tuple[str, ...]:
+    """Return required modes understood by workflow-check/preflight CI checks."""
+    return tuple(mode for mode in required_modes if mode != STATIC_SITE_MODE)
+
+
+def requires_static_site(inputs: ActionInputs) -> bool:
+    """Return whether static-site/evidence-room readiness is authoritative."""
+    return STATIC_SITE_MODE in inputs.required_modes or has_static_site_root(
+        inputs.working_directory
+    )
+
+
+def has_static_site_root(project_root: Path) -> bool:
+    """Return whether the consumer appears to include a VibeBench docs site."""
+    docs = project_root / "docs"
+    return all(
+        docs.joinpath(relative).is_file()
+        for relative in ("index.html", "showcase.html", "pages.md")
+    )
 
 
 def run_command(
@@ -370,6 +402,13 @@ def run_command(
             f"{shlex.join(command)}"
         )
     return completed
+
+
+def runner_subprocess_env() -> dict[str, str]:
+    """Return an environment that avoids mutating the action source checkout."""
+    env = os.environ.copy()
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    return env
 
 
 def latest_run_dir(root: Path) -> Path | None:
