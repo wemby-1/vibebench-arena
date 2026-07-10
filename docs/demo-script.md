@@ -4,6 +4,8 @@ This document provides two practical demo flows for VibeBench Arena. Use the fiv
 
 The demos show inspectable evidence. They do not claim guaranteed security, correctness, compliance, funding, or production readiness.
 
+When a live run is not convenient, use the committed [public proof packet](../examples/showcase-artifacts/public-proof/README.md) and [artifact tour](public-proof-packet.md) as the browsable reference evidence.
+
 ## Before You Present
 
 Run from a clean repository checkout:
@@ -76,6 +78,8 @@ Point out:
 - `release-check.json` when present
 
 Narrative: "The important product idea is not the terminal output. It is the evidence packet left behind for a reviewer."
+
+Fallback: open the [public proof packet index](../examples/showcase-artifacts/public-proof/proof-packet-index.md) to show the same artifact categories from a reproducible reference project.
 
 ### 4. Bundle The Evidence
 

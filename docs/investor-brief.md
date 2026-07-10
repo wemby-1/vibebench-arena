@@ -8,6 +8,8 @@ AI coding agents can produce software changes quickly, but review, adoption, and
 
 The current project is an open-source CLI and documentation package, not a claimed commercial product with revenue, customers, or pilots. Its value is best evaluated through the working commands, generated artifacts, test suite, and reviewer-facing demo flow.
 
+For a no-install artifact review, browse the committed [public proof packet](../examples/showcase-artifacts/public-proof/README.md) and the [public proof packet tour](public-proof-packet.md). It is demonstration evidence, not traction, certification, or a production-safety guarantee.
+
 ## The Problem
 
 AI-generated and vibe-coded projects can look polished before they are easy to trust. A reviewer may see an impressive demo, a large diff, or a confident assistant transcript, but still lack answers to practical questions:

@@ -46,9 +46,9 @@ python3 -m vibebench latest --all-paths
 
 ## Showcase Demo
 
-如果你想快速评估项目，建议先看 [showcase page](docs/showcase.md) 和 [showcase demo kit](examples/showcase-artifacts/README.md)。它们用 5 分钟路径串起 readiness、workflow coverage、CI plan、evidence packet 和 trust boundary，不把 README 变成大段命令清单。
+如果你想快速评估项目，建议先看 [showcase page](docs/showcase.md)、[showcase demo kit](examples/showcase-artifacts/README.md) 和 [public proof packet](examples/showcase-artifacts/public-proof/README.md)。它们用 5 分钟路径串起 readiness、workflow coverage、CI plan、evidence packet 和 trust boundary，不把 README 变成大段命令清单。
 
-如果是投资人、技术尽调或评审场景，可以继续看 [investor brief](docs/investor-brief.md)、[technical due diligence](docs/technical-due-diligence.md)、[proof matrix](docs/proof-matrix.md)、[demo script](docs/demo-script.md) 和 [Trust Center](docs/trust-center.md)。
+如果是投资人、技术尽调或评审场景，可以继续看 [investor brief](docs/investor-brief.md)、[technical due diligence](docs/technical-due-diligence.md)、[proof matrix](docs/proof-matrix.md)、[public proof packet tour](docs/public-proof-packet.md)、[demo script](docs/demo-script.md) 和 [Trust Center](docs/trust-center.md)。
 
 ## 为什么这个项目存在
 
@@ -113,6 +113,8 @@ VibeBench 的核心不是一句状态，而是一组可审阅证据。常规 run
 
 这些 artifacts 的目标很具体：回答跑了什么、改了什么、留下了什么，以及 reviewer 下一步该看什么。
 
+如果想直接浏览一个已提交、可复现的例子，可以看 [public proof packet](examples/showcase-artifacts/public-proof/README.md) 和它的 [artifact tour](docs/public-proof-packet.md)。
+
 ## 它和普通 CI 有什么不同
 
 普通 CI 主要回答一个问题：检查有没有通过。
@@ -143,6 +145,8 @@ VibeBench 的 readiness 不是一个单点，而是一层层叠加的：
 
 - [Showcase](docs/showcase.md)：面向 reviewer 的产品演示叙事。
 - [Showcase demo kit](examples/showcase-artifacts/README.md)：可复制命令和 artifact 解读。
+- [Public proof packet](examples/showcase-artifacts/public-proof/README.md)：由 deterministic reference project 重新生成的已提交证据 artifacts。
+- [Public proof packet tour](docs/public-proof-packet.md)：阅读顺序、来源、规范化字段和 staleness 检查。
 - [Investor brief](docs/investor-brief.md)：产品价值、市场假设、成熟度、风险和非承诺。
 - [Technical due diligence](docs/technical-due-diligence.md)：架构、证据生命周期、测试、风险和评估清单。
 - [Proof matrix](docs/proof-matrix.md)：把 claim、command 和 artifact 对齐。

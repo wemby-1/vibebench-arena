@@ -1,0 +1,74 @@
+{
+  "advice": true,
+  "checks": [
+    {
+      "message": "Config file found at <reference-project>/.vibebench/config.yaml",
+      "name": "config_file_exists",
+      "status": "passed"
+    },
+    {
+      "message": "Config parses and validates successfully",
+      "name": "config_validates",
+      "status": "passed"
+    },
+    {
+      "message": "Project name is present",
+      "name": "project_name",
+      "status": "passed"
+    },
+    {
+      "message": "2 command group(s) contain commands",
+      "name": "command_groups",
+      "status": "passed"
+    },
+    {
+      "message": "All configured command strings are non-empty",
+      "name": "command_strings",
+      "status": "passed"
+    },
+    {
+      "message": "Gate policy is internally consistent (min_score=90, max_risk=low, allow_findings=0)",
+      "name": "gate_policy",
+      "status": "passed"
+    },
+    {
+      "message": "Risk policy is internally consistent (max_changed_files=20, max_patch_lines=500)",
+      "name": "risk_policy",
+      "status": "passed"
+    },
+    {
+      "advice": "For a stable pinned regression gate, run `python3 -m vibebench baseline --set-latest --label stable`, then set regression.enabled=true, regression.baseline_label=stable, and regression.require_baseline=true in .vibebench/config.yaml.",
+      "message": "Regression policy is internally consistent (enabled=false, baseline_label=none, require_baseline=false, max_score_drop=0, max_risk_increase=0)",
+      "name": "regression_policy",
+      "status": "passed"
+    },
+    {
+      "advice": "Set metrics_diff.policy.enabled=true and configure per-metric rules such as latency_ms.max_increase or pass_rate.max_drop when metrics-diff drift should become an explicit gate.",
+      "message": "Metrics-diff policy is internally consistent (enabled=false, baseline_label=stable, fail_on_added_errors=false, fail_on_added_warnings=false, fail_on_removed_metrics=false, max_score_drop=0, max_risk_increase=0, rules=none)",
+      "name": "metrics_diff_policy",
+      "status": "passed"
+    },
+    {
+      "message": "Project-scan policy is internally consistent (enabled=true, require_config_valid=true, require_supported_stack=true, allowed_profiles=python,generic, fail_on_error_findings=true, fail_on_warning_findings=false)",
+      "name": "project_scan_policy",
+      "status": "passed"
+    },
+    {
+      "message": "Onboard policy is internally consistent (enabled=true, fail_on_blockers=true, fail_on_errors=true, fail_on_warnings=false, require_config=true, require_ci_ready=true)",
+      "name": "onboard_policy",
+      "status": "passed"
+    },
+    {
+      "message": "Workflow-check policy is internally consistent (enabled=true, fail_on_blockers=true, fail_on_errors=true, fail_on_warnings=false, require_config=true, require_ci_ready=true, required_ci_modes=adoption-policy, allowed_workflow_names=none, allowed_action_prefixes=none)",
+      "name": "workflow_check_policy",
+      "status": "passed"
+    },
+    {
+      "message": "Preflight policy is internally consistent (enabled=true, fail_on_blockers=true, fail_on_errors=true, fail_on_warnings=false, require_config=true, require_project_scan_ready=true, require_onboard_ready=true, require_workflow_check_ready=true, require_workflow_template_ready=false)",
+      "name": "preflight_policy",
+      "status": "passed"
+    }
+  ],
+  "config_path": "<reference-project>/.vibebench/config.yaml",
+  "overall_status": "passed"
+}

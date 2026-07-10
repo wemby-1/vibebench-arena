@@ -67,7 +67,7 @@ What this shows:
 - Evidence packet: `bundle` packages the latest run for review or handoff.
 - Trust boundary: `doctor --strict` checks local environment and artifact health without publishing, tagging, uploading, or calling GitHub.
 
-For the copy-paste demo script and artifact interpretation, see the [showcase artifacts README](../examples/showcase-artifacts/README.md).
+For the copy-paste demo script and artifact interpretation, see the [showcase artifacts README](../examples/showcase-artifacts/README.md). For browsable committed evidence generated from a deterministic fixture, inspect the [public proof packet](../examples/showcase-artifacts/public-proof/README.md) and [artifact tour](public-proof-packet.md).
 
 For deeper evaluation, use the [investor brief](investor-brief.md), [technical due diligence](technical-due-diligence.md), [proof matrix](proof-matrix.md), and [demo script](demo-script.md).
 
@@ -80,6 +80,8 @@ It makes the evidence around AI-assisted work easier to inspect.
 ## Next Links
 
 - [Showcase demo kit](../examples/showcase-artifacts/README.md)
+- [Public proof packet](../examples/showcase-artifacts/public-proof/README.md)
+- [Public proof packet tour](public-proof-packet.md)
 - [Investor brief](investor-brief.md)
 - [Technical due diligence](technical-due-diligence.md)
 - [Proof matrix](proof-matrix.md)

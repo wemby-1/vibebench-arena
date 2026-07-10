@@ -1,0 +1,13 @@
+[project]
+name = "vibebench-arena"
+version = "0.3.0"
+description = "Deterministic VibeBench public proof fixture"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+
+[project.scripts]
+vibebench = "vibebench.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["reference_app"]

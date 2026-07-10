@@ -1,0 +1,63 @@
+{
+  "checks": [
+    {
+      "message": "Config consistency check passed",
+      "name": "config",
+      "status": "passed"
+    },
+    {
+      "message": "Package readiness check passed",
+      "name": "package_check",
+      "status": "passed"
+    },
+    {
+      "message": "Local package build readiness is opt-in; run python -m vibebench package-check --build before publishing.",
+      "name": "package_build",
+      "status": "passed"
+    },
+    {
+      "message": "strict_bundle: Required file is missing: <reference-project>/.vibebench/runs/public-proof-run/vibebench-bundle.zip",
+      "name": "doctor_strict",
+      "status": "failed"
+    },
+    {
+      "message": "Latest valid run: public-proof-run",
+      "name": "latest_run",
+      "status": "passed"
+    },
+    {
+      "message": "Manifest is consistent",
+      "name": "manifest",
+      "status": "passed"
+    },
+    {
+      "message": "Artifact inventory generated (32 available)",
+      "name": "artifacts",
+      "status": "passed"
+    },
+    {
+      "message": "Run index generated (1 indexed, 1 seen)",
+      "name": "run_index",
+      "status": "passed"
+    },
+    {
+      "message": "Compare readiness checked; insufficient data is non-fatal",
+      "name": "compare",
+      "status": "passed"
+    },
+    {
+      "message": "CI dry-run plan produced",
+      "name": "ci_plan",
+      "status": "passed"
+    },
+    {
+      "message": "git diff --check passed",
+      "name": "git_diff_check",
+      "status": "passed"
+    }
+  ],
+  "latest_run_dir": "<reference-project>/.vibebench/runs/public-proof-run",
+  "latest_run_id": "public-proof-run",
+  "project_root": "<reference-project>",
+  "status": "not-ready"
+}

@@ -1,0 +1,97 @@
+{
+  "advice": [],
+  "checks": [
+    {
+      "advice": "No action needed.",
+      "id": "config_present",
+      "message": "Found VibeBench config at <reference-project>/.vibebench/config.yaml.",
+      "status": "passed",
+      "title": "Config file present"
+    },
+    {
+      "advice": "No action needed.",
+      "id": "config_valid",
+      "message": "VibeBench config loaded successfully.",
+      "status": "passed",
+      "title": "Config file valid"
+    },
+    {
+      "advice": "No action needed.",
+      "id": "workflow_present",
+      "message": "Discovered 1 likely workflow file(s).",
+      "status": "passed",
+      "title": "Workflow present"
+    },
+    {
+      "advice": "No action needed.",
+      "id": "workflow_detected_ci_modes",
+      "message": "Detected VibeBench CI mode(s): adoption-policy.",
+      "status": "passed",
+      "title": "Workflow detected CI modes"
+    },
+    {
+      "advice": "No action needed.",
+      "detected_ci_modes": [
+        "adoption-policy"
+      ],
+      "id": "required_workflow_ci_modes",
+      "message": "Detected: adoption-policy. Required: adoption-policy. Missing: none.",
+      "missing_required_ci_modes": [],
+      "required_ci_modes": [
+        "adoption-policy"
+      ],
+      "status": "passed",
+      "title": "Required workflow CI modes"
+    },
+    {
+      "advice": "No action needed.",
+      "id": "missing_workflow_ci_modes",
+      "message": "No required workflow CI modes are missing.",
+      "status": "passed",
+      "title": "Missing workflow CI modes"
+    },
+    {
+      "advice": "No action needed.",
+      "id": "preflight_available",
+      "message": "preflight can build a read-only readiness payload.",
+      "status": "passed",
+      "title": "Preflight availability"
+    },
+    {
+      "advice": "No action needed.",
+      "id": "release_check_available",
+      "message": "release-check passed with the requested workflow mode requirement.",
+      "status": "passed",
+      "title": "Release-check availability"
+    },
+    {
+      "advice": "No action needed.",
+      "id": "doctor_strict_available",
+      "message": "doctor --strict passed with the requested workflow mode requirement.",
+      "status": "passed",
+      "title": "Strict doctor availability"
+    }
+  ],
+  "detected_ci_modes": [
+    "adoption-policy"
+  ],
+  "message": "Repository is ready for the requested VibeBench adoption workflow.",
+  "missing_required_ci_modes": [],
+  "project_root": "<reference-project>",
+  "read_only": true,
+  "required_ci_modes": [
+    "adoption-policy"
+  ],
+  "required_mode": "adoption-policy",
+  "status": "passed",
+  "strict": true,
+  "summary": {
+    "failed": 0,
+    "passed": 9,
+    "total": 9
+  },
+  "workflow_paths": [
+    "<reference-project>/.github/workflows/ci.yml"
+  ],
+  "workflow_present": true
+}

@@ -1,0 +1,185 @@
+{
+  "checks": [
+    {
+      "advice": "No action needed.",
+      "id": "workflow_exists",
+      "line": null,
+      "message": "Workflow file was found.",
+      "path": "<reference-project>/.github/workflows/ci.yml",
+      "severity": "info",
+      "status": "passed",
+      "title": "Workflow file exists"
+    },
+    {
+      "advice": "No action needed.",
+      "id": "workflow_readable",
+      "line": null,
+      "message": "Workflow file was read successfully.",
+      "path": "<reference-project>/.github/workflows/ci.yml",
+      "severity": "info",
+      "status": "passed",
+      "title": "Workflow file is readable"
+    },
+    {
+      "advice": "Add a GitHub Actions workflow YAML body.",
+      "id": "workflow_not_empty",
+      "line": null,
+      "message": "Workflow file has content.",
+      "path": "<reference-project>/.github/workflows/ci.yml",
+      "severity": "info",
+      "status": "passed",
+      "title": "Workflow file is not empty"
+    },
+    {
+      "advice": "Use python3 -m vibebench workflow-template for a known-good shape.",
+      "id": "workflow_has_name",
+      "line": 1,
+      "message": "Workflow contains name:.",
+      "path": "<reference-project>/.github/workflows/ci.yml",
+      "severity": "info",
+      "status": "passed",
+      "title": "Workflow has a name"
+    },
+    {
+      "advice": "Use python3 -m vibebench workflow-template for a known-good shape.",
+      "id": "workflow_has_on",
+      "line": 3,
+      "message": "Workflow contains on:.",
+      "path": "<reference-project>/.github/workflows/ci.yml",
+      "severity": "info",
+      "status": "passed",
+      "title": "Workflow has triggers"
+    },
+    {
+      "advice": "Use python3 -m vibebench workflow-template for a known-good shape.",
+      "id": "workflow_has_jobs",
+      "line": 7,
+      "message": "Workflow contains jobs:.",
+      "path": "<reference-project>/.github/workflows/ci.yml",
+      "severity": "info",
+      "status": "passed",
+      "title": "Workflow has jobs"
+    },
+    {
+      "advice": "Use python3 -m vibebench workflow-template for a known-good shape.",
+      "id": "workflow_has_runs_on",
+      "line": 9,
+      "message": "Workflow contains runs-on:.",
+      "path": "<reference-project>/.github/workflows/ci.yml",
+      "severity": "info",
+      "status": "passed",
+      "title": "Workflow has a runner"
+    },
+    {
+      "advice": "Use python3 -m vibebench workflow-template for a known-good shape.",
+      "id": "workflow_has_steps",
+      "line": 10,
+      "message": "Workflow contains steps:.",
+      "path": "<reference-project>/.github/workflows/ci.yml",
+      "severity": "info",
+      "status": "passed",
+      "title": "Workflow has steps"
+    },
+    {
+      "advice": "Add python3 -m vibebench ci to the workflow.",
+      "id": "vibebench_ci_invocation",
+      "line": 16,
+      "message": "Workflow includes a VibeBench CI invocation.",
+      "path": "<reference-project>/.github/workflows/ci.yml",
+      "severity": "info",
+      "status": "passed",
+      "title": "Workflow runs VibeBench CI"
+    },
+    {
+      "advice": "Pin third-party actions to reviewed commit SHAs, or allow an explicit prefix in workflow_check.policy.allowed_action_prefixes.",
+      "id": "unpinned_action",
+      "line": 11,
+      "message": "Workflow uses 'actions/checkout@v4' without a full commit SHA pin.",
+      "path": "<reference-project>/.github/workflows/ci.yml",
+      "severity": "warning",
+      "status": "warning",
+      "title": "Workflow action is not pinned to a full commit SHA"
+    },
+    {
+      "advice": "Pin third-party actions to reviewed commit SHAs, or allow an explicit prefix in workflow_check.policy.allowed_action_prefixes.",
+      "id": "unpinned_action",
+      "line": 12,
+      "message": "Workflow uses 'actions/setup-python@v5' without a full commit SHA pin.",
+      "path": "<reference-project>/.github/workflows/ci.yml",
+      "severity": "warning",
+      "status": "warning",
+      "title": "Workflow action is not pinned to a full commit SHA"
+    },
+    {
+      "advice": "Update the workflow to run the expected VibeBench CI mode.",
+      "id": "required_ci_modes",
+      "line": null,
+      "message": "Required CI modes: adoption-policy. Missing: none.",
+      "path": "<reference-project>/.github/workflows/ci.yml",
+      "severity": "info",
+      "status": "passed",
+      "title": "Required CI modes are present"
+    }
+  ],
+  "detected_ci_modes": [
+    "adoption-policy"
+  ],
+  "discovered_paths": [
+    "<reference-project>/.github/workflows/ci.yml"
+  ],
+  "effective_policy": {
+    "allowed_action_prefixes": [],
+    "allowed_workflow_names": [],
+    "enabled": true,
+    "fail_on_blockers": true,
+    "fail_on_errors": true,
+    "fail_on_warnings": false,
+    "require_ci_ready": true,
+    "require_config": true,
+    "required_ci_modes": [
+      "adoption-policy"
+    ]
+  },
+  "findings": [
+    {
+      "advice": "Pin third-party actions to reviewed commit SHAs, or allow an explicit prefix in workflow_check.policy.allowed_action_prefixes.",
+      "id": "unpinned_action",
+      "line": 11,
+      "message": "Workflow uses 'actions/checkout@v4' without a full commit SHA pin.",
+      "path": "<reference-project>/.github/workflows/ci.yml",
+      "severity": "warning",
+      "status": "warning",
+      "title": "Workflow action is not pinned to a full commit SHA"
+    },
+    {
+      "advice": "Pin third-party actions to reviewed commit SHAs, or allow an explicit prefix in workflow_check.policy.allowed_action_prefixes.",
+      "id": "unpinned_action",
+      "line": 12,
+      "message": "Workflow uses 'actions/setup-python@v5' without a full commit SHA pin.",
+      "path": "<reference-project>/.github/workflows/ci.yml",
+      "severity": "warning",
+      "status": "warning",
+      "title": "Workflow action is not pinned to a full commit SHA"
+    }
+  ],
+  "message": "Workflow check completed without blocking issues.",
+  "missing_required_ci_modes": [],
+  "policy_evaluated": true,
+  "policy_findings": [],
+  "policy_source": "config",
+  "policy_status": "passed",
+  "required_ci_modes": [
+    "adoption-policy"
+  ],
+  "safe_preview_only": true,
+  "status": "passed",
+  "strict": false,
+  "summary": {
+    "failed": 0,
+    "passed": 10,
+    "total": 12,
+    "warning": 2
+  },
+  "usable_for_vibebench_ci": true,
+  "workflow_path": "<reference-project>/.github/workflows/ci.yml"
+}

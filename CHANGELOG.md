@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added a deterministic reference project, reproducible public proof packet, builder/check script, artifact tour, and focused proof-packet tests.
+
 - Added an investor brief, technical due-diligence pack, proof matrix, and demo scripts for external evaluation.
 
 - Added a showcase demo kit for external reviewers and adoption evaluation.

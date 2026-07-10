@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VibeBench Arena Report - vibebench-reference-project</title>
+  <style>
+
+:root {
+  color-scheme: light;
+  --bg: #f6f7f9;
+  --ink: #17202a;
+  --muted: #667085;
+  --panel: #ffffff;
+  --line: #d9dee7;
+  --green: #127c56;
+  --red: #b42318;
+  --yellow: #a15c07;
+  --magenta: #9f1f63;
+  --blue: #245db8;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+.page { width: min(1180px, calc(100% - 48px)); margin: 0 auto; padding: 32px 0; }
+.hero {
+  background: #101828;
+  color: white;
+  border-radius: 8px;
+  padding: 34px;
+  box-shadow: 0 18px 55px rgba(16, 24, 40, 0.18);
+}
+.eyebrow { margin: 0 0 10px; color: #b9c5d8; font-weight: 700; text-transform: uppercase; font-size: 12px; letter-spacing: 0; }
+h1 { margin: 0; font-size: 36px; line-height: 1.1; letter-spacing: 0; }
+.hero-meta { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 18px; color: #d7deeb; }
+.hero-score { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 28px; }
+.hero-score > div, .card, .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+.hero-score > div { color: var(--ink); padding: 18px; }
+.label { display: block; color: var(--muted); font-size: 13px; font-weight: 650; margin-bottom: 8px; }
+.hero-score strong { font-size: 34px; line-height: 1; }
+.grid { display: grid; gap: 12px; }
+.cards { grid-template-columns: repeat(9, minmax(0, 1fr)); margin-top: 16px; }
+.card { padding: 16px; min-height: 92px; }
+.card strong { display: block; font-size: 24px; margin-top: 6px; overflow-wrap: anywhere; }
+.panel { margin-top: 16px; padding: 24px; }
+.section-head { display: flex; justify-content: space-between; gap: 18px; align-items: end; margin-bottom: 16px; }
+h2 { margin: 0; font-size: 22px; }
+p { margin: 0; }
+.muted, .section-head p { color: var(--muted); }
+code { background: #eef2f7; border: 1px solid #d7deea; border-radius: 4px; padding: 1px 5px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 12px 10px; vertical-align: top; }
+th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0; }
+.badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 10px; font-weight: 750; font-size: 13px; }
+.badge.passed, .badge.low { background: #dcfae6; color: var(--green); }
+.badge.failed, .badge.critical { background: #fee4e2; color: var(--red); }
+.badge.medium, .badge.warning { background: #fef0c7; color: var(--yellow); }
+.badge.high { background: #fce7f3; color: var(--magenta); }
+.findings { display: grid; gap: 12px; }
+.finding { border: 1px solid var(--line); border-left: 5px solid var(--blue); border-radius: 8px; padding: 14px; }
+.finding.critical { border-left-color: var(--red); }
+.finding.high { border-left-color: var(--magenta); }
+.finding.warning { border-left-color: var(--yellow); }
+.finding.info { border-left-color: var(--blue); }
+.finding-head { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+.path-list { margin: 8px 0 0; padding-left: 20px; color: var(--muted); }
+.diff-grid { display: grid; grid-template-columns: 280px 1fr; gap: 16px; }
+.metric-list { display: grid; gap: 8px; }
+.metric-row { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.file-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.file-group h3 { margin: 0 0 8px; font-size: 15px; }
+.file-group ul { margin: 0; padding-left: 20px; color: var(--muted); }
+.recommendation { border-left: 5px solid var(--blue); }
+footer { display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap; color: var(--muted); padding: 24px 4px 0; }
+@media (max-width: 900px) {
+  .page { width: min(100% - 24px, 1180px); padding: 16px 0; }
+  h1 { font-size: 30px; }
+  .hero-score, .cards, .diff-grid, .file-groups { grid-template-columns: 1fr; }
+  .section-head { display: block; }
+  table { display: block; overflow-x: auto; white-space: nowrap; }
+}
+
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <p class="eyebrow">VibeBench Arena</p>
+      <h1>Codex-first quality gate for vibe coding projects.</h1>
+      <div class="hero-meta">
+        <span>vibebench-reference-project</span>
+        <span>2026-07-10T00:00:00Z</span>
+      </div>
+      <div class="hero-score">
+        <div>
+          <span class="label">Overall Status</span>
+          <span class="badge passed">passed</span>
+        </div>
+        <div>
+          <span class="label">VibeScore</span>
+          <strong>100</strong>
+        </div>
+        <div>
+          <span class="label">Risk Level</span>
+          <span class="badge low">low</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid cards">
+      <div class="card"><span class="label">Overall</span><strong>passed</strong></div>
+      <div class="card"><span class="label">Score</span><strong>100</strong></div>
+      <div class="card"><span class="label">Risk</span><strong>low</strong></div>
+      <div class="card"><span class="label">Commands</span><strong>2</strong></div>
+      <div class="card"><span class="label">Passed</span><strong>2</strong></div>
+      <div class="card"><span class="label">Failed</span><strong>0</strong></div>
+      <div class="card"><span class="label">Changed Files</span><strong>0</strong></div>
+      <div class="card"><span class="label">Patch Lines</span><strong>0</strong></div>
+      <div class="card"><span class="label">Findings</span><strong>0</strong></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>Command Results</h2>
+        <p>Configured checks from <code>.vibebench/config.yaml</code>.</p>
+      </div>
+      <table><thead><tr><th>Group</th><th>Command</th><th>Status</th><th>Exit Code</th><th>Duration</th></tr></thead><tbody><tr><td>test</td><td><code>python3 -m unittest discover -s tests -p &#x27;test_*.py&#x27;</code></td><td><span class="badge passed">passed</span></td><td>0</td><td>0.000s</td></tr><tr><td>lint</td><td><code>python3 tools/check_syntax.py</code></td><td><span class="badge passed">passed</span></td><td>0</td><td>0.000s</td></tr></tbody></table>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>Risk Findings</h2>
+        <p>Signals from the current Git working-tree diff.</p>
+      </div>
+      <p class="muted">No risk findings detected.</p>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>Git Diff Summary</h2>
+        <p>Uncommitted changes analyzed against <code>HEAD</code>.</p>
+      </div>
+      <div class="diff-grid"><div class="metric-list"><div class="metric-row"><span>Git available</span><strong>True</strong></div><div class="metric-row"><span>Changed files</span><strong>0</strong></div><div class="metric-row"><span>Added lines</span><strong>0</strong></div><div class="metric-row"><span>Deleted lines</span><strong>0</strong></div><div class="metric-row"><span>Patch lines</span><strong>0</strong></div></div><div class="file-groups"><div class="file-group"><h3>Changed files</h3><ul><li class="muted">None</li></ul></div><div class="file-group"><h3>Test files changed</h3><ul><li class="muted">None</li></ul></div><div class="file-group"><h3>Tests deleted</h3><ul><li class="muted">None</li></ul></div><div class="file-group"><h3>Forbidden paths touched</h3><ul><li class="muted">None</li></ul></div><div class="file-group"><h3>Secret-like files touched</h3><ul><li class="muted">None</li></ul></div><div class="file-group"><h3>Lockfiles changed</h3><ul><li class="muted">None</li></ul></div></div></div>
+    </section>
+
+    <section class="panel recommendation">
+      <div class="section-head">
+        <h2>Recommendation</h2>
+      </div>
+      <p>Looks safe to review and ship, assuming the behavior is correct.</p>
+      <p class="muted">Full command output is kept in <code><reference-project>/.vibebench/runs/public-proof-run/check.log</code>.</p>
+    </section>
+
+    <footer>
+      <span>Generated by VibeBench Arena</span>
+      <span>Codex writes code. VibeBench verifies it.</span>
+    </footer>
+  </main>
+</body>
+</html>

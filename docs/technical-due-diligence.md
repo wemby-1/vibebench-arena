@@ -90,6 +90,8 @@ Common artifacts include `metrics.json`, `check.log`, `report/index.html`, `pr-c
 
 Generated run artifacts are local outputs. They should not be committed unless a specific sample artifact is intentionally curated.
 
+The intentionally curated exception is the [public proof packet](../examples/showcase-artifacts/public-proof/README.md), regenerated from the deterministic [reference project](../examples/reference-project/). The [artifact tour](public-proof-packet.md) explains provenance, normalization, and `--check` freshness verification.
+
 ## Reproducibility Model
 
 Reproducibility comes from:

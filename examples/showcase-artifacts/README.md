@@ -2,7 +2,7 @@
 
 This folder is the copy-paste demo kit for VibeBench Arena. It is for GitHub visitors, maintainers, community adopters, and technical reviewers who want to see how the project turns an AI-assisted repository into reviewable quality evidence.
 
-For the narrative page, start with [docs/showcase.md](../../docs/showcase.md). For artifact definitions, use the [artifact gallery](../../docs/artifact-gallery.md). For trust boundaries and non-claims, use the [Trust Center](../../docs/trust-center.md).
+For the narrative page, start with [docs/showcase.md](../../docs/showcase.md). For artifact definitions, use the [artifact gallery](../../docs/artifact-gallery.md). For committed generated evidence, browse the [public proof packet](public-proof/README.md) and [artifact tour](../../docs/public-proof-packet.md). For trust boundaries and non-claims, use the [Trust Center](../../docs/trust-center.md).
 
 ## Demo Goal
 
@@ -81,5 +81,6 @@ Open `/tmp/vibebench-evidence-room/index.html` first. Inspect `share-check.md` b
 
 This directory also contains small checked-in sample packs:
 
+- [public-proof](public-proof/README.md): reproducible VibeBench artifacts generated from the reference project.
 - [sample](sample/README.md): representative output shapes for browsing without running commands.
 - [case-study](case-study/README.md): artifacts that pair with the full [case study](../../docs/case-study.md).

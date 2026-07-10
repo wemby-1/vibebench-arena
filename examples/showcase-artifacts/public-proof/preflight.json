@@ -1,0 +1,116 @@
+{
+  "actionable_project_signal": true,
+  "commands": [
+    "python3 -m vibebench config --check",
+    "python3 -m vibebench workflow-check --strict",
+    "python3 -m vibebench ci --dry-run",
+    "python3 -m vibebench ci"
+  ],
+  "config": {
+    "exists": true,
+    "message": "Existing VibeBench config is valid.",
+    "path": "<reference-project>/.vibebench/config.yaml",
+    "valid": true
+  },
+  "detected_stacks": [
+    "python"
+  ],
+  "detection_reasons": [
+    "python:pyproject.toml",
+    "python:tests"
+  ],
+  "effective_policy": {
+    "enabled": true,
+    "fail_on_blockers": true,
+    "fail_on_errors": true,
+    "fail_on_warnings": false,
+    "require_config": true,
+    "require_onboard_ready": true,
+    "require_project_scan_ready": true,
+    "require_workflow_check_ready": true,
+    "require_workflow_template_ready": false
+  },
+  "generated_at": "2026-07-10T00:00:00Z",
+  "message": "Preflight found follow-up items before CI adoption.",
+  "onboard": {
+    "next_step": "python3 -m vibebench config --check",
+    "recommended_next_steps": [
+      "python3 -m vibebench config --check",
+      "python3 -m vibebench workflow-template",
+      "python3 -m vibebench workflow-template --write",
+      "python3 -m vibebench workflow-template --ci-mode adoption --write",
+      "python3 -m vibebench ci --dry-run",
+      "python3 -m vibebench ci",
+      "python3 -m vibebench ci --project-scan",
+      "python3 -m vibebench ci --project-scan-policy",
+      "python3 -m vibebench metrics-check",
+      "python3 -m vibebench metrics-diff"
+    ],
+    "status": "ready"
+  },
+  "policy": {
+    "enabled": true,
+    "fail_on_blockers": true,
+    "fail_on_errors": true,
+    "fail_on_warnings": false,
+    "require_config": true,
+    "require_onboard_ready": true,
+    "require_project_scan_ready": true,
+    "require_workflow_check_ready": true,
+    "require_workflow_template_ready": false
+  },
+  "policy_enforced": true,
+  "policy_findings": [],
+  "policy_source": "config",
+  "policy_status": "passed",
+  "project_root": "<reference-project>",
+  "project_scan": {
+    "readiness": "ready",
+    "status": "ready",
+    "summary": {
+      "error_count": 0,
+      "finding_count": 1,
+      "warning_count": 0
+    }
+  },
+  "recommendations": [
+    "Validate the existing VibeBench config before CI adoption.",
+    "Review existing workflows with workflow-check before relying on them.",
+    "Run ci --dry-run before the first full ci execution."
+  ],
+  "requested_profile": "auto",
+  "resolved_profile": "python",
+  "status": "needs_attention",
+  "strict": false,
+  "strict_failed": false,
+  "workflow_check": {
+    "detected_ci_modes": [
+      "adoption-policy"
+    ],
+    "discovered": [
+      "<reference-project>/.github/workflows/ci.yml"
+    ],
+    "missing_required_ci_modes": [],
+    "required_ci_modes": [
+      "adoption-policy"
+    ],
+    "status": "passed",
+    "summary": {
+      "failed": 0,
+      "passed": 10,
+      "total": 12,
+      "warning": 2
+    },
+    "usable_for_vibebench_ci": true,
+    "workflow_count": 1
+  },
+  "workflow_template": {
+    "ci_mode": "basic",
+    "intended_path": "<reference-project>/.github/workflows/vibebench.yml",
+    "output_path": "<reference-project>/.github/workflows/vibebench.yml",
+    "preview_available": true,
+    "requested_profile": "auto",
+    "resolved_profile": "python",
+    "status": "planned"
+  }
+}

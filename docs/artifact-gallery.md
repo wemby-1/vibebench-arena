@@ -29,6 +29,8 @@ VibeBench artifacts make the workflow inspectable before commit, in GitHub Actio
 
 `vibebench evidence-room --output-dir PATH --zip` creates the broader review package. It can combine proof files, site preview files, trust notes, a security questionnaire, reviewer scorecards, `share-check.json`, `share-check.md`, top-level HTML, Markdown, JSON, and a zip archive. Start with `index.html`.
 
+For committed browseable examples generated from real commands, start with the [public proof packet](../examples/showcase-artifacts/public-proof/README.md) and the [public proof packet tour](public-proof-packet.md).
+
 ## Run Index, Trend, And Compare
 
 VibeBench also produces artifacts that explain movement across runs:
@@ -100,6 +102,8 @@ That is why VibeBench produces inventories, summaries, readiness files, comparis
 - [Demo guide](demo.md)
 - [Quickstart](quickstart.md)
 - [Showcase artifacts](../examples/showcase-artifacts/README.md)
+- [Public proof packet](../examples/showcase-artifacts/public-proof/README.md)
+- [Public proof packet tour](public-proof-packet.md)
 - [Sample artifact pack](../examples/showcase-artifacts/sample/README.md)
 - [Case-study artifacts](../examples/showcase-artifacts/case-study/README.md)
 - [Trust Center](trust-center.md)
