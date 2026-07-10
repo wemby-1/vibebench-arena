@@ -1,71 +1,127 @@
-# Adopt VibeBench Arena safely
+# Adopt VibeBench Arena Safely
 
-VibeBench Arena helps individuals and small teams make AI-assisted coding work reviewable. Treat it as a local-first quality console, not as an autonomous deploy bot.
+VibeBench Arena helps individuals and teams make AI-assisted coding work reviewable. Treat it as a local-first quality gate and evidence layer, not as an autonomous deploy bot.
 
-## Adoption principles
+## Adoption Principles
 
 - Start local.
-- Inspect before trusting.
+- Inspect artifacts before trusting them.
 - Keep AI-generated work reviewable.
-- Make every run leave evidence.
-- Avoid replacing human judgment.
+- Prefer reproducible commands over hand-wavy claims.
+- Keep human judgment in the loop.
 
-## First 30 minutes
+## First 30 Minutes
 
-1. Clone the project.
-2. Skim the [review hub](review-hub.html), [Pages site entry](index.html), and [product showcase](showcase.html) for the CLI, CI proof packet, and artifact loop.
-3. Run `python3 -m vibebench demo`.
-4. Inspect the sample artifacts.
-5. For a real project, run `python3 -m vibebench preflight`, `python3 -m vibebench init --profile auto`, `python3 -m vibebench config --check`, `python3 -m vibebench workflow-template --write`, `python3 -m vibebench ci --dry-run`, and then `python3 -m vibebench ci`. Use `python3 -m vibebench project-scan`, `python3 -m vibebench onboard`, `python3 -m vibebench onboard --json`, `python3 -m vibebench workflow-check`, and their policy flags when you want deeper read-only detail before writing config or workflows. Project-scan describes readiness signals; `project-scan --enforce-policy` and `ci --project-scan-policy` gate those signals with `project_scan.policy`. Onboard produces a human adoption plan; `onboard --enforce-policy` and `ci --onboard-policy` gate whether that plan is acceptable with `onboard.policy`, reusing `onboard.json` and `onboard.md`. `adoption-ready` is a single read-only adoption workflow readiness report that defaults to requiring `adoption-policy`, can write JSON or Markdown only when output paths are passed, and does not install or create workflow files. `ci --preflight` adds report-only `preflight.json` and `preflight.md` adoption summaries for the run directory. `preflight --enforce-policy` and `ci --preflight-policy` opt into `preflight.policy` enforcement while keeping those artifact names; `preflight --require-ci-mode MODE` reports required workflow CI modes and only fails on missing modes with `--strict`; `--skip-preflight` suppresses both preflight modes. `ci --adoption` creates a full report-only adoption evidence pack; `ci --adoption-policy` gates the policy-capable adoption checks while keeping workflow-template preview/report-only. Matching `--skip-*` flags suppress individual preset checks, and default CI remains unchanged. Init writes config, can select generic, python, node, or fullstack, and does not install dependencies, overwrite config without `--force`, or create runs/baselines. `workflow-template` is preview-only unless `--write` is passed, supports `--ci-mode adoption` for report-only adoption CI and `--ci-mode adoption-policy` for policy-gated adoption CI, and refuses to overwrite existing workflow files without `--force`; `workflow-check` validates existing workflows read-only, reports detected CI modes (`default`, `adoption`, and `adoption-policy`) for generated adoption workflows, supports repeated `--require-ci-mode MODE` expectations, and does not call GitHub or modify workflow files; `ci --workflow-check` writes report-only workflow readiness artifacts when explicitly enabled, `ci --workflow-check-policy` reuses them as a gate with optional `workflow_check.policy.required_ci_modes`, and `--skip-workflow-check` suppresses both modes; `ci --workflow-template` writes review artifacts in `.vibebench/runs/<run-id>/` only and does not create or modify `.github/workflows`.
-6. Run `python3 -m vibebench metrics-check` to verify that the latest `metrics.json` has usable score/risk data before promotion or regression comparison. Use `--run-dir PATH` for a specific run and `--strict` when optional-field warnings should fail. Use `python3 -m vibebench ci --metrics-check --metrics-diff --json` to make the same check auditable as `metrics-check.json`, `metrics-check.md`, `metrics-diff.json`, and `metrics-diff.md` artifacts.
-7. Run `python3 -m vibebench regression-check` before sharing or releasing once two runs exist. Automatic baseline inference is fine for local experiments; stable adoption gates should generate a candidate with `python3 -m vibebench ci --json`, dry-run `python3 -m vibebench baseline --promote-latest --label stable --dry-run --json`, promote with `python3 -m vibebench baseline --promote-latest --label stable`, and verify with `python3 -m vibebench baseline --show --label stable --json`. Use `--require-baseline`, `--require-regression-baseline`, or config `require_baseline: true` when missing baseline data should fail. CI does not auto-promote baselines. Verify/export/import the promoted snapshot with `python3 -m vibebench baseline --verify --label stable`, `python3 -m vibebench baseline --export --label stable --output baseline.json`, `python3 -m vibebench baseline --verify --input baseline.json`, and `python3 -m vibebench baseline --import baseline.json --label stable` for new machines or cleaned workspaces; add `--require-portable` for portable gates or `--require-live-metrics` when the original run must still exist. This is a local regression gate, not a benchmark certification.
-8. Generate a shareable evidence room with `python3 -m vibebench evidence-room --output-dir PATH --zip` or a normal `python3 -m vibebench ci`; open it from `index.html`, inspect `share-check.md` if you want the local pre-sharing scan summary, read `trust-center.html` for project-maintained local-first/privacy/reproducibility boundaries, open `security-questionnaire.html` for adopter-facing Q&A about local-first behavior, artifact sharing, CI uploads, static HTML safety, JSON purity, and non-claims, and use `review-scorecard.html` as the neutral checklist. It combines the proof packet, static site preview, `share-check.json`, `share-check.md`, top-level HTML, Markdown, JSON, and a zip archive for external evaluation. Local CI writes `evidence-room/`, and GitHub Actions uploads `vibebench-evidence-room`.
-9. Verify the room with `python3 -m vibebench evidence-room --verify PATH`.
-10. Before sharing externally, run `python3 -m vibebench share-check PATH`; use `python3 -m vibebench share-check PATH --json` for automation. It is a local pre-sharing aid, not a security certification, third-party audit, or guarantee, and teams should still manually review artifacts before publishing.
-11. Generate a shareable proof packet with `python3 -m vibebench proof --output-dir .vibebench/proof-packet --zip`; inspect the self-contained evidence-first `proof.html` before sharing, or use the GitHub Actions proof packet summary card and download `vibebench-proof-packet` after CI runs.
-12. Run `python3 -m vibebench site-preview --output-dir /tmp/vibebench-site-preview --zip` and `python3 -m vibebench site-preview --verify /tmp/vibebench-site-preview/site-preview.zip` before publishing or editing the static Pages entry; CI reuses the same command for `vibebench-site-preview` without enabling GitHub Pages automatically.
-12. Read the [comparison](comparison.md) and [FAQ](faq.md).
+```bash
+python3 -m vibebench ci --dry-run --json
+python3 -m vibebench ci
+python3 -m vibebench latest --all-paths
+python3 -m vibebench adoption-ready --json
+python3 -m vibebench release-check --json
+```
 
-## First day
+This gives a new team enough to see the local gate, inspect the produced evidence, and understand whether the repository is moving toward broader adoption or release readiness.
 
-- Use the issue and PR templates for real workflow feedback.
-- Define team review expectations for AI-generated changes.
-- Decide which artifacts matter for your workflow.
-- Compare one AI-generated change against a human review.
+## How A Project Adopts VibeBench
 
-## First week
+1. Run `ci --dry-run --json` so maintainers can see the planned pipeline without creating run artifacts.
+2. Run `preflight --json` to inspect setup signals without creating config, workflows, dependency files, runs, or baselines.
+3. Run `init --profile auto --dry-run --json` to preview the config VibeBench would create.
+4. Run `init --profile auto` only when you are ready to add `.vibebench/config.yaml`.
+5. Preview workflow integration with `workflow-template`, then write a workflow only after review with `workflow-template --write`.
+6. Run `workflow-check` to verify the existing workflow shape.
+7. Run `ci`, inspect artifacts, and decide whether the project should stay report-only or become policy-gated.
 
-- Run VibeBench on small changes.
-- Locate the newest local CI evidence-room landing page with `python3 -m vibebench latest --artifact evidence-room-index-html --path-only`; use `python3 -m vibebench ci --skip-evidence-room` only when you do not need the combined review package.
-- Collect review packets and proof packet outputs, including the GitHub Actions `vibebench-proof-packet` artifact and summary card when available; inspect the self-contained HTML report, then verify a proof packet before sharing it.
-- Share the [reviewer guide](reviewer-guide.md) with maintainers or evaluators who need the 3-minute artifact path.
-- Open the [Trust Center](trust-center.html) and [Security Questionnaire](security-questionnaire.html) when reviewers need project-maintained safety, privacy, reproducibility, local-first behavior, artifact sharing, CI upload, static HTML safety, JSON purity, and non-claim boundaries; they are not third-party certification or audit materials.
-- Compare outcomes across runs.
-- Identify missing checks or unclear artifacts.
-- Decide whether to integrate VibeBench into the team workflow.
+`init` writes config only. It does not install dependencies, overwrite config without `--force`, create run/baseline outputs, call GitHub, publish packages, or create releases.
 
-## Adoption checklist
+## What Adoption-Ready Means
+
+`adoption-ready` is a compact read-only adoption workflow readiness report. It is intended to answer whether a repository has enough visible setup, workflow, environment, and release-readiness evidence for a team to start relying on VibeBench.
+
+It does not mean:
+
+- the code is correct
+- the repo is safe to publish automatically
+- the project has external certification
+- human review can be skipped
+- adoption will succeed organizationally
+
+Use it as an evidence-backed readiness signal, not as a guarantee.
+
+## How The Readiness Checks Fit Together
+
+Use the checks as a ladder, not as a single magic score:
+
+- `project-scan`: read-only project inspection; detects stack signals, config status, and recommended init profile.
+- `onboard`: read-only human adoption plan; surfaces blockers, warnings, and suggested next actions.
+- `preflight`: the safest read-only entry point; combines setup, onboarding, workflow-template preview, and workflow-check signals.
+- `workflow-check`: verifies whether existing workflows match expected VibeBench CI modes.
+- `adoption-ready`: combines workflow, doctor, and release-readiness signals into one compact adoption answer.
+- `release-check`: records local release-readiness evidence without tagging, publishing, or creating a GitHub Release.
+- `doctor --strict`: verifies the local environment plus expected artifacts for stricter CI/release-style confidence.
+
+When enabled in CI, these checks can leave evidence such as `project-scan.json`, `onboard.md`, `preflight.json`, `workflow-check.md`, and `release-check.md` inside the run directory.
+
+## Workflow CI Mode Readiness
+
+VibeBench workflow checks can detect generated CI modes:
+
+- `default`: the normal VibeBench CI gate.
+- `adoption`: report-only adoption evidence in addition to the normal run.
+- `adoption-policy`: adoption evidence with policy-capable checks enforced.
+
+Useful commands:
+
+```bash
+python3 -m vibebench workflow-template --ci-mode adoption
+python3 -m vibebench workflow-template --ci-mode adoption-policy
+python3 -m vibebench workflow-check
+python3 -m vibebench workflow-check --require-ci-mode adoption-policy
+```
+
+`workflow-template` is preview-only unless `--write` is passed. `workflow-check` is read-only by default and does not modify workflow files.
+
+In CI, `ci --workflow-check-require-ci-mode MODE` records required-mode expectations while remaining report-only unless workflow-check policy enforcement is enabled. `workflow_check.policy.required_ci_modes` can enforce required modes when `workflow-check --enforce-policy`, `ci --workflow-check-policy`, or `ci --adoption-policy` is used.
+
+## Report-Only Versus Policy-Gated Modes
+
+Report-only mode records evidence but does not fail the run for adoption findings:
+
+```bash
+python3 -m vibebench ci --preflight
+python3 -m vibebench ci --workflow-check
+python3 -m vibebench ci --adoption
+```
+
+Policy-gated mode writes the same artifact names but allows configured adoption checks to fail CI:
+
+```bash
+python3 -m vibebench preflight --enforce-policy
+python3 -m vibebench workflow-check --enforce-policy
+python3 -m vibebench ci --preflight-policy
+python3 -m vibebench ci --workflow-check-policy
+python3 -m vibebench ci --adoption-policy
+```
+
+This split is deliberate. Teams can collect evidence first, discuss what it means, then opt into gates once the checks match their workflow.
+
+## Suggested One-Week Pilot
+
+1. Pick one repository, one maintainer, and one AI coding workflow.
+2. Run VibeBench on small changes only.
+3. Compare a VibeBench evidence packet against the team's normal review process.
+4. Decide which artifacts reviewers actually use.
+5. Add workflow mode requirements only after the team agrees on the expected CI shape.
+6. Move from report-only to policy-gated checks only after the evidence is understandable.
+
+## Adoption Checklist
 
 - Local commands pass.
-- Artifacts are understandable.
-- Reviewers know where to look.
-- No credentials are committed.
-- No publishing or release action is automated by default.
-- The team understands this is a quality console, not an autonomous deploy bot.
+- Generated artifacts are understandable to reviewers.
+- The team knows where to find `metrics.json`, `manifest.json`, summaries, and bundles.
+- Workflow mode expectations are explicit.
+- No credentials or sensitive local paths are committed.
+- Publishing, tagging, release creation, and uploads remain separate explicit actions.
+- The team understands that VibeBench supports review; it does not replace review.
 
-## Suggested pilot
-
-- One repo.
-- One maintainer.
-- One AI coding workflow.
-- One week.
-- Inspect artifacts before expanding.
-
-## Non-goals and safety
-
-- Not a replacement for CI.
-- Not a replacement for code review.
-- Not a fake leaderboard.
-- Not an auto-publishing tool.
-
-Metrics-check validates one run, metrics-diff explains numeric changes between two runs, metrics-diff policy enforces acceptable drift thresholds when explicitly enabled with `metrics-diff --enforce-policy` or `ci --metrics-diff-policy`, and regression-check remains the high-level score/risk gate against the selected baseline. Default CI is unchanged; `ci --metrics-diff` stays report-only. Use `latest --artifact metrics-diff-json --path-only` or `latest --artifact metrics-diff-md --path-only` to locate CI diff artifacts, including policy fields/sections when policy was evaluated.
+For a shorter command path, see [quickstart](quickstart.md). For artifact explanations, see [artifact gallery](artifact-gallery.md). For project-maintained boundaries around artifacts, local-first behavior, and claims, see the [Trust Center](trust-center.md).

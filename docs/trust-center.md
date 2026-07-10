@@ -1,26 +1,52 @@
 # VibeBench Arena Trust Center
 
-This Trust Center is project-maintained documentation, not a third-party audit or compliance certification. It explains the current security, privacy, reproducibility, local-first, and evidence artifact posture for external reviewers, maintainers, adopters, and due-diligence readers. Open the [Security Questionnaire](security-questionnaire.md) for adopter-facing Q&A about local-first behavior, artifact sharing, CI uploads, static HTML safety, JSON purity, and non-claims.
+This Trust Center is project-maintained documentation, not a third-party audit or certification. It explains the current local-first, artifact, reproducibility, and sharing posture for reviewers, adopters, maintainers, and due-diligence readers.
 
-## Local-first operation
+## Local-first Operation
 
-VibeBench Arena is designed to run from a repository checkout. The core evaluation path uses local commands and local files so reviewers can inspect what is generated before trusting it.
+VibeBench Arena is designed to run from a repository checkout. The core evaluation path uses local commands and local files so teams can inspect outputs before trusting or sharing them.
 
-## No required cloud service for local evaluation
+Local evaluation does not require a hosted VibeBench service. GitHub Actions can upload artifacts when CI runs in a repository, but the core checks, proof packet, bundle, evidence room, readiness reports, and verification commands work locally.
 
-Local evaluation does not require a hosted VibeBench service. GitHub Actions can upload artifacts when CI runs in a repository, but the core proof, site preview, evidence-room package, scorecard, and verification commands work locally.
+## What Is Checked
 
-## What artifacts are generated
+Depending on command and config, VibeBench can check or report:
 
-- Evidence-room package: a self-opening review bundle with `index.html`, evidence summaries, trust notes, reviewer scorecard files, proof packet, static site preview, JSON, Markdown, and zip output.
-- Proof packet: local proof files including `proof.html`, `proof.json`, `proof.md`, `proof-manifest.json`, and optional `proof.zip`.
-- Static site preview: a local bundle for the public docs entry and setup guide.
-- Reviewer scorecard: neutral HTML, Markdown, and JSON checklists with `not_reviewed` placeholders.
-- Security Questionnaire: adopter-facing Q&A for local-first behavior, artifact boundaries, CI uploads, sharing review, JSON stdout, static HTML safety, and non-claims. It is project-maintained documentation, not a third-party certification or audit.
+- configured test and lint commands
+- quality gate thresholds from `.vibebench/config.yaml`
+- Git diff risk signals such as deleted tests, sensitive paths, credential-like paths, lockfile movement, broad file changes, and large patches
+- config validity and consistency
+- package metadata and import/script readiness
+- artifact manifest consistency
+- workflow CI mode readiness for generated VibeBench workflow shapes
+- adoption setup signals through project-scan, onboard, preflight, workflow-check, and adoption-ready
+- release-readiness evidence through release-check
+- shareability signals through share-check
 
-## Evidence-room package
+These checks are evidence inputs. They do not guarantee correctness, safety, compliance, funding, traction, or business outcomes.
 
-The evidence room is the broadest local evaluation package. It combines reviewer-facing HTML, Markdown, JSON, nested proof packet files, nested static site preview files, and verification commands. Start with `index.html`.
+## Evidence-Backed Outputs
+
+The project is designed to leave an evidence packet behind, not just a status line. Common outputs include:
+
+- `metrics.json`: score, risk, command results, and run metrics.
+- `check.log`: raw configured-check output.
+- `manifest.json`: the run inventory.
+- `report/index.html`: static local report.
+- `github-step-summary.md`: GitHub Actions-friendly summary.
+- `vibebench-bundle.zip`: portable archive of the run artifacts.
+- `preflight.json` / `preflight.md`: adoption setup signals when enabled.
+- `workflow-check.json` / `workflow-check.md`: workflow readiness evidence when enabled.
+- `release-check.json` / `release-check.md`: local release-readiness evidence.
+- `evidence-room/`: a self-contained reviewer package when generated.
+
+JSON commands are expected to write parseable JSON to stdout when `--json` is used, which makes the output usable by scripts without scraping human tables.
+
+## Evidence-room Package
+
+The evidence-room package is the broadest external review package. It can include `index.html`, trust notes, questionnaire files, reviewer scorecards, proof packet files, static site preview files, share-check artifacts, and a zip archive for handoff.
+
+Start with `index.html` when it is present. Open `share-check.md` before sharing the package externally.
 
 ## Proof packet
 
@@ -36,81 +62,71 @@ The reviewer scorecard is a neutral checklist. It does not assert an external re
 
 ## JSON output purity
 
-JSON commands are expected to write pure JSON to stdout when the `--json` option is used. This makes the output scriptable and parseable without scraping human tables.
+JSON output purity means commands using `--json` should write JSON to stdout without extra prose, banners, progress tables, or Markdown.
 
-## Static HTML safety rules
+## How The Readiness Checks Fit Together
 
-Generated static HTML artifacts are expected to avoid JavaScript, remote URLs, external assets, images, absolute local paths, fake traction claims, fake trust claims, and unsupported commercial claims.
+The readiness model is layered:
 
-## Path/privacy hygiene
+- `preflight` is the safest read-only setup check.
+- `workflow-check` reports whether the repository workflow is using the expected VibeBench CI mode.
+- `adoption-ready` combines workflow, doctor, and release signals into a compact adoption answer.
+- `release-check` records local release-readiness evidence without publishing, tagging, or creating a GitHub Release.
+- `doctor --strict` verifies environment and artifact health for stricter CI/release-style confidence.
 
-Generated shareable artifacts should prefer relative paths or placeholders. Reviewers should inspect artifacts before sharing them outside a local environment.
+Adoption readiness is not one hidden calculation. It is a set of reproducible checks with visible outputs.
 
-Evidence rooms include `share-check.json` and `share-check.md`; reviewers should open `index.html` first, then inspect `share-check.md` if they want the local pre-sharing scan summary. Before sharing an evidence room, proof packet, static preview, or zip externally, run `python3 -m vibebench share-check PATH`; use `python3 -m vibebench share-check PATH --json` for machine-readable output. The scanner is a local pre-sharing aid, not a security certification, not a third-party audit, and not a guarantee.
+## Why It Is Safe To Run And Audit
 
-Before promoting or comparing runs, use `python3 -m vibebench metrics-check` or `python3 -m vibebench metrics-check --run-dir PATH --strict` to verify that `metrics.json` is well-formed and has usable score/risk data. Use `python3 -m vibebench ci --metrics-check --metrics-diff --json` when that contract check should be retained as `metrics-check.json`, `metrics-check.md`, `metrics-diff.json`, and `metrics-diff.md` artifacts for review. For run quality regression checks, use `python3 -m vibebench regression-check` or opt CI in with `python3 -m vibebench ci --regression-check`. Automatic previous-run inference is convenient for local experiments; guarded pinned baselines are better for stable gates. Generate a clean run with `python3 -m vibebench ci --json`, dry-run `python3 -m vibebench baseline --promote-latest --label stable --dry-run --json`, promote with `python3 -m vibebench baseline --promote-latest --label stable`, then configure `regression.enabled: true`, `baseline_label: stable`, and `require_baseline: true` so future `python3 -m vibebench ci --json` runs the gate by default. CI does not auto-promote baselines. Promoted baselines carry a compact metrics snapshot; use `python3 -m vibebench baseline --verify --label stable`, `python3 -m vibebench baseline --export --label stable --output baseline.json`, `python3 -m vibebench baseline --verify --input baseline.json`, and `python3 -m vibebench baseline --import baseline.json --label stable` for portable gates on another machine or cleaned workspace. Add `--require-portable` for snapshot-based portability or `--require-live-metrics` when the original run must still be present. Regression-check is a local quality gate, not a benchmark certification, and depends on the metrics available in run artifacts.
+- Core commands run from the local repository checkout.
+- Read-only commands such as `preflight`, `project-scan`, `onboard`, `workflow-check`, `adoption-ready`, `release-check`, and `doctor` do not publish packages or create GitHub Releases.
+- `workflow-template` previews a workflow by default and writes only when `--write` is explicitly passed.
+- `init` writes `.vibebench/config.yaml` only and does not install dependencies or create workflow files.
+- Normal local evaluation does not require GitHub API access or a hosted VibeBench service.
+- Generated artifacts are plain files that reviewers can inspect, diff, bundle, verify, or delete.
+- CI artifact uploads, when configured by a repository workflow, are visible GitHub Actions behavior rather than hidden local side effects.
 
-## GitHub Actions artifact behavior
+## Security and privacy Boundaries
 
-GitHub Actions can upload downloadable proof packet, static site preview, and evidence-room artifacts. This does not publish a package, create a release, enable GitHub Pages, or change repository settings.
-
-## Security and privacy boundaries
-
-`preflight` is the first safe read-only entry point and is report-only by default: it reuses project-scan, onboard, workflow-template preview, and workflow-check without creating config, runs, baselines, dependency files, or workflow files. `preflight --enforce-policy` evaluates `preflight.policy` as an explicit gate. `project-scan` is read-only inspection, report-only by default, and does not create config, runs, baselines, dependency files, or workflow files unless an explicit output path is provided for JSON or Markdown. `ci --preflight` writes report-only `preflight.json` and `preflight.md` adoption artifacts into the run directory. `ci --preflight-policy` writes the same artifact names and fails CI when `preflight.policy` fails; `--skip-preflight` suppresses both preflight modes. `ci --adoption` creates a full report-only adoption evidence pack with existing artifact names, and `ci --adoption-policy` gates the policy-capable adoption checks while keeping workflow-template preview/report-only. Matching `--skip-*` flags suppress individual adoption checks. `workflow-template` previews a conservative GitHub Actions workflow by default, supports `--ci-mode adoption` and `--ci-mode adoption-policy`, and writes one only with `--write`; `workflow-check` validates existing workflow files read-only by default and reports detected CI modes (`default`, `adoption`, and `adoption-policy`) for generated adoption workflows; repeated `--require-ci-mode MODE` values add explicit check expectations, while `workflow_check.policy.required_ci_modes` is evaluated only through policy enforcement. `workflow-check --enforce-policy` evaluates `workflow_check.policy`, and `ci --workflow-check` writes report-only workflow-check artifacts when explicitly enabled. `ci --workflow-check-policy` reuses those artifacts as a gate, while `--skip-workflow-check` suppresses both workflow-check modes; `ci --workflow-template` writes workflow-template artifacts into `.vibebench/runs/<run-id>/` only. These paths do not call GitHub, add credentials, enable Pages, publish packages, create releases, modify workflows outside explicit template `--write`, or change repository settings. `project-scan --enforce-policy` evaluates `project_scan.policy`; `ci --project-scan` writes report-only `project-scan.json` and `project-scan.md`, while `ci --project-scan-policy` writes the same artifacts and gates readiness signals. `onboard` is read-only and suggests the adoption flow. `onboard --enforce-policy` evaluates `onboard.policy`; `ci --onboard` writes report-only `onboard.json` and `onboard.md`, while `ci --onboard-policy` writes the same artifacts and gates whether the onboarding plan is acceptable. Default CI remains unchanged. VibeBench records local evidence and CI-readable artifacts. It is not a credential leak scanner, a sandbox, a hosted security product, or a replacement for human security review. Treat generated artifacts as review materials and inspect them before sharing.
-
-## What the project does not claim
-
-- No third-party audit.
-- No compliance certification.
-- No fake security certification.
-- No invented customer or adoption claims.
-- No promise of funding or business outcomes.
-- No guarantee that generated code is correct or safe.
-- No automatic publishing, deployment, release, or repository settings change.
-
-## Recommended reviewer verification commands
+Before sharing an evidence room, bundle, proof packet, static preview, directory, or zip externally, run:
 
 ```bash
+python3 -m vibebench share-check PATH
+python3 -m vibebench share-check PATH --json
+```
+
+This is a local pre-sharing aid, not a security certification or guarantee. Artifacts should still be reviewed by a human before they are published outside the local environment.
+
+Generated static HTML artifacts are expected to avoid JavaScript, remote URLs, external assets, absolute local paths, fake trust claims, and unsupported commercial claims. That expectation is part of the project's artifact posture, not an external audit result.
+
+## What The Project Does Not Claim
+
+- No third-party security certification.
+- No compliance certification.
+- No third-party audit.
+- No invented customer, traction, funding, or adoption claims.
+- No guarantee that generated code is correct or safe.
+- No replacement for human review or security review.
+- No hidden package publish, upload, tag creation, release creation, deployment, or repository settings changes in the normal local flow.
+
+## Recommended Verification Commands
+
+```bash
+python3 -m vibebench ci --dry-run --json
+python3 -m vibebench ci
+python3 -m vibebench adoption-ready --json
+python3 -m vibebench release-check --json
+python3 -m vibebench doctor --strict
+python3 -m vibebench bundle
 python3 -m vibebench evidence-room --output-dir /tmp/vibebench-evidence-room --zip
 python3 -m vibebench evidence-room --verify /tmp/vibebench-evidence-room
 python3 -m vibebench proof --verify /tmp/vibebench-evidence-room/proof-packet
 python3 -m vibebench site-preview --verify /tmp/vibebench-evidence-room/site-preview
 python3 -m vibebench site-check
-python3 -m vibebench share-check PATH
-python3 -m vibebench share-check PATH --json
-python3 -m vibebench preflight
-python3 -m vibebench preflight --json
-python3 -m vibebench preflight --enforce-policy
-python3 -m vibebench project-scan
-python3 -m vibebench onboard
-python3 -m vibebench onboard --json
-python3 -m vibebench onboard --enforce-policy
-python3 -m vibebench project-scan --json
-python3 -m vibebench project-scan --enforce-policy
-python3 -m vibebench ci --preflight
-python3 -m vibebench ci --preflight-policy
-python3 -m vibebench ci --adoption
-python3 -m vibebench ci --adoption-policy
-python3 -m vibebench ci --onboard
-python3 -m vibebench ci --onboard-policy
-python3 -m vibebench ci --project-scan
-python3 -m vibebench ci --project-scan-policy
-python3 -m vibebench init --profile auto
-python3 -m vibebench config --check
-python3 -m vibebench workflow-template
-python3 -m vibebench workflow-template --write
-python3 -m vibebench workflow-check
-python3 -m vibebench regression-check
-python3 -m vibebench ci --regression-check
-python3 -m vibebench baseline --set-latest --label stable
-python3 -m vibebench ci --regression-check --baseline-label stable --json
-python3 -m vibebench ci --dry-run --json
-python3 -m vibebench release-check
-python3 -m vibebench doctor --strict
 ```
 
-## Responsible disclosure / security policy
+## Responsible disclosure
 
 For vulnerability reporting expectations, see the repository [Security Policy](../SECURITY.md).
 
-Metrics-check validates one run, metrics-diff explains numeric changes between two runs, metrics-diff policy enforces acceptable drift thresholds when explicitly enabled with `metrics-diff --enforce-policy` or `ci --metrics-diff-policy`, and regression-check remains the high-level score/risk gate against the selected baseline. Default CI is unchanged; `ci --metrics-diff` stays report-only. Use `latest --artifact metrics-diff-json --path-only` or `latest --artifact metrics-diff-md --path-only` to locate CI diff artifacts, including policy fields/sections when policy was evaluated.
+For the practical rollout flow, see [adoption](adoption.md). For a shorter start path, see [quickstart](quickstart.md). For adopter-facing Q&A, open the [Security Questionnaire](security-questionnaire.md).

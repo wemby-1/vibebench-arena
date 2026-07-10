@@ -1,46 +1,105 @@
 # VibeBench Artifact Gallery
 
-VibeBench is a Codex-first / vibe-coding quality console. Its artifacts turn AI-assisted code changes into inspectable evidence: checks, reports, comparisons, artifact inventories, release readiness, release audit bundles, and GitHub-friendly summaries.
+VibeBench turns AI-assisted code changes into an evidence packet that a maintainer, teammate, or outside reviewer can inspect. This page explains the main artifact names in plain language.
 
 ## Why Artifacts Matter
 
-Vibe coding is fast, but review still needs evidence. A single `passed` or `failed` result is not enough when humans need to understand what changed, what ran, what can be reproduced, and what is safe to release.
+AI coding is fast, but review still needs evidence. A single `passed` or `failed` result is not enough when humans need to understand what changed, what ran, what can be reproduced, and what is safe to share or release.
 
-VibeBench artifacts make AI-assisted changes reviewable by leaving local, CI-readable records that can be inspected before commit, in GitHub Actions, during release preparation, or after a run is archived.
+VibeBench artifacts make the workflow inspectable before commit, in GitHub Actions, during adoption review, and during release preparation.
 
-For a compact visitor path and team rollout checklist, see [evaluate in 5 minutes](evaluate.md) and [adoption](adoption.md).
+## Start With These Files
 
-They are the proof layer behind the broader [project positioning](positioning.md), [product strategy](product-strategy.md), [public roadmap](roadmap-public.md), and [commercial potential](commercial-potential.md): VibeBench makes AI-assisted coding reviewable, auditable, and reproducible.
+| Artifact | What it is | Why it matters |
+| --- | --- | --- |
+| `metrics.json` | Score, risk level, command results, diff size, and finding counts. | Shows the basic run outcome in machine-readable form. |
+| `check.log` | Raw command output from configured checks. | Helps reviewers understand failures without rerunning immediately. |
+| `report/index.html` | Static local HTML report. | Gives a browseable summary suitable for local review and screenshots. |
+| `pr-comment.md` | Pasteable review summary. | Turns a run into a concise PR or issue update. |
+| `explain.md` | Human-readable explanation of failures, risk findings, and next steps. | Helps reviewers decide what to inspect next. |
+| `manifest.json` | Inventory of generated artifacts and run metadata. | Tells automation and humans what exists and where to find it. |
+| `github-step-summary.md` | GitHub Actions-friendly run summary. | Gives CI reviewers a compact status view. |
+| `vibebench-bundle.zip` | Portable archive of standard run artifacts. | Makes the evidence packet easy to hand off or download from CI. |
 
-For a concrete workflow from AI-assisted change to reviewable evidence, read the [case study](case-study.md) and browse the checked-in [case-study artifacts](../examples/showcase-artifacts/case-study/README.md).
+## Bundle And Proof Packet
 
-For how this differs from CI, benchmarks, chatbots, and review assistants, see the [comparison](comparison.md) and [FAQ](faq.md).
+`vibebench bundle` packages the latest run into `vibebench-bundle.zip`. It is the simplest handoff artifact for a specific local or CI run.
 
-Want the quickest preview? Run the one-command demo with `python3 -m vibebench demo`, copy the pack with `python3 -m vibebench demo --copy-to /tmp/vibebench-demo`, or browse the checked-in [sample artifacts](../examples/showcase-artifacts/sample/README.md) before running the full quality console locally. This artifact gallery is the fastest way to evaluate the local-first evidence trail from GitHub.
+`vibebench proof --output-dir PATH --zip` creates a focused proof packet with files such as `proof.html`, `proof.json`, `proof.md`, `proof-manifest.json`, and `proof.zip`. The proof packet is designed for evidence-first review, not for marketing claims.
 
-For a visual version of this evidence model, see the [artifact evidence stack](assets/artifact-evidence-stack.svg) and the [architecture](architecture.md) doc.
+`vibebench evidence-room --output-dir PATH --zip` creates the broader review package. It can combine proof files, site preview files, trust notes, a security questionnaire, reviewer scorecards, `share-check.json`, `share-check.md`, top-level HTML, Markdown, JSON, and a zip archive. Start with `index.html`.
 
-```mermaid
-flowchart LR
-    A[AI coding change] --> B[VibeBench checks]
-    B --> C[Structured artifacts]
-    C --> D[Compare and release audit]
-    D --> E[GitHub review and human decision]
+## Run Index, Trend, And Compare
+
+VibeBench also produces artifacts that explain movement across runs:
+
+| Artifact | Purpose |
+| --- | --- |
+| `run-index.json` / `run-index.md` | Summarizes recent valid run directories and marks partial or corrupt older run folders instead of crashing. |
+| `trend.json` / `trend.md` | Shows recent score/risk movement across valid runs. |
+| `compare.json` / `compare.md` | Compares a candidate run with a previous or selected run. |
+| `metrics-check.json` / `metrics-check.md` | Validates that one run has usable score/risk data when the check is enabled. |
+| `metrics-diff.json` / `metrics-diff.md` | Explains numeric metric movement between baseline and candidate when enabled. |
+
+`compare` and metrics-diff reporting do not imply benchmark certification. Policy enforcement is opt-in through explicit flags or config.
+
+## Adoption And Workflow Artifacts
+
+Adoption-oriented runs can add:
+
+| Artifact | Purpose |
+| --- | --- |
+| `project-scan.json` / `project-scan.md` | Read-only project readiness signals, stack detection, config status, and init profile recommendation. |
+| `onboard.json` / `onboard.md` | Human adoption plan with blockers, warnings, and next steps. |
+| `workflow-template.json` / `workflow-template.md` / `workflow-template.yml` | Preview of a generated workflow; it is an artifact unless `workflow-template --write` is explicitly used. |
+| `workflow-check.json` / `workflow-check.md` | Read-only validation of existing workflow shape and detected CI modes. |
+| `preflight.json` / `preflight.md` | Setup and adoption summary that can remain report-only or become policy-gated. |
+| `adoption-ready` JSON/Markdown output | Compact readiness answer for adoption review, usually printed or written only when output paths are requested. |
+
+These artifacts are most useful during the first week of rollout, when a team is deciding whether to stay report-only or enforce adoption policy.
+
+## Release And Sharing Artifacts
+
+| Artifact | Purpose |
+| --- | --- |
+| `release-check.json` / `release-check.md` | Local release-readiness evidence. Does not tag, publish, upload, or create a GitHub Release. |
+| `release-checklist` output | Read-only checklist for target-version review. |
+| `release-audit` bundle | Local audit bundle for package, publish, checklist, release-body, summary, and manifest records when explicitly generated. |
+| `share-check.json` / `share-check.md` | Local pre-sharing scan summary for evidence rooms, proof packets, static previews, bundles, directories, or zips. |
+| `site-preview` output | Local static preview bundle for docs/site review. It does not enable GitHub Pages automatically. |
+
+`share-check` is a pre-sharing aid, not a security certification, third-party audit, or guarantee. Review artifacts manually before publishing them.
+
+## Fastest Commands
+
+```bash
+python3 -m vibebench ci
+python3 -m vibebench latest --all-paths
+python3 -m vibebench bundle
+python3 -m vibebench adoption-ready --json
+python3 -m vibebench release-check --json
+python3 -m vibebench evidence-room --output-dir /tmp/vibebench-evidence-room --zip
 ```
 
-## Artifact Tour
+## Evidence Packet Story
 
-| Artifact / output | What it proves | Command | Safe/local-only | Usual location |
-| --- | --- | --- | --- | --- |
-| CI plan / CI result | Shows the configured quality pipeline and records the run outcome. | `python3 -m vibebench ci --dry-run --json` or `python3 -m vibebench ci` | Local by default; no publish or release action. | `.vibebench/runs/<timestamp>/` |
-| Artifacts inventory | Lists which run outputs exist and where to find them. | `python3 -m vibebench artifacts --json` | Read-only local inspection. | stdout; run artifacts under `.vibebench/runs/<timestamp>/` |
-| Compare report | Explains movement between the latest run and a previous run. | `python3 -m vibebench compare --json` | Read-only unless writing normal local compare artifacts. | `.vibebench/runs/<timestamp>/compare.json` and `compare.md` |
-| Package-check output | Captures local package/install readiness evidence. | `python3 -m vibebench package-check --json` | Local-only; does not upload packages. | stdout or `package-check.json` / `package-check.md` when requested |
-| Publish-check output | Dry-runs publish readiness without publishing. | `python3 -m vibebench publish-check --json` | Local-only; no package publish/upload. | stdout or `publish-check.json` / `publish-check.md` when requested |
-| Release-checklist output | Records pre/post-release checklist status for a target version. | `python3 -m vibebench release-checklist --json` | Read-only; no tag, release, upload, publish, or version bump. | stdout or `release-checklist.json` / `release-checklist.md` when requested |
-| Release-audit bundle | Collects package, publish, checklist, release-body, audit summary, manifest, and optional zip records. | `python3 -m vibebench release-audit --zip --output-dir /tmp/vibebench-release-audit-demo` | Local-only; no tag, GitHub Release, API call, publish/upload, or version bump. | Selected output directory, commonly under `/tmp` or `.vibebench/release-audits/` |
-| Release body export | Produces a copy/paste GitHub Release body from release notes. | `python3 -m vibebench release-body --version v0.3.0 --output /tmp/vibebench-release-body-demo.md` | Local-only; does not create a GitHub Release. | Requested Markdown path |
+The artifact model is meant to answer practical questions:
 
-## How To Use This Gallery
+- What changed and how risky did it look?
+- What checks actually ran?
+- What evidence was generated?
+- Is the repository ready for broader adoption?
+- Is the workflow using the expected VibeBench CI mode?
+- Is release readiness documented in a reproducible way?
+- What should a human reviewer inspect next?
 
-Start with the [demo guide](demo.md) if you want to run the project. Use the [showcase artifact example](../examples/showcase-artifacts/README.md) if you want a copy-paste command tour. The important idea is simple: VibeBench does not ask reviewers to trust an AI coding session blindly; it leaves evidence that can be checked, compared, audited, reproduced, and discussed.
+That is why VibeBench produces inventories, summaries, readiness files, comparison files, and portable bundles instead of only a pass/fail line.
+
+## For Browseable Examples
+
+- [Demo guide](demo.md)
+- [Quickstart](quickstart.md)
+- [Showcase artifacts](../examples/showcase-artifacts/README.md)
+- [Sample artifact pack](../examples/showcase-artifacts/sample/README.md)
+- [Case-study artifacts](../examples/showcase-artifacts/case-study/README.md)
+- [Trust Center](trust-center.md)
