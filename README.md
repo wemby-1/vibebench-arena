@@ -46,6 +46,16 @@ If you want a shorter preview before a full run, start with `python3 -m vibebenc
 
 ## Showcase Demo
 
+## Live Demo
+
+The deterministic public demo is published with GitHub Pages at:
+
+```text
+https://wemby-1.github.io/vibebench-arena/
+```
+
+It is a static presentation of committed, reproducible VibeBench evidence. It is not an independent hosted scanning service, and it does not claim security certification, compliance certification, users, funding, revenue, or product-market fit.
+
 Evaluating quickly? Start with the [showcase page](docs/showcase.md), the [showcase demo kit](examples/showcase-artifacts/README.md), the [public proof packet](examples/showcase-artifacts/public-proof/README.md), and the [public demo portal](examples/showcase-artifacts/public-demo/README.md). They give reviewers a 5-minute path through readiness, workflow coverage, CI planning, evidence packets, and trust boundaries without turning this README into a command dump.
 
 To generate the standalone portal yourself:
@@ -57,6 +67,14 @@ python3 -m vibebench public-demo \
 ```
 
 Then open `/tmp/vibebench-demo/index.html` directly in a browser. The portal is self-contained and does not require a server or network access.
+
+To verify the Pages build locally:
+
+```bash
+python3 scripts/build_public_demo.py --check
+python3 scripts/build_pages_site.py --output-dir /tmp/vibebench-pages-site
+python3 scripts/build_pages_site.py --check
+```
 
 For diligence review, use the [investor brief](docs/investor-brief.md), [technical due diligence](docs/technical-due-diligence.md), [proof matrix](docs/proof-matrix.md), [public proof packet tour](docs/public-proof-packet.md), [demo script](docs/demo-script.md), and [Trust Center](docs/trust-center.md).
 

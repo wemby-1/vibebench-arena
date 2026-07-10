@@ -6,6 +6,11 @@ The demos show inspectable evidence. They do not claim guaranteed security, corr
 
 When a live run is not convenient, use the committed [public proof packet](../examples/showcase-artifacts/public-proof/README.md), [public demo portal](../examples/showcase-artifacts/public-demo/README.md), and [artifact tour](public-proof-packet.md) as the browsable reference evidence.
 
+For remote audiences that should not install Python, open the live static demo:
+[`https://wemby-1.github.io/vibebench-arena/`](https://wemby-1.github.io/vibebench-arena/).
+It is a GitHub Pages presentation of the committed reproducible evidence, not a
+hosted scanning service.
+
 ## Before You Present
 
 Run from a clean repository checkout:
@@ -90,6 +95,14 @@ python3 -m vibebench public-demo \
 ```
 
 Then open `/tmp/vibebench-demo/index.html`. Point out that it summarizes supplied VibeBench evidence, labels missing optional artifacts, and states non-claims explicitly.
+
+For the same evidence as a Pages-ready site:
+
+```bash
+python3 scripts/build_pages_site.py --output-dir /tmp/vibebench-pages-site
+```
+
+Then open `/tmp/vibebench-pages-site/index.html`.
 
 ### 4. Bundle The Evidence
 

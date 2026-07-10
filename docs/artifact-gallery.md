@@ -33,6 +33,8 @@ For committed browseable examples generated from real commands, start with the [
 
 `vibebench public-demo --proof-packet examples/showcase-artifacts/public-proof --output-dir /tmp/vibebench-demo` converts that proof packet, or an ordinary run directory, into a deterministic standalone portal with `index.html`, `demo.json`, `README.md`, and curated safe artifact links. The committed reference portal lives at [`examples/showcase-artifacts/public-demo/`](../examples/showcase-artifacts/public-demo/README.md).
 
+`scripts/build_pages_site.py --output-dir /tmp/vibebench-pages-site` packages the committed public demo as the deployable GitHub Pages site. The live site is expected at [`https://wemby-1.github.io/vibebench-arena/`](https://wemby-1.github.io/vibebench-arena/) and remains a static presentation of committed evidence, not a hosted scanning service.
+
 ## Run Index, Trend, And Compare
 
 VibeBench also produces artifacts that explain movement across runs:
@@ -107,6 +109,7 @@ That is why VibeBench produces inventories, summaries, readiness files, comparis
 - [Showcase artifacts](../examples/showcase-artifacts/README.md)
 - [Public proof packet](../examples/showcase-artifacts/public-proof/README.md)
 - [Public demo portal](../examples/showcase-artifacts/public-demo/README.md)
+- [Live public demo](https://wemby-1.github.io/vibebench-arena/)
 - [Public proof packet tour](public-proof-packet.md)
 - [Sample artifact pack](../examples/showcase-artifacts/sample/README.md)
 - [Case-study artifacts](../examples/showcase-artifacts/case-study/README.md)

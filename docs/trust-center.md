@@ -59,6 +59,14 @@ The public demo portal converts a VibeBench run or proof packet into a self-cont
 
 It summarizes supplied evidence only. It does not independently prove security, replace human code review, certify compliance, or prove customers, funding, commercial traction, adoption, or product-market fit.
 
+The separately published GitHub Pages demo is built from the committed public
+demo with `scripts/build_pages_site.py`. Public GitHub-facing docs can point to
+that hosted page, but this Trust Center stays offline-safe because it is copied
+into evidence-room packages. The Pages build adds the static deployment wrapper
+and `.nojekyll`, but it does not run hosted checks, collect analytics, load
+remote runtime assets, or create evidence beyond the committed reproducible
+artifacts.
+
 ## Static site preview
 
 The static site preview packages the public docs entry and related files so reviewers can inspect the GitHub Pages-ready surface without enabling GitHub Pages automatically.
@@ -134,10 +142,13 @@ python3 -m vibebench adoption-ready --json
 python3 -m vibebench release-check --json
 python3 -m vibebench doctor --strict
 python3 -m vibebench bundle
-python3 -m vibebench evidence-room --output-dir /tmp/vibebench-evidence-room --zip
-python3 -m vibebench evidence-room --verify /tmp/vibebench-evidence-room
-python3 -m vibebench proof --verify /tmp/vibebench-evidence-room/proof-packet
-python3 -m vibebench site-preview --verify /tmp/vibebench-evidence-room/site-preview
+python3 -m vibebench evidence-room --output-dir review-output/evidence-room --zip
+python3 -m vibebench evidence-room --verify review-output/evidence-room
+python3 -m vibebench proof --verify review-output/evidence-room/proof-packet
+python3 -m vibebench site-preview --verify review-output/evidence-room/site-preview
+python3 scripts/build_public_demo.py --check
+python3 scripts/build_pages_site.py --output-dir review-output/pages-site
+python3 scripts/build_pages_site.py --check
 python3 -m vibebench site-check
 ```
 

@@ -8,6 +8,8 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 ### Added
 
+- Added a deterministic GitHub Pages public demo builder and deployment workflow, publishing the committed public demo as a static Pages site with `.nojekyll`, local `--check` validation, link/leak checks, simulated Actions isolation tests, and concise docs.
+
 - Added `python3 -m vibebench public-demo` for deterministic standalone public demo portals from a run or proof packet, with `--check`, JSON/Markdown outputs, conservative leak scanning, a reproducible `scripts/build_public_demo.py` wrapper, a committed reference portal, focused tests, and concise docs.
 
 - Added a deterministic reference project, reproducible public proof packet, builder/check script, artifact tour, and focused proof-packet tests.

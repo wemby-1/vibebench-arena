@@ -114,13 +114,13 @@ def test_trust_center_markdown_exists_and_contains_required_sections() -> None:
         "Responsible disclosure",
         (
             "python3 -m vibebench evidence-room --output-dir "
-            "/tmp/vibebench-evidence-room --zip"
+            "review-output/evidence-room --zip"
         ),
-        "python3 -m vibebench evidence-room --verify /tmp/vibebench-evidence-room",
-        "python3 -m vibebench proof --verify /tmp/vibebench-evidence-room/proof-packet",
+        "python3 -m vibebench evidence-room --verify review-output/evidence-room",
+        "python3 -m vibebench proof --verify review-output/evidence-room/proof-packet",
         (
             "python3 -m vibebench site-preview --verify "
-            "/tmp/vibebench-evidence-room/site-preview"
+            "review-output/evidence-room/site-preview"
         ),
         "python3 -m vibebench site-check",
         "python3 -m vibebench ci --dry-run --json",

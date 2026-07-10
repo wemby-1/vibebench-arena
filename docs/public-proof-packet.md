@@ -15,6 +15,11 @@ The committed public demo portal built from this packet lives at
 It gives reviewers a polished `index.html` entry point, `demo.json`, and curated
 safe artifact links without requiring a server or network access.
 
+The GitHub Pages site at
+[`https://wemby-1.github.io/vibebench-arena/`](https://wemby-1.github.io/vibebench-arena/)
+publishes that committed demo as a static site. It is a presentation of the
+reproducible evidence, not a separate hosted scanning service.
+
 ## How It Is Generated
 
 The repository-native builder copies the reference project into a temporary
@@ -46,6 +51,13 @@ Check the committed reference portal:
 
 ```bash
 python3 scripts/build_public_demo.py --check
+```
+
+Build or check the deployable Pages site:
+
+```bash
+python3 scripts/build_pages_site.py --output-dir /tmp/vibebench-pages-site
+python3 scripts/build_pages_site.py --check
 ```
 
 Normalized fields include temporary paths, run identifiers, generated

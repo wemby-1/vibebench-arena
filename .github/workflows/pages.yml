@@ -1,0 +1,132 @@
+name: Deploy public demo
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install package
+        run: python -m pip install -e ".[dev]"
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Build public demo site
+        run: python3 scripts/build_pages_site.py --output-dir _site
+
+      - name: Verify public demo site
+        run: |
+          test -f _site/index.html
+          test -f _site/.nojekyll
+          python3 scripts/build_pages_site.py --output-dir _site --check
+          python3 scripts/build_public_demo.py --check
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          import json
+          import re
+          from pathlib import Path
+
+          root = Path("_site")
+
+          class Parser(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.links = []
+                  self.remote_assets = []
+                  self.script_sources = []
+
+              def handle_starttag(self, tag, attrs):
+                  values = dict(attrs)
+                  href = values.get("href")
+                  src = values.get("src")
+                  if href:
+                      if tag == "link" and href.startswith(("http://", "https://")):
+                          self.remote_assets.append(href)
+                      self.links.append(href)
+                  if src:
+                      if src.startswith(("http://", "https://")):
+                          self.remote_assets.append(src)
+                      if tag == "script":
+                          self.script_sources.append(src)
+
+          text_files = []
+          for path in sorted(root.rglob("*")):
+              if path.suffix == ".json":
+                  json.loads(path.read_text(encoding="utf-8"))
+              if path.suffix in {".html", ".json", ".md", ".txt", ".yml", ".yaml"}:
+                  text_files.append(path)
+              if path.suffix == ".html":
+                  parser = Parser()
+                  parser.feed(path.read_text(encoding="utf-8"))
+                  if parser.remote_assets or parser.script_sources:
+                      raise SystemExit(f"remote runtime dependency in {path}")
+                  for link in parser.links:
+                      if not link or link.startswith(("#", "http://", "https://")):
+                          continue
+                      if link.startswith("/"):
+                          raise SystemExit(f"absolute link in {path}: {link}")
+                      target = (path.parent / link.split("#", 1)[0]).resolve()
+                      target.relative_to(root.resolve())
+                      if not target.exists():
+                          raise SystemExit(f"missing link in {path}: {link}")
+
+          combined = "\n".join(
+              path.read_text(encoding="utf-8", errors="replace")
+              for path in text_files
+          )
+          for pattern in [
+              r"/home/",
+              r"/data/code/",
+              r"/tmp/(?!vibebench-demo\b)",
+              r"ghp_[A-Za-z0-9_]{20,}",
+              r"github_pat_[A-Za-z0-9_]{20,}",
+              r"sk-[A-Za-z0-9_-]{20,}",
+              r"authorization\s*[:=]",
+              r"api[_-]?key\s*[:=]",
+              r"password\s*[:=]",
+          ]:
+              if re.search(pattern, combined, flags=re.IGNORECASE):
+                  raise SystemExit(f"unsafe pattern matched: {pattern}")
+          PY
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

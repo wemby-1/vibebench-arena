@@ -74,6 +74,20 @@ python3 -m vibebench public-demo \
 
 Open `/tmp/vibebench-demo/index.html` directly. The portal is deterministic, self-contained, and designed for reviewers who should not need to learn the whole CLI before inspecting the evidence.
 
+The same committed demo is published as a static GitHub Pages site at
+[`https://wemby-1.github.io/vibebench-arena/`](https://wemby-1.github.io/vibebench-arena/).
+To reproduce the Pages output locally:
+
+```bash
+python3 scripts/build_public_demo.py --check
+python3 scripts/build_pages_site.py --output-dir /tmp/vibebench-pages-site
+python3 scripts/build_pages_site.py --check
+```
+
+The Pages site is a static presentation of committed evidence. It is not a
+hosted scanning service and does not add new claims beyond the artifacts it
+publishes.
+
 ## 4. Check Adoption Readiness
 
 ```bash

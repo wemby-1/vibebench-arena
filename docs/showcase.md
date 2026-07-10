@@ -49,6 +49,12 @@ For investors and technical due diligence, it creates a practical evidence packe
 
 ## Five-Minute Demo Path
 
+The live static demo is published at
+[`https://wemby-1.github.io/vibebench-arena/`](https://wemby-1.github.io/vibebench-arena/).
+It is built from the committed public demo and public proof packet, so visitors
+can inspect the current evidence without cloning the repository. It is a static
+presentation of reproducible evidence, not an independent hosted scanner.
+
 Run from the repository root:
 
 ```bash
@@ -75,6 +81,14 @@ To regenerate the portal:
 python3 -m vibebench public-demo \
   --proof-packet examples/showcase-artifacts/public-proof \
   --output-dir /tmp/vibebench-demo
+```
+
+To reproduce the Pages site locally:
+
+```bash
+python3 scripts/build_public_demo.py --check
+python3 scripts/build_pages_site.py --output-dir /tmp/vibebench-pages-site
+python3 scripts/build_pages_site.py --check
 ```
 
 For deeper evaluation, use the [investor brief](investor-brief.md), [technical due diligence](technical-due-diligence.md), [proof matrix](proof-matrix.md), and [demo script](demo-script.md).
