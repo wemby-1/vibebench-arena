@@ -19,6 +19,10 @@ Passing this checklist is readiness evidence, not a claim of adoption, funding, 
 - [ ] Run `python3 -m vibebench release-check --candidate --json`.
 - [ ] Generate `release-candidate.json` with `--write-json`.
 - [ ] Generate `release-candidate.md` with `--write-summary`.
+- [ ] Generate `python3 -m vibebench release-bundle --candidate`.
+- [ ] Verify the bundle with `python3 -m vibebench release-bundle --candidate --check`.
+- [ ] Verify `release-checksums.sha256` against the bundle payload files.
+- [ ] Confirm `release-candidate-bundle.zip` contains only allowlisted relative paths.
 - [ ] Run full tests with `python3 -m pytest -q`.
 - [ ] Confirm the hosted Action smoke matrix passed `minimal`, `strict`, and `proof`.
 - [ ] Verify Pages deployment status after push.
@@ -45,6 +49,10 @@ Passing this checklist is readiness evidence, not a claim of adoption, funding, 
 M160 leaves every Release item incomplete.
 
 M161 adds the hosted pre-release candidate gate only. It still leaves every Release item incomplete and keeps `released=false`.
+
+M162 adds a deterministic candidate evidence bundle only. It keeps `released=false`,
+does not create a tag, does not create a GitHub Release, does not publish a
+package, and does not publish to GitHub Marketplace.
 
 ## Post-release
 

@@ -28,6 +28,7 @@ Passing the candidate gate is evidence of readiness. It is not a promise of adop
 - Adoption/workflow/release readiness checks with machine-readable JSON and Markdown artifacts.
 - Candidate release gate for v0.4.0 that joins package, Action, public evidence, documentation, and non-publication state.
 - Hosted `VibeBench release candidate` workflow that validates the candidate gate on push, pull request, and manual dispatch with read-only repository permissions.
+- Deterministic release-candidate evidence bundle with provenance, checksums, and a reproducible ZIP archive.
 
 ## Reusable GitHub Action
 
@@ -51,7 +52,21 @@ The release-candidate gate can produce:
 - `release-candidate.json`
 - `release-candidate.md`
 
-Both are deterministic. JSON stdout for `--json` is pure JSON. The hosted candidate workflow uploads the stable artifact `vibebench-v0.4.0-release-candidate`, containing `release-candidate.json`, `release-candidate.md`, and `workflow-verification.json`.
+Both are deterministic. JSON stdout for `--json` is pure JSON.
+
+The release-candidate bundle command produces a portable evidence directory and archive:
+
+```bash
+python3 -m vibebench release-bundle --candidate
+python3 -m vibebench release-bundle --candidate --check
+python3 -m vibebench release-bundle --candidate --json
+```
+
+The bundle contains `release-candidate.json`, `release-candidate.md`, `workflow-verification.json`, `release-provenance.json`, `release-checksums.sha256`, selected reviewer docs, package/action metadata files, and `release-candidate-bundle.zip`. `release-provenance.json` records schema version, project and package version, `candidate=true`, `released=false`, source commit when available, source tree clean/dirty state, package/action metadata consistency, workflow paths, included files, deterministic-build policy, archive format, and checksum algorithm. It does not include wall-clock generation timestamps, hostnames, usernames, absolute local paths, runner paths, secrets, or environment tokens.
+
+`release-checksums.sha256` uses SHA256 over sorted POSIX relative payload paths. It intentionally excludes `release-checksums.sha256` and `release-candidate-bundle.zip` to avoid recursive self-checksums. The ZIP archive contains only the allowlisted candidate payload files, uses sorted relative paths, a normalized `1980-01-01T00:00:00Z` ZIP timestamp, and normalized `0644` file permissions.
+
+The hosted candidate workflow uploads the stable artifact `vibebench-v0.4.0-release-candidate`, containing the full bundle evidence. `workflow-verification.json` is local structural verification and does not claim remote hosted-run status.
 
 ## Security and Privacy Boundaries
 
@@ -90,6 +105,7 @@ The intended verification chain includes:
 ```bash
 python3 -m vibebench release-check --candidate
 python3 -m vibebench release-check --candidate --json
+python3 -m vibebench release-bundle --candidate --check
 python3 scripts/build_public_proof_packet.py --check
 python3 scripts/build_public_demo.py --check
 python3 scripts/build_pages_site.py --check

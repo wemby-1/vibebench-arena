@@ -206,6 +206,12 @@ from vibebench.release_body import (
     export_release_body,
     release_body_json,
 )
+from vibebench.release_bundle import (
+    RELEASE_BUNDLE_DIR,
+    build_release_candidate_bundle,
+    release_bundle_json,
+    write_release_bundle_json,
+)
 from vibebench.release_check import (
     ReleaseCandidateResult,
     ReleaseReadinessResult,
@@ -4933,6 +4939,149 @@ def render_release_candidate_summary(result: ReleaseCandidateResult) -> None:
     console.print(
         "No tag, GitHub Release, package publication, or Marketplace publication "
         "was performed."
+    )
+
+
+@app.command("release-bundle")
+def release_bundle_command(
+    project_root: ProjectRootOption = Path("."),
+    candidate: Annotated[
+        bool,
+        typer.Option("--candidate", help="Build the v0.4.0 candidate bundle."),
+    ] = False,
+    output_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--output-dir",
+            help="Directory for release candidate evidence files.",
+        ),
+    ] = None,
+    archive_output: Annotated[
+        Path | None,
+        typer.Option(
+            "--archive-output",
+            help="Write release-candidate-bundle.zip to this path.",
+        ),
+    ] = None,
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Print release bundle result as JSON."),
+    ] = False,
+    json_output: Annotated[
+        Path | None,
+        typer.Option("--json-output", help="Write release bundle JSON to PATH."),
+    ] = None,
+    check: Annotated[
+        bool,
+        typer.Option("--check", help="Check the existing bundle without mutating it."),
+    ] = False,
+) -> None:
+    """Build or check a deterministic release candidate evidence bundle."""
+    root = project_root.resolve()
+    if not candidate:
+        message = "release-bundle currently requires --candidate."
+        if as_json:
+            print(
+                json.dumps(
+                    {
+                        "status": "failed",
+                        "candidate": False,
+                        "target_version": "0.4.0",
+                        "released": False,
+                        "output_dir": str(root / RELEASE_BUNDLE_DIR),
+                        "archive_path": None,
+                        "archive_sha256": None,
+                        "deterministic": True,
+                        "checked": check,
+                        "files": [],
+                        "checksums_valid": False,
+                        "source_commit": None,
+                        "checks": [
+                            {
+                                "name": "candidate",
+                                "status": "failed",
+                                "message": message,
+                            }
+                        ],
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+        else:
+            err_console.print(f"[red]{message}[/]")
+        raise typer.Exit(1)
+
+    selected_output_dir = resolve_optional_output_path(root, output_dir)
+    selected_archive = resolve_optional_output_path(root, archive_output)
+    selected_json_output = resolve_optional_output_path(root, json_output)
+    try:
+        result = build_release_candidate_bundle(
+            root,
+            output_dir=selected_output_dir,
+            archive_output=selected_archive,
+            check=check,
+        )
+        if selected_json_output is not None:
+            write_release_bundle_json(result, selected_json_output)
+    except (ReportError, ConfigError) as exc:
+        if as_json:
+            print(
+                json.dumps(
+                    {
+                        "status": "failed",
+                        "candidate": True,
+                        "target_version": "0.4.0",
+                        "released": False,
+                        "output_dir": str(
+                            selected_output_dir or root / RELEASE_BUNDLE_DIR
+                        ),
+                        "archive_path": (
+                            str(selected_archive) if selected_archive else None
+                        ),
+                        "archive_sha256": None,
+                        "deterministic": True,
+                        "checked": check,
+                        "files": [],
+                        "checksums_valid": False,
+                        "source_commit": None,
+                        "checks": [
+                            {
+                                "name": "release_bundle",
+                                "status": "failed",
+                                "message": str(exc),
+                            }
+                        ],
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+        else:
+            err_console.print(f"[red]{exc}[/]")
+        raise typer.Exit(1) from exc
+
+    if as_json:
+        print(release_bundle_json(result))
+    else:
+        render_release_bundle_summary(result)
+    if result.status != "passed":
+        raise typer.Exit(1)
+
+
+def render_release_bundle_summary(result) -> None:
+    """Render a concise release-bundle summary."""
+    console.print("[bold]VibeBench Release Candidate Bundle[/bold]")
+    console.print(f"Target version: {result.target_version}")
+    console.print(f"Status: {result.status}")
+    console.print("Released: false")
+    console.print(f"Output directory: {result.output_dir}")
+    console.print(f"Archive: {result.archive_path}")
+    console.print(f"Archive SHA256: {result.archive_sha256 or 'unavailable'}")
+    console.print(f"Payload files: {len(result.files)}")
+    console.print(
+        "Candidate evidence only; no tag, release, package, or Marketplace "
+        "publication was performed."
     )
 
 

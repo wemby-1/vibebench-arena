@@ -84,13 +84,31 @@ def test_release_candidate_workflow_runs_candidate_command_and_outputs() -> None
     text = workflow_text()
 
     assert "python3 -m vibebench release-check" in text
+    assert "python3 -m vibebench release-bundle" in text
     assert "--candidate" in text
     assert "--json" in text
     assert "--write-json" in text
     assert "--write-summary" in text
+    assert "--output-dir \"$CANDIDATE_OUTPUT_DIR\"" in text
+    assert "--check" in text
     assert "release-candidate.json" in text
     assert "release-candidate.md" in text
+    assert "release-provenance.json" in text
+    assert "release-checksums.sha256" in text
+    assert "release-candidate-bundle.zip" in text
     assert "tee \"$CANDIDATE_STDOUT_JSON\"" in text
+
+
+def test_release_candidate_workflow_verifies_bundle_before_upload() -> None:
+    text = workflow_text()
+
+    assert "Generate release candidate evidence bundle" in text
+    assert "Verify release candidate evidence bundle" in text
+    assert "python3 -m vibebench release-bundle" in text
+    assert "sha256sum -c release-checksums.sha256" in text
+    assert text.index("Verify release candidate evidence bundle") < text.index(
+        "Upload release candidate evidence"
+    )
 
 
 def test_release_candidate_workflow_validates_json_schema() -> None:
@@ -127,6 +145,15 @@ def test_release_candidate_workflow_uploads_only_candidate_directory() -> None:
     assert ".git" not in workflow_text()
     assert ".vibebench/runs" not in workflow_text()
     assert "_site" not in with_payload["path"]
+    for expected in [
+        "release-candidate.json",
+        "release-candidate.md",
+        "workflow-verification.json",
+        "release-provenance.json",
+        "release-checksums.sha256",
+        "release-candidate-bundle.zip",
+    ]:
+        assert expected in workflow_text()
 
 
 def test_release_candidate_workflow_has_no_authoritative_continue_on_error() -> None:
@@ -137,6 +164,9 @@ def test_release_candidate_summary_preserves_non_publication_state() -> None:
     text = workflow_text()
 
     assert "Released: `false`" in text
+    assert "Archive SHA256:" in text
+    assert "Payload file count:" in text
+    assert "candidate evidence only" in text
     assert "does not create a tag" in text
     assert "create a GitHub Release" in text
     assert "upload a package" in text

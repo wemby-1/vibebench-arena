@@ -10,6 +10,7 @@ The format is inspired by Keep a Changelog, and this project aims to follow sema
 
 - Added `release-check --candidate` for deterministic v0.4.0 release-candidate readiness across package version alignment, reusable Action metadata, action smoke topology, public proof/demo/Pages checks, reviewer docs, and explicit non-publication state.
 - Added v0.4.0 release-candidate artifacts (`release-candidate.json` and `release-candidate.md`) with pure JSON output, deterministic Markdown, `target_version: "0.4.0"`, and `released=false`.
+- Added `release-bundle --candidate` for deterministic v0.4.0 candidate evidence directories and byte-stable ZIP archives with provenance, SHA256 checksums, check mode, JSON output, and no tag, GitHub Release, package publication, or Marketplace publication.
 - Added v0.4.0 release-candidate notes, release checklist, GitHub Action contract docs, and Marketplace readiness guidance without creating a tag, GitHub Release, package publication, or Marketplace publication.
 - Added a hosted `VibeBench release candidate` workflow that validates the v0.4.0 candidate gate with `contents: read`, runs deterministic public evidence checks, and uploads only `vibebench-v0.4.0-release-candidate` evidence.
 

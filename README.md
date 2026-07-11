@@ -196,6 +196,8 @@ Milestone 160 prepares v0.4.0 as a release candidate, not as a completed release
 python3 -m vibebench release-check --candidate
 python3 -m vibebench release-check --candidate --json
 python3 -m vibebench release-check --candidate --write-json release-candidate.json --write-summary release-candidate.md
+python3 -m vibebench release-bundle --candidate
+python3 -m vibebench release-bundle --candidate --check
 ```
 
 Reviewer navigation:
@@ -205,7 +207,9 @@ Reviewer navigation:
 - [v0.4.0 release candidate notes](RELEASE_NOTES_v0.4.0.md)
 - [v0.4.0 release checklist](docs/release-checklist-v0.4.0.md)
 
-The hosted `VibeBench release candidate` workflow validates the same candidate gate on GitHub and uploads `vibebench-v0.4.0-release-candidate` with `release-candidate.json`, `release-candidate.md`, and a compact workflow verification manifest. Remote GitHub Actions status must be checked separately after push. Both `VibeBench release candidate` and `Action smoke` with `minimal`, `strict`, and `proof` should be green before continuing release work. Passing the candidate gate is readiness evidence, not a claim of adoption, funding, customers, stars, revenue, benchmark dominance, or security certification.
+`release-bundle --candidate` writes a deterministic, portable evidence directory at `.vibebench/release-candidates/v0.4.0/` by default. It includes `release-candidate.json`, `release-candidate.md`, `workflow-verification.json`, `release-provenance.json`, `release-checksums.sha256`, selected reviewer docs, package/action metadata files, and `release-candidate-bundle.zip`. Checksums cover payload files and intentionally exclude `release-checksums.sha256` and the archive itself; the ZIP uses sorted relative paths, normalized timestamps, and normalized file permissions for byte-for-byte rebuilds from the same source state.
+
+The hosted `VibeBench release candidate` workflow validates the same candidate gate on GitHub, generates and checks the deterministic bundle, verifies checksums, and uploads `vibebench-v0.4.0-release-candidate`. `workflow-verification.json` is local structural evidence; remote GitHub Actions status must still be checked separately after push. Both `VibeBench release candidate` and `Action smoke` with `minimal`, `strict`, and `proof` should be green before continuing release work. Passing the candidate gate is readiness evidence, not a claim of adoption, funding, customers, stars, revenue, benchmark dominance, or security certification.
 
 ## Evaluate From GitHub
 

@@ -33,7 +33,7 @@ jobs:
         run: python -m pip install -e ".[dev]"
 
       - name: Syntax check
-        run: python3 -m py_compile vibebench/release_check.py vibebench/cli.py
+        run: python3 -m py_compile vibebench/release_check.py vibebench/release_bundle.py vibebench/cli.py
 
       - name: Lint
         run: python3 -m ruff check .
@@ -109,6 +109,28 @@ jobs:
           python3 scripts/build_public_demo.py --check
           python3 scripts/build_pages_site.py --check
 
+      - name: Generate release candidate evidence bundle
+        env:
+          CANDIDATE_OUTPUT_DIR: ${{ runner.temp }}/vibebench-release-candidate
+          BUNDLE_JSON: ${{ runner.temp }}/release-candidate-bundle.json
+        run: |
+          python3 -m vibebench release-bundle \
+            --candidate \
+            --output-dir "$CANDIDATE_OUTPUT_DIR" \
+            --json \
+            --json-output "$BUNDLE_JSON"
+
+      - name: Verify release candidate evidence bundle
+        env:
+          CANDIDATE_OUTPUT_DIR: ${{ runner.temp }}/vibebench-release-candidate
+        run: |
+          python3 -m vibebench release-bundle \
+            --candidate \
+            --output-dir "$CANDIDATE_OUTPUT_DIR" \
+            --check \
+            --json
+          (cd "$CANDIDATE_OUTPUT_DIR" && sha256sum -c release-checksums.sha256)
+
       - name: Run focused release candidate tests
         run: python3 -m pytest tests/test_release_candidate.py -q
 
@@ -123,22 +145,32 @@ jobs:
 
           output_dir = Path(os.environ["CANDIDATE_OUTPUT_DIR"])
           payload = json.loads((output_dir / "release-candidate.json").read_text())
+          provenance = json.loads(
+              (output_dir / "release-provenance.json").read_text()
+          )
           summary = payload["summary"]
+          archive = output_dir / "release-candidate-bundle.zip"
+          import hashlib
+          archive_sha = hashlib.sha256(archive.read_bytes()).hexdigest()
           lines = [
               "## VibeBench release candidate",
               "",
               f"- Candidate status: `{payload['status']}`",
               f"- Target version: `{payload['target_version']}`",
               "- Released: `false`",
+              f"- Archive SHA256: `{archive_sha}`",
+              f"- Payload file count: `{len(provenance['included_bundle_files'])}`",
               f"- Checks passed: `{summary['passed']}`",
               f"- Checks failed: `{summary['failed']}`",
               "- Candidate artifacts: `release-candidate.json`, "
-              "`release-candidate.md`, `workflow-verification.json`",
+              "`release-candidate.md`, `workflow-verification.json`, "
+              "`release-provenance.json`, `release-checksums.sha256`, "
+              "`release-candidate-bundle.zip`",
               "- Deterministic public evidence: proof packet, public demo, "
               "and Pages builder checks passed.",
               "",
-              "This workflow does not create a tag, create a GitHub Release, "
-              "upload a package, or publish to GitHub Marketplace.",
+              "This is candidate evidence only. This workflow does not create a tag, "
+              "create a GitHub Release, upload a package, or publish to GitHub Marketplace.",
           ]
           summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
           if summary_path:
