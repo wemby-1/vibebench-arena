@@ -338,18 +338,92 @@ def test_release_check_invalid_config_fails(tmp_path: Path) -> None:
     assert "config" in result.output
 
 
-def test_release_check_missing_latest_run_fails(tmp_path: Path) -> None:
-    write_config(tmp_path)
-    workflow = tmp_path / ".github" / "workflows" / "ci.yml"
+def create_clean_checkout_project(root: Path) -> None:
+    write_config(root)
+    write_package_metadata(root)
+    workflow = root / ".github" / "workflows" / "ci.yml"
     workflow.parent.mkdir(parents=True, exist_ok=True)
     workflow.write_text("name: CI\n", encoding="utf-8")
-    init_git_repo(tmp_path)
+    init_git_repo(root)
+
+
+def test_release_check_clean_checkout_without_runs_succeeds(tmp_path: Path) -> None:
+    create_clean_checkout_project(tmp_path)
 
     result = runner.invoke(app, ["release-check", "--project-root", str(tmp_path)])
 
-    assert result.exit_code == 1
-    assert "not-ready" in result.output
+    assert result.exit_code == 0
+    assert "ready" in result.output
     assert "latest_run" in result.output
+
+
+def test_release_check_clean_checkout_json_is_pure_without_runs(
+    tmp_path: Path,
+) -> None:
+    create_clean_checkout_project(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["release-check", "--project-root", str(tmp_path), "--json"],
+    )
+
+    payload = json.loads(result.output)
+    checks = {check["name"]: check for check in payload["checks"]}
+    assert result.exit_code == 0
+    assert payload["status"] == "ready"
+    assert payload["latest_run_id"] is None
+    assert payload["latest_run_dir"] is None
+    assert checks["latest_run"]["status"] == "passed"
+    assert "local run evidence is optional" in checks["latest_run"]["message"]
+    assert checks["manifest"]["status"] == "passed"
+    assert checks["artifacts"]["status"] == "passed"
+
+
+def test_release_check_github_summary_env_does_not_affect_clean_checkout(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    create_clean_checkout_project(tmp_path)
+    summary_path = tmp_path / "github-step-summary.md"
+    runner_temp = tmp_path / "runner-temp"
+    runner_temp.mkdir()
+    monkeypatch.setenv("CI", "true")
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary_path))
+    monkeypatch.setenv("RUNNER_TEMP", str(runner_temp))
+
+    human = runner.invoke(app, ["release-check", "--project-root", str(tmp_path)])
+    as_json = runner.invoke(
+        app,
+        ["release-check", "--project-root", str(tmp_path), "--json"],
+    )
+
+    assert human.exit_code == 0
+    payload = json.loads(as_json.output)
+    assert as_json.exit_code == 0
+    assert payload["status"] == "ready"
+    assert not summary_path.exists()
+
+
+def test_release_check_clean_checkout_without_runs_does_not_modify_tracked_files(
+    tmp_path: Path,
+) -> None:
+    create_clean_checkout_project(tmp_path)
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "clean checkout"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    before = git_status(tmp_path)
+
+    result = runner.invoke(app, ["release-check", "--project-root", str(tmp_path)])
+    after = git_status(tmp_path)
+
+    assert result.exit_code == 0
+    assert before == ""
+    assert after == ""
 
 
 def test_release_check_does_not_modify_tracked_files(tmp_path: Path) -> None:

@@ -1000,9 +1000,18 @@ def check_package_build_readiness_opt_in() -> ReleaseReadinessCheck:
 def check_doctor_strict(project_root: Path) -> ReleaseReadinessCheck:
     """Run strict doctor diagnostics."""
     result = run_doctor(project_root, strict=True)
-    if result.overall_status == "passed":
+    non_blocking_without_run = {
+        "strict_runs_directory",
+        "strict_latest_run",
+    }
+    failed = [
+        check
+        for check in result.checks
+        if check.status == "failed"
+        and check.category not in non_blocking_without_run
+    ]
+    if not failed:
         return ReleaseReadinessCheck("doctor_strict", "passed", "Strict doctor passed")
-    failed = [check for check in result.checks if check.status == "failed"]
     message = "; ".join(f"{check.category}: {check.message}" for check in failed)
     return ReleaseReadinessCheck("doctor_strict", "failed", message)
 
@@ -1032,7 +1041,14 @@ def check_latest_run(project_root: Path) -> tuple[ReleaseReadinessCheck, Path | 
     try:
         run_dir = find_latest_valid_run(project_root)
     except ReportError as exc:
-        return ReleaseReadinessCheck("latest_run", "failed", str(exc)), None
+        return (
+            ReleaseReadinessCheck(
+                "latest_run",
+                "passed",
+                f"No latest run found; local run evidence is optional: {exc}",
+            ),
+            None,
+        )
     return (
         ReleaseReadinessCheck(
             "latest_run",
@@ -1051,8 +1067,8 @@ def check_manifest_consistency(
     if latest_run_dir is None:
         return ReleaseReadinessCheck(
             "manifest",
-            "failed",
-            "No latest run available for manifest check",
+            "passed",
+            "No latest run available; manifest check skipped",
         )
     try:
         result = check_manifest(project_root, latest_run_dir)
@@ -1075,8 +1091,8 @@ def check_artifact_inventory(
     if latest_run_dir is None:
         return ReleaseReadinessCheck(
             "artifacts",
-            "failed",
-            "No latest run available for artifact inventory",
+            "passed",
+            "No latest run available; artifact inventory skipped",
         )
     try:
         result = collect_artifact_inventory(project_root, latest_run_dir)
